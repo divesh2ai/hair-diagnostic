@@ -1,0 +1,162 @@
+{
+  "caseId": "te_acute_09_postpartum_lact_age22",
+  "corpusVersion": "2.0.0",
+  "description": "Acute telogen effluvium, postpartum-lactating, 22y Female.",
+  "category": "ACUTE_TE",
+  "severity": "mild",
+  "presentationClarity": "ambiguous",
+  "demographicProfile": {
+    "sex": "Female",
+    "age": "22",
+    "region": null,
+    "dietType": "Mixed"
+  },
+  "questionnaireAnswers": {
+    "sex": "Female",
+    "age": "22",
+    "goal": [
+      "Reduce hair fall"
+    ],
+    "grade": "Grade 1",
+    "scalp": [
+      "Normal scalp"
+    ],
+    "cause": [
+      "Postpartum"
+    ],
+    "lifestyle": [],
+    "thyroid": [],
+    "hormonal": [
+      "Postpartum"
+    ],
+    "immunity": [],
+    "deficiency": [],
+    "gut": [],
+    "diet": [],
+    "hairtype": [
+      "Diffuse shedding"
+    ],
+    "treatment": [],
+    "duration": "Less than 3 months",
+    "count": "100–200 hairs/day"
+  },
+  "expectedSignals": [
+    {
+      "signalId": "diffuse-shedding-marker",
+      "minConfidence": 0.85,
+      "mustBePrimary": true
+    },
+    {
+      "signalId": "active-shedding-mild",
+      "minConfidence": 0.75
+    },
+    {
+      "signalId": "acute-duration-marker",
+      "minConfidence": 0.8
+    },
+    {
+      "signalId": "sex-female",
+      "minConfidence": 0.99
+    },
+    {
+      "signalId": "age-young-modifier",
+      "minConfidence": 0.99
+    },
+    {
+      "signalId": "postpartum-lactating",
+      "minConfidence": 0.75
+    }
+  ],
+  "expectedPathways": [
+    {
+      "pathwayId": "telogen-cycle-disruption",
+      "minActivation": 0.6,
+      "role": "leading"
+    },
+    {
+      "pathwayId": "hormonal-dysregulation",
+      "minActivation": 0.4,
+      "role": "supporting"
+    }
+  ],
+  "expectedRootCauses": [
+    {
+      "causeId": "stress-driven-telogen-effluvium",
+      "minPosterior": 0.45,
+      "surfaceAs": "lead"
+    },
+    {
+      "causeId": "hormonal-hair-loss",
+      "minPosterior": 0.18,
+      "surfaceAs": "co-lead"
+    }
+  ],
+  "expectedDiagnosis": {
+    "primary": "stress-driven-telogen-effluvium",
+    "secondary": [
+      "hormonal-hair-loss"
+    ],
+    "legacyDiagnosisKey": "POSTPARTUM_TE",
+    "legacyDiagnosisKeyAlternates": [
+      "ACUTE_TE"
+    ]
+  },
+  "expectedSeverity": "mild",
+  "expectedProtocolClass": "TE_ACUTE",
+  "expectedTherapyNeeds": [
+    "CYCLE_RESTORATION",
+    "STRESS_DOWNREGULATION",
+    "NUTRITIONAL_REPLETION"
+  ],
+  "expectedMonitoringRequirements": {
+    "required": [
+      "SHED_COUNT_MONTHLY",
+      "GLOBAL_PHOTO_3M",
+      "TSH_3M"
+    ],
+    "recommended": [
+      "STRESS_PHQ_MONTHLY"
+    ],
+    "forbidden": [
+      "ANDROGEN_PANEL_6M"
+    ]
+  },
+  "expectedNarrativeThemes": {
+    "themes": [
+      "CYCLE_RESET",
+      "REVERSIBILITY_REASSURANCE",
+      "STRESS_RECOVERY"
+    ],
+    "mustContainTokens": [
+      "telogen",
+      "reversible"
+    ],
+    "mustNotContainTokens": [
+      "permanent loss"
+    ]
+  },
+  "clinicalRationale": {
+    "whyPrimary": "22-year-old female presenting with diffuse synchronized shedding lagging a clear precipitant (postpartum-lactating) by the expected 2–4 month telogen cycle. Shedding intensity (100–200 hairs/day), acute duration, and absence of pattern topology produce a dominant telogen-cycle-disruption activation. Architectural follicle integrity is preserved — this is cycle-timing pathology, fully reversible, and protocol class TE_ACUTE applies with cycle-restoration and stress-downregulation therapy needs. Postpartum hormonal shift co-explains and is acknowledged in the narrative.",
+    "whyNotCompetitors": {
+      "androgen-driven-miniaturization": "No pattern thinning topology, no Norwood/Ludwig progression, and active heavy shedding without architectural change weighs against miniaturization.",
+      "autoimmune-hair-loss": "No patchy loss, no areata history.",
+      "inflammatory-scalp-dysfunction": "Scalp surface is unremarkable.",
+      "nutritional-hair-stress": "No deficiency markers.",
+      "multifactorial-hair-loss": "A single clear precipitant + single dominant pathway means compositeRule is not met."
+    }
+  },
+  "adversarial": {
+    "isAdversarial": true,
+    "expectedPrimaryDriver": "stress-driven-telogen-effluvium",
+    "expectedSecondaryDrivers": [
+      "hormonal-hair-loss"
+    ],
+    "commonFailureModes": [
+      {
+        "failureMode": "TE_AS_AGA",
+        "impactedComponent": "ROOTCAUSE",
+        "description": "Crown-emphasized telogen patterns can be misread as AGA when grade markers fire defensively."
+      }
+    ]
+  }
+}

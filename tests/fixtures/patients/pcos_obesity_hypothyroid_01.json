@@ -1,0 +1,35 @@
+{
+  "id": "pcos_obesity_hypothyroid_01",
+  "description": "PCOS_OBESITY + Hypothyroidism triple-axis case → PCOS_OBESITY_HYPO fires: single PRO FACT META B covers AMPK/insulin + androgen + T3. Both PCOS and HYPOTHYROID variant kits must be excluded — ingredient duplication avoided. This is the most complex single-kit consolidation rule.",
+  "budget": "COMPREHENSIVE",
+  "answers": {
+    "sex": "Female",
+    "age": "36",
+    "grade": "Grade 2",
+    "goal": ["Reduce hair fall"],
+    "hormonal": ["PCOS / PCOD + Obesity"],
+    "lifestyle": ["Obesity"],
+    "thyroid": ["Hypothyroidism"],
+    "scalp": [],
+    "cause": [],
+    "immunity": [],
+    "deficiency": [],
+    "gut": [],
+    "diet": [],
+    "hairtype": [],
+    "treatment": [],
+    "duration": "3–6 months",
+    "count": "50–100 strands"
+  },
+  "expected": {
+    "diagnoses": ["PCOS_OBESITY"],
+    "scalpStates": ["NORMAL_SCALP"],
+    "rootCauses": ["PCOS", "HYPOTHYROID", "METABOLIC"],
+    "therapyNeeds": ["METABOLIC_SUPPORT", "ANDROGENIC_CORRECTION", "INFLAMMATION_CONTROL", "THYROID_SUPPORT"],
+    "topKit": "HAIR FACT TE GOLD",
+    "mustIncludeKits": ["HAIR FACT TE GOLD", "PRO FACT META B", "PHENOTYPE INFLAMATION"],
+    "mustExcludeKits": ["PRO FACT META B PCOS", "PRO FACT META B HYPOTHYROID", "F-PCOS -1"],
+    "mustTriggerRules": ["PCOS_OBESITY_HYPO", "ACTIVE_SHEDDING"],
+    "mustBlockRules": ["PCOS_DIABETES_UPGRADE", "RULE1_HYPO_METABOLIC", "GLP1_EARLY"]
+  }
+}

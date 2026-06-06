@@ -1,0 +1,10 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(dir)",
+      "Bash(cd \"D:\\\\Dr Fact Folder\\\\RAG Chatbot\" && find . -name \"tailwind.config.*\" -type f)",
+      "Bash(npm ls *)",
+      "Bash(npm run *)"
+    ]
+  }
+}

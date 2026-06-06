@@ -1,0 +1,35 @@
+{
+  "id": "glp1_early_pcos_combo_01",
+  "description": "GLP-1 early + PCOS_ONLY — Rule 1A fires: AGA_FEMALE_123 (65+5age=70) + PCOS_ONLY (92) + WEIGHT_LOSS (90) all scored → +95 boost lifts AGA_FEMALE_123 to 165, making it primary. GLP1_EARLY fires: SHIELD at Phase 1. Tests that Rule 1A co-exists with GLP1_EARLY enforcement. SHIELD remains at front regardless of AGA stack.",
+  "budget": "COMPREHENSIVE",
+  "answers": {
+    "sex": "Female",
+    "age": "33",
+    "grade": "Grade 2",
+    "goal": ["Reduce hair fall"],
+    "cause": ["GLP-1 receptor agonist (hair loss within 6 months)"],
+    "hormonal": ["PCOS / PCOD only"],
+    "scalp": [],
+    "lifestyle": [],
+    "thyroid": [],
+    "immunity": [],
+    "deficiency": [],
+    "gut": [],
+    "diet": [],
+    "hairtype": [],
+    "treatment": [],
+    "duration": "1–3 months",
+    "count": "50–100 strands"
+  },
+  "expected": {
+    "diagnoses": ["AGA_FEMALE_123"],
+    "scalpStates": ["NORMAL_SCALP"],
+    "rootCauses": ["PCOS", "RAPID_WEIGHT_LOSS"],
+    "therapyNeeds": ["FOLLICLE_STIMULATION", "INFLAMMATION_CONTROL", "SHEDDING_ARREST"],
+    "topKit": "RAPID WEIGHT LOSS SHIELD",
+    "mustIncludeKits": ["RAPID WEIGHT LOSS SHIELD", "HAIR FACT TE GOLD", "FPHL"],
+    "mustExcludeKits": ["PRO FACT META B HYPOTHYROID", "LACTIHEALTH"],
+    "mustTriggerRules": ["GLP1_EARLY"],
+    "mustBlockRules": ["GLP1_LATE", "PCOS_DIABETES_UPGRADE", "RULE1_HYPO_METABOLIC"]
+  }
+}

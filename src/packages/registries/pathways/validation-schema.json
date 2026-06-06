@@ -1,0 +1,197 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "pathways.validation-schema@1.0.0",
+  "title": "Pathway Registry v1 Validation Schema",
+  "description": "JSON Schema + integrity constraints enforced by registry CI for the Pathway Registry. Implements Clinical Architecture v1.0 Phase 2 governance + Sprint 1 Week 2 validation requirements.",
+  "type": "object",
+  "required": ["registry","version","pathways"],
+  "properties": {
+    "registry": { "type": "string", "const": "pathways" },
+    "version": { "type": "string", "pattern": "^\\d+\\.\\d+\\.\\d+$" },
+    "pathways": { "type": "array", "minItems": 1, "items": { "$ref": "#/definitions/Pathway" } }
+  },
+  "definitions": {
+    "Pathway": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id","name","biologicalSystem","mechanismCategory","description",
+        "purpose","activationRules","requiredSignals","supportingSignals",
+        "inhibitorySignals","severityContribution","reversibilityClass",
+        "chronicityProfile","recoveryImpact","interactions",
+        "treatmentImplications","explainabilityMetadata","evidenceTier"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9-]{2,63}$",
+          "enum": [
+            "follicular-miniaturization","telogen-cycle-disruption","scalp-inflammation",
+            "hormonal-dysregulation","immune-dysregulation","metabolic-dysfunction",
+            "oxidative-stress","gut-hair-axis-dysfunction","nutritional-limitation",
+            "hair-shaft-damage"
+          ]
+        },
+        "name": { "type": "string", "minLength": 3 },
+        "biologicalSystem": {
+          "type": "string",
+          "enum": ["integumentary","endocrine","immune","metabolic","nervous","digestive","vascular","genetic"]
+        },
+        "mechanismCategory": {
+          "type": "string",
+          "enum": [
+            "follicular-cycle","inflammatory","endocrine","immunologic",
+            "metabolic","redox","gastrointestinal","nutritional","structural"
+          ]
+        },
+        "description": { "type": "string", "minLength": 20 },
+        "purpose":      { "type": "string", "minLength": 10, "description": "Language-neutral concept ID for downstream narrative." },
+        "activationRules": {
+          "type": "object",
+          "required": ["gateMode","minActivation"],
+          "properties": {
+            "gateMode": { "type": "string", "enum": ["required-any","required-aggregate","modulator-no-gate"] },
+            "minActivation": { "type": "number", "minimum": 0.0, "maximum": 1.0 },
+            "amplifiedBy": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "required": ["pathwayId","magnitude","when"],
+                "properties": {
+                  "pathwayId": { "type": "string" },
+                  "magnitude": { "type": "number", "minimum": 0.0, "maximum": 0.40 },
+                  "when": { "type": "string", "enum": ["co-active","co-dominant"] }
+                }
+              }
+            }
+          }
+        },
+        "requiredSignals": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["signalId","weight","minConfidence"],
+            "properties": {
+              "signalId":      { "type": "string" },
+              "weight":        { "type": "number", "minimum": 0.40, "maximum": 1.00 },
+              "minConfidence": { "type": "number", "minimum": 0.30, "maximum": 0.99 }
+            }
+          }
+        },
+        "supportingSignals": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "required": ["signalId","weight"],
+            "properties": {
+              "signalId": { "type": "string" },
+              "weight":   { "type": "number", "minimum": 0.05, "maximum": 1.00 }
+            }
+          }
+        },
+        "inhibitorySignals": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["signalId","weight"],
+            "properties": {
+              "signalId": { "type": "string" },
+              "weight":   { "type": "number", "minimum": -1.00, "maximum": -0.05 }
+            }
+          }
+        },
+        "severityContribution": { "type": "number", "minimum": 0.0, "maximum": 1.0 },
+        "reversibilityClass": {
+          "type": "string",
+          "enum": ["fully-reversible","partially-reversible","stabilizable","shaft-only-reversible","irreversible"]
+        },
+        "chronicityProfile": {
+          "type": "object",
+          "required": ["onsetSpeed","persistenceWithoutTx","recurrenceRisk"],
+          "properties": {
+            "onsetSpeed":          { "type": "string", "enum": ["acute","subacute","chronic"] },
+            "persistenceWithoutTx":{ "type": "string", "enum": ["self-limiting","persistent","progressive"] },
+            "recurrenceRisk":      { "type": "string", "enum": ["low","moderate","high"] }
+          }
+        },
+        "recoveryImpact": {
+          "type": "object",
+          "required": ["recoveryCeilingDelta","responsivenessDelta","progressionRiskDelta"],
+          "properties": {
+            "recoveryCeilingDelta": { "type": "number", "minimum": -0.40, "maximum": 0.10 },
+            "responsivenessDelta":  { "type": "number", "minimum": -0.30, "maximum": 0.20 },
+            "progressionRiskDelta": { "type": "number", "minimum":  0.00, "maximum": 0.40 }
+          }
+        },
+        "interactions": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["pathwayId","type","magnitude"],
+            "properties": {
+              "pathwayId": { "type": "string" },
+              "type":      { "type": "string", "enum": ["amplifies","mediates","competes"] },
+              "magnitude": { "type": "number", "minimum": 0.0, "maximum": 0.40 }
+            }
+          }
+        },
+        "treatmentImplications": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "string",
+            "enum": [
+              "scalp-stabilization","inflammation-reduction","hormonal-support",
+              "nutritional-support","growth-stimulation","maintenance","long-term-preservation"
+            ]
+          }
+        },
+        "explainabilityMetadata": {
+          "type": "object",
+          "required": ["clinicalConcept","analogyClass","visualMotif","doctorFraming","patientFraming","scientificFraming"],
+          "properties": {
+            "clinicalConcept":   { "type": "string" },
+            "analogyClass":      { "type": "string" },
+            "visualMotif":       { "type": "string" },
+            "doctorFraming":     { "type": "string" },
+            "patientFraming":    { "type": "string" },
+            "scientificFraming": { "type": "string" }
+          }
+        },
+        "evidenceTier": { "type": "string", "enum": ["established","emerging","heuristic"] },
+        "legacyMappings": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["legacyDiagnosisKey","parityStrategy"],
+            "properties": {
+              "legacyDiagnosisKey": { "type": "string" },
+              "parityStrategy":     { "type": "string", "enum": ["direct","co-activation","composite","downstream-routing","not-a-pathway"] },
+              "notes":              { "type": "string" }
+            }
+          }
+        }
+      }
+    }
+  },
+  "integrityConstraints": [
+    { "id":"IC-P-1",  "rule":"pathways[].id values must be globally unique.", "enforcement":"registry-ci" },
+    { "id":"IC-P-2",  "rule":"Every pathway must declare at least one supportingSignal.", "enforcement":"schema+ci" },
+    { "id":"IC-P-3",  "rule":"Every signalId in requiredSignals[], supportingSignals[], inhibitorySignals[] must resolve to an existing signals.registry@1.0 entry.", "enforcement":"registry-ci" },
+    { "id":"IC-P-4",  "rule":"For each pathway, no signal may appear in more than one of {requiredSignals, supportingSignals, inhibitorySignals}.", "enforcement":"registry-ci" },
+    { "id":"IC-P-5",  "rule":"If activationRules.gateMode == 'required-any' or 'required-aggregate' then requiredSignals[] must be non-empty.", "enforcement":"registry-ci" },
+    { "id":"IC-P-6",  "rule":"If activationRules.gateMode == 'modulator-no-gate' then requiredSignals[] must be empty.", "enforcement":"registry-ci" },
+    { "id":"IC-P-7",  "rule":"Every required-gate signal must have its Signal Registry evidenceTier == 'established' (mirrors Signal IC-8).", "enforcement":"registry-ci" },
+    { "id":"IC-P-8",  "rule":"Every signal listed in supportingSignals[] must declare this pathway in its Signal Registry pathwayRelevance[] (cross-registry symmetry).", "enforcement":"registry-ci" },
+    { "id":"IC-P-9",  "rule":"interactions[].pathwayId must resolve to another pathway in this registry. Self-interaction forbidden.", "enforcement":"registry-ci" },
+    { "id":"IC-P-10", "rule":"No circular 'mediates' chain may form a cycle. 'amplifies' cycles are permitted because amplification is bounded by interactionAmplificationCap.", "enforcement":"registry-ci (DAG check on mediates edges)" },
+    { "id":"IC-P-11", "rule":"Sum of supportingSignals[].weight in [0.5, 10.0]. Pathways with cumulative weight outside this band fail CI. Upper bound reflects that some pathways (telogen-cycle-disruption with its many precipitant signals) draw on many overlapping observations; activation is always clipped to [0,1] in the engine. Lower bound prevents pathways with no upside coverage.", "enforcement":"registry-ci" },
+    { "id":"IC-P-12", "rule":"Every pathway must declare >=1 treatmentImplications.", "enforcement":"schema+ci" },
+    { "id":"IC-P-13", "rule":"reversibilityClass == 'shaft-only-reversible' restricts treatmentImplications to {scalp-stabilization, maintenance}.", "enforcement":"registry-ci" },
+    { "id":"IC-P-14", "rule":"Recovery deltas must obey the ranges declared in confidence-model.json#recoveryImpactModel.ranges.", "enforcement":"schema+ci" },
+    { "id":"IC-P-15", "rule":"Pathway confidence ceiling: max activation may not exceed 1.0; severity may not exceed 1.0; recovery deltas may not be amplified beyond their declared maxima at any activation.", "enforcement":"runtime invariant test" },
+    { "id":"IC-P-16", "rule":"All 10 canonical pathway ids must be present. Subset registries are not permitted at v1.", "enforcement":"registry-ci" },
+    { "id":"IC-P-17", "rule":"Every legacyMappings[].legacyDiagnosisKey must resolve to a value in the legacy DiagnosisKey enum (33 values). Unrecognized keys fail CI.", "enforcement":"registry-ci" }
+  ]
+}

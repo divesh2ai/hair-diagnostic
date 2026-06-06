@@ -1,0 +1,35 @@
+{
+  "id": "pro_immune_last_invariant_01",
+  "description": "PRO IMMUNE last invariant test — TE_ILLNESS protocol places PRO IMMUNE at Phase 1 in base sequence. proImmuneLastRule MUST reposition it to final phase. Dedicated regression guard: any refactor breaking proImmuneLastRule will be caught immediately. Multi-kit protocol with active shedding.",
+  "budget": "COMPREHENSIVE",
+  "answers": {
+    "sex": "Male",
+    "age": "45",
+    "grade": "Grade 2",
+    "goal": ["Reduce hair fall"],
+    "cause": ["Recent Illness", "Surgery"],
+    "scalp": ["Oily scalp"],
+    "lifestyle": [],
+    "thyroid": [],
+    "hormonal": [],
+    "immunity": [],
+    "deficiency": [],
+    "gut": [],
+    "diet": [],
+    "hairtype": [],
+    "treatment": [],
+    "duration": "1–3 months",
+    "count": "50–100 strands"
+  },
+  "expected": {
+    "diagnoses": ["TE_ILLNESS"],
+    "scalpStates": ["OILY_SCALP"],
+    "rootCauses": ["ILLNESS"],
+    "therapyNeeds": ["IMMUNE_MODULATION", "SHEDDING_ARREST", "INFLAMMATION_CONTROL"],
+    "topKit": "HAIR FACT TE GOLD",
+    "mustIncludeKits": ["HAIR FACT TE GOLD", "PHENOTYPE INFLAMATION", "PRO IMMUNE GOLD"],
+    "mustExcludeKits": ["LACTIHEALTH", "RAPID WEIGHT LOSS SHIELD"],
+    "mustTriggerRules": ["ACTIVE_SHEDDING"],
+    "mustBlockRules": ["GLP1_EARLY", "GLP1_LATE", "NO_VISIBLE_FALL"]
+  }
+}

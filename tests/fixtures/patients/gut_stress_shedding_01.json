@@ -1,0 +1,35 @@
+{
+  "id": "gut_stress_shedding_01",
+  "description": "Gut/IBS + stress-related diffuse shedding. GUT_ISSUES primary (62) beats TE_STRESS (55). GI GOLD clears gut-hair axis first; PHENOTYPE clears gut-driven systemic inflammation; PRO IMMUNE rebuilds gut-depleted immunity. TE GOLD arrests active shedding from Phase 1. Tests gut-malabsorption detection and GUT_ISSUES protocol.",
+  "budget": "STANDARD",
+  "answers": {
+    "sex": "Female",
+    "age": "30",
+    "grade": "Grade 2",
+    "goal": ["Reduce hair fall"],
+    "gut": ["Bloating", "IBS", "GERD"],
+    "cause": ["Stress", "Anxiety"],
+    "scalp": [],
+    "lifestyle": [],
+    "thyroid": [],
+    "hormonal": [],
+    "immunity": [],
+    "deficiency": [],
+    "diet": [],
+    "hairtype": [],
+    "treatment": [],
+    "duration": "3–6 months",
+    "count": "50–100 strands"
+  },
+  "expected": {
+    "diagnoses": ["GUT_ISSUES"],
+    "scalpStates": ["NORMAL_SCALP"],
+    "rootCauses": ["STRESS", "GUT_MALABSORPTION"],
+    "therapyNeeds": ["GUT_RESTORATION", "INFLAMMATION_CONTROL", "IMMUNE_MODULATION", "SHEDDING_ARREST"],
+    "topKit": "HAIR FACT TE GOLD",
+    "mustIncludeKits": ["HAIR FACT TE GOLD", "PRO FACT GI GOLD", "PHENOTYPE INFLAMATION", "PRO IMMUNE GOLD"],
+    "mustExcludeKits": ["RAPID WEIGHT LOSS SHIELD", "FPHL", "MPHL", "PRO FACT META B HYPOTHYROID"],
+    "mustTriggerRules": ["ACTIVE_SHEDDING"],
+    "mustBlockRules": ["GLP1_EARLY", "GLP1_LATE", "RULE1_HYPO_METABOLIC"]
+  }
+}

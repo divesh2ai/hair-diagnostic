@@ -1,0 +1,35 @@
+{
+  "id": "peri_menopause_metabolic_01",
+  "description": "Peri-menopause with metabolic co-condition (obesity). PERI_MENO_METABOLIC rule fires: PRO FACT META B injected at Phase 2 of peri protocol. Tests the metabolicModifierRule PERI_MENOPAUSE branch — distinct from RULE 1 (HYPO_METABOLIC). PRO FACT META B must not be the HYPOTHYROID variant.",
+  "budget": "COMPREHENSIVE",
+  "answers": {
+    "sex": "Female",
+    "age": "49",
+    "grade": "Grade 2",
+    "goal": ["Reduce hair fall"],
+    "hormonal": ["Peri-menopause"],
+    "lifestyle": ["Obesity", "Sedentary"],
+    "scalp": [],
+    "cause": [],
+    "thyroid": [],
+    "immunity": [],
+    "deficiency": [],
+    "gut": [],
+    "diet": [],
+    "hairtype": [],
+    "treatment": [],
+    "duration": "3–6 months",
+    "count": "50–100 strands"
+  },
+  "expected": {
+    "diagnoses": ["PERI_MENOPAUSE"],
+    "scalpStates": ["NORMAL_SCALP"],
+    "rootCauses": ["HORMONAL_SHIFT", "METABOLIC"],
+    "therapyNeeds": ["HORMONAL_REBALANCING", "DHT_SUPPRESSION", "SHEDDING_ARREST", "IMMUNE_MODULATION", "METABOLIC_SUPPORT"],
+    "topKit": "HAIR FACT TE GOLD",
+    "mustIncludeKits": ["HAIR FACT TE GOLD", "HAIR FACT PERI MENOPAUSE", "PRO FACT META B"],
+    "mustExcludeKits": ["PRO FACT META B HYPOTHYROID", "PRO FACT META B PCOS", "LACTIHEALTH"],
+    "mustTriggerRules": ["PERI_MENO_METABOLIC", "ACTIVE_SHEDDING"],
+    "mustBlockRules": ["RULE1_HYPO_METABOLIC", "GLP1_EARLY", "GLP1_LATE"]
+  }
+}

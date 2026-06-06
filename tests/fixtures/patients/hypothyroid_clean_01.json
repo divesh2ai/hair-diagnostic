@@ -1,0 +1,35 @@
+{
+  "id": "hypothyroid_clean_01",
+  "description": "Hypothyroid hair loss — no metabolic co-condition. RULE 1 (PRO FACT META B substitution) must NOT fire. PRO FACT META B HYPOTHYROID is the correct single-condition kit. Validates RULE 1 negative gate.",
+  "budget": "STANDARD",
+  "answers": {
+    "sex": "Female",
+    "age": "40",
+    "grade": "Grade 2",
+    "goal": ["Reduce hair fall"],
+    "thyroid": ["Hypothyroidism"],
+    "scalp": [],
+    "cause": [],
+    "lifestyle": [],
+    "hormonal": [],
+    "immunity": [],
+    "deficiency": [],
+    "gut": [],
+    "diet": [],
+    "hairtype": [],
+    "treatment": [],
+    "duration": "3–6 months",
+    "count": "50–100 strands"
+  },
+  "expected": {
+    "diagnoses": ["THYROID_HYPO"],
+    "scalpStates": ["NORMAL_SCALP"],
+    "rootCauses": ["HYPOTHYROID"],
+    "therapyNeeds": ["THYROID_SUPPORT", "INFLAMMATION_CONTROL", "SHEDDING_ARREST"],
+    "topKit": "HAIR FACT TE GOLD",
+    "mustIncludeKits": ["HAIR FACT TE GOLD", "PRO FACT META B HYPOTHYROID", "PHENOTYPE INFLAMATION"],
+    "mustExcludeKits": ["PRO FACT META B", "PRO FACT META B PCOS", "RAPID WEIGHT LOSS SHIELD"],
+    "mustTriggerRules": ["ACTIVE_SHEDDING"],
+    "mustBlockRules": ["RULE1_HYPO_METABOLIC", "PCOS_OBESITY_HYPO", "GLP1_EARLY"]
+  }
+}

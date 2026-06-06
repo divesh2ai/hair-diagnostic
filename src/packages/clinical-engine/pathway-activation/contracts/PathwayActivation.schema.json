@@ -1,0 +1,143 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "clinical-engine.pathway-activation.PathwayActivation@1.0.0",
+  "title": "PathwayActivation",
+  "description": "Per-pathway output of the Pathway Activation Engine. One emitted per canonical pathway in the registry (10 total). Consumed by Cause Ranker, Recovery Engine, Objectives Engine, and Narrative projections.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "pathwayId","activation","activationBand","confidence","severity","severityBand",
+    "subthreshold","gateRationale","supportingSignals","inhibitingSignals","conflictingSignals",
+    "interactionAdjustments","recoveryImpact","reversibilityClass","chronicityProfile",
+    "evidenceStrength","evidenceTierFloor","registryVersions","engineVersion"
+  ],
+  "properties": {
+    "pathwayId": {
+      "type": "string",
+      "enum": [
+        "follicular-miniaturization","telogen-cycle-disruption","scalp-inflammation",
+        "hormonal-dysregulation","immune-dysregulation","metabolic-dysfunction",
+        "oxidative-stress","gut-hair-axis-dysfunction","nutritional-limitation",
+        "hair-shaft-damage"
+      ]
+    },
+    "activation":     { "type": "number", "minimum": 0.0, "maximum": 1.0 },
+    "activationBand": { "type": "string", "enum": ["dormant","latent","active","dominant","entrenched"] },
+    "confidence":     { "type": "number", "minimum": 0.05, "maximum": 0.98 },
+    "severity":       { "type": "number", "minimum": 0.0, "maximum": 1.0 },
+    "severityBand":   { "type": "string", "enum": ["dormant","latent","active","dominant","entrenched"] },
+    "subthreshold":   { "type": "boolean" },
+
+    "gateRationale": {
+      "type": "object",
+      "required": ["gateMode","gateSatisfied","satisfyingRequiredSignals","unsatisfiedRequiredSignals","gateAggregate"],
+      "properties": {
+        "gateMode":      { "type": "string", "enum": ["required-any","required-aggregate","modulator-no-gate"] },
+        "gateSatisfied": { "type": "boolean" },
+        "satisfyingRequiredSignals": {
+          "type": "array",
+          "items": { "$ref": "#/definitions/SignalContribution" }
+        },
+        "unsatisfiedRequiredSignals": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["signalId","weight","reason"],
+            "properties": {
+              "signalId": { "type": "string" },
+              "weight":   { "type": "number" },
+              "reason":   { "type": "string", "enum": ["absent","subthreshold","below-min-confidence"] }
+            }
+          }
+        },
+        "gateAggregate": { "type": "number", "minimum": 0.0 }
+      }
+    },
+
+    "supportingSignals": {
+      "type": "array",
+      "items": { "$ref": "#/definitions/SignalContribution" }
+    },
+    "inhibitingSignals": {
+      "type": "array",
+      "items": { "$ref": "#/definitions/SignalContribution" }
+    },
+    "conflictingSignals": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["signalId","conflictsWith","confidence"],
+        "properties": {
+          "signalId":      { "type": "string" },
+          "conflictsWith": { "type": "string", "description": "Signal in this pathway's supports/required that this signal conflicts with per Signal Registry." },
+          "confidence":    { "type": "number", "minimum": 0.0, "maximum": 1.0 }
+        }
+      }
+    },
+
+    "interactionAdjustments": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["fromPathwayId","magnitude","otherActivation","applied"],
+        "properties": {
+          "fromPathwayId":   { "type": "string" },
+          "magnitude":       { "type": "number", "minimum": 0.0, "maximum": 0.40 },
+          "otherActivation": { "type": "number", "minimum": 0.0, "maximum": 1.0 },
+          "applied":         { "type": "number", "minimum": 0.0, "maximum": 0.25 },
+          "reason":          { "type": "string" }
+        }
+      }
+    },
+
+    "recoveryImpact": {
+      "type": "object",
+      "required": ["recoveryCeilingDelta","responsivenessDelta","progressionRiskDelta"],
+      "properties": {
+        "recoveryCeilingDelta": { "type": "number", "minimum": -0.40, "maximum": 0.10 },
+        "responsivenessDelta":  { "type": "number", "minimum": -0.30, "maximum": 0.20 },
+        "progressionRiskDelta": { "type": "number", "minimum":  0.00, "maximum": 0.40 }
+      }
+    },
+
+    "reversibilityClass": {
+      "type": "string",
+      "enum": ["fully-reversible","partially-reversible","stabilizable","shaft-only-reversible","irreversible"]
+    },
+    "chronicityProfile": {
+      "type": "object",
+      "required": ["onsetSpeed","persistenceWithoutTx","recurrenceRisk"],
+      "properties": {
+        "onsetSpeed":           { "type": "string", "enum": ["acute","subacute","chronic"] },
+        "persistenceWithoutTx": { "type": "string", "enum": ["self-limiting","persistent","progressive"] },
+        "recurrenceRisk":       { "type": "string", "enum": ["low","moderate","high"] }
+      }
+    },
+    "evidenceStrength":  { "type": "number", "minimum": 0.0, "maximum": 1.0 },
+    "evidenceTierFloor": { "type": "string", "enum": ["established","emerging","heuristic"] },
+
+    "registryVersions": {
+      "type": "object",
+      "required": ["signals","pathways","pathwaysConfidenceModel"],
+      "properties": {
+        "signals":                 { "type": "string", "pattern": "^\\d+\\.\\d+\\.\\d+$" },
+        "pathways":                { "type": "string", "pattern": "^\\d+\\.\\d+\\.\\d+$" },
+        "pathwaysConfidenceModel": { "type": "string", "pattern": "^\\d+\\.\\d+\\.\\d+$" }
+      }
+    },
+    "engineVersion": { "type": "string", "pattern": "^\\d+\\.\\d+\\.\\d+$" }
+  },
+  "definitions": {
+    "SignalContribution": {
+      "type": "object",
+      "required": ["signalId","weight","confidence","contribution"],
+      "properties": {
+        "signalId":     { "type": "string" },
+        "weight":       { "type": "number", "minimum": -1.0, "maximum": 1.0 },
+        "confidence":   { "type": "number", "minimum": 0.0,  "maximum": 1.0 },
+        "contribution": { "type": "number", "minimum": -1.0, "maximum": 1.0 },
+        "evidenceTier": { "type": "string", "enum": ["established","emerging","heuristic"] }
+      }
+    }
+  }
+}

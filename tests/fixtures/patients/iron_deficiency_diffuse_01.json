@@ -1,0 +1,35 @@
+{
+  "id": "iron_deficiency_diffuse_01",
+  "description": "Iron/ferritin deficiency with diffuse shedding — IRON_DEFICIENCY primary (score 80). Nutritional TE secondary (58). IRON UP GOLD restores ferritin first; TE GOLD stops active shedding; PRO IMMUNE rebuilds immunity. Tests iron deficiency signal detection and kit priority ordering.",
+  "budget": "STANDARD",
+  "answers": {
+    "sex": "Female",
+    "age": "27",
+    "grade": "Grade 2",
+    "goal": ["Reduce hair fall"],
+    "deficiency": ["Iron / Ferritin deficiency", "Anaemia"],
+    "cause": ["Nutritional deficiency"],
+    "scalp": [],
+    "lifestyle": [],
+    "thyroid": [],
+    "hormonal": [],
+    "immunity": [],
+    "gut": [],
+    "diet": [],
+    "hairtype": [],
+    "treatment": [],
+    "duration": "3–6 months",
+    "count": "50–100 strands"
+  },
+  "expected": {
+    "diagnoses": ["IRON_DEFICIENCY"],
+    "scalpStates": ["NORMAL_SCALP"],
+    "rootCauses": ["IRON_DEFICIENCY", "POOR_NUTRITION"],
+    "therapyNeeds": ["IRON_REPLETION", "SHEDDING_ARREST", "IMMUNE_MODULATION"],
+    "topKit": "HAIR FACT TE GOLD",
+    "mustIncludeKits": ["HAIR FACT TE GOLD", "IRON UP GOLD", "PRO IMMUNE GOLD"],
+    "mustExcludeKits": ["FPHL", "MPHL", "RAPID WEIGHT LOSS SHIELD", "PRO FACT META B HYPOTHYROID"],
+    "mustTriggerRules": ["ACTIVE_SHEDDING"],
+    "mustBlockRules": ["GLP1_EARLY", "GLP1_LATE", "RULE1_HYPO_METABOLIC", "PCOS_DIABETES_UPGRADE"]
+  }
+}

@@ -1,0 +1,35 @@
+{
+  "id": "pcos_only_metabolic_injection_01",
+  "description": "PCOS_ONLY with metabolic co-signal (irregular diet) — metabolicModifierRule fires METABOLIC_GENERIC before pcosStackRule, injecting PRO FACT META B. F-PCOS-1 remains as primary PCOS kit. Tests that a PCOS_ONLY patient with metabolic signal (diet: Irregular) receives META B even though pcosObese is false (no Sedentary/Obesity lifestyle). Rule fired is METABOLIC_GENERIC, not PCOS_META_B_INJECTION (engine pipeline order).",
+  "budget": "COMPREHENSIVE",
+  "answers": {
+    "sex": "Female",
+    "age": "29",
+    "grade": "Grade 2",
+    "goal": ["Reduce hair fall"],
+    "hormonal": ["PCOS / PCOD only"],
+    "lifestyle": [],
+    "scalp": ["Dandruff"],
+    "diet": ["Irregular"],
+    "cause": [],
+    "thyroid": [],
+    "immunity": [],
+    "deficiency": [],
+    "gut": [],
+    "hairtype": [],
+    "treatment": [],
+    "duration": "3–6 months",
+    "count": "50–100 strands"
+  },
+  "expected": {
+    "diagnoses": ["PCOS_ONLY"],
+    "scalpStates": ["DANDRUFF"],
+    "rootCauses": ["PCOS", "POOR_NUTRITION", "DHT"],
+    "therapyNeeds": ["ANDROGENIC_CORRECTION", "INFLAMMATION_CONTROL", "SHEDDING_ARREST"],
+    "topKit": "HAIR FACT TE GOLD",
+    "mustIncludeKits": ["HAIR FACT TE GOLD", "F-PCOS -1", "PRO FACT META B"],
+    "mustExcludeKits": ["PRO FACT META B PCOS", "PRO FACT META B HYPOTHYROID"],
+    "mustTriggerRules": ["METABOLIC_GENERIC", "ACTIVE_SHEDDING"],
+    "mustBlockRules": ["PCOS_DIABETES_UPGRADE", "PCOS_OBESITY_HYPO", "RULE1_HYPO_METABOLIC", "PCOS_META_B_INJECTION"]
+  }
+}

@@ -1,0 +1,35 @@
+{
+  "id": "seborrheic_dermatitis_01",
+  "description": "Seborrheic dermatitis male — oily dandruff scalp with AGA co-condition (mirrors dandruff_oily pattern).",
+  "budget": "STANDARD",
+  "answers": {
+    "sex": "Male",
+    "age": "34",
+    "grade": "Grade 2",
+    "goal": ["Reduce hair fall", "Treat scalp"],
+    "scalp": ["Oily scalp", "Dandruff", "Itching"],
+    "cause": ["Stress"],
+    "lifestyle": ["High stress"],
+    "thyroid": [],
+    "hormonal": [],
+    "immunity": [],
+    "deficiency": [],
+    "gut": [],
+    "diet": [],
+    "hairtype": [],
+    "treatment": [],
+    "duration": "6–12 months",
+    "count": "50–100 strands"
+  },
+  "expected": {
+    "diagnoses": ["AGA_MALE_123"],
+    "scalpStates": ["OILY_SCALP", "DANDRUFF"],
+    "rootCauses": ["STRESS", "DHT"],
+    "therapyNeeds": ["DHT_SUPPRESSION", "INFLAMMATION_CONTROL", "SHEDDING_ARREST"],
+    "topKit": "HAIR FACT TE GOLD",
+    "mustIncludeKits": ["HAIR FACT TE GOLD", "PHENOTYPE INFLAMATION", "MPHL"],
+    "mustExcludeKits": ["FPHL"],
+    "mustTriggerRules": ["ACTIVE_SHEDDING"],
+    "mustBlockRules": ["GLP1_EARLY", "GLP1_LATE"]
+  }
+}

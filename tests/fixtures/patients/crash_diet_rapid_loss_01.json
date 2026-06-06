@@ -1,0 +1,35 @@
+{
+  "id": "crash_diet_rapid_loss_01",
+  "description": "Crash diet / keto rapid weight loss shedding — no GLP-1 receptor agonist flag. WEIGHT_LOSS dominates via hasCrashDiet signal. GLP1 precedence rule does NOT fire (no 'within/after 6 months' cause string). Validates SHIELD placement when GLP1 flags are absent.",
+  "budget": "STANDARD",
+  "answers": {
+    "sex": "Female",
+    "age": "29",
+    "grade": "Grade 2",
+    "goal": ["Reduce hair fall"],
+    "cause": ["Post crash diet"],
+    "diet": ["Crash diet", "Keto"],
+    "scalp": [],
+    "lifestyle": [],
+    "thyroid": [],
+    "hormonal": [],
+    "immunity": [],
+    "deficiency": [],
+    "gut": [],
+    "hairtype": [],
+    "treatment": [],
+    "duration": "1–3 months",
+    "count": "50–100 strands"
+  },
+  "expected": {
+    "diagnoses": ["WEIGHT_LOSS"],
+    "scalpStates": ["NORMAL_SCALP"],
+    "rootCauses": ["RAPID_WEIGHT_LOSS"],
+    "therapyNeeds": ["WEIGHT_LOSS_RECOVERY", "SHEDDING_ARREST", "IMMUNE_MODULATION"],
+    "topKit": "HAIR FACT TE GOLD",
+    "mustIncludeKits": ["HAIR FACT TE GOLD", "RAPID WEIGHT LOSS SHIELD", "PRO IMMUNE GOLD"],
+    "mustExcludeKits": ["PRO FACT META B HYPOTHYROID", "F-PCOS -1", "LACTIHEALTH"],
+    "mustTriggerRules": ["ACTIVE_SHEDDING"],
+    "mustBlockRules": ["GLP1_EARLY", "GLP1_LATE", "RULE1_HYPO_METABOLIC"]
+  }
+}

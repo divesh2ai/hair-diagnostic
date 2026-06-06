@@ -1,0 +1,178 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "causes.validation-schema@1.0.0",
+  "title": "Cause Registry v1 Validation Schema",
+  "description": "JSON Schema + integrity constraints enforced by registry CI for the Cause Registry. Implements Clinical Architecture v1.0 Phase 2.6 governance + Sprint 1 Week 3 validation requirements.",
+  "type": "object",
+  "required": ["registry","version","causes"],
+  "properties": {
+    "registry": { "type": "string", "const": "causes" },
+    "version":  { "type": "string", "pattern": "^\\d+\\.\\d+\\.\\d+$" },
+    "causes":   { "type": "array",  "minItems": 10, "maxItems": 10, "items": { "$ref": "#/definitions/Cause" } }
+  },
+  "definitions": {
+    "Cause": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id","name","explanationClass","category","description",
+        "priorProbability","priorRationale","evidenceTier",
+        "contributingPathways","contributingSignals","dissentRules",
+        "severityAlignment","reversibilityClass","explainabilityMetadata"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9-]{2,63}$",
+          "enum": [
+            "androgen-driven-miniaturization",
+            "stress-driven-telogen-effluvium",
+            "nutritional-hair-stress",
+            "hormonal-hair-loss",
+            "metabolic-hair-dysfunction",
+            "autoimmune-hair-loss",
+            "gut-hair-axis-dysfunction",
+            "inflammatory-scalp-dysfunction",
+            "hair-shaft-damage-syndrome",
+            "multifactorial-hair-loss"
+          ]
+        },
+        "name": { "type": "string", "minLength": 3 },
+        "explanationClass": {
+          "type": "string",
+          "enum": [
+            "follicular-architectural","cycle-timing","substrate-insufficiency",
+            "endocrine","metabolic","immunologic","absorption-microbiome",
+            "perifollicular-inflammatory","structural-extrinsic","composite"
+          ]
+        },
+        "category": {
+          "type": "string",
+          "enum": [
+            "androgenic","neuro-endocrine-stress","nutritional","endocrine","metabolic",
+            "autoimmune","gut-axis","scalp-inflammatory","extrinsic-mechanical","composite"
+          ]
+        },
+        "description":     { "type": "string", "minLength": 30 },
+        "priorProbability":{ "type": "number", "minimum": 0.005, "maximum": 0.5 },
+        "priorRationale":  { "type": "string", "minLength": 10 },
+        "evidenceTier":    { "type": "string", "enum": ["established","emerging","heuristic"] },
+
+        "compositeRule": {
+          "type": "object",
+          "required": ["minimumActivePathways","minimumPathwayActivation","minimumDissentBetweenTopTwoCauses"],
+          "properties": {
+            "minimumActivePathways":              { "type": "integer", "minimum": 2, "maximum": 10 },
+            "minimumPathwayActivation":           { "type": "number",  "minimum": 0.20, "maximum": 1.00 },
+            "minimumDissentBetweenTopTwoCauses":  { "type": "number",  "minimum": 0.00, "maximum": 0.20 },
+            "notes":                              { "type": "string" }
+          }
+        },
+
+        "contributingPathways": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["pathwayId","logLikelihoodRatio","role","minActivation"],
+            "properties": {
+              "pathwayId":          { "type": "string" },
+              "logLikelihoodRatio": { "type": "number", "minimum": -3.0, "maximum": 3.0 },
+              "role":               { "type": "string", "enum": ["primary","supporting","modulator","competing","exclusionary"] },
+              "minActivation":      { "type": "number", "minimum": 0.0, "maximum": 1.0 },
+              "notes":              { "type": "string" }
+            }
+          }
+        },
+
+        "contributingSignals": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["signalId","logLikelihoodRatio","role"],
+            "properties": {
+              "signalId":           { "type": "string" },
+              "logLikelihoodRatio": { "type": "number", "minimum": -3.0, "maximum": 3.0 },
+              "role":               { "type": "string", "enum": ["primary","supporting","modulator","competing","conflicting","exclusionary"] },
+              "minConfidence":      { "type": "number", "minimum": 0.0, "maximum": 1.0 },
+              "notes":              { "type": "string" }
+            }
+          }
+        },
+
+        "dissentRules": {
+          "type": "object",
+          "required": ["competingCauses","maxDissentForLead"],
+          "properties": {
+            "competingCauses":   { "type": "array", "items": { "type": "string" } },
+            "maxDissentForLead": { "type": "number", "minimum": 0.05, "maximum": 0.60 },
+            "notes":             { "type": "string" }
+          }
+        },
+
+        "severityAlignment": {
+          "type": "string",
+          "enum": ["self-limiting","stabilizable","drives-progression"]
+        },
+        "reversibilityClass": {
+          "type": "string",
+          "enum": ["fully-reversible","partially-reversible","stabilizable","shaft-only-reversible","irreversible"]
+        },
+
+        "explainabilityMetadata": {
+          "type": "object",
+          "required": ["clinicalConcept","analogyClass","doctorFraming","patientFraming","scientificFraming"],
+          "properties": {
+            "clinicalConcept":   { "type": "string" },
+            "analogyClass":      { "type": "string" },
+            "doctorFraming":     { "type": "string", "minLength": 20 },
+            "patientFraming":    { "type": "string", "minLength": 20 },
+            "scientificFraming": { "type": "string", "minLength": 20 }
+          }
+        },
+
+        "legacyMappings": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["legacyDiagnosisKey","parityStrategy"],
+            "properties": {
+              "legacyDiagnosisKey": { "type": "string" },
+              "parityStrategy":     { "type": "string", "enum": ["direct","co-explanation","composite","downstream-eligibility","not-a-cause"] },
+              "coWith":             { "type": "string" },
+              "notes":              { "type": "string" }
+            }
+          }
+        }
+      }
+    }
+  },
+
+  "integrityConstraints": [
+    { "id":"IC-C-1",  "rule":"causes[].id values must be globally unique.",                                                                                                             "enforcement":"registry-ci" },
+    { "id":"IC-C-2",  "rule":"All 10 canonical cause ids must be present. Subset registries are not permitted at v1.",                                                                  "enforcement":"registry-ci" },
+    { "id":"IC-C-3",  "rule":"Every pathwayId in contributingPathways[] must resolve in pathways.registry@1.0.",                                                                        "enforcement":"registry-ci" },
+    { "id":"IC-C-4",  "rule":"Every signalId in contributingSignals[] must resolve in signals.registry@1.0.",                                                                           "enforcement":"registry-ci" },
+    { "id":"IC-C-5",  "rule":"Every cause (except multifactorial-hair-loss) must declare >= 1 contributingPathways[] entry with role=='primary'.",                                      "enforcement":"registry-ci" },
+    { "id":"IC-C-6",  "rule":"Every cause (except multifactorial-hair-loss) must declare >= 1 contributingSignals[] entry with role=='primary'.",                                       "enforcement":"registry-ci" },
+    { "id":"IC-C-7",  "rule":"All logLikelihoodRatio values must be in [-3.0, 3.0].",                                                                                                   "enforcement":"schema" },
+    { "id":"IC-C-8",  "rule":"Sum of |llr| over primary-role pathways + signals per cause must be in [3.0, 18.0]. Below: indecisive cause; above: over-fitted cause.",                  "enforcement":"registry-ci" },
+    { "id":"IC-C-9",  "rule":"priorProbabilities across all 10 causes must sum to a value in [0.85, 1.05].",                                                                            "enforcement":"registry-ci" },
+    { "id":"IC-C-10", "rule":"evidenceTier on a cause must equal the WORST tier among its declared primary-role pathway+signal evidence (using Pathway Registry and Signal Registry).", "enforcement":"registry-ci" },
+    { "id":"IC-C-11", "rule":"For each cause, no signal may appear in contributingSignals[] more than once. Same constraint for pathways.",                                             "enforcement":"registry-ci" },
+    { "id":"IC-C-12", "rule":"dissentRules.competingCauses[] entries must resolve to existing cause ids. Self-reference forbidden.",                                                    "enforcement":"registry-ci" },
+    { "id":"IC-C-13", "rule":"compositeRule is REQUIRED iff cause.category == 'composite'. Forbidden otherwise.",                                                                       "enforcement":"registry-ci" },
+    { "id":"IC-C-14", "rule":"Every legacyMappings[].legacyDiagnosisKey must resolve to a value in the legacy DiagnosisKey enum (33 values). Unrecognized keys fail CI.",               "enforcement":"registry-ci" },
+    { "id":"IC-C-15", "rule":"Every legacyMappings[] with parityStrategy=='co-explanation' must declare coWith pointing to another existing cause id.",                                  "enforcement":"registry-ci" },
+    { "id":"IC-C-16", "rule":"reversibilityClass=='shaft-only-reversible' only permitted for cause id == 'hair-shaft-damage-syndrome'.",                                                "enforcement":"registry-ci" },
+    { "id":"IC-C-17", "rule":"role=='exclusionary' permitted only on pathway entries; signal-level exclusion is configured in confidence-model.json#conflictHandling.exclusionaryEdges.","enforcement":"registry-ci" },
+    { "id":"IC-C-18", "rule":"For every contributingPathways[p] with role in {primary,supporting,modulator}, llr must be > 0. For role=='competing' or 'exclusionary', llr must be < 0.","enforcement":"registry-ci" },
+    { "id":"IC-C-19", "rule":"For every contributingSignals[s] with role in {primary,supporting,modulator}, llr must be > 0. For role=='conflicting' or 'exclusionary', llr must be < 0.","enforcement":"registry-ci" },
+    { "id":"IC-C-20", "rule":"Runtime: every posterior in [0,1]; sum of posteriors across 10 causes == 1.0 (within 1e-6); per-cause confidence in [minCauseConfidence, maxCauseConfidence].","enforcement":"runtime invariant test" },
+    { "id":"IC-C-21", "rule":"Cross-registry symmetry: every contributing pathway/signal must NOT be marked as deleted/deprecated in its source registry. Pathway minActivation must be >= the Pathway Registry minActivation threshold (0.20).","enforcement":"registry-ci" },
+    { "id":"IC-C-22", "rule":"Deterministic ordering: identical PathwayGraph + identical signal set must produce identical CauseRank emission, including ordering. Ties broken first by lower priorProbability, then lexicographic id.","enforcement":"engine invariant test" }
+  ]
+}

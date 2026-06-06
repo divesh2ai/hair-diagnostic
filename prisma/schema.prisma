@@ -1,0 +1,532 @@
+generator client {
+  provider        = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+//////////////////////////////////////////////////////
+// ENUMS
+//////////////////////////////////////////////////////
+
+// Single unified role enum for all system actors.
+// Controls API-level RBAC — applied in middleware, not RLS.
+enum SystemRole {
+  SUPER_ADMIN
+  ORG_ADMIN
+  CLINIC_ADMIN
+  DOCTOR
+  STAFF
+  PATIENT
+}
+
+enum AssessmentStatus {
+  PENDING
+  QUEUED
+  NORMALIZING
+  RUNNING_CLINICAL_ENGINE
+  GENERATING_RECOMMENDATIONS
+  GENERATING_REPORT
+  COMPLETED
+  FAILED
+  PARTIAL_FAILURE
+}
+
+enum AssessmentSource {
+  QR
+  MANUAL
+  WEB
+  WHATSAPP
+}
+
+enum ArtifactType {
+  CLINICAL_REASONING
+  SEVERITY_ANALYSIS
+  RECOMMENDATIONS
+  NARRATIVES
+  REPORT
+  THERAPY_PLAN
+  VISUAL_JOURNEY
+  PIPELINE_RUNTIME
+}
+
+enum DeliveryStatus {
+  PENDING
+  SENT
+  DELIVERED
+  FAILED
+}
+
+//////////////////////////////////////////////////////
+// ORGANIZATION (top of tenant hierarchy)
+//////////////////////////////////////////////////////
+
+// An Organization owns multiple Clinics.
+// Supports franchise models (e.g., DrFACT with 10 cities).
+model Organization {
+  id   String @id @default(cuid())
+  name String
+  slug String @unique
+
+  contactEmail String?
+  contactPhone String?
+
+  country  String  @default("IN")
+  timezone String  @default("Asia/Kolkata")
+  isActive Boolean @default(true)
+
+  clinics Clinic[]
+  members OrganizationMember[]
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  @@index([slug])
+}
+
+// Admins scoped to an Organization (ORG_ADMIN, SUPER_ADMIN).
+// Doctors are scoped to Clinics — not here.
+model OrganizationMember {
+  id             String       @id @default(cuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id])
+
+  supabaseUserId String    @unique // auth.users.id from Supabase
+  role           SystemRole
+  name           String
+  email          String    @unique
+
+  isActive Boolean @default(true)
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  @@index([organizationId])
+  @@index([supabaseUserId])
+}
+
+//////////////////////////////////////////////////////
+// CLINIC (tenant unit)
+//////////////////////////////////////////////////////
+
+model Clinic {
+  id String @id @default(cuid())
+
+  organizationId String?
+  organization   Organization? @relation(fields: [organizationId], references: [id])
+
+  name     String
+  slug     String @unique
+  region   String
+  language String @default("en")
+  timezone String @default("Asia/Kolkata")
+
+  address String?
+  phone   String?
+  email   String?
+
+  isActive Boolean @default(true)
+
+  doctors     Doctor[]
+  patients    Patient[]
+  assessments Assessment[]
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  @@index([organizationId])
+  @@index([slug])
+}
+
+//////////////////////////////////////////////////////
+// CLINIC STAFF (Doctor + general staff)
+//////////////////////////////////////////////////////
+
+// Doctors are clinic-scoped and linked to Supabase Auth.
+model Doctor {
+  id String @id @default(cuid())
+
+  supabaseUserId String? @unique
+
+  clinicId String
+  clinic   Clinic @relation(fields: [clinicId], references: [id])
+
+  name           String
+  email          String @unique
+  specialization String?
+
+  reviewedAssessments Assessment[] @relation("DoctorReviewer")
+
+  patients Patient[]
+
+  isActive Boolean @default(true)
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  @@index([clinicId])
+}
+
+//////////////////////////////////////////////////////
+// PATIENT
+//////////////////////////////////////////////////////
+
+model Patient {
+  id String @id @default(cuid())
+
+  clinicId String
+  clinic   Clinic @relation(fields: [clinicId], references: [id])
+
+  doctorId String?
+  doctor   Doctor? @relation(fields: [doctorId], references: [id])
+
+  supabaseUserId String? @unique
+
+  name   String
+  phone  String?
+  email  String?
+  age    Int?
+  gender String?
+
+  identifiers PatientIdentifier[]
+  assessments Assessment[]
+
+  isActive Boolean @default(true)
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  @@index([clinicId])
+  @@index([clinicId, doctorId])
+  @@index([phone])
+}
+
+// External identifier mapping — links a patient to QR tokens, WhatsApp IDs, EMR IDs, etc.
+// One patient can have multiple external identifiers across different sources.
+model PatientIdentifier {
+  id String @id @default(cuid())
+
+  patientId String
+  patient   Patient @relation(fields: [patientId], references: [id])
+
+  // e.g. "whatsapp" | "qr" | "emr" | "manual"
+  source     String
+  externalId String
+
+  createdAt DateTime @default(now())
+
+  @@unique([source, externalId])
+  @@index([patientId])
+  @@index([externalId])
+}
+
+//////////////////////////////////////////////////////
+// ASSESSMENT (core clinical record)
+//////////////////////////////////////////////////////
+
+model Assessment {
+  id String @id @default(cuid())
+
+  clinicId String
+  clinic   Clinic @relation(fields: [clinicId], references: [id])
+
+  patientId String
+  patient   Patient @relation(fields: [patientId], references: [id])
+
+  reviewingDoctorId String?
+  reviewingDoctor   Doctor? @relation("DoctorReviewer", fields: [reviewingDoctorId], references: [id])
+
+  status AssessmentStatus @default(PENDING)
+  source AssessmentSource @default(QR)
+
+  orchestrationStage String?
+  orchestrationMeta  Json?
+  executionId        String?
+  retryCount          Int     @default(0)
+  lastError           String?
+  lastCompletedStage  String?
+
+  rawResponses Json?
+
+  submittedAt DateTime  @default(now())
+  queuedAt    DateTime?
+  startedAt   DateTime?
+  completedAt DateTime?
+
+  responses          AssessmentResponse[]
+  artifacts          AIArtifact[]
+  events             AssessmentEvent[]
+  orchestrationLogs  OrchestrationLog[]
+  analyticsEvents    AnalyticsEvent[]
+  whatsappDeliveries WhatsappDelivery[]
+  auditLogs          AuditLog[]
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  @@index([clinicId])
+  @@index([patientId])
+  @@index([reviewingDoctorId])
+  @@index([clinicId, status])
+}
+
+model AssessmentResponse {
+  id String @id @default(cuid())
+
+  assessmentId String
+  assessment   Assessment @relation(fields: [assessmentId], references: [id])
+
+  questionId String
+  answer     Json
+
+  createdAt DateTime @default(now())
+
+  @@index([assessmentId])
+  @@index([questionId])
+}
+
+//////////////////////////////////////////////////////
+// AI ARTIFACT SYSTEM
+//////////////////////////////////////////////////////
+
+// Every AI output is stored as a typed artifact.
+// RBAC controls which roles can read which artifact types.
+// Patients: no access. Doctors/Admins: full access.
+model AIArtifact {
+  id String @id @default(cuid())
+
+  assessmentId String
+  assessment   Assessment @relation(fields: [assessmentId], references: [id])
+
+  type ArtifactType
+
+  engineVersion String?
+  schemaVersion String?
+
+  content Json
+
+  generationMs Int?
+
+  createdAt DateTime @default(now())
+
+  @@unique([assessmentId, type])
+  @@index([assessmentId])
+  @@index([assessmentId, type])
+}
+//////////////////////////////////////////////////////
+// ORCHESTRATION / PIPELINE LOGGING
+//////////////////////////////////////////////////////
+
+model OrchestrationLog {
+  id String @id @default(cuid())
+
+  assessmentId String
+  assessment   Assessment @relation(fields: [assessmentId], references: [id])
+
+  stage      String
+  status     String
+  durationMs Int?
+  confidence Float?
+  uncertainty Json?
+  metadata   Json?
+  error      String?
+
+  createdAt DateTime @default(now())
+
+  @@index([assessmentId])
+  @@index([assessmentId, stage])
+}
+
+// Full event sourcing log — every lifecycle transition is recorded here.
+// Used for orchestration debugging, audit trails, and the viewer timeline.
+model AssessmentEvent {
+  id           String   @id @default(cuid())
+  assessmentId String
+  assessment   Assessment @relation(fields: [assessmentId], references: [id])
+
+  type         String   // SUBMITTED | QUEUED | ORCHESTRATION_STARTED | etc.
+  stage        String?
+  message      String?
+  metadata     Json?
+  durationMs   Int?
+
+  createdAt    DateTime @default(now())
+
+  @@index([assessmentId])
+  @@index([type])
+  @@index([assessmentId, createdAt])
+}
+
+//////////////////////////////////////////////////////
+// ANALYTICS
+//////////////////////////////////////////////////////
+
+model AnalyticsEvent {
+  id String @id @default(cuid())
+
+  // Both optional — some events are platform-level, not clinic-level
+  clinicId     String?
+  assessmentId String?
+  assessment   Assessment? @relation(fields: [assessmentId], references: [id])
+
+  eventType String
+  payload   Json?
+
+  createdAt DateTime @default(now())
+
+  @@index([clinicId])
+  @@index([eventType])
+  @@index([clinicId, eventType])
+  @@index([createdAt])
+}
+
+//////////////////////////////////////////////////////
+// WHATSAPP DELIVERY
+//////////////////////////////////////////////////////
+
+model WhatsappDelivery {
+  id String @id @default(cuid())
+
+  assessmentId String
+  assessment   Assessment @relation(fields: [assessmentId], references: [id])
+
+  patientPhone String
+  templateId   String?
+  status       DeliveryStatus @default(PENDING)
+  messageId    String?
+  attempts     Int            @default(0)
+  lastError    String?
+  deliveredAt  DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([assessmentId])
+  @@index([status])
+}
+
+//////////////////////////////////////////////////////
+// AUDIT LOGGING
+//////////////////////////////////////////////////////
+
+model AuditLog {
+  id String @id @default(cuid())
+
+  // Who performed the action
+  actorId   String?
+  actorRole SystemRole?
+  actorType String?    // "doctor" | "admin" | "system" | "patient"
+
+  // What was acted upon
+  assessmentId String?
+  assessment   Assessment? @relation(fields: [assessmentId], references: [id])
+  entityType   String
+  entityId     String
+
+  action   String
+  metadata Json?
+
+  createdAt DateTime @default(now())
+
+  @@index([entityType, entityId])
+  @@index([actorId])
+  @@index([assessmentId])
+}
+
+//////////////////////////////////////////////////////
+// LEGACY CHAT / WHATSAPP SESSION ENGINE
+// Keep intact — do not touch without explicit migration plan
+//////////////////////////////////////////////////////
+
+model User {
+  id    String  @id @default(cuid())
+  name  String?
+  phone String?
+
+  sessions Session[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([phone])
+}
+
+model Session {
+  id String @id @default(cuid())
+
+  userId String?
+  user   User?   @relation(fields: [userId], references: [id])
+
+  state Json
+
+  messages         Message[]
+  diagnosis        Diagnosis?
+  whatsappSessions WhatsappSession[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model WhatsappSession {
+  id String @id @default(cuid())
+
+  waId String @unique
+
+  sessionId String
+  session   Session @relation(fields: [sessionId], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Message {
+  id String @id @default(cuid())
+
+  sessionId String
+  session   Session @relation(fields: [sessionId], references: [id])
+
+  sender   String
+  text     String?
+  metadata Json?
+
+  createdAt DateTime @default(now())
+}
+
+model Diagnosis {
+  id String @id @default(cuid())
+
+  sessionId String  @unique
+  session   Session @relation(fields: [sessionId], references: [id])
+
+  condition  String
+  confidence Float
+
+  rootCauses      Json
+  recommendations Recommendation[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Recommendation {
+  id String @id @default(cuid())
+
+  diagnosisId String
+  diagnosis   Diagnosis @relation(fields: [diagnosisId], references: [id])
+
+  title     String
+  productId String?
+  metadata  Json?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}

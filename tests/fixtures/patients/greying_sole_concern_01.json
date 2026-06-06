@@ -1,0 +1,35 @@
+{
+  "id": "greying_sole_concern_01",
+  "description": "Early greying as sole concern — no active hair fall, no regrow goal → EARLY_GREY absolute lock fires. EARLY GREYING CARE GOLD is Phase 1. OXIDATIVE STRESS covers Astaxanthin/CoQ10/ALA/Glutathione/Selenium pathway for melanocyte protection. PRO IMMUNE last. Validates grey-goal lock logic.",
+  "budget": "STANDARD",
+  "answers": {
+    "sex": "Female",
+    "age": "32",
+    "grade": "",
+    "goal": ["Early greying / Greying concerns"],
+    "cause": [],
+    "scalp": [],
+    "lifestyle": [],
+    "thyroid": [],
+    "hormonal": [],
+    "immunity": [],
+    "deficiency": [],
+    "gut": [],
+    "diet": [],
+    "hairtype": [],
+    "treatment": [],
+    "duration": "",
+    "count": "No visible hair fall — only greying"
+  },
+  "expected": {
+    "diagnoses": ["EARLY_GREY"],
+    "scalpStates": ["NORMAL_SCALP"],
+    "rootCauses": [],
+    "therapyNeeds": ["MELANOCYTE_PROTECTION", "ANTIOXIDANT_SUPPORT", "IMMUNE_MODULATION"],
+    "topKit": "EARLY GREYING CARE GOLD",
+    "mustIncludeKits": ["EARLY GREYING CARE GOLD", "OXIDATIVE STRESS", "PRO IMMUNE GOLD"],
+    "mustExcludeKits": ["HAIR FACT TE GOLD", "HAIR FACT TE GOLD VEG", "FPHL", "MPHL"],
+    "mustTriggerRules": [],
+    "mustBlockRules": ["GLP1_EARLY", "GLP1_LATE", "RULE1_HYPO_METABOLIC", "ACTIVE_SHEDDING"]
+  }
+}

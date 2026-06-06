@@ -1,0 +1,35 @@
+{
+  "id": "severe_dandruff_01",
+  "description": "Severe dandruff female young — inflammatory oily scalp; AGA_FEMALE_123 primary with PHENOTYPE injection.",
+  "budget": "ESSENTIAL",
+  "answers": {
+    "sex": "Female",
+    "age": "26",
+    "grade": "Grade 1",
+    "goal": ["Treat scalp"],
+    "scalp": ["Oily scalp", "Dandruff", "Redness"],
+    "cause": [],
+    "lifestyle": [],
+    "thyroid": [],
+    "hormonal": [],
+    "immunity": [],
+    "deficiency": [],
+    "gut": [],
+    "diet": [],
+    "hairtype": [],
+    "treatment": [],
+    "duration": "3–6 months",
+    "count": "50–100 strands"
+  },
+  "expected": {
+    "diagnoses": ["AGA_FEMALE_123"],
+    "scalpStates": ["OILY_SCALP", "DANDRUFF", "INFLAMED_SCALP"],
+    "rootCauses": ["DHT"],
+    "therapyNeeds": ["DHT_SUPPRESSION", "INFLAMMATION_CONTROL", "SHEDDING_ARREST"],
+    "topKit": "HAIR FACT TE GOLD",
+    "mustIncludeKits": ["HAIR FACT TE GOLD", "PHENOTYPE INFLAMATION"],
+    "mustExcludeKits": ["MPHL PLUS"],
+    "mustTriggerRules": ["ACTIVE_SHEDDING"],
+    "mustBlockRules": ["NO_VISIBLE_FALL"]
+  }
+}

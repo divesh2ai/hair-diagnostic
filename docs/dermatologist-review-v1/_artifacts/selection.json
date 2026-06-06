@@ -1,0 +1,202 @@
+[
+  {
+    "corpusCaseId": "male_aga_01_g1_age19_ironlow",
+    "reviewCaseId": "RC-01",
+    "category": "MALE_AGA",
+    "severity": "mild",
+    "presentationClarity": "ambiguous",
+    "adversarial": true
+  },
+  {
+    "corpusCaseId": "male_aga_04_g3_age27",
+    "reviewCaseId": "RC-02",
+    "category": "MALE_AGA",
+    "severity": "moderate",
+    "presentationClarity": "clear",
+    "adversarial": false
+  },
+  {
+    "corpusCaseId": "male_aga_08_g5_age35",
+    "reviewCaseId": "RC-03",
+    "category": "MALE_AGA",
+    "severity": "severe",
+    "presentationClarity": "clear",
+    "adversarial": false
+  },
+  {
+    "corpusCaseId": "male_aga_11_g6_age42_ironlow",
+    "reviewCaseId": "RC-04",
+    "category": "MALE_AGA",
+    "severity": "severe",
+    "presentationClarity": "ambiguous",
+    "adversarial": true
+  },
+  {
+    "corpusCaseId": "male_aga_14_g2_age51",
+    "reviewCaseId": "RC-05",
+    "category": "MALE_AGA",
+    "severity": "mild",
+    "presentationClarity": "conflicting",
+    "adversarial": false
+  },
+  {
+    "corpusCaseId": "fphl_01_lud1_age28_ironlow",
+    "reviewCaseId": "RC-06",
+    "category": "FPHL",
+    "severity": "mild",
+    "presentationClarity": "ambiguous",
+    "adversarial": true
+  },
+  {
+    "corpusCaseId": "fphl_03_lud2_age36",
+    "reviewCaseId": "RC-07",
+    "category": "FPHL",
+    "severity": "moderate",
+    "presentationClarity": "clear",
+    "adversarial": false
+  },
+  {
+    "corpusCaseId": "fphl_08_lud1_age52_peri",
+    "reviewCaseId": "RC-08",
+    "category": "FPHL",
+    "severity": "mild",
+    "presentationClarity": "ambiguous",
+    "adversarial": false
+  },
+  {
+    "corpusCaseId": "fphl_02_lud1_age32",
+    "reviewCaseId": "RC-09",
+    "category": "FPHL",
+    "severity": "mild",
+    "presentationClarity": "clear",
+    "adversarial": false
+  },
+  {
+    "corpusCaseId": "pcos_04_age26",
+    "reviewCaseId": "RC-10",
+    "category": "PCOS",
+    "severity": "mild",
+    "presentationClarity": "clear",
+    "adversarial": false
+  },
+  {
+    "corpusCaseId": "pcos_01_age19_lean_normoandrogen_postbariatric",
+    "reviewCaseId": "RC-11",
+    "category": "PCOS",
+    "severity": "moderate",
+    "presentationClarity": "ambiguous",
+    "adversarial": true
+  },
+  {
+    "corpusCaseId": "pcos_03_age24",
+    "reviewCaseId": "RC-12",
+    "category": "PCOS",
+    "severity": "severe",
+    "presentationClarity": "clear",
+    "adversarial": false
+  },
+  {
+    "corpusCaseId": "pcos_06_age30_lean",
+    "reviewCaseId": "RC-13",
+    "category": "PCOS",
+    "severity": "moderate",
+    "presentationClarity": "ambiguous",
+    "adversarial": true
+  },
+  {
+    "corpusCaseId": "te_acute_01_post_fever_age22",
+    "reviewCaseId": "RC-14",
+    "category": "ACUTE_TE",
+    "severity": "mild",
+    "presentationClarity": "ambiguous",
+    "adversarial": true
+  },
+  {
+    "corpusCaseId": "te_acute_02_postpartum_lact_age26",
+    "reviewCaseId": "RC-15",
+    "category": "ACUTE_TE",
+    "severity": "moderate",
+    "presentationClarity": "clear",
+    "adversarial": false
+  },
+  {
+    "corpusCaseId": "te_acute_04_crash_diet_age36",
+    "reviewCaseId": "RC-16",
+    "category": "ACUTE_TE",
+    "severity": "severe",
+    "presentationClarity": "clear",
+    "adversarial": false
+  },
+  {
+    "corpusCaseId": "te_chronic_01_chronic_stress_age28_female",
+    "reviewCaseId": "RC-17",
+    "category": "CHRONIC_TE",
+    "severity": "mild",
+    "presentationClarity": "ambiguous",
+    "adversarial": true
+  },
+  {
+    "corpusCaseId": "te_chronic_02_chronic_illness_age32_male",
+    "reviewCaseId": "RC-18",
+    "category": "CHRONIC_TE",
+    "severity": "moderate",
+    "presentationClarity": "clear",
+    "adversarial": false
+  },
+  {
+    "corpusCaseId": "aa_01_patchy_single_age12_female",
+    "reviewCaseId": "RC-19",
+    "category": "ALOPECIA_AREATA",
+    "severity": "mild",
+    "presentationClarity": "ambiguous",
+    "adversarial": true
+  },
+  {
+    "corpusCaseId": "aa_02_patchy_multifocal_age18_male",
+    "reviewCaseId": "RC-20",
+    "category": "ALOPECIA_AREATA",
+    "severity": "moderate",
+    "presentationClarity": "clear",
+    "adversarial": false
+  },
+  {
+    "corpusCaseId": "aa_03_ophiasis_age22_female",
+    "reviewCaseId": "RC-21",
+    "category": "ALOPECIA_AREATA",
+    "severity": "severe",
+    "presentationClarity": "clear",
+    "adversarial": false
+  },
+  {
+    "corpusCaseId": "inflam_01_seborrheic_mild_age22_male",
+    "reviewCaseId": "RC-22",
+    "category": "INFLAMMATORY_SCALP",
+    "severity": "mild",
+    "presentationClarity": "ambiguous",
+    "adversarial": true
+  },
+  {
+    "corpusCaseId": "inflam_02_seborrheic_severe_age28_female",
+    "reviewCaseId": "RC-23",
+    "category": "INFLAMMATORY_SCALP",
+    "severity": "moderate",
+    "presentationClarity": "clear",
+    "adversarial": false
+  },
+  {
+    "corpusCaseId": "multi_01_aga_te_overlap_age28_male",
+    "reviewCaseId": "RC-24",
+    "category": "MULTIFACTORIAL",
+    "severity": "moderate",
+    "presentationClarity": "conflicting",
+    "adversarial": true
+  },
+  {
+    "corpusCaseId": "multi_02_aga_inflam_overlap_age32_male",
+    "reviewCaseId": "RC-25",
+    "category": "MULTIFACTORIAL",
+    "severity": "severe",
+    "presentationClarity": "conflicting",
+    "adversarial": true
+  }
+]

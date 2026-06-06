@@ -1,0 +1,1534 @@
+{
+  "schemaVersion": "1.0",
+  "sourceFile": "DrFACT_revamp_v44.html",
+  "extractedBy": "Senior Clinical Systems Architect",
+  "extractionDate": "2026-05-15",
+  "sections": [
+    {
+      "sectionId": "S1_PATIENT_IDENTITY",
+      "title": "Patient Identity",
+      "description": "Core demographic and goal capture",
+      "questions": [
+        {
+          "id": "name",
+          "type": "text",
+          "label": "What is your full name?",
+          "subtitle": null,
+          "required": true,
+          "multiSelect": false,
+          "options": [],
+          "visibilityRules": [],
+          "skipLogic": [],
+          "dependencies": [],
+          "validation": { "minLength": 1, "placeholder": "Your name" },
+          "scoringSignals": [],
+          "clinicalMappings": [],
+          "uiMetadata": { "layout": "text", "voiceEnabled": true },
+          "sourceCodeReference": "STEPS[0] line 3006"
+        },
+        {
+          "id": "age",
+          "type": "number",
+          "label": "How old are you?",
+          "subtitle": null,
+          "required": true,
+          "multiSelect": false,
+          "options": [],
+          "visibilityRules": [],
+          "skipLogic": [],
+          "dependencies": [],
+          "validation": { "placeholder": "Your age in years", "min": 1, "max": 120 },
+          "scoringSignals": [
+            { "signal": "AGA_AGE_MODIFIER", "rule": "age > 30 adds +5 to AGA score", "sourceCodeReference": "matchProtocol line 4389" },
+            { "signal": "AGA_GRADE45_LOCK", "rule": "age >= 20 AND grade 4/5 → forces AGA_MALE_45 or AGA_FEMALE_45 as dominant", "sourceCodeReference": "matchProtocol line 4250-4253" },
+            { "signal": "FPHL_AGE_GATE", "rule": "Female under 30 with genetics → TE + PRO IMMUNE (not FPHL); female 30+ → FPHL appropriate", "sourceCodeReference": "getFunnelKits line 4696-4699" },
+            { "signal": "GOAL_FILTER", "rule": "age >= 30 → filter goal options to only first 2 (removes Early Greying option)", "sourceCodeReference": "STEPS[2]._filterOpts line 3015-3019" }
+          ],
+          "clinicalMappings": [
+            { "condition": "Age > 30", "implication": "Elevated MPHL/FPHL risk — AGA score bonus +5" },
+            { "condition": "Age >= 20 + Grade 4/5", "implication": "Absolute lock to AGA_MALE_45 or AGA_FEMALE_45" },
+            { "condition": "Female age < 30 + genetics", "implication": "Too young for FPHL — protocol uses TE GOLD + PRO IMMUNE instead" }
+          ],
+          "uiMetadata": { "layout": "number", "voiceEnabled": true },
+          "sourceCodeReference": "STEPS[1] line 3007"
+        },
+        {
+          "id": "goal",
+          "type": "multi_select",
+          "label": "What are your major concerns?",
+          "subtitle": null,
+          "required": true,
+          "multiSelect": true,
+          "options": [
+            {
+              "label": "Reduce hair fall and improve growth",
+              "value": "Reduce hair fall and improve growth",
+              "icon": "🛑",
+              "triggers": ["activates full diagnostic flow", "activates duration/count/hairtype questions"],
+              "clinicalTags": ["active_shedding", "telogen_effluvium_possible", "AGA_possible"],
+              "followUpQuestions": ["duration", "count", "hairtype"]
+            },
+            {
+              "label": "Hair fall is stopped but needs to regrow lost hair",
+              "value": "Hair fall is stopped but needs to regrow lost hair",
+              "icon": "🌱",
+              "triggers": ["isRegrowGoal=true", "suppresses TE GOLD from all protocols", "skips duration/count/hairtype questions", "routes to REGROW_ONLY or hormonal/AGA sub-paths"],
+              "clinicalTags": ["regrow_goal", "no_active_shedding", "anagen_reentry_needed"],
+              "followUpQuestions": []
+            },
+            {
+              "label": "Early greying of hair",
+              "value": "Early greying of hair",
+              "icon": "🩶",
+              "triggers": [
+                "if sole concern → absolute lock to EARLY_GREY protocol",
+                "if combined with hair fall → sets S._hasGreyGoal=true, injects EARLY GREYING CARE kit at end of protocol",
+                "skips duration/count/hairtype questions when sole concern",
+                "available only for age < 30 (filtered out for age >= 30 by _filterOpts)"
+              ],
+              "clinicalTags": ["premature_greying", "melanocyte_damage", "ROS_melanocyte", "catalase_deficiency"],
+              "followUpQuestions": []
+            }
+          ],
+          "visibilityRules": [],
+          "skipLogic": [],
+          "dependencies": ["age"],
+          "dynamicFilterRule": {
+            "description": "_filterOpts: if age >= 30, show only first 2 options (Early Greying hidden)",
+            "condition": "parseInt(ans.age) >= 30",
+            "filteredOptions": ["Reduce hair fall and improve growth", "Hair fall is stopped but needs to regrow lost hair"],
+            "sourceCodeReference": "STEPS[2]._filterOpts lines 3014-3020"
+          },
+          "mutualExclusivityRules": {
+            "description": "_scalpExclusive: active shedding vs regrow-only are contradictory clinical states — selecting one must deselect the other. Early greying is NOT part of this group and remains freely combinable.",
+            "toastMessage": "Regrowth-only mode replaces active shedding analysis.",
+            "rules": [
+              { "selecting": "Reduce hair fall and improve growth", "deselects": "Hair fall is stopped but needs to regrow lost hair" },
+              { "selecting": "Hair fall is stopped but needs to regrow lost hair", "deselects": "Reduce hair fall and improve growth" }
+            ],
+            "sourceCodeReference": "STEPS[2] goal mutual exclusion — active shedding vs regrow-only"
+          },
+          "validation": { "hint": "Select all that apply" },
+          "scoringSignals": [
+            { "signal": "EARLY_GREY_LOCK", "rule": "goal includes 'Early greying' AND NOT hair fall/regrow → absolute EARLY_GREY protocol" },
+            { "signal": "GREY_CO_CONDITION", "rule": "goal includes 'Early greying' AND hair fall/regrow → S._hasGreyGoal=true; EARLY GREYING CARE appended at end" },
+            { "signal": "REGROW_GOAL_FLAG", "rule": "goal includes 'stopped' or 'regrow' → S._isRegrowGoal=true; TE GOLD always suppressed" }
+          ],
+          "clinicalMappings": [
+            { "condition": "EARLY_GREY sole concern", "protocol": "EARLY_GREY", "kits": ["EARLY GREYING CARE GOLD", "OXIDATIVE STRESS", "PRO IMMUNE GOLD"] },
+            { "condition": "Regrow only", "protocol": "REGROW_ONLY", "implication": "TE GOLD never prescribed; PRO IMMUNE GOLD leads" },
+            { "condition": "Reduce hair fall", "protocol": "Full diagnostic scoring engine activated" }
+          ],
+          "uiMetadata": { "layout": "list", "multiSelectConfirm": true },
+          "sourceCodeReference": "STEPS[2] lines 3008-3021"
+        },
+        {
+          "id": "sex",
+          "type": "single_select",
+          "label": "What is your gender?",
+          "subtitle": null,
+          "required": true,
+          "multiSelect": false,
+          "options": [
+            {
+              "label": "Male",
+              "value": "Male",
+              "icon": "👨",
+              "triggers": ["isMale=true", "hides hormonal question", "routes to MPHL for AGA", "filters cause options (removes postpartum options)", "adds gender rule to LLM prompt forbidding female conditions"],
+              "clinicalTags": ["MPHL_candidate", "DHT_pathway"],
+              "followUpQuestions": []
+            },
+            {
+              "label": "Female",
+              "value": "Female",
+              "icon": "👩",
+              "triggers": ["isMale=false", "shows hormonal question", "routes to FPHL for AGA", "shows postpartum options in cause", "enables PCOS/menopause scoring paths"],
+              "clinicalTags": ["FPHL_candidate", "hormonal_pathway", "androgen_sensitivity"],
+              "followUpQuestions": ["hormonal"]
+            },
+            {
+              "label": "Other",
+              "value": "Other",
+              "icon": "🧑",
+              "triggers": ["isMale=false (treated as female for kit resolution)"],
+              "clinicalTags": [],
+              "followUpQuestions": []
+            }
+          ],
+          "visibilityRules": [],
+          "skipLogic": [],
+          "dependencies": [],
+          "validation": {},
+          "scoringSignals": [
+            { "signal": "KIT_GENDER_RESOLVER", "rule": "isMale=true → MPHL; isMale=false → FPHL for AGA protocols" },
+            { "signal": "VEG_GENDER_SWAP", "rule": "resolveKit() uses isMale to resolve AGA_GENDER placeholder at runtime" }
+          ],
+          "clinicalMappings": [
+            { "condition": "Male", "implication": "AGA resolves to MPHL or MPHL PLUS; postpartum options hidden; hormonal question skipped" },
+            { "condition": "Female", "implication": "AGA resolves to FPHL or FPHL PLUS; hormonal question shown; PCOS/menopause paths enabled" }
+          ],
+          "uiMetadata": { "layout": "visual" },
+          "sourceCodeReference": "STEPS[3] lines 3023-3028"
+        }
+      ]
+    },
+    {
+      "sectionId": "S2_HAIR_LOSS_ASSESSMENT",
+      "title": "Hair Loss Assessment",
+      "description": "Duration, volume and pattern of hair loss — conditionally skipped for regrow/greying goals",
+      "questions": [
+        {
+          "id": "duration",
+          "type": "single_select",
+          "label": "How long have you been experiencing hair loss?",
+          "subtitle": null,
+          "required": false,
+          "multiSelect": false,
+          "options": [
+            {
+              "label": "1–3 months",
+              "value": "1–3 months",
+              "icon": "🗓️",
+              "triggers": ["activates hasActiveShedding signal", "TE_STRESS boosted"],
+              "clinicalTags": ["acute_TE", "recent_trigger", "short_duration"],
+              "followUpQuestions": []
+            },
+            {
+              "label": "3–6 months",
+              "value": "3–6 months",
+              "icon": "📅",
+              "triggers": ["continued TE + micro-inflammation signal"],
+              "clinicalTags": ["subacute_TE", "micro_inflammation_beginning"],
+              "followUpQuestions": []
+            },
+            {
+              "label": "6–12 months",
+              "value": "6–12 months",
+              "icon": "🕐",
+              "triggers": ["AGA signal boost", "chronic TE + oxidative unmasking", "contributes to AGA score"],
+              "clinicalTags": ["chronic_TE", "AGA_risk_elevated", "oxidative_stress_unmasked"],
+              "followUpQuestions": []
+            },
+            {
+              "label": "More than 1 year",
+              "value": "More than 1 year",
+              "icon": "⏳",
+              "triggers": ["chronic inflammation phenotype", "AGA score boost", "PCOS FPHL signal if combined with genetics"],
+              "clinicalTags": ["chronic_inflammation", "AGA_dominant", "pattern_loss_likely"],
+              "followUpQuestions": []
+            }
+          ],
+          "visibilityRules": [],
+          "skipLogic": [
+            {
+              "if": { "dependsOn": "goal", "operator": "includesAny", "value": ["regrow", "greying", "Greying", "Early greying"] },
+              "thenSkipTo": "hairtype",
+              "description": "_skipIf: skip duration if goal = regrow or greying"
+            }
+          ],
+          "dependencies": ["goal"],
+          "validation": {},
+          "scoringSignals": [
+            { "signal": "AGA_DURATION_BONUS", "rule": "duration includes '6-12' or 'More than' → contributes to AGA hasAGAsignals flag" },
+            { "signal": "ACTIVE_SHEDDING_TE", "rule": "duration '1-3' or '3-6' → hasActiveShedding=true; TE GOLD moved to Phase 1" },
+            { "signal": "PCOS_FPHL_SIGNAL", "rule": "hasCause('Genetics') AND duration 'More than' → pcosHasFPHL=true in PCOS stack" }
+          ],
+          "clinicalMappings": [
+            { "value": "1–3 months", "clinicalNote": "Duration 1-3 months → Telogen Effluvium" },
+            { "value": "3–6 months", "clinicalNote": "Duration 3-6 months → Continued TE + micro-inflammation" },
+            { "value": "6–12 months", "clinicalNote": "Duration 6-12 months → Chronic TE + oxidative stress unmasking pattern loss" },
+            { "value": "More than 1 year", "clinicalNote": "Duration >1 year → Chronic Inflammation Phenotype" }
+          ],
+          "uiMetadata": { "layout": "visual" },
+          "sourceCodeReference": "STEPS[4] lines 3030-3036"
+        },
+        {
+          "id": "count",
+          "type": "single_select",
+          "label": "How much hair do you lose per day?",
+          "subtitle": null,
+          "required": false,
+          "multiSelect": false,
+          "options": [
+            {
+              "label": "~20–50 strands (Normal range)",
+              "value": "~20–50 strands\n(Normal range)",
+              "icon": "🤏",
+              "triggers": [],
+              "clinicalTags": ["normal_shedding"],
+              "followUpQuestions": []
+            },
+            {
+              "label": "~50–100 strands (Noticeable)",
+              "value": "~50–100 strands\n(Noticeable)",
+              "icon": "✋",
+              "triggers": ["hasActiveShedding=true", "TE active shedding signal"],
+              "clinicalTags": ["active_TE", "noticeable_shedding"],
+              "followUpQuestions": []
+            },
+            {
+              "label": "100+ strands (Heavy loss)",
+              "value": "100+ strands\n(Heavy loss)",
+              "icon": "🫲",
+              "triggers": ["hasActiveShedding=true", "severe TE shedding signal", "TE GOLD Phase 1 forced"],
+              "clinicalTags": ["severe_TE", "chronic_telogen", "heavy_shedding"],
+              "followUpQuestions": []
+            },
+            {
+              "label": "Just thinning, no visible fall",
+              "value": "Just thinning,\nno visible fall",
+              "icon": "🔍",
+              "triggers": [
+                "hasNoVisibleFall=true",
+                "TE GOLD ALWAYS suppressed from entire protocol regardless of dominant condition",
+                "AGA signal boost (contributes to hasAGAsignals)",
+                "v39 TE GOLD suppression rule activated"
+              ],
+              "clinicalTags": ["no_active_shedding", "pattern_loss_only", "miniaturisation", "AGA_signal"],
+              "followUpQuestions": []
+            }
+          ],
+          "visibilityRules": [],
+          "skipLogic": [
+            {
+              "if": { "dependsOn": "goal", "operator": "includesAny", "value": ["regrow", "greying", "Greying", "Early greying"] },
+              "thenSkipTo": "hairtype",
+              "description": "_skipIf: skip count if goal = regrow or greying"
+            }
+          ],
+          "dependencies": ["goal"],
+          "validation": { "hint": "Count hairs on your pillow, comb and shower drain combined" },
+          "scoringSignals": [
+            { "signal": "TE_GOLD_SUPPRESSION_V39", "rule": "count includes 'thinning' or 'no visible fall' → TE GOLD permanently suppressed from entire protocol. Source: v39 rule, line 4012-4019." },
+            { "signal": "ACTIVE_SHEDDING_SIGNAL", "rule": "count '50-100' or '100+' → contributes to hasActiveShedding=true; TE GOLD moved to Phase 1" },
+            { "signal": "AGA_COUNT_SIGNAL", "rule": "count 'thinning' → contributes to hasAGAsignals flag in matchProtocol" }
+          ],
+          "clinicalMappings": [
+            { "value": "50–100", "clinicalNote": "Active TE shedding" },
+            { "value": "100+", "clinicalNote": "Chronic Telogen shedding" },
+            { "value": "thinning", "clinicalNote": "Thinning/progressive → MPHL/FPHL pattern loss; TE GOLD never prescribed" }
+          ],
+          "uiMetadata": { "layout": "visual" },
+          "sourceCodeReference": "STEPS[5] lines 3038-3044"
+        },
+        {
+          "id": "hairtype",
+          "type": "multi_select",
+          "label": "What type of hair fall are you seeing?",
+          "subtitle": null,
+          "required": false,
+          "multiSelect": true,
+          "options": [
+            {
+              "label": "Full-length hairs with white bulb",
+              "value": "Full-length hairs\nwith white bulb",
+              "icon": "⬜",
+              "triggers": ["TE signal — telogen phase release confirmed"],
+              "clinicalTags": ["telogen_effluvium", "white_bulb", "full_length_shedding"],
+              "followUpQuestions": []
+            },
+            {
+              "label": "Broken short hair strands",
+              "value": "Broken short\nhair strands",
+              "icon": "✂️",
+              "triggers": ["HAIR_BREAKAGE score +52", "HBR kit injection signal", "hasHBRHairtype=true", "confirmedBreakage=true"],
+              "clinicalTags": ["shaft_damage", "hair_breakage", "HBR_signal", "mechanical_damage"],
+              "followUpQuestions": []
+            },
+            {
+              "label": "Hair on pillow / floor / shower",
+              "value": "Hair on pillow /\nfloor / shower",
+              "icon": "🛁",
+              "triggers": ["general shedding confirmation"],
+              "clinicalTags": ["active_shedding", "telogen_effluvium_possible"],
+              "followUpQuestions": []
+            },
+            {
+              "label": "Widening parting or thinning",
+              "value": "Widening parting\nor thinning",
+              "icon": "〰️",
+              "triggers": ["AGA signal — contributes to hasAGAsignals", "pcosHasFPHL=true in PCOS stack", "realPatternSignal=true for injection pool", "FPHL/MPHL pattern injection"],
+              "clinicalTags": ["FPHL", "MPHL", "pattern_loss", "follicle_miniaturisation", "AGA_signal"],
+              "followUpQuestions": []
+            },
+            {
+              "label": "Circular bald patches / Coin-sized bald spots",
+              "value": "Circular bald\npatches/\nCoin-sized\nbald spots",
+              "icon": "⭕",
+              "triggers": ["Alopecia Areata signal — contributes to ALOPECIA_AREATA score"],
+              "clinicalTags": ["alopecia_areata", "autoimmune", "AA_signal", "CD8_T_cell_attack"],
+              "followUpQuestions": []
+            },
+            {
+              "label": "None of the above",
+              "value": "None of the above",
+              "icon": "✓",
+              "triggers": [],
+              "clinicalTags": [],
+              "followUpQuestions": []
+            }
+          ],
+          "visibilityRules": [],
+          "skipLogic": [
+            {
+              "if": { "dependsOn": "goal", "operator": "includesAny", "value": ["regrow", "greying", "Greying", "Early greying"] },
+              "thenSkipTo": "scalp",
+              "description": "_skipIf: skip hairtype if goal = regrow or greying"
+            }
+          ],
+          "dependencies": ["goal"],
+          "validation": { "hint": "Select all that apply" },
+          "scoringSignals": [
+            { "signal": "HAIR_BREAKAGE_SCORE", "rule": "hairtype includes 'Broken' or 'short' → HAIR_BREAKAGE score +52; HBR kit injection" },
+            { "signal": "AGA_PATTERN_SIGNAL", "rule": "hairtype includes 'Thinning' or 'widening' or 'parting' → hasAGAsignals=true; realPatternSignal=true" },
+            { "signal": "AA_SIGNAL", "rule": "hairtype includes 'circular' or 'patches' → ALOPECIA_AREATA score +105" },
+            { "signal": "TE_WHITE_BULB", "rule": "hairtype includes 'white bulb' → TE classification confirmed (clinical signal only, not scored)" }
+          ],
+          "clinicalMappings": [
+            { "value": "White bulb", "clinicalNote": "TE (telogen phase release)" },
+            { "value": "Broken/short", "clinicalNote": "Hair shaft damage (HBR kit needed)" },
+            { "value": "Circular patches", "clinicalNote": "Alopecia Areata (autoimmune)" },
+            { "value": "Widening parting", "clinicalNote": "MPHL/FPHL pattern loss" }
+          ],
+          "uiMetadata": { "layout": "visual", "multiSelectConfirm": true },
+          "sourceCodeReference": "STEPS[6] lines 3046-3052"
+        }
+      ]
+    },
+    {
+      "sectionId": "S3_SCALP_CONDITION",
+      "title": "Scalp Condition",
+      "description": "Current scalp state — drives inflammation, dandruff and seborrhoea scoring",
+      "questions": [
+        {
+          "id": "scalp",
+          "type": "multi_select",
+          "label": "What's your scalp like right now?",
+          "subtitle": null,
+          "required": true,
+          "multiSelect": true,
+          "options": [
+            {
+              "label": "Dandruff / white flakes",
+              "value": "Dandruff / white flakes",
+              "icon": "❄️",
+              "triggers": ["SCALP_INFLAM score contribution", "realInflamSignal=true", "PHENOTYPE INFLAMATION injection", "AGA hasAGAsignals=true"],
+              "clinicalTags": ["seborrhoeic_dermatitis", "malassezia", "AGA_risk", "dandruff"],
+              "followUpQuestions": [],
+              "mutuallyExclusive": "Dandruff + Itching + White flakes"
+            },
+            {
+              "label": "Dandruff + Itching + White flakes",
+              "value": "Dandruff + Itching + White flakes",
+              "icon": "❄️🤧🧂",
+              "triggers": ["SCALP_INFLAM score contribution", "PHENOTYPE INFLAMATION mandatory", "seborrhoeic dermatitis + PHENOTYPE INFLAMMATION clinical note"],
+              "clinicalTags": ["seborrhoeic_dermatitis", "NF_kB_activation", "inflammatory_dandruff", "itching"],
+              "followUpQuestions": [],
+              "mutuallyExclusive": "Dandruff / white flakes"
+            },
+            {
+              "label": "Oily scalp",
+              "value": "Oily scalp",
+              "icon": "💧",
+              "triggers": ["SCALP_INFLAM score contribution", "AGA hasAGAsignals=true", "female <30 → PHENOTYPE INFLAMATION; male or female 30+ → MPHL/FPHL + PHENOTYPE INFLAMATION"],
+              "clinicalTags": ["sebaceous_hyperactivity", "DHT_driven_oiliness", "AGA_risk"],
+              "followUpQuestions": [],
+              "mutuallyExclusive": "Dry scalp"
+            },
+            {
+              "label": "Dry scalp",
+              "value": "Dry scalp",
+              "icon": "🏜️",
+              "triggers": ["HBR signal — dry scalp associated with shaft damage"],
+              "clinicalTags": ["dry_scalp", "keratin_damage", "HBR_associated"],
+              "followUpQuestions": [],
+              "mutuallyExclusive": "Oily scalp"
+            },
+            {
+              "label": "Redness or irritation",
+              "value": "Redness or irritation",
+              "icon": "🔴",
+              "triggers": ["realInflamSignal=true", "PHENOTYPE INFLAMATION injection", "SCALP_INFLAM score +42/+62", "hasScalpInflam=true"],
+              "clinicalTags": ["scalp_inflammation", "NF_kB", "TNF_alpha", "follicle_microenvironment_toxicity"],
+              "followUpQuestions": []
+            },
+            {
+              "label": "Boils or pimples",
+              "value": "Boils or pimples",
+              "icon": "🔵",
+              "triggers": ["realInflamSignal=true", "PHENOTYPE INFLAMATION injection", "hasScalpInflam=true", "pcosHasScalpInflam=true in PCOS stack"],
+              "clinicalTags": ["folliculitis", "bacterial_scalp", "inflammation"],
+              "followUpQuestions": []
+            },
+            {
+              "label": "Burning sensation",
+              "value": "Burning sensation",
+              "icon": "🔥",
+              "triggers": ["realInflamSignal=true", "PHENOTYPE INFLAMATION injection", "hasScalpInflam=true"],
+              "clinicalTags": ["neurogenic_inflammation", "scalp_burning", "PHENOTYPE_signal"],
+              "followUpQuestions": []
+            },
+            {
+              "label": "Normal scalp",
+              "value": "Normal scalp",
+              "icon": "✅",
+              "triggers": [],
+              "clinicalTags": [],
+              "followUpQuestions": []
+            },
+            {
+              "label": "Psoriasis / Inflammation",
+              "value": "Psoriasis / Inflammation",
+              "icon": "🩹",
+              "triggers": ["realInflamSignal=true", "PHENOTYPE INFLAMATION injection", "immune_signal"],
+              "clinicalTags": ["psoriasis", "autoimmune_scalp", "IL6", "TNF_alpha", "systemic_inflammation"],
+              "followUpQuestions": []
+            }
+          ],
+          "visibilityRules": [],
+          "skipLogic": [],
+          "dependencies": [],
+          "mutualExclusivityRules": {
+            "description": "_scalpExclusive field enforces runtime mutual exclusion when user selects conflicting options",
+            "rules": [
+              { "selecting": "Dry scalp", "deselects": "Oily scalp" },
+              { "selecting": "Oily scalp", "deselects": "Dry scalp" },
+              { "selecting": "Dandruff / white flakes", "deselects": "Dandruff + Itching + White flakes" },
+              { "selecting": "Dandruff + Itching + White flakes", "deselects": "Dandruff / white flakes" }
+            ],
+            "sourceCodeReference": "STEPS[7]._scalpExclusive line 3059"
+          },
+          "validation": { "hint": "Select all that apply — Dry and Oily scalp are mutually exclusive; Dandruff options are mutually exclusive" },
+          "scoringSignals": [
+            { "signal": "SCALP_INFLAM_SCORE", "rule": "hasScalpInflam (Redness/Boils/Burning) OR hasScalpOilyDandruff → SCALP_INFLAM +42 (or +62 if female < 30)", "sourceCodeReference": "matchProtocol lines 4370-4372" },
+            { "signal": "PHENOTYPE_INJECTION", "rule": "Dandruff/Redness/Boils/Burning/Flaking/Oily+Itching → realInflamSignal=true → PHENOTYPE INFLAMATION injected in Step 5b injection pool", "sourceCodeReference": "getFunnelKits lines 4762-4768" },
+            { "signal": "AGA_SIGNALS_BOOST", "rule": "Dandruff or Oily scalp → hasAGAsignals=true in matchProtocol", "sourceCodeReference": "matchProtocol lines 4382-4383" },
+            { "signal": "PCOS_SCALP_INFLAM", "rule": "Redness/irritation/Boils/pimples/Burning/Dandruff/Oily+Itching → pcosHasScalpInflam=true in PCOS precision stack", "sourceCodeReference": "getFunnelKits lines 4566-4569" }
+          ],
+          "clinicalMappings": [
+            { "value": "Dandruff", "clinicalNote": "Dandruff → MPHL/FPHL risk + PHENOTYPE if combined with itching" },
+            { "value": "Dandruff+Itching", "clinicalNote": "Seborrheic dermatitis → PHENOTYPE INFLAMMATION + MPHL/FPHL" },
+            { "value": "Oily (female <30)", "clinicalNote": "PHENOTYPE INFLAMMATION" },
+            { "value": "Oily (male or female 30+)", "clinicalNote": "MPHL/FPHL + PHENOTYPE INFLAMMATION" },
+            { "value": "Redness/Burning/Boils/Flaking", "clinicalNote": "PHENOTYPE INFLAMMATION + HBR" }
+          ],
+          "uiMetadata": { "layout": "visual", "multiSelectConfirm": true },
+          "sourceCodeReference": "STEPS[7] lines 3054-3059"
+        }
+      ]
+    },
+    {
+      "sectionId": "S4_MEDICAL_HISTORY",
+      "title": "Medical History & Causes",
+      "description": "Perceived causes, immunity, lifestyle, thyroid/metabolic, chronic conditions, and hormonal health",
+      "questions": [
+        {
+          "id": "cause",
+          "type": "multi_select",
+          "label": "What do you think is the cause for your hair loss?",
+          "subtitle": null,
+          "required": true,
+          "multiSelect": true,
+          "options": [
+            {
+              "label": "Stress / Anxiety / Depression",
+              "value": "Stress / Anxiety / Depression",
+              "icon": "😰",
+              "triggers": ["TE_STRESS score +55 (if no nutritional)", "hasActiveShedding=true", "HPA axis dysregulation signal", "cortisol → catagen cascade"],
+              "clinicalTags": ["HPA_axis_dysregulation", "cortisol_elevation", "telogen_effluvium", "TE_STRESS"],
+              "followUpQuestions": []
+            },
+            {
+              "label": "Genetics / Family history",
+              "value": "Genetics / Family history",
+              "icon": "🧬",
+              "triggers": ["hasGeneticCause=true", "contributes to AGA score", "if age >= 30 → realImmuneSignal=true for PRO IMMUNE injection", "pcosHasFPHL signal if combined with duration"],
+              "clinicalTags": ["androgenetic_alopecia", "DHT_sensitivity", "5AR_genetic", "family_history"],
+              "followUpQuestions": []
+            },
+            {
+              "label": "Nutritional deficiencies",
+              "value": "Nutritional deficiencies",
+              "icon": "🥗",
+              "triggers": ["TE_NUTRITION score +58", "realImmuneSignal=true → PRO IMMUNE injection", "hasCause('Nutritional')"],
+              "clinicalTags": ["nutritional_TE", "iron_deficiency_possible", "B12_deficiency", "micronutrient_depletion"],
+              "followUpQuestions": []
+            },
+            {
+              "label": "Medication / Recent Illness / Surgery",
+              "value": "Medication / Recent Illness / Surgery",
+              "icon": "💊",
+              "triggers": ["TE_ILLNESS score +72", "realImmuneSignal=true → PRO IMMUNE injection", "CHRONIC_MEDICAL score +80"],
+              "clinicalTags": ["iatrogenic_TE", "post_illness_TE", "immune_depletion", "medication_induced"],
+              "followUpQuestions": []
+            },
+            {
+              "label": "Post partum — still feeding",
+              "value": "Post partum — still feeding",
+              "icon": "🤱",
+              "triggers": ["TE_POSTPREG score +92", "LACTIHEALTH kit Phase 1", "shown only for Female gender"],
+              "clinicalTags": ["postpartum_TE", "breastfeeding", "hormonal_shift", "nutritional_drain"],
+              "followUpQuestions": [],
+              "visibleOnlyIf": { "dependsOn": "sex", "operator": "equals", "value": "Female" }
+            },
+            {
+              "label": "Post partum — not feeding",
+              "value": "Post partum — not feeding",
+              "icon": "🌸",
+              "triggers": ["TE_DELIVERY score +90 (if combined with 'not feeding')", "TE GOLD Phase 1 + PRO IMMUNE Phase 2", "shown only for Female gender"],
+              "clinicalTags": ["postpartum_TE", "post_delivery", "hormonal_crash", "oestrogen_drop"],
+              "followUpQuestions": [],
+              "visibleOnlyIf": { "dependsOn": "sex", "operator": "equals", "value": "Female" }
+            },
+            {
+              "label": "Hair pulling habit (Trichotillomania)",
+              "value": "Hair pulling habit (Trichotillomania)",
+              "icon": "✋",
+              "triggers": ["TTM score +102", "TTM protocol: TTM kit → TE GOLD → PHENOTYPE INFLAMATION"],
+              "clinicalTags": ["trichotillomania", "OCD", "compulsive_pulling", "follicle_trauma"],
+              "followUpQuestions": []
+            },
+            {
+              "label": "Hard water",
+              "value": "Hard water",
+              "icon": "💧",
+              "triggers": ["HAIR_BREAKAGE score +52", "hasHBRHardWater=true", "HBR kit injection", "direct cortex damage from mineral deposits"],
+              "clinicalTags": ["hard_water", "mineral_deposit", "cortex_damage", "HBR_signal"],
+              "followUpQuestions": []
+            },
+            {
+              "label": "Post GLP-1 receptor agonist (hair loss within 6 months)",
+              "value": "Post GLP-1 receptor agonist (hair loss within 6 months)",
+              "icon": "💉",
+              "triggers": [
+                "WEIGHT_LOSS score +90",
+                "hasGLP1EarlyFlag=true",
+                "RAPID WEIGHT LOSS SHIELD forced to position 0 (Kit 1) in all protocols",
+                "v39 GLP-1 early rule: Shield always first regardless of other conditions",
+                "TE GOLD NOT suppressed but in reduced scope after Shield"
+              ],
+              "clinicalTags": ["GLP1_acute", "GLP1_ozempic", "rapid_weight_loss", "nutrient_depletion", "synchronous_TE"],
+              "followUpQuestions": []
+            },
+            {
+              "label": "Post GLP-1 receptor agonist (hair loss after 6 months)",
+              "value": "Post GLP-1 receptor agonist (hair loss after 6 months)",
+              "icon": "💉",
+              "triggers": [
+                "WEIGHT_LOSS score +90",
+                "hasGLP1LateFlag=true",
+                "RAPID WEIGHT LOSS SHIELD forced to position 1 (Kit 2) after primary diagnosis kit",
+                "TE_STRESS score +50 also added (TE leads as Kit 1)",
+                "v39 GLP-1 late rule"
+              ],
+              "clinicalTags": ["GLP1_late", "nutritional_recovery", "post_acute_TE", "shield_secondary"],
+              "followUpQuestions": []
+            },
+            {
+              "label": "Post crash diet",
+              "value": "Post crash diet",
+              "icon": "⚡",
+              "triggers": ["WEIGHT_LOSS score +90 (via hasCrashDiet)", "RAPID WEIGHT LOSS SHIELD Phase 1"],
+              "clinicalTags": ["crash_diet", "caloric_restriction", "rapid_weight_loss", "nutrient_depletion"],
+              "followUpQuestions": []
+            },
+            {
+              "label": "Not sure",
+              "value": "Not sure",
+              "icon": "❓",
+              "triggers": [],
+              "clinicalTags": [],
+              "followUpQuestions": []
+            },
+            {
+              "label": "None of the above",
+              "value": "None of the above",
+              "icon": "✅",
+              "triggers": [],
+              "clinicalTags": [],
+              "followUpQuestions": []
+            }
+          ],
+          "visibilityRules": [],
+          "skipLogic": [],
+          "dependencies": ["sex"],
+          "dynamicFilterRule": {
+            "description": "_filterOpts: if sex !== 'Female', remove postpartum options",
+            "condition": "ans.sex !== 'Female'",
+            "removedOptions": ["Post partum — still feeding", "Post partum — not feeding"],
+            "sourceCodeReference": "STEPS[8]._filterOpts lines 3067-3073"
+          },
+          "validation": { "hint": "Select all that apply — your best guess is fine" },
+          "scoringSignals": [
+            { "signal": "TTM_SCORE", "rule": "cause includes 'pulling'/'Trichotillomania'/'TTM'/'OCD' → TTM +102" },
+            { "signal": "TE_STRESS_SCORE", "rule": "cause includes 'Stress'/'Anxiety'/'Depression' (without nutrition) → TE_STRESS +55" },
+            { "signal": "TE_NUTRITION_SCORE", "rule": "cause includes 'Nutritional' → TE_NUTRITION +58" },
+            { "signal": "TE_ILLNESS_SCORE", "rule": "cause includes 'Medication'/'Recent Illness'/'Surgery' → TE_ILLNESS +72" },
+            { "signal": "TE_POSTPREG_SCORE", "rule": "cause includes 'Post partum' OR hormonal includes 'Post-delivery'/'breastfeeding' → TE_POSTPREG +92" },
+            { "signal": "TE_DELIVERY_SCORE", "rule": "cause includes 'Post partum' AND 'not feeding' → TE_DELIVERY +90" },
+            { "signal": "WEIGHT_LOSS_SCORE", "rule": "cause includes GLP-1 within 6m → WEIGHT_LOSS +90 (Shield Kit 1); GLP-1 after 6m → WEIGHT_LOSS +90 + TE_STRESS +50 (TE leads); crash diet → WEIGHT_LOSS +90" },
+            { "signal": "HAIR_BREAKAGE_SCORE", "rule": "cause includes 'Hard water' → HAIR_BREAKAGE +52; hasHBRHardWater=true" },
+            { "signal": "AGA_GENETICS", "rule": "cause includes 'Genetics'/'Family history' → hasGeneticCause=true; if age >= 30 → PRO IMMUNE injection" }
+          ],
+          "clinicalMappings": [
+            { "value": "Stress", "clinicalNote": "HPA axis dysregulation → cortisol-mediated premature catagen (TE)" },
+            { "value": "Nutritional", "clinicalNote": "TE + immune compromise" },
+            { "value": "Post partum feeding", "clinicalNote": "LACTIHEALTH + TE + PRO IMMUNE" },
+            { "value": "Post partum not feeding", "clinicalNote": "TE + PRO IMMUNE" },
+            { "value": "Medication/Illness/Surgery", "clinicalNote": "PRO IMMUNE + PHENOTYPE INFLAMMATION" },
+            { "value": "Hard water", "clinicalNote": "HBR kit always added" },
+            { "value": "GLP-1 crash diet/Keto", "clinicalNote": "RAPID WEIGHT LOSS SHIELD (Phase 1 precipitating event)" }
+          ],
+          "uiMetadata": { "layout": "list", "multiSelectConfirm": true },
+          "sourceCodeReference": "STEPS[8] lines 3062-3074"
+        },
+        {
+          "id": "immunity",
+          "type": "multi_select",
+          "label": "Any immunity or skin-related issues?",
+          "subtitle": null,
+          "required": true,
+          "multiSelect": true,
+          "options": [
+            {
+              "label": "Frequent infections / cold / fever",
+              "value": "Frequent infections / cold / fever",
+              "icon": "🤧",
+              "triggers": ["needsImmune=true", "PRO IMMUNE GOLD injection", "pcosHasImmune=true in PCOS stack"],
+              "clinicalTags": ["immune_compromise", "chronic_infection", "immune_depletion"],
+              "followUpQuestions": []
+            },
+            {
+              "label": "Allergies",
+              "value": "Allergies",
+              "icon": "🤧",
+              "triggers": ["needsImmune=true", "realInflamSignal=true → PHENOTYPE INFLAMATION injection", "pcosHasImmune=true"],
+              "clinicalTags": ["atopy", "immune_dysregulation", "IgE_mediated", "inflammation"],
+              "followUpQuestions": []
+            },
+            {
+              "label": "Asthma",
+              "value": "Asthma",
+              "icon": "😮‍💨",
+              "triggers": ["needsImmune=true", "realInflamSignal=true → PHENOTYPE INFLAMATION injection", "oxidativeCount +1 for OXIDATIVE STRESS calculation", "pcosHasImmune=true"],
+              "clinicalTags": ["asthma", "airway_inflammation", "oxidative_stress", "immune_dysregulation"],
+              "followUpQuestions": []
+            },
+            {
+              "label": "Skin rashes or eczema",
+              "value": "Skin rashes or eczema",
+              "icon": "🩹",
+              "triggers": ["needsImmune=true", "realInflamSignal=true → PHENOTYPE INFLAMATION injection", "pcosHasImmune=true"],
+              "clinicalTags": ["eczema", "atopic_dermatitis", "Th2_inflammation", "skin_barrier_dysfunction"],
+              "followUpQuestions": []
+            },
+            {
+              "label": "Alopecia Areata (circular patches)",
+              "value": "Alopecia Areata (circular patches)",
+              "icon": "⭕",
+              "triggers": [
+                "ALOPECIA_AREATA score +105 (near-absolute lock)",
+                "grade question SKIPPED (_skipIf)",
+                "needsImmune=true",
+                "protocol: HAIR FACT ALOPECIA AREATA → PRO FACT META B → PHENOTYPE INFLAMATION → PRO IMMUNE GOLD",
+                "PHENOTYPE INFLAMATION injection via realInflamSignal"
+              ],
+              "clinicalTags": ["alopecia_areata", "autoimmune", "CD8_T_cell", "follicle_immune_attack", "AA_absolute"],
+              "followUpQuestions": []
+            },
+            {
+              "label": "Scarring alopecia",
+              "value": "Scarring alopecia",
+              "icon": "🔴",
+              "triggers": ["PHENOTYPE INFLAMATION + MPHL (male) or FPHL (female) protocol note"],
+              "clinicalTags": ["scarring_alopecia", "permanent_follicle_damage", "fibrosis"],
+              "followUpQuestions": []
+            },
+            {
+              "label": "Mouth ulcers",
+              "value": "Mouth ulcers",
+              "icon": "💊",
+              "triggers": ["MOUTH_ULCERS score +72 (if gut also active)", "PHENOTYPE INFLAMATION Phase 1 + PRO IMMUNE Phase 2 + OXIDATIVE STRESS Phase 3"],
+              "clinicalTags": ["mouth_ulcers", "gut_immune_link", "mucosal_inflammation", "immune_gut_axis"],
+              "followUpQuestions": []
+            },
+            {
+              "label": "None of the above",
+              "value": "None of the above",
+              "icon": "✅",
+              "triggers": [],
+              "clinicalTags": [],
+              "followUpQuestions": []
+            }
+          ],
+          "visibilityRules": [],
+          "skipLogic": [],
+          "dependencies": [],
+          "validation": { "hint": "These help us assess your immune system's role in hair loss" },
+          "scoringSignals": [
+            { "signal": "AA_SCORE", "rule": "immunity includes 'Alopecia Areata'/'Areata' → ALOPECIA_AREATA +105" },
+            { "signal": "GRADE_SKIP_TRIGGER", "rule": "immunity includes 'Alopecia Areata' → grade question _skipIf triggers, grade step hidden", "sourceCodeReference": "STEPS[19]._skipIf line 3149" },
+            { "signal": "IMMUNE_INJECTION", "rule": "Frequent/Allergies/Asthma/Skin rash/ulcer → needsImmune=true → PRO IMMUNE GOLD injected in Step 5b pool" },
+            { "signal": "PHENOTYPE_INJECTION", "rule": "Allergies/Asthma/Skin rash/Alopecia Areata → realInflamSignal=true → PHENOTYPE INFLAMATION injected" },
+            { "signal": "MOUTH_ULCERS_SCORE", "rule": "immunity includes 'ulcer' AND gut has active issues → MOUTH_ULCERS +72" },
+            { "signal": "OXIDATIVE_COUNT", "rule": "Asthma → oxidativeCount +1 (needs 2+ for standalone OXIDATIVE STRESS injection)" }
+          ],
+          "clinicalMappings": [
+            { "value": "Alopecia Areata", "clinicalNote": "CD8+ T-cell autoimmune attack on follicle → circular bald patches → immune modulation + anti-inflammatory + micronutrient repletion" },
+            { "value": "Mouth ulcers + gut", "clinicalNote": "PHENOTYPE INFLAMATION + GI GOLD + OXIDATIVE STRESS protocol" }
+          ],
+          "uiMetadata": { "layout": "list", "multiSelectConfirm": true },
+          "sourceCodeReference": "STEPS[9] lines 3076-3081"
+        },
+        {
+          "id": "lifestyle",
+          "type": "multi_select",
+          "label": "How is your lifestyle?",
+          "subtitle": null,
+          "required": true,
+          "multiSelect": true,
+          "options": [
+            {
+              "label": "Smoking / Vaping",
+              "value": "Smoking / Vaping",
+              "icon": "🚬",
+              "triggers": ["OXIDATIVE score +58", "realInflamSignal=true → PHENOTYPE INFLAMATION injection", "oxidativeCount +1", "smokingVaping=true for kit cap calculation"],
+              "clinicalTags": ["oxidative_stress", "ROS_overload", "smoking", "vaping", "mitochondrial_damage"],
+              "followUpQuestions": []
+            },
+            {
+              "label": "Alcohol (8–10×/month)",
+              "value": "Alcohol (8–10×/month)",
+              "icon": "🍷",
+              "triggers": ["OXIDATIVE score +58", "realInflamSignal=true → PHENOTYPE INFLAMATION injection", "oxidativeCount +1"],
+              "clinicalTags": ["alcohol", "liver_stress", "oxidative_stress", "ROS"],
+              "followUpQuestions": []
+            },
+            {
+              "label": "Bodybuilding / Heavy gym",
+              "value": "Bodybuilding / Heavy gym",
+              "icon": "💪",
+              "triggers": ["hasAGAsignals=true → AGA score contribution", "DHT amplification from exogenous protein/androgen"],
+              "clinicalTags": ["bodybuilding", "DHT_amplification", "androgen_excess", "AGA_risk"],
+              "followUpQuestions": []
+            },
+            {
+              "label": "Obesity / Sedentary / Struggle to lose weight / Slowly gaining weight",
+              "value": "Obesity / Sedentary / Struggle to lose weight / Slowly gaining weight",
+              "icon": "⚖️",
+              "triggers": [
+                "hasMetabolicSignal=true → PRO FACT META B injection",
+                "pcosObese=true in PCOS scoring → PCOS_OBESITY over PCOS_ONLY",
+                "PERI_MENOPAUSE: PRO FACT META B inserted after Phase 1",
+                "THYROID_HYPO + metabolic: PRO FACT META B HYPOTHYROID swapped for PRO FACT META B"
+              ],
+              "clinicalTags": ["insulin_resistance", "adipose_androgen", "metabolic_dysfunction", "PRO_FACT_META_B_signal"],
+              "followUpQuestions": []
+            },
+            {
+              "label": "Erratic / Outside eating (3–4×/week)",
+              "value": "Erratic / Outside eating (3–4×/week)",
+              "icon": "🍔",
+              "triggers": ["hasMetabolicSignal=true via 'Irregular'/'poor' diet match → PRO FACT META B signal"],
+              "clinicalTags": ["poor_diet", "micronutrient_gap", "metabolic_signal"],
+              "followUpQuestions": []
+            },
+            {
+              "label": "Night shift work",
+              "value": "Night shift work",
+              "icon": "🌙",
+              "triggers": ["NIGHT_SHIFT score +62", "NIGHT SHIFT kit Phase 1 → TE GOLD Phase 2 → PHENOTYPE INFLAMATION Phase 3"],
+              "clinicalTags": ["circadian_disruption", "melatonin_disruption", "HPA_dysregulation", "night_shift"],
+              "followUpQuestions": []
+            },
+            {
+              "label": "Frequent flying",
+              "value": "Frequent flying",
+              "icon": "✈️",
+              "triggers": ["FREQUENT_FLYING score +58", "FREQUENT FLYERS kit → TE GOLD → PHENOTYPE INFLAMATION"],
+              "clinicalTags": ["circadian_disruption", "radiation_exposure", "dehydration", "frequent_flying"],
+              "followUpQuestions": []
+            },
+            {
+              "label": "None of the above",
+              "value": "None of the above",
+              "icon": "✅",
+              "triggers": [],
+              "clinicalTags": [],
+              "followUpQuestions": []
+            }
+          ],
+          "visibilityRules": [],
+          "skipLogic": [],
+          "dependencies": [],
+          "validation": { "hint": "Select all that apply" },
+          "scoringSignals": [
+            { "signal": "OXIDATIVE_SCORE", "rule": "Smoking/Vaping/Alcohol → OXIDATIVE +58; oxidativeCount incremented" },
+            { "signal": "STANDALONE_OXIDATIVE", "rule": "oxidativeCount >= 2 (Smoking + Alcohol + Asthma) → OXIDATIVE STRESS kit injected as standalone phase when PHENOTYPE not already present" },
+            { "signal": "METABOLIC_SIGNAL", "rule": "Obesity/Sedentary/weight → hasMetabolicSignal=true → PRO FACT META B injection; PCOS_OBESITY path" },
+            { "signal": "NIGHT_SHIFT_SCORE", "rule": "Night shift → NIGHT_SHIFT +62; NIGHT SHIFT kit protocol" },
+            { "signal": "FREQUENT_FLYING_SCORE", "rule": "Frequent flying → FREQUENT_FLYING +58; FREQUENT FLYERS kit protocol" },
+            { "signal": "AGA_GYM_SIGNAL", "rule": "Bodybuilding/Heavy gym → hasAGAsignals=true → AGA score contribution" },
+            { "signal": "KIT_CAP_SIGNAL", "rule": "smokingVaping=true → injectionTarget raised; kit cap can reach 5-7 kits depending on active signal count" }
+          ],
+          "clinicalMappings": [
+            { "value": "Smoking/Vaping/Alcohol", "clinicalNote": "ROS overload → PHENOTYPE INFLAMMATION + OXIDATIVE STRESS" },
+            { "value": "Bodybuilding (male)", "clinicalNote": "MPHL signal" },
+            { "value": "Bodybuilding (female 30+)", "clinicalNote": "FPHL signal" },
+            { "value": "Obesity/Sedentary", "clinicalNote": "PRO FACT META B (insulin-androgen axis correction)" },
+            { "value": "Night shift", "clinicalNote": "HAIR FACT NIGHT SHIFT + TE GOLD + PHENOTYPE INFLAMATION" },
+            { "value": "Frequent flying", "clinicalNote": "HAIR FACT FREQUENT FLYERS + TE GOLD + PHENOTYPE INFLAMATION" }
+          ],
+          "uiMetadata": { "layout": "visual", "multiSelectConfirm": true },
+          "sourceCodeReference": "STEPS[10] lines 3083-3088"
+        },
+        {
+          "id": "thyroid",
+          "type": "multi_select",
+          "label": "Do you have either of the following conditions?",
+          "subtitle": null,
+          "required": true,
+          "multiSelect": true,
+          "options": [
+            {
+              "label": "Hypothyroidism",
+              "value": "Hypothyroidism",
+              "icon": "🔽",
+              "triggers": [
+                "THYROID_HYPO score +100",
+                "Protocol: PRO FACT META B HYPOTHYROID → PHENOTYPE INFLAMATION → HAIR FACT TE GOLD",
+                "If also Obesity/Sedentary → THYROID_HYPO + metabolic override: swap PRO FACT META B HYPOTHYROID for PRO FACT META B (v34 override)",
+                "PCOS + Hypothyroid → PCOS priority raised to 101 (beats thyroid at 100)"
+              ],
+              "clinicalTags": ["hypothyroidism", "T3_deficiency", "metabolic_slowdown", "THYROID_HYPO"],
+              "followUpQuestions": []
+            },
+            {
+              "label": "Hyperthyroidism",
+              "value": "Hyperthyroidism",
+              "icon": "🔼",
+              "triggers": ["THYROID_HYPER score +100", "Protocol: PRO FACT THYROID CARE → TE GOLD → PRO IMMUNE GOLD"],
+              "clinicalTags": ["hyperthyroidism", "metabolic_overactivity", "oxidative_TE", "THYROID_HYPER"],
+              "followUpQuestions": []
+            },
+            {
+              "label": "Pre diabetes",
+              "value": "Pre diabetes",
+              "icon": "🩸",
+              "triggers": ["DIABETES score +90", "hasMetabolicSignal=true → PRO FACT META B injection", "hasDiabetesSignal=true in PCOS stack → upgrades F-PCOS-1 to PRO FACT META B PCOS"],
+              "clinicalTags": ["insulin_resistance", "pre_diabetes", "androgen_amplification", "metabolic_dysfunction"],
+              "followUpQuestions": []
+            },
+            {
+              "label": "Diabetes",
+              "value": "Diabetes",
+              "icon": "💊",
+              "triggers": ["DIABETES score +90", "hasMetabolicSignal=true → PRO FACT META B injection", "hasDiabetesSignal=true in PCOS stack → upgrades F-PCOS-1 to PRO FACT META B PCOS"],
+              "clinicalTags": ["diabetes", "insulin_resistance", "microvascular_compromise", "androgen_amplification"],
+              "followUpQuestions": []
+            },
+            {
+              "label": "Not Applicable",
+              "value": "Not Applicable",
+              "icon": "✅",
+              "triggers": [],
+              "clinicalTags": [],
+              "followUpQuestions": []
+            }
+          ],
+          "visibilityRules": [],
+          "skipLogic": [],
+          "dependencies": [],
+          "validation": { "hint": "Select all that apply (current or past)" },
+          "scoringSignals": [
+            { "signal": "THYROID_HYPO_SCORE", "rule": "thyroid includes 'Hypothyroidism' OR hormonal includes 'Thyroid' → THYROID_HYPO +100" },
+            { "signal": "THYROID_HYPER_SCORE", "rule": "thyroid includes 'Hyperthyroidism' → THYROID_HYPER +100" },
+            { "signal": "DIABETES_SCORE", "rule": "thyroid includes 'Pre diabetes' or 'Diabetes' → DIABETES +90" },
+            { "signal": "METABOLIC_SIGNAL_DIABETES", "rule": "Pre diabetes/Diabetes → hasMetabolicSignal=true → PRO FACT META B injected" },
+            { "signal": "PCOS_THYROID_PRIORITY", "rule": "PCOS + Hypothyroidism → PCOS priority raised to 101 (beats THYROID_HYPO at 100)" },
+            { "signal": "PCOS_DIABETES_UPGRADE", "rule": "PCOS_ONLY + diabetes/pre-diabetes → F-PCOS-1 upgraded to PRO FACT META B PCOS at runtime" },
+            { "signal": "V38_OVERRIDE", "rule": "PCOS_OBESITY + Hypothyroid → single PRO FACT META B (covers AMPK/insulin + androgen + T3); drops PRO FACT META B PCOS and PRO FACT META B HYPOTHYROID" }
+          ],
+          "clinicalMappings": [
+            { "value": "Hypothyroid (no metabolic)", "clinicalNote": "PRO FACT META B HYPOTHYROID" },
+            { "value": "Hypothyroid + Obesity/Sedentary", "clinicalNote": "PRO FACT META B (integrated 2-condition kit, v34 override)" },
+            { "value": "Hyperthyroid", "clinicalNote": "PRO FACT THYROID CARE" },
+            { "value": "Pre-diabetes/Diabetes", "clinicalNote": "PRO FACT META B (metabolic route)" }
+          ],
+          "uiMetadata": { "layout": "list", "multiSelectConfirm": true },
+          "sourceCodeReference": "STEPS[11] lines 3090-3095"
+        },
+        {
+          "id": "medical",
+          "type": "single_select",
+          "label": "Are you currently under treatment for any chronic medical condition?",
+          "subtitle": null,
+          "required": true,
+          "multiSelect": false,
+          "options": [
+            {
+              "label": "Yes, currently on medication",
+              "value": "Yes, currently on medication",
+              "icon": "💊",
+              "triggers": ["CHRONIC_MEDICAL score +80 (if no diabetes)", "activates medical_detail question", "PRO IMMUNE GOLD + PHENOTYPE INFLAMATION protocol for chronic medical"],
+              "clinicalTags": ["chronic_medication", "immune_depletion", "iatrogenic_hair_loss"],
+              "followUpQuestions": ["medical_detail"]
+            },
+            {
+              "label": "No, no chronic conditions",
+              "value": "No, no chronic conditions",
+              "icon": "✅",
+              "triggers": ["skips medical_detail question"],
+              "clinicalTags": [],
+              "followUpQuestions": []
+            }
+          ],
+          "visibilityRules": [],
+          "skipLogic": [],
+          "dependencies": [],
+          "validation": {},
+          "scoringSignals": [
+            { "signal": "CHRONIC_MEDICAL_SCORE", "rule": "medical includes 'Yes' AND no diabetes → CHRONIC_MEDICAL +80", "sourceCodeReference": "matchProtocol lines 4316-4319" }
+          ],
+          "clinicalMappings": [
+            { "value": "Yes", "clinicalNote": "Chronic condition on medication → PRO IMMUNE GOLD + PHENOTYPE INFLAMMATION; PRO FACT META B only if true metabolic signal (obesity, pre-diabetes, diabetes) — NOT for chronic medication alone" }
+          ],
+          "uiMetadata": { "layout": "visual" },
+          "sourceCodeReference": "STEPS[12] lines 3097-3102"
+        },
+        {
+          "id": "medical_detail",
+          "type": "text",
+          "label": "Please tell us which condition(s) you are being treated for and any medications you are currently taking:",
+          "subtitle": null,
+          "required": false,
+          "multiSelect": false,
+          "options": [],
+          "visibilityRules": [
+            { "dependsOn": "medical", "operator": "includes", "value": "Yes" }
+          ],
+          "skipLogic": [
+            {
+              "if": { "dependsOn": "medical", "operator": "notIncludes", "value": "Yes" },
+              "thenSkipTo": "hormonal",
+              "description": "_skipIf: skip medical_detail if medical !== 'Yes'"
+            }
+          ],
+          "dependencies": ["medical"],
+          "validation": { "placeholder": "e.g. Hypothyroidism, Diabetes, BP — metformin, levothyroxine..." },
+          "scoringSignals": [],
+          "clinicalMappings": [
+            { "field": "medical_detail", "usage": "Passed to LLM prompt as 'Chronic conditions / medications' field for contextual reasoning" }
+          ],
+          "uiMetadata": { "layout": "text", "voiceEnabled": true },
+          "sourceCodeReference": "STEPS[13] lines 3104-3108"
+        },
+        {
+          "id": "hormonal",
+          "type": "multi_select",
+          "label": "Any hormonal or reproductive health issues? (Females)",
+          "subtitle": null,
+          "required": false,
+          "multiSelect": true,
+          "options": [
+            {
+              "label": "PCOS / PCOD only",
+              "value": "PCOS / PCOD only",
+              "icon": "🔁",
+              "triggers": ["PCOS_ONLY score +92 (or +101 if also Hypothyroid)", "F-PCOS -1 as primary kit", "PCOS precision stack logic activated"],
+              "clinicalTags": ["PCOS", "androgen_excess", "LH_FSH_imbalance", "insulin_signalling"],
+              "followUpQuestions": []
+            },
+            {
+              "label": "PCOS / PCOD + Obesity",
+              "value": "PCOS / PCOD + Obesity",
+              "icon": "⚖️",
+              "triggers": ["PCOS_OBESITY score +92 (or +101 if Hypothyroid)", "PRO FACT META B PCOS as primary kit (no F-PCOS-1)", "hasMetabolicSignal=true"],
+              "clinicalTags": ["PCOS_obesity", "insulin_resistance", "androgen_excess", "PRO_FACT_META_B_PCOS"],
+              "followUpQuestions": []
+            },
+            {
+              "label": "Endometriosis",
+              "value": "Endometriosis",
+              "icon": "🌸",
+              "triggers": ["ENDOMETRIOSIS score +85", "Protocol: FH WELL 3 → PHENOTYPE INFLAMATION → PRO IMMUNE GOLD"],
+              "clinicalTags": ["endometriosis", "hormonal_inflammatory", "oestrogen_dominance", "systemic_inflammation"],
+              "followUpQuestions": []
+            },
+            {
+              "label": "Currently pregnant",
+              "value": "Currently pregnant",
+              "icon": "🤰",
+              "triggers": ["PREGNANCY absolute lock", "Protocol: HEALTHY-9 ONLY — single kit, no other kits during pregnancy"],
+              "clinicalTags": ["pregnancy", "HEALTHY_9_only", "absolute_lock"],
+              "followUpQuestions": []
+            },
+            {
+              "label": "Post-delivery or breastfeeding",
+              "value": "Post-delivery or breastfeeding",
+              "icon": "🤱",
+              "triggers": ["TE_POSTPREG score +92", "LACTIHEALTH Phase 1 → TE GOLD Phase 2 → PRO IMMUNE Phase 3"],
+              "clinicalTags": ["postpartum", "breastfeeding", "hormonal_crash", "nutritional_depletion"],
+              "followUpQuestions": []
+            },
+            {
+              "label": "Peri-menopause",
+              "value": "Peri-menopause",
+              "icon": "🌅",
+              "triggers": ["PERI_MENOPAUSE score +98", "Protocol: PERI MENOPAUSE kit → FPHL → TE GOLD → PRO IMMUNE GOLD", "if metabolic signal: PRO FACT META B inserted after Phase 1"],
+              "clinicalTags": ["perimenopause", "oestrogen_fluctuation", "hormonal_TE", "FSH_elevation"],
+              "followUpQuestions": []
+            },
+            {
+              "label": "Menopause",
+              "value": "Menopause",
+              "icon": "🌇",
+              "triggers": ["MENOPAUSE score +98 (only if not Peri and not Post)", "Protocol: PRO FACT META B MENOPAUSE → FPHL → TE GOLD"],
+              "clinicalTags": ["menopause", "oestrogen_decline", "FSH_elevated", "follicle_miniaturisation"],
+              "followUpQuestions": []
+            },
+            {
+              "label": "Post-menopause",
+              "value": "Post-menopause",
+              "icon": "🌑",
+              "triggers": ["POST_MENOPAUSE score +98", "Protocol: PRO FACT META B POSTMENOPAUSE → FPHL → TE GOLD → PRO IMMUNE GOLD"],
+              "clinicalTags": ["post_menopause", "sustained_oestrogen_decline", "metabolic_shift", "FPHL_dominant"],
+              "followUpQuestions": []
+            },
+            {
+              "label": "Hormone Replacement Therapy (HRT)",
+              "value": "Hormone Replacement Therapy (HRT)",
+              "icon": "💉",
+              "triggers": ["clinical context signal — processed in LLM narrative"],
+              "clinicalTags": ["HRT", "exogenous_hormones", "clinical_context"],
+              "followUpQuestions": []
+            },
+            {
+              "label": "None of the above",
+              "value": "None of the above",
+              "icon": "✅",
+              "triggers": [],
+              "clinicalTags": [],
+              "followUpQuestions": []
+            }
+          ],
+          "visibilityRules": [
+            { "dependsOn": "sex", "operator": "equals", "value": "Female" }
+          ],
+          "skipLogic": [
+            {
+              "if": { "dependsOn": "sex", "operator": "notEquals", "value": "Female" },
+              "thenSkipTo": "gut",
+              "description": "Runtime: hormonal question skipped if sex !== Female. Also controlled by S.step logic at line 8237."
+            }
+          ],
+          "dependencies": ["sex"],
+          "runtimeModification": {
+            "description": "IIFE at runtime removes 'Thyroid disorder' option from hormonal opts (thyroid is captured in dedicated thyroid step). Hint updated to reflect this.",
+            "removedOption": "Thyroid disorder",
+            "updatedHint": "Select all that apply - thyroid is captured in the previous thyroid / metabolic question",
+            "sourceCodeReference": "lines 3156-3167"
+          },
+          "validation": { "hint": "Select all that apply - thyroid is captured in the previous thyroid / metabolic question" },
+          "scoringSignals": [
+            { "signal": "POST_MENOPAUSE_SCORE", "rule": "hormonal includes 'Post-menopause'/'Post menopause' → POST_MENOPAUSE +98" },
+            { "signal": "MENOPAUSE_SCORE", "rule": "hormonal includes 'Menopause' AND NOT 'Peri' AND NOT 'Post' → MENOPAUSE +98" },
+            { "signal": "PERI_MENOPAUSE_SCORE", "rule": "hormonal includes 'Peri-menopause'/'Peri menopause'/'Perimenopause'/'peri'/'Peri-Menopause' → PERI_MENOPAUSE +98" },
+            { "signal": "ENDOMETRIOSIS_SCORE", "rule": "hormonal includes 'Endometriosis' → ENDOMETRIOSIS +85" },
+            { "signal": "PCOS_SCORE", "rule": "hormonal includes 'PCOS'/'PCOD': pcosObese check → PCOS_ONLY +92 or PCOS_OBESITY +92 (101 if Hypothyroid)" },
+            { "signal": "PREGNANCY_LOCK", "rule": "hormonal includes 'pregnant'/'Pregnancy' → PREGNANCY absolute lock; HEALTHY-9 only" },
+            { "signal": "POSTPREG_SCORE", "rule": "hormonal includes 'Post-delivery'/'breastfeeding' → TE_POSTPREG +92" },
+            { "signal": "THYROID_IN_HORMONAL", "rule": "hormonal includes 'Thyroid' → THYROID_HYPO +100 (cross-field dependency: thyroid field OR hormonal field both trigger THYROID_HYPO)" }
+          ],
+          "clinicalMappings": [
+            { "value": "PCOS only (no obesity)", "clinicalNote": "F-PCOS -1 ONLY (1 kit). Do NOT add PRO IMMUNE/FPHL/PHENOTYPE unless patient's answers specifically show those signals" },
+            { "value": "PCOS + Obesity/weight/sedentary/pre-diabetes", "clinicalNote": "PRO FACT META B PCOS ONLY (1 kit). No F-PCOS -1 — ingredient overlap" },
+            { "value": "Endometriosis", "clinicalNote": "FH WELL 3 + PHENOTYPE INFLAMMATION + PRO IMMUNE GOLD" },
+            { "value": "Pregnancy", "clinicalNote": "HEALTHY-9 ONLY — no other kits" },
+            { "value": "Post-delivery/feeding", "clinicalNote": "LACTIHEALTH + TE + PRO IMMUNE" },
+            { "value": "Peri-menopause", "clinicalNote": "PERI MENOPAUSE kit + FPHL + TE GOLD + PRO IMMUNE; PRO FACT META B injected if metabolic signal" },
+            { "value": "Menopause", "clinicalNote": "PRO FACT META B MENOPAUSE + FPHL + TE GOLD" },
+            { "value": "Post-menopause", "clinicalNote": "PRO FACT META B POSTMENOPAUSE + FPHL + TE GOLD + PRO IMMUNE" }
+          ],
+          "uiMetadata": { "layout": "list", "multiSelectConfirm": true },
+          "sourceCodeReference": "STEPS[14] lines 3110-3115; runtime cleanup lines 3156-3167"
+        }
+      ]
+    },
+    {
+      "sectionId": "S5_NUTRITION_AND_DIET",
+      "title": "Nutrition, Diet & Treatments",
+      "description": "Gut health, nutritional deficiencies, diet type, and hair treatments",
+      "questions": [
+        {
+          "id": "gut",
+          "type": "multi_select",
+          "label": "Any gut or digestive issues?",
+          "subtitle": null,
+          "required": true,
+          "multiSelect": true,
+          "options": [
+            {
+              "label": "Bloating / gas",
+              "value": "Bloating / gas",
+              "icon": "💨",
+              "triggers": ["GUT_ISSUES score +62 (if no mouth ulcers)", "realImmuneSignal=true → PRO IMMUNE injection", "hasGut=true for kit cap calculation"],
+              "clinicalTags": ["gut_dysbiosis", "SIBO", "microbiome_imbalance", "bloating"],
+              "followUpQuestions": []
+            },
+            {
+              "label": "Constipation",
+              "value": "Constipation",
+              "icon": "🚽",
+              "triggers": ["realGutSignal=true → PRO FACT GI GOLD injection"],
+              "clinicalTags": ["constipation", "gut_motility", "microbiome_dysbiosis"],
+              "followUpQuestions": []
+            },
+            {
+              "label": "IBS / Crohn's",
+              "value": "IBS / Crohn's",
+              "icon": "🔄",
+              "triggers": ["GUT_ISSUES score +62", "realGutSignal=true → PRO FACT GI GOLD injection", "realImmuneSignal=true → PRO IMMUNE injection", "hasGut=true"],
+              "clinicalTags": ["IBS", "Crohns", "intestinal_inflammation", "leaky_gut", "malabsorption"],
+              "followUpQuestions": []
+            },
+            {
+              "label": "Acid reflux (heartburn) / GERD (Chronic Heartburn)",
+              "value": "Acid reflux\n(heartburn) /\nGERD\n(Chronic Heartburn)",
+              "icon": "🔥",
+              "triggers": ["GUT_ISSUES score +62", "realGutSignal=true → PRO FACT GI GOLD injection", "realImmuneSignal=true → PRO IMMUNE injection", "hasGut=true"],
+              "clinicalTags": ["GERD", "acid_reflux", "mucosal_damage", "gut_inflammation", "nutrient_malabsorption"],
+              "followUpQuestions": []
+            },
+            {
+              "label": "Indigestion",
+              "value": "Indigestion",
+              "icon": "😣",
+              "triggers": ["contributes to hasActiveGut signal"],
+              "clinicalTags": ["indigestion", "gastric_insufficiency"],
+              "followUpQuestions": []
+            },
+            {
+              "label": "No gut issues",
+              "value": "No gut issues",
+              "icon": "✅",
+              "triggers": [],
+              "clinicalTags": [],
+              "followUpQuestions": []
+            }
+          ],
+          "visibilityRules": [],
+          "skipLogic": [],
+          "dependencies": [],
+          "validation": { "hint": "Gut health directly affects hair growth through nutrient absorption" },
+          "scoringSignals": [
+            { "signal": "GUT_ISSUES_SCORE", "rule": "gut has active issues (not 'No gut issues') AND immunity includes 'ulcer' → MOUTH_ULCERS +72; else → GUT_ISSUES +62" },
+            { "signal": "GI_GOLD_INJECTION", "rule": "gut includes IBS/GERD/Acid/Crohn/Constipation → realGutSignal=true → PRO FACT GI GOLD injected in Step 5b pool" },
+            { "signal": "PRO_IMMUNE_GUT", "rule": "gut includes GERD/Bloating/IBS/Acid → realImmuneSignal=true → PRO IMMUNE GOLD injected" },
+            { "signal": "KIT_CAP_GUT", "rule": "hasGut=true → activeSignalCount incremented for kit cap calculation; injectionTarget raised" }
+          ],
+          "clinicalMappings": [
+            { "value": "GERD/Acidity/IBS/Bloating", "clinicalNote": "PRO FACT GI GOLD + PRO IMMUNE GOLD; gut-hair axis must be cleared first" },
+            { "value": "IBS/Crohn/Constipation", "clinicalNote": "PRO FACT GI GOLD (strong gut signal — GI GOLD injection)" }
+          ],
+          "uiMetadata": { "layout": "visual", "multiSelectConfirm": true },
+          "sourceCodeReference": "STEPS[15] lines 3117-3122"
+        },
+        {
+          "id": "deficiency",
+          "type": "multi_select",
+          "label": "Any confirmed nutritional deficiencies?",
+          "subtitle": null,
+          "required": true,
+          "multiSelect": true,
+          "options": [
+            {
+              "label": "Iron / Anaemia",
+              "value": "Iron / Anaemia",
+              "icon": "🔴",
+              "triggers": [
+                "IRON_DEFICIENCY score +80",
+                "realImmuneSignal=true → PRO IMMUNE GOLD injection",
+                "IRON UP GOLD injection (high priority in injection pool)",
+                "pcosHasImmune=true in PCOS stack",
+                "Iron position logic: IRON UP GOLD inserted after PCOS/TE kit but before other injections"
+              ],
+              "clinicalTags": ["iron_deficiency", "ferritin_low", "IRON_UP_GOLD", "telogen_effluvium_trigger", "anaemia"],
+              "followUpQuestions": []
+            },
+            {
+              "label": "Vitamin D3",
+              "value": "Vitamin D3",
+              "icon": "☀️",
+              "triggers": ["nutritional signal — processed in LLM narrative; no dedicated scoring rule"],
+              "clinicalTags": ["vitamin_D_deficiency", "VDR_activation_impaired", "immune_compromise"],
+              "followUpQuestions": []
+            },
+            {
+              "label": "Vitamin B12",
+              "value": "Vitamin B12",
+              "icon": "💉",
+              "triggers": ["nutritional signal — processed in LLM clinical flags narrative"],
+              "clinicalTags": ["B12_deficiency", "megaloblastic", "follicle_matrix_impaired", "DNA_synthesis_deficit"],
+              "followUpQuestions": []
+            },
+            {
+              "label": "None / Not tested",
+              "value": "None / Not tested",
+              "icon": "❓",
+              "triggers": [],
+              "clinicalTags": [],
+              "followUpQuestions": []
+            }
+          ],
+          "visibilityRules": [],
+          "skipLogic": [],
+          "dependencies": [],
+          "validation": { "hint": "Based on blood tests if available" },
+          "scoringSignals": [
+            { "signal": "IRON_DEFICIENCY_SCORE", "rule": "deficiency includes 'Iron'/'Anaemia' → IRON_DEFICIENCY +80" },
+            { "signal": "IRON_UP_GOLD_INJECTION", "rule": "deficiency includes 'Iron'/'Anaemia' → IRON UP GOLD added to injection pool at position 2 (high priority after primary kit)" },
+            { "signal": "PRO_IMMUNE_IRON", "rule": "deficiency includes 'Iron'/'Anaemia' → realImmuneSignal=true → PRO IMMUNE GOLD injected" },
+            { "signal": "PCOS_IMMUNE_IRON", "rule": "deficiency includes 'Iron'/'Anaemia' → pcosHasImmune=true in PCOS precision stack → PRO IMMUNE conditionally added" }
+          ],
+          "clinicalMappings": [
+            { "value": "Iron/Anaemia", "clinicalNote": "IRON UP GOLD restores ferritin first (non-negotiable); TE GOLD stops shedding once iron corrected; PRO IMMUNE explicitly listed for iron deficiency cases" },
+            { "value": "B12 deficiency", "clinicalNote": "Clinical flag: impairs follicle matrix cell proliferation; delays anagen re-entry — addressed in LLM narrative" }
+          ],
+          "uiMetadata": { "layout": "visual", "multiSelectConfirm": true },
+          "sourceCodeReference": "STEPS[16] lines 3124-3129"
+        },
+        {
+          "id": "diet",
+          "type": "multi_select",
+          "label": "What best describes your diet?",
+          "subtitle": null,
+          "required": true,
+          "multiSelect": true,
+          "options": [
+            {
+              "label": "Vegetarian",
+              "value": "Vegetarian",
+              "icon": "🥗",
+              "triggers": ["isVeg=true → all kits switch to VEG variants via resolveKit()"],
+              "clinicalTags": ["vegetarian", "plant_based", "veg_kit_swap"],
+              "followUpQuestions": []
+            },
+            {
+              "label": "Vegan",
+              "value": "Vegan",
+              "icon": "🌱",
+              "triggers": ["isVeg=true → all kits switch to VEG variants via resolveKit()"],
+              "clinicalTags": ["vegan", "plant_based", "veg_kit_swap"],
+              "followUpQuestions": []
+            },
+            {
+              "label": "Non-vegetarian",
+              "value": "Non-vegetarian",
+              "icon": "🍗",
+              "triggers": ["isVeg=false → standard kit variants used", "MPHL/FPHL risk signal (DHT boost from high animal protein)"],
+              "clinicalTags": ["non_vegetarian", "DHT_risk_elevated", "high_protein"],
+              "followUpQuestions": []
+            },
+            {
+              "label": "High protein diet",
+              "value": "High protein diet",
+              "icon": "💪",
+              "triggers": ["DHT amplification signal (high protein → androgen precursors)"],
+              "clinicalTags": ["high_protein", "androgen_amplification", "DHT_risk"],
+              "followUpQuestions": []
+            },
+            {
+              "label": "Irregular / poor diet",
+              "value": "Irregular / poor diet",
+              "icon": "🍔",
+              "triggers": ["hasMetabolicSignal=true (via 'Irregular'/'poor' match) → PRO FACT META B injection"],
+              "clinicalTags": ["poor_nutrition", "micronutrient_gaps", "metabolic_signal"],
+              "followUpQuestions": []
+            },
+            {
+              "label": "Crash Diet / Keto / IF",
+              "value": "Crash Diet / Keto / IF",
+              "icon": "⚡",
+              "triggers": ["WEIGHT_LOSS score +90 via hasCrashDiet (Keto/Crash)", "hasMetabolicSignal=true (Keto/Crash match)", "RAPID WEIGHT LOSS SHIELD Phase 1"],
+              "clinicalTags": ["crash_diet", "keto", "intermittent_fasting", "rapid_weight_loss", "nutritional_TE"],
+              "followUpQuestions": []
+            },
+            {
+              "label": "None of the above",
+              "value": "None of the above",
+              "icon": "✅",
+              "triggers": [],
+              "clinicalTags": [],
+              "followUpQuestions": []
+            }
+          ],
+          "visibilityRules": [],
+          "skipLogic": [],
+          "dependencies": [],
+          "validation": { "hint": "This determines which kit variants are recommended" },
+          "scoringSignals": [
+            { "signal": "VEG_KIT_SWAP", "rule": "diet includes 'Vegetarian'/'Vegan'/'Jain' → isVeg=true → resolveKit() swaps all eligible kits to VEG variants (TE GOLD VEG, PERI MENOPAUSE VEG, F-PCOS VEG -1, PRO IMMUNE VEG, EARLY GREYING CARE VEG)" },
+            { "signal": "WEIGHT_LOSS_DIET", "rule": "diet includes 'Crash'/'Keto' → WEIGHT_LOSS +90 via hasCrashDiet; hasMetabolicSignal=true" },
+            { "signal": "METABOLIC_DIET", "rule": "diet includes 'Irregular'/'poor'/'Keto'/'Crash' → hasMetabolicSignal=true → PRO FACT META B injection" }
+          ],
+          "clinicalMappings": [
+            { "value": "Veg/Vegan", "clinicalNote": "All kits switch to VEG variants (Plant D3, EGCG replaces Lactoferrin in PRO IMMUNE VEG)" },
+            { "value": "Non-veg/high protein", "clinicalNote": "MPHL/FPHL risk (DHT boost)" },
+            { "value": "Crash diet/Keto/IF", "clinicalNote": "RAPID WEIGHT LOSS SHIELD (Phase 1, precipitating event)" },
+            { "value": "Age >30", "clinicalNote": "Elevated MPHL/FPHL risk. Heat/chemical treatment → HBR always added" }
+          ],
+          "uiMetadata": { "layout": "visual", "multiSelectConfirm": true },
+          "sourceCodeReference": "STEPS[17] lines 3131-3136"
+        },
+        {
+          "id": "treatment",
+          "type": "multi_select",
+          "label": "Any heat or chemical treatments on your hair?",
+          "subtitle": null,
+          "required": true,
+          "multiSelect": true,
+          "options": [
+            {
+              "label": "Heat styling (straightener etc.)",
+              "value": "Heat styling (straightener etc.)",
+              "icon": "🔥",
+              "triggers": ["hasHBRTreatment=true; HBR injection only if ALSO confirmed broken/short hairs (heatWithBreakage condition)", "shaft damage signal"],
+              "clinicalTags": ["heat_damage", "keratin_damage", "shaft_breakage_risk"],
+              "followUpQuestions": []
+            },
+            {
+              "label": "Chemical treatment (colour / keratin)",
+              "value": "Chemical treatment (colour / keratin)",
+              "icon": "🧪",
+              "triggers": ["hasHBRTreatment=true; HBR injection only if ALSO confirmed broken/short hairs", "shaft damage signal"],
+              "clinicalTags": ["chemical_damage", "keratin_disruption", "disulfide_bond_damage"],
+              "followUpQuestions": []
+            },
+            {
+              "label": "No heat or chemical treatments",
+              "value": "No heat or chemical treatments",
+              "icon": "✅",
+              "triggers": [],
+              "clinicalTags": [],
+              "followUpQuestions": []
+            }
+          ],
+          "visibilityRules": [],
+          "skipLogic": [],
+          "dependencies": [],
+          "validation": {},
+          "scoringSignals": [
+            { "signal": "HBR_TREATMENT_SIGNAL", "rule": "treatment includes Heat/Chemical → hasHBRTreatment=true; BUT HBR kit injected ONLY IF patient also reports broken/short hairs (hairtype) — heat/chemical alone insufficient. Rule: realShaftDamage = confirmedBreakage OR hardWaterSignal; heatWithBreakage = heatChemSignal AND confirmedBreakage", "sourceCodeReference": "getFunnelKits lines 4820-4830" },
+            { "signal": "HAIR_BREAKAGE_SCORE", "rule": "HAIR_BREAKAGE score +52 requires: hairtype includes 'Broken'/'short' OR cause includes 'Hard water' OR (treatment Heat/Chemical AND hairtype 'Broken'/'short')" }
+          ],
+          "clinicalMappings": [
+            { "value": "Heat/Chemical alone", "clinicalNote": "NOT sufficient for HBR kit — patient must also report broken short hairs" },
+            { "value": "Heat/Chemical + Broken short hairs", "clinicalNote": "HBR kit injection confirmed" }
+          ],
+          "uiMetadata": { "layout": "visual", "multiSelectConfirm": true },
+          "sourceCodeReference": "STEPS[18] lines 3138-3143"
+        }
+      ]
+    },
+    {
+      "sectionId": "S6_GRADE_AND_ADDITIONAL",
+      "title": "Hair Loss Grade & Additional Notes",
+      "description": "Visual grade selection and open-ended free text",
+      "questions": [
+        {
+          "id": "grade",
+          "type": "single_select",
+          "label": "Which image best describes your hair loss right now?",
+          "subtitle": null,
+          "required": false,
+          "multiSelect": false,
+          "options": [
+            {
+              "label": "Grade 1 — Minimal thinning",
+              "value": "Grade 1 — Minimal thinning",
+              "icon": null,
+              "triggers": ["isGrade123=true"],
+              "clinicalTags": ["grade_1", "minimal_thinning", "AGA_early"],
+              "followUpQuestions": []
+            },
+            {
+              "label": "Grade 2 — Noticeable thinning",
+              "value": "Grade 2 — Noticeable thinning",
+              "icon": null,
+              "triggers": ["isGrade123=true"],
+              "clinicalTags": ["grade_2", "noticeable_thinning", "AGA_mild"],
+              "followUpQuestions": []
+            },
+            {
+              "label": "Grade 3 — Significant loss, scalp visible",
+              "value": "Grade 3 — Significant loss, scalp visible",
+              "icon": null,
+              "triggers": ["isGrade123=true"],
+              "clinicalTags": ["grade_3", "significant_loss", "AGA_moderate"],
+              "followUpQuestions": []
+            },
+            {
+              "label": "Grade 4 — Extensive loss, large bald areas",
+              "value": "Grade 4 — Extensive loss, large bald areas",
+              "icon": null,
+              "triggers": ["isGrade45=true", "if age >= 20 → absolute AGA lock (AGA_MALE_45 or AGA_FEMALE_45)", "AGA_FEMALE_45 protocol for females", "AGA_MALE_45 for males", "MPHL PLUS / FPHL PLUS kit variants"],
+              "clinicalTags": ["grade_4", "extensive_loss", "AGA_severe", "pattern_loss_advanced"],
+              "followUpQuestions": []
+            },
+            {
+              "label": "Grade 5 — Advanced / near-complete loss",
+              "value": "Grade 5 — Advanced / near-complete loss",
+              "icon": null,
+              "triggers": ["isGrade45=true", "if age >= 20 → absolute AGA lock", "MPHL PLUS / FPHL PLUS kit variants", "prognosis addendum: bald areas not reversible — protect what remains"],
+              "clinicalTags": ["grade_5", "near_complete_loss", "AGA_advanced", "irreversible_areas"],
+              "followUpQuestions": []
+            }
+          ],
+          "visibilityRules": [],
+          "skipLogic": [
+            {
+              "if": { "dependsOn": "immunity", "operator": "includes", "value": "Alopecia Areata" },
+              "thenSkipTo": "extra",
+              "description": "_skipIf: skip grade question if immunity includes 'Alopecia Areata' — AA is immune condition, not graded pattern loss"
+            }
+          ],
+          "dependencies": ["immunity"],
+          "validation": { "hint": "Select the pattern that most closely matches your current hair" },
+          "scoringSignals": [
+            { "signal": "AGA_GRADE45_LOCK", "rule": "grade includes 'Grade 4' or 'Grade 5' AND age >= 20 → ABSOLUTE LOCK to AGA_MALE_45 (male) or AGA_FEMALE_45 (female). Overrides all other scoring.", "sourceCodeReference": "matchProtocol lines 4246-4253" },
+            { "signal": "MPHL_FPHL_PLUS_VARIANT", "rule": "isGrade45=true → kit resolves to MPHL PLUS (male) or FPHL PLUS (female)" },
+            { "signal": "AGA_PROTOCOL_GRADE45", "rule": "AGA_MALE_45/AGA_FEMALE_45 protocol: PRO IMMUNE GOLD → MPHL/FPHL → PHENOTYPE INFLAMATION (per Excel row 7/9)" },
+            { "signal": "SEVERITY_MODIFIER", "rule": "grade 4/5 → severity='Severe', confidence=90; grade 1/2 → severity='Mild', confidence=78; else → Moderate" },
+            { "signal": "PROGNOSIS_ADDENDUM", "rule": "grade 4 or 5 → prognosis addendum: 'completely bald areas cannot be regrown; up to 30% density improvement in areas where hair still exists'" }
+          ],
+          "clinicalMappings": [
+            { "value": "Grade 1-2-3", "clinicalNote": "AGA_MALE_123 or AGA_FEMALE_123 protocol" },
+            { "value": "Grade 4-5 (age >= 20)", "clinicalNote": "Absolute AGA_MALE_45 or AGA_FEMALE_45 lock; MPHL PLUS/FPHL PLUS variants" }
+          ],
+          "uiMetadata": { "layout": "hairgrade", "imageSelect": true },
+          "sourceCodeReference": "STEPS[19] lines 3145-3150"
+        },
+        {
+          "id": "extra",
+          "type": "textarea",
+          "label": "Anything else Dr. FACT should know? (optional)",
+          "subtitle": null,
+          "required": false,
+          "multiSelect": false,
+          "options": [],
+          "visibilityRules": [],
+          "skipLogic": [],
+          "dependencies": [],
+          "validation": { "placeholder": "Any other symptoms, medical history, treatments tried, or concerns...", "required": false },
+          "scoringSignals": [],
+          "clinicalMappings": [
+            { "field": "extra", "usage": "Passed to LLM prompt as 'Additional notes' field for contextual narrative. No structured scoring." }
+          ],
+          "uiMetadata": { "layout": "textarea", "voiceEnabled": true },
+          "sourceCodeReference": "STEPS[20] line 3151"
+        }
+      ]
+    }
+  ]
+}

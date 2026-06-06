@@ -1,0 +1,35 @@
+{
+  "id": "male_aga_grade45_01",
+  "description": "Male severe AGA Grade 4 — advanced miniaturisation with thinning-only (no visible fall). Grade 4/5 hard override fires. PRO IMMUNE repositioned last by proImmuneLastRule. NO_VISIBLE_FALL strips TE GOLD.",
+  "budget": "STANDARD",
+  "answers": {
+    "sex": "Male",
+    "age": "45",
+    "grade": "Grade 4",
+    "goal": ["Reduce hair fall"],
+    "scalp": ["Oily scalp"],
+    "cause": ["Family history"],
+    "hairtype": ["Thinning at crown", "widening parting"],
+    "lifestyle": [],
+    "duration": "More than 1 year",
+    "count": "thinning visible, minimal fall",
+    "thyroid": [],
+    "hormonal": [],
+    "immunity": [],
+    "deficiency": [],
+    "gut": [],
+    "diet": [],
+    "treatment": []
+  },
+  "expected": {
+    "diagnoses": ["AGA_MALE_45"],
+    "scalpStates": ["OILY_SCALP"],
+    "rootCauses": ["GENETICS", "DHT"],
+    "therapyNeeds": ["IMMUNE_MODULATION", "DHT_SUPPRESSION", "INFLAMMATION_CONTROL"],
+    "topKit": "MPHL",
+    "mustIncludeKits": ["MPHL", "PHENOTYPE INFLAMATION", "PRO IMMUNE GOLD"],
+    "mustExcludeKits": ["HAIR FACT TE GOLD", "HAIR FACT TE GOLD VEG", "MPHL PLUS"],
+    "mustTriggerRules": ["NO_VISIBLE_FALL"],
+    "mustBlockRules": ["ACTIVE_SHEDDING", "GLP1_EARLY", "GLP1_LATE", "RULE1_HYPO_METABOLIC"]
+  }
+}

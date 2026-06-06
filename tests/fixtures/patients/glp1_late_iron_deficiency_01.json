@@ -1,0 +1,35 @@
+{
+  "id": "glp1_late_iron_deficiency_01",
+  "description": "GLP-1 late + iron deficiency — RULE 2 must survive priority lifting with iron present. Iron priority lifts IRON UP GOLD but SHIELD must stay at Phase 2 (GLP1_LATE). Tests that second GLP1 re-enforcement pass correctly repositions SHIELD after prioritizeKits reorders iron injection.",
+  "budget": "COMPREHENSIVE",
+  "answers": {
+    "sex": "Female",
+    "age": "37",
+    "grade": "Grade 2",
+    "goal": ["Reduce hair fall"],
+    "cause": ["GLP-1 receptor agonist (hair loss after 6 months)"],
+    "deficiency": ["Iron / Ferritin deficiency"],
+    "scalp": [],
+    "lifestyle": [],
+    "thyroid": [],
+    "hormonal": [],
+    "immunity": [],
+    "gut": [],
+    "diet": [],
+    "hairtype": [],
+    "treatment": [],
+    "duration": "3–6 months",
+    "count": "50–100 strands"
+  },
+  "expected": {
+    "diagnoses": ["WEIGHT_LOSS"],
+    "scalpStates": ["NORMAL_SCALP"],
+    "rootCauses": ["RAPID_WEIGHT_LOSS", "IRON_DEFICIENCY"],
+    "therapyNeeds": ["WEIGHT_LOSS_RECOVERY", "SHEDDING_ARREST", "IMMUNE_MODULATION", "IRON_REPLETION"],
+    "topKit": "HAIR FACT TE GOLD",
+    "mustIncludeKits": ["HAIR FACT TE GOLD", "RAPID WEIGHT LOSS SHIELD", "IRON UP GOLD", "PRO IMMUNE GOLD"],
+    "mustExcludeKits": ["PRO FACT META B HYPOTHYROID", "LACTIHEALTH", "F-PCOS -1"],
+    "mustTriggerRules": ["GLP1_LATE"],
+    "mustBlockRules": ["GLP1_EARLY", "RULE1_HYPO_METABOLIC", "PCOS_DIABETES_UPGRADE"]
+  }
+}

@@ -1,0 +1,8 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(ls \"C:\\\\Users\\\\ERA\\\\Desktop\\\\Dr Fact Folder\\\\RAG Chatbot\\\\src\\\\packages\\\\\")",
+      "PowerShell(npx tsc --noEmit --project \"C:\\\\Users\\\\ERA\\\\Desktop\\\\Dr Fact Folder\\\\RAG Chatbot\\\\tsconfig.json\" 2>&1)"
+    ]
+  }
+}

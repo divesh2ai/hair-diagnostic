@@ -1,0 +1,184 @@
+{
+  "version": "1.0.0",
+  "description": "Clinical visual assets for Dr. FACT questionnaire - Extracted from legacy component",
+  "lastUpdated": "2026-05-22",
+  "categories": {
+    "norwood-scales": {
+      "description": "Hair loss severity grading (Norwood scale stages 1-6)",
+      "assetCount": 6,
+      "assets": [
+        {
+          "id": "stage_1",
+          "label": "Stage-1",
+          "filename": "norwood-stage-1.svg",
+          "type": "svg",
+          "dimensions": "96x44",
+          "clinicalContext": "Minimal hairline recession, healthy follicles"
+        },
+        {
+          "id": "stage_2",
+          "label": "Stage-2",
+          "filename": "norwood-stage-2.svg",
+          "type": "svg",
+          "dimensions": "96x44",
+          "clinicalContext": "Slight frontotemporal recession"
+        },
+        {
+          "id": "stage_3",
+          "label": "Stage-3",
+          "filename": "norwood-stage-3.svg",
+          "type": "svg",
+          "dimensions": "96x44",
+          "clinicalContext": "Moderate frontotemporal recession, early crown involvement"
+        },
+        {
+          "id": "stage_4",
+          "label": "Stage-4",
+          "filename": "norwood-stage-4.svg",
+          "type": "svg",
+          "dimensions": "96x44",
+          "clinicalContext": "Significant recession at vertex and frontal area"
+        },
+        {
+          "id": "stage_5",
+          "label": "Stage-5",
+          "filename": "norwood-stage-5.svg",
+          "type": "svg",
+          "dimensions": "96x44",
+          "clinicalContext": "Extensive baldness with reduced separation band"
+        },
+        {
+          "id": "stage_6",
+          "label": "Stage-6",
+          "filename": "norwood-stage-6.svg",
+          "type": "svg",
+          "dimensions": "96x44",
+          "clinicalContext": "Advanced baldness, horseshoe pattern only"
+        }
+      ]
+    },
+    "scalp-conditions": {
+      "description": "Scalp health assessment visuals - inflammation, dandruff, irritation",
+      "assetCount": 5,
+      "assets": [
+        {
+          "id": "dandruff_clear",
+          "label": "Clear Scalp",
+          "filename": "scalp-clear.svg",
+          "type": "svg",
+          "dimensions": "56x56",
+          "clinicalContext": "Healthy scalp, no visible inflammation or flaking"
+        },
+        {
+          "id": "dandruff_mild",
+          "label": "Mild Dandruff",
+          "filename": "scalp-dandruff-mild.svg",
+          "type": "svg",
+          "dimensions": "56x56",
+          "clinicalContext": "Dry scalp with light flaking, minor irritation"
+        },
+        {
+          "id": "dandruff_severe",
+          "label": "Severe Dandruff",
+          "filename": "scalp-dandruff-severe.svg",
+          "type": "svg",
+          "dimensions": "56x56",
+          "clinicalContext": "Oily or dry scalp with heavy flaking"
+        },
+        {
+          "id": "scalp_itchy",
+          "label": "Itchy/Inflamed Scalp",
+          "filename": "scalp-itchy.svg",
+          "type": "svg",
+          "dimensions": "56x56",
+          "clinicalContext": "Redness, irritation, itching, possible seborrheic dermatitis"
+        },
+        {
+          "id": "scalp_plaques",
+          "label": "Scalp Infection",
+          "filename": "scalp-plaques.svg",
+          "type": "svg",
+          "dimensions": "56x56",
+          "clinicalContext": "Boils, pimples, pustules, fungal/bacterial infection signs"
+        }
+      ]
+    },
+    "hair-patterns": {
+      "description": "Hair loss pattern and shedding visuals for severity assessment",
+      "assetCount": 7,
+      "assets": [
+        {
+          "id": "hair_clump_20",
+          "label": "20-50 Strands",
+          "filename": "hair-clump-20.svg",
+          "type": "svg",
+          "dimensions": "56x56",
+          "clinicalContext": "Normal daily shedding range, healthy follicle cycle"
+        },
+        {
+          "id": "hair_clump_50",
+          "label": "50-100 Strands",
+          "filename": "hair-clump-50.svg",
+          "type": "svg",
+          "dimensions": "56x56",
+          "clinicalContext": "Noticeable shedding, early telogen effluvium indicators"
+        },
+        {
+          "id": "hair_clump_100",
+          "label": "100+ Strands",
+          "filename": "hair-clump-100.svg",
+          "type": "svg",
+          "dimensions": "56x56",
+          "clinicalContext": "Severe shedding, significant hair loss per day"
+        },
+        {
+          "id": "hair_thinning_profile",
+          "label": "Thinning Pattern",
+          "filename": "hair-thinning-profile.svg",
+          "type": "svg",
+          "dimensions": "56x56",
+          "clinicalContext": "Overall hair density reduction without visible shedding"
+        },
+        {
+          "id": "partition_widening",
+          "label": "Widening Parting",
+          "filename": "partition-widening.svg",
+          "type": "svg",
+          "dimensions": "56x56",
+          "clinicalContext": "Visible widening of part line, scalp visibility increase"
+        },
+        {
+          "id": "alopecia_patch",
+          "label": "Circular Patch",
+          "filename": "alopecia-patch.svg",
+          "type": "svg",
+          "dimensions": "56x56",
+          "clinicalContext": "Alopecia areata - circular patch of complete hair loss"
+        },
+        {
+          "id": "general_thinning",
+          "label": "Heavy Hair Fall",
+          "filename": "general-thinning-pattern.svg",
+          "type": "svg",
+          "dimensions": "56x56",
+          "clinicalContext": "Diffuse thinning across scalp, multiple affected areas"
+        }
+      ]
+    },
+    "status-indicators": {
+      "description": "Status feedback visuals - success, loading, etc.",
+      "assetCount": 0,
+      "assets": []
+    }
+  },
+  "notes": {
+    "extraction": "All assets extracted from legacy/google-ai-studio/Pasted code.ts (lines 331-372)",
+    "preservation": "Clinical accuracy and patient psychology preserved from original component",
+    "nextSteps": [
+      "1. Design team to review visual styles for consistency",
+      "2. Ensure SVG formats are optimized for performance",
+      "3. Consider accessibility (alt text, color contrast)",
+      "4. Add animations/interactions if needed (no static requirement)"
+    ]
+  }
+}

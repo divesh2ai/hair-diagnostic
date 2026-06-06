@@ -1,0 +1,92 @@
+{
+  "$schema": "../../../packages/governance/version/registry.meta.schema.json",
+  "registry": "pathways.confidence-model",
+  "version": "1.0.0",
+  "frozenContract": "ClinicalIntelligence@1.0/Phase2.4 + 2.5",
+  "description": "Single source of truth for pathway activation arithmetic, severity bands, and recovery-influence flow. Engines must not reimplement these formulas.",
+
+  "activationModel": {
+    "method": "WEIGHTED_LINEAR_WITH_GATE_AND_INHIBITION",
+    "formula": "activation(p) = clip[0,1]( gateMultiplier(p) * ( sum_i (w_supports_i * conf_i) - sum_j (|w_inhibits_j| * conf_j) ) )",
+    "gateMultiplier": {
+      "description": "Pathway activation is gated by required-signals. If pathway declares >=1 required-gate signals, at least one must be present at confidence >= gateMinConfidence, OR sum of present required-gate signal contributions must exceed gateMinAggregate. Otherwise activation is forced to 0.",
+      "gateMinConfidence": 0.40,
+      "gateMinAggregate": 0.55,
+      "noGateBehavior": "If a pathway declares zero required-gate signals (modulator pathway), gateMultiplier = 1.0 unconditionally — used for oxidative-stress and similar."
+    },
+    "weightedLinearRationale": "Pathway activation answers 'how much process is happening'. Weighted-sum-with-cap is correct because contributions are additive (more evidence → higher activation) and inhibitors must subtract symmetrically. Noisy-OR is reserved for signal-level confidence aggregation where multiple rules fire for the same observation.",
+    "steps": [
+      { "step": 1, "name": "Inherit Signals", "operation": "For each signal s referenced by pathway p, read s.confidence (post Signal Registry aggregation)." },
+      { "step": 2, "name": "Gate Check", "operation": "If p.requiredGate non-empty: gateMultiplier = 1.0 if any required-gate signal at conf >= gateMinConfidence OR sum of required-gate signal confidences >= gateMinAggregate; else 0.0." },
+      { "step": 3, "name": "Supporting Sum", "operation": "support = sum over supportingSignals of (weight_i * confidence_i)." },
+      { "step": 4, "name": "Inhibitory Sum", "operation": "inhibit = sum over inhibitorySignals of (|weight_j| * confidence_j)." },
+      { "step": 5, "name": "Raw Activation", "operation": "raw = gateMultiplier * (support - inhibit)." },
+      { "step": 6, "name": "Interaction Adjustment", "operation": "For each interaction edge (otherPathway, type, magnitude) where type == 'amplifies' and otherPathway.activation >= interactionThreshold: raw += magnitude * otherPathway.activation. Cap total amplification per pathway at interactionAmplificationCap." },
+      { "step": 7, "name": "Clip", "operation": "activation = clip[0,1](raw)." }
+    ],
+    "interactionThreshold": 0.40,
+    "interactionAmplificationCap": 0.25,
+    "determinism": "Steps must be applied in two passes: pass 1 computes raw activations for all pathways with interaction adjustment skipped; pass 2 applies interaction adjustment using pass-1 results. Two-pass evaluation makes the operation order-independent and convergent without iteration."
+  },
+
+  "confidenceModel": {
+    "description": "Pathway confidence is DISTINCT from pathway activation. Activation = 'how much is this process happening'. Confidence = 'how sure are we'. Used by Cause Ranker to weight pathway evidence and by Explainability for trustworthiness.",
+    "formula": "confidence(p) = (evidenceMass(p) / (evidenceMass(p) + uncertaintyMass(p))) * tierFloorWeight(p)",
+    "components": {
+      "evidenceMass": "Sum over present supporting + required-gate signals of (weight * confidence * evidenceTierWeight)",
+      "uncertaintyMass": "Sum over absent expected signals of (weight * absenceCost) + count of conflicting present signals * conflictCost",
+      "tierFloorWeight": "Worst evidence tier among present required-gate or top-3 supporting signals → established=1.00, emerging=0.85, heuristic=0.65"
+    },
+    "constants": {
+      "absenceCost": 0.30,
+      "conflictCost": 0.20,
+      "maxConfidence": 0.98,
+      "minConfidence": 0.05
+    }
+  },
+
+  "severityModel": {
+    "description": "Severity quantifies clinical gravity, not activation magnitude. A fully-active fully-reversible pathway has lower severity than a half-active stabilizable one.",
+    "formula": "severity(p) = activation(p) * reversibilityWeight(p) * sum_i (signal_i.severityContribution * signal_i.confidence) / normalizationFactor",
+    "reversibilityWeight": {
+      "fully-reversible": 0.60,
+      "partially-reversible": 0.85,
+      "stabilizable": 1.00,
+      "shaft-only-reversible": 0.50,
+      "irreversible": 1.10
+    },
+    "normalizationFactor": 1.5,
+    "severityBands": [
+      { "band": "dormant",    "range": [0.00, 0.19] },
+      { "band": "latent",     "range": [0.20, 0.39] },
+      { "band": "active",     "range": [0.40, 0.64] },
+      { "band": "dominant",   "range": [0.65, 0.84] },
+      { "band": "entrenched", "range": [0.85, 1.00] }
+    ]
+  },
+
+  "recoveryImpactModel": {
+    "description": "Per-pathway contribution to RecoveryProfile (Clinical Phase 4). The Recovery Engine sums these across all activated pathways, then applies modifiers from demographics and lifestyle separately.",
+    "outputTriple": ["recoveryCeilingDelta","responsivenessDelta","progressionRiskDelta"],
+    "ranges": {
+      "recoveryCeilingDelta": [-0.40, 0.10],
+      "responsivenessDelta":  [-0.30, 0.20],
+      "progressionRiskDelta": [ 0.00, 0.40]
+    },
+    "scalingByActivation": "Each declared delta in registry.json is the MAX magnitude at activation = 1.0. Effective delta = declaredDelta * activation(p)."
+  },
+
+  "subthresholdHandling": {
+    "description": "Pathways with activation < minimumActivationThreshold are still emitted as nodes in PathwayGraph (for explainability transparency) but DO NOT contribute to Cause ranking, Recovery, or Objectives.",
+    "minimumActivationThreshold": 0.20,
+    "label": "dormant"
+  },
+
+  "governanceConstraints": [
+    "All weights in registry.json must be in [-1.0, 1.0]. Supports must be positive, inhibits negative, required-gates positive.",
+    "Sum of supporting weights for a pathway must be in [0.5, 10.0] — registry CI rejects pathways with no upside coverage or with excessive cumulative weight. Upper bound accommodates pathways with many overlapping precipitant signals (e.g. telogen-cycle-disruption); activation is always clipped to [0,1].",
+    "A pathway with reversibilityClass == 'shaft-only-reversible' may only declare hair-shaft-damage-related objectives in treatmentImplications.",
+    "Interaction edges must be symmetric only when type == 'competes'. 'amplifies' and 'mediates' may be unidirectional.",
+    "Any change to formulas, constants, or steps requires major version bump + full parity fixture regeneration."
+  ]
+}

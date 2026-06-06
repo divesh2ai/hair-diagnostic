@@ -1,0 +1,783 @@
+{
+  "schemaVersion": "1.0",
+  "sourceFile": "DrFACT_revamp_v44.html",
+  "part": "PART2_CLINICAL_ENGINE",
+
+  "clinicalFlowGraph": [
+    {
+      "nodeId": "START",
+      "description": "Patient lands on welcome screen",
+      "next": ["IDENTITY_CAPTURE"]
+    },
+    {
+      "nodeId": "IDENTITY_CAPTURE",
+      "description": "Collect name, age, goal, sex",
+      "decisions": [
+        { "condition": "goal includes 'Early greying' ONLY (no hair fall)", "next": "EARLY_GREY_LOCK" },
+        { "condition": "goal includes 'Early greying' AND hair fall/regrow", "next": "SET_GREY_COFLAG" },
+        { "condition": "goal includes 'stopped'/'regrow'", "next": "REGROW_GOAL_PATH" },
+        { "condition": "goal includes 'Reduce hair fall'", "next": "FULL_DIAGNOSTIC_FLOW" }
+      ]
+    },
+    {
+      "nodeId": "EARLY_GREY_LOCK",
+      "description": "Absolute protocol lock to EARLY_GREY",
+      "protocol": "EARLY_GREY",
+      "kits": ["EARLY GREYING CARE GOLD (or VEG)", "OXIDATIVE STRESS", "PRO IMMUNE GOLD (or VEG)"],
+      "next": ["DIAGNOSIS_OUTPUT"]
+    },
+    {
+      "nodeId": "SET_GREY_COFLAG",
+      "description": "S._hasGreyGoal=true; continues to full scoring engine; EARLY GREYING CARE appended at end",
+      "next": ["FULL_DIAGNOSTIC_FLOW"]
+    },
+    {
+      "nodeId": "REGROW_GOAL_PATH",
+      "description": "isRegrowGoal=true; TE GOLD permanently suppressed from all protocols",
+      "decisions": [
+        { "condition": "hormonal includes 'Post-menopause'", "next": "POST_MENOPAUSE_PROTOCOL" },
+        { "condition": "hormonal includes 'Menopause' (not Peri/Post)", "next": "MENOPAUSE_PROTOCOL" },
+        { "condition": "hormonal includes 'Peri-menopause'", "next": "PERI_MENOPAUSE_PROTOCOL" },
+        { "condition": "hormonal includes 'PCOS'/'PCOD'", "next": "PCOS_REGROW_SUBPATH" },
+        { "condition": "thyroid includes 'Hypothyroidism' OR hormonal includes 'Thyroid'", "next": "THYROID_HYPO_PROTOCOL" },
+        { "condition": "thyroid includes 'Hyperthyroidism'", "next": "THYROID_HYPER_PROTOCOL" },
+        { "condition": "thyroid includes 'Diabetes'/'Pre diabetes'", "next": "DIABETES_PROTOCOL" },
+        { "condition": "hormonal includes 'Endometriosis'", "next": "ENDOMETRIOSIS_PROTOCOL" },
+        { "condition": "AGA signals present (thinning/genetics/grade/age)", "next": "AGA_REGROW_PROTOCOL" },
+        { "condition": "no AGA signals", "next": "REGROW_ONLY_PROTOCOL" }
+      ]
+    },
+    {
+      "nodeId": "FULL_DIAGNOSTIC_FLOW",
+      "description": "Show all diagnostic questions. Grade 4/5 + age>=20 → AGA absolute lock",
+      "decisions": [
+        { "condition": "age >= 20 AND (grade includes 'Grade 4' OR grade includes 'Grade 5')", "next": "AGA_GRADE45_ABSOLUTE_LOCK" },
+        { "condition": "immunity includes 'Alopecia Areata'", "next": "ALOPECIA_AREATA_PROTOCOL" },
+        { "condition": "cause includes 'pulling'/'Trichotillomania'/'TTM'/'OCD'", "next": "TTM_PROTOCOL" },
+        { "condition": "hormonal includes 'pregnant'/'Pregnancy'", "next": "PREGNANCY_PROTOCOL" },
+        { "condition": "default", "next": "WEIGHTED_SCORING_ENGINE" }
+      ]
+    },
+    {
+      "nodeId": "WEIGHTED_SCORING_ENGINE",
+      "description": "matchProtocol() scores ALL conditions; highest score = dominant protocol; secondaries inject modifier kits",
+      "next": ["PROTOCOL_SEQUENCER_LOOKUP"]
+    },
+    {
+      "nodeId": "PROTOCOL_SEQUENCER_LOOKUP",
+      "description": "PROTOCOL_SEQUENCER[dominantKey] provides clinically-ordered phase array",
+      "next": ["MODIFIER_INJECTION_ENGINE"]
+    },
+    {
+      "nodeId": "MODIFIER_INJECTION_ENGINE",
+      "description": "getFunnelKits() Steps 3-9: metabolic injection, PCOS smart stack, co-condition injection pool, VEG swaps, kit cap, PRO IMMUNE last enforcement",
+      "next": ["VEG_GENDER_RESOLUTION"]
+    },
+    {
+      "nodeId": "VEG_GENDER_RESOLUTION",
+      "description": "resolveKit() applies VEG swaps and AGA_GENDER placeholder resolution",
+      "next": ["GLP1_POSITIONING_RULES"]
+    },
+    {
+      "nodeId": "GLP1_POSITIONING_RULES",
+      "description": "v39: GLP-1 within 6m → Shield forced to position 0; GLP-1 after 6m → Shield forced to position 1",
+      "next": ["TE_GOLD_SUPPRESSION_CHECK"]
+    },
+    {
+      "nodeId": "TE_GOLD_SUPPRESSION_CHECK",
+      "description": "Step 5d v39: 'Just thinning, no visible fall' → remove ALL TE GOLD variants from protocol",
+      "next": ["PRO_IMMUNE_LAST_ENFORCEMENT"]
+    },
+    {
+      "nodeId": "PRO_IMMUNE_LAST_ENFORCEMENT",
+      "description": "Step 9: PRO IMMUNE GOLD/VEG always moved to final position in protocol",
+      "next": ["DIAGNOSIS_OUTPUT"]
+    },
+    {
+      "nodeId": "DIAGNOSIS_OUTPUT",
+      "description": "localClinicalEngine() generates diagnosis JSON. Report card rendered.",
+      "next": ["END"]
+    }
+  ],
+
+  "conditionScoringEngine": {
+    "description": "matchProtocol() weighted scoring engine. All conditions scored simultaneously; highest score = dominant protocol key. Source: lines 4157-4434.",
+    "absoluteLocks": [
+      {
+        "protocolKey": "EARLY_GREY",
+        "condition": "goal includes 'Early greying' AND NOT hair fall AND NOT regrow",
+        "score": "ABSOLUTE (bypasses scoring)",
+        "sourceCodeReference": "matchProtocol line 4174"
+      },
+      {
+        "protocolKey": "PREGNANCY",
+        "condition": "hormonal includes 'pregnant'/'Pregnancy' OR cause includes 'Currently pregnant'",
+        "score": "ABSOLUTE (bypasses scoring)",
+        "sourceCodeReference": "matchProtocol line 4182"
+      },
+      {
+        "protocolKey": "AGA_MALE_45 / AGA_FEMALE_45",
+        "condition": "age >= 20 AND grade includes 'Grade 4' or 'Grade 5'",
+        "score": "ABSOLUTE (grade override, bypasses full scoring)",
+        "sourceCodeReference": "matchProtocol lines 4246-4253"
+      }
+    ],
+    "scoringRules": [
+      { "protocolKey": "ALOPECIA_AREATA", "baseScore": 105, "triggers": ["immunity includes 'Alopecia Areata'/'Areata'", "hairtype includes 'circular'", "hairtype includes 'patches'"] },
+      { "protocolKey": "TTM", "baseScore": 102, "triggers": ["cause includes 'pulling'", "cause includes 'Trichotillomania'", "cause includes 'TTM'", "cause includes 'OCD'"] },
+      { "protocolKey": "THYROID_HYPO", "baseScore": 100, "triggers": ["thyroid includes 'Hypothyroidism'", "hormonal includes 'Thyroid'"] },
+      { "protocolKey": "THYROID_HYPER", "baseScore": 100, "triggers": ["thyroid includes 'Hyperthyroidism'"] },
+      { "protocolKey": "POST_MENOPAUSE", "baseScore": 98, "triggers": ["hormonal includes 'Post-menopause'", "hormonal includes 'Post menopause'", "hormonal includes 'Post-Menopause'"] },
+      { "protocolKey": "MENOPAUSE", "baseScore": 98, "triggers": ["hormonal includes 'Menopause' AND NOT 'Peri' AND NOT 'Post'"] },
+      { "protocolKey": "PERI_MENOPAUSE", "baseScore": 98, "triggers": ["hormonal includes 'Peri-menopause'", "hormonal includes 'Peri menopause'", "hormonal includes 'Perimenopause'", "hormonal includes 'peri'", "hormonal includes 'Peri-Menopause'"] },
+      { "protocolKey": "ENDOMETRIOSIS", "baseScore": 85, "triggers": ["hormonal includes 'Endometriosis'"] },
+      { "protocolKey": "PCOS_ONLY", "baseScore": 92, "modifiers": ["+9 if also Hypothyroidism → 101"], "triggers": ["hormonal includes 'PCOS'/'PCOD' AND NOT obesity/sedentary/weight signals"] },
+      { "protocolKey": "PCOS_OBESITY", "baseScore": 92, "modifiers": ["+9 if also Hypothyroidism → 101"], "triggers": ["hormonal includes 'PCOS'/'PCOD' AND (hormonal includes 'Obesity' OR lifestyle includes 'Obesity'/'Sedentary'/'weight')"] },
+      { "protocolKey": "TE_POSTPREG", "baseScore": 92, "triggers": ["cause includes 'Post partum' OR hormonal includes 'Post-delivery'/'breastfeeding'"] },
+      { "protocolKey": "TE_DELIVERY", "baseScore": 90, "triggers": ["cause includes 'Post partum' AND cause includes 'not feeding'"] },
+      { "protocolKey": "WEIGHT_LOSS", "baseScore": 90, "triggers": ["cause includes GLP-1 within 6m", "cause includes GLP-1 after 6m", "cause includes 'crash diet'/'Post crash'", "diet includes 'Crash'/'Keto'"], "notes": "GLP-1 after 6m: also adds TE_STRESS +50 so TE GOLD leads as Kit 1; Shield is Kit 2" },
+      { "protocolKey": "DIABETES", "baseScore": 90, "triggers": ["thyroid includes 'Pre diabetes' OR 'Diabetes'"] },
+      { "protocolKey": "IRON_DEFICIENCY", "baseScore": 80, "triggers": ["deficiency includes 'Iron' OR 'Anaemia'"] },
+      { "protocolKey": "CHRONIC_MEDICAL", "baseScore": 80, "triggers": ["medical includes 'Yes' AND NOT (thyroid Pre diabetes OR Diabetes)"] },
+      { "protocolKey": "TE_ILLNESS", "baseScore": 72, "triggers": ["cause includes 'Medication'/'Recent Illness'/'Illness'/'Surgery'"] },
+      { "protocolKey": "MOUTH_ULCERS", "baseScore": 72, "triggers": ["gut has active issues AND immunity includes 'ulcer'"] },
+      { "protocolKey": "GUT_ISSUES", "baseScore": 62, "triggers": ["gut has active issues AND NOT immunity includes 'ulcer'"] },
+      { "protocolKey": "NIGHT_SHIFT", "baseScore": 62, "triggers": ["lifestyle includes 'Night shift'/'Night Shift'"] },
+      { "protocolKey": "SCALP_INFLAM", "baseScore": "42 (or 62 if female < 30)", "triggers": ["scalp has Redness/irritation/Boils/pimples/Burning/Dandruff/Oily/Itching"] },
+      { "protocolKey": "FREQUENT_FLYING", "baseScore": 58, "triggers": ["lifestyle includes 'flying'/'Flying'"] },
+      { "protocolKey": "OXIDATIVE", "baseScore": 58, "triggers": ["lifestyle includes 'Smoking'/'Vaping'/'Alcohol'"] },
+      { "protocolKey": "TE_NUTRITION", "baseScore": 58, "triggers": ["cause includes 'Nutritional'"] },
+      { "protocolKey": "TE_STRESS", "baseScore": 55, "triggers": ["cause includes 'Stress'/'Anxiety'/'Depression' (without nutritional)"] },
+      { "protocolKey": "AGA_MALE_123", "baseScore": "65 (or 45 if age-only signal)", "modifiers": ["+5 if age > 30"], "triggers": ["male + AGA signals present (thinning/widening/genetics/Dandruff/Oily/Bodybuilding/duration 6m+/grade)"] },
+      { "protocolKey": "AGA_MALE_45", "baseScore": "65 (or 45 if age-only signal)", "modifiers": ["+5 if age > 30"], "triggers": ["male + AGA signals + isGrade45=true"] },
+      { "protocolKey": "AGA_FEMALE_123", "baseScore": "65 (or 45 if age-only signal)", "modifiers": ["+5 if age > 30", "+95 if also PCOS + WEIGHT_LOSS (Rule 1A)"], "triggers": ["female + AGA signals present"] },
+      { "protocolKey": "AGA_FEMALE_45", "baseScore": "65 (or 45 if age-only signal)", "modifiers": ["+5 if age > 30", "+95 if also PCOS + WEIGHT_LOSS (Rule 1A)"], "triggers": ["female + AGA signals + isGrade45=true"] },
+      { "protocolKey": "HAIR_BREAKAGE", "baseScore": 52, "triggers": ["hairtype includes 'Broken'/'short'", "cause includes 'Hard water'", "(treatment includes Heat/Chemical AND hairtype includes 'Broken'/'short')"] }
+    ],
+    "rule1AOverride": {
+      "description": "Rule 1A: When AGA_FEMALE + PCOS + WEIGHT_LOSS all simultaneously scored, AGA_FEMALE boosted to 95 to dominate. Protocol: Shield → F-PCOS-1 → PHENOTYPE INFLAMATION → FPHL Kit. TE Gold suppressed.",
+      "condition": "(scores['AGA_FEMALE_123'] OR scores['AGA_FEMALE_45']) AND (scores['PCOS_ONLY'] OR scores['PCOS_OBESITY']) AND scores['WEIGHT_LOSS']",
+      "action": "Boost AGA_FEMALE key by +95",
+      "teGoldSuppressed": true,
+      "protocolOverride": ["RAPID WEIGHT LOSS SHIELD", "F-PCOS -1 (or VEG)", "PHENOTYPE INFLAMATION", "FPHL / FPHL PLUS"],
+      "sourceCodeReference": "matchProtocol lines 4401-4405; getFunnelKits lines 4708-4730"
+    }
+  },
+
+  "protocolSequencer": {
+    "description": "PROTOCOL_SEQUENCER table. Each entry defines clinically-ordered phase arrays. Source: lines 3176-3414.",
+    "entries": [
+      {
+        "key": "TE_STRESS",
+        "label": "Telogen Effluvium (Stress / Anxiety / Depression)",
+        "phases": ["HAIR FACT TE GOLD", "PHENOTYPE INFLAMATION"],
+        "rationale": "TE GOLD stops active shedding first (non-negotiable Phase 1); Phenotype Inflammation clears the chronic stress-driven scalp inflammatory load in Phase 2"
+      },
+      {
+        "key": "TE_NUTRITION",
+        "label": "Telogen Effluvium (Nutritional deficiency)",
+        "phases": ["HAIR FACT TE GOLD", "PHENOTYPE INFLAMATION"],
+        "rationale": "Nutritional TE: correct active shedding first; inflammation clears the residual nutritional-stress inflammatory load. PRO IMMUNE only if immunity flags are separately triggered"
+      },
+      {
+        "key": "TE_POSTPREG",
+        "label": "Telogen Effluvium (Post-pregnancy / Breastfeeding)",
+        "phases": ["LACTIHEALTH", "HAIR FACT TE GOLD", "PRO IMMUNE GOLD"],
+        "rationale": "LACTIHEALTH first (breastfeeding nutritional demand is highest priority); TE GOLD stops shedding in Ph2; PRO IMMUNE rebuilds post-partum immunity in Ph3"
+      },
+      {
+        "key": "TE_DELIVERY",
+        "label": "Post-delivery / Not Breastfeeding",
+        "phases": ["HAIR FACT TE GOLD", "PRO IMMUNE GOLD"],
+        "rationale": "Post-natal TE shedding stopped first; PRO IMMUNE rebuilds immunity depleted by delivery"
+      },
+      {
+        "key": "TE_ILLNESS",
+        "label": "Telogen Effluvium (Illness / Surgery / Medication)",
+        "phases": ["PRO IMMUNE GOLD", "HAIR FACT TE GOLD", "PHENOTYPE INFLAMATION"],
+        "rationale": "Per Excel Protocol Sequencer row 5: post-illness inflammation must be cleared and immune system rebuilt BEFORE TE kit can be effective."
+      },
+      {
+        "key": "AGA_MALE_123",
+        "label": "Male Pattern Hair Loss — MPHL (Grade 1-2-3)",
+        "phases": ["HAIR FACT TE GOLD", "PHENOTYPE INFLAMATION", "MPHL", "PRO FACT META B", "PRO IMMUNE GOLD"],
+        "rationale": "Phase 1 — TE GOLD: arrests active shedding. Phase 2 — PHENOTYPE INFLAMATION: clears chronic scalp inflammatory load (NF-kB/TNF-alpha); must precede MPHL. Phase 3 — MPHL: 5-alpha reductase inhibition effective in cleared terrain. Phase 4 — PRO FACT META B: corrects insulin-androgen axis. Phase 5 — PRO IMMUNE GOLD: nutritional regrowth supply; always last."
+      },
+      {
+        "key": "AGA_MALE_45",
+        "label": "Male Pattern Hair Loss — MPHL (Grade 4-5 Advanced)",
+        "phases": ["PRO IMMUNE GOLD", "MPHL", "PHENOTYPE INFLAMATION"],
+        "rationale": "Advanced grade needs stronger immune support first; PRO IMMUNE GOLD primes follicle rescue environment; MPHL DHT blockade second; PHENOTYPE INFLAMATION clears microenvironment in Phase 3."
+      },
+      {
+        "key": "AGA_FEMALE_123",
+        "label": "Female Pattern Hair Loss — FPHL (Grade 1-2-3)",
+        "phases": ["HAIR FACT TE GOLD", "PHENOTYPE INFLAMATION", "FPHL", "PRO FACT META B", "PRO IMMUNE GOLD"],
+        "rationale": "Phase 1 — TE GOLD: arrests active shedding. Phase 2 — PHENOTYPE INFLAMATION: clears chronic scalp inflammatory load; must precede FPHL. Phase 3 — FPHL: corrects androgenetic miniaturisation. Phase 4 — PRO FACT META B: corrects metabolic terrain. Phase 5 — PRO IMMUNE GOLD: nutritional regrowth supply; always last.",
+        "ageOverride": "Female < 30 with genetics: phases overridden to ['HAIR FACT TE GOLD', 'PRO IMMUNE GOLD'] — follicle not miniaturised enough for FPHL"
+      },
+      {
+        "key": "AGA_FEMALE_45",
+        "label": "Female Pattern Hair Loss — FPHL (Grade 4-5 Advanced)",
+        "phases": ["PRO IMMUNE GOLD", "FPHL", "PHENOTYPE INFLAMATION"],
+        "rationale": "Advanced female AGA — PRO IMMUNE GOLD primes environment; FPHL corrects androgenetic pattern; PHENOTYPE INFLAMATION clears scalp microenvironment."
+      },
+      {
+        "key": "PCOS_ONLY",
+        "label": "PCOS — Hormonal Hair Loss",
+        "phases": ["F-PCOS -1", "PHENOTYPE INFLAMATION", "HAIR FACT TE GOLD"],
+        "rationale": "PCOS hormonal correction drives Phase 1; inflammation cleared in Phase 2; TE GOLD addresses concurrent shedding in Phase 3.",
+        "precisionStackNote": "Additional kits (FPHL, PRO IMMUNE, IRON UP GOLD) injected ONLY when patient's actual signals confirm those conditions. A pure PCOS case = 1 kit only."
+      },
+      {
+        "key": "PCOS_OBESITY",
+        "label": "PCOS + Metabolic (Insulin Resistance)",
+        "phases": ["PRO FACT META B PCOS", "PHENOTYPE INFLAMATION"],
+        "rationale": "PRO FACT META B PCOS is the single primary kit — combines AMPK/insulin correction (Berberine) with androgen suppression (Inositol+D-Chiro+Spearmint). F-PCOS -1 NOT prescribed (duplicates ingredients).",
+        "precisionStackNote": "Additional kits added ONLY for confirmed co-condition signals. FORBIDDEN: F-PCOS -1 and PRO FACT META B PCOS in same protocol."
+      },
+      {
+        "key": "THYROID_HYPO",
+        "label": "Thyroid (Hypothyroid)",
+        "phases": ["PRO FACT META B HYPOTHYROID", "PHENOTYPE INFLAMATION", "HAIR FACT TE GOLD"],
+        "rationale": "Thyroid metabolic correction unlocks cellular metabolism first; PHENOTYPE INFLAMATION clears the inflammation that hypothyroidism drives; TE GOLD stops concurrent diffuse shedding in Phase 3.",
+        "overrideRule": "If obesity/sedentary lifestyle also present: PRO FACT META B HYPOTHYROID swapped for PRO FACT META B (v34 override)"
+      },
+      {
+        "key": "THYROID_HYPER",
+        "label": "Thyroid (Hyperthyroid)",
+        "phases": ["PRO FACT THYROID CARE", "HAIR FACT TE GOLD", "PRO IMMUNE GOLD"],
+        "rationale": "PRO FACT THYROID CARE corrects hyperthyroid metabolic overactivity first; TE GOLD addresses concurrent diffuse shedding; PRO IMMUNE GOLD rebuilds immunity depleted by hyperthyroid-driven oxidative stress."
+      },
+      {
+        "key": "ALOPECIA_AREATA",
+        "label": "Alopecia Areata (Autoimmune)",
+        "phases": ["HAIR FACT ALOPECIA AREATA", "PRO FACT META B", "PHENOTYPE INFLAMATION", "PRO IMMUNE GOLD"],
+        "rationale": "AA-specific kit (autoimmune hair loss first); META B supports metabolic terrain; inflammation cleared; PRO IMMUNE rebuilds immune balance"
+      },
+      {
+        "key": "PERI_MENOPAUSE",
+        "label": "Peri-Menopause",
+        "phases": ["HAIR FACT PERI MENOPAUSE", "FPHL", "HAIR FACT TE GOLD", "PRO IMMUNE GOLD"],
+        "rationale": "PERI MENOPAUSE kit stabilises hormonal fluctuation first; FPHL corrects androgenetic pattern driven by oestrogen decline; TE GOLD stops active shedding; PRO IMMUNE GOLD consolidates.",
+        "metabolicModifier": "If metabolic signal (obesity/sedentary/weight): PRO FACT META B inserted at position 1 (after PERI kit, before TE GOLD)"
+      },
+      {
+        "key": "MENOPAUSE",
+        "label": "Menopause",
+        "phases": ["PRO FACT META B MENOPAUSE", "FPHL", "HAIR FACT TE GOLD"],
+        "rationale": "PRO FACT META B MENOPAUSE corrects sustained oestrogen decline and metabolic shift first; FPHL corrects androgenetic pattern; TE GOLD addresses any concurrent shedding"
+      },
+      {
+        "key": "POST_MENOPAUSE",
+        "label": "Post-Menopause",
+        "phases": ["PRO FACT META B POSTMENOPAUSE", "FPHL", "HAIR FACT TE GOLD", "PRO IMMUNE GOLD"],
+        "rationale": "Post-menopausal metabolic shift corrected first; FPHL corrects androgenetic pattern; TE GOLD addresses concurrent shedding; PRO IMMUNE GOLD consolidates immune support."
+      },
+      {
+        "key": "ENDOMETRIOSIS",
+        "label": "Endometriosis",
+        "phases": ["FH WELL 3", "PHENOTYPE INFLAMATION", "PRO IMMUNE GOLD"],
+        "rationale": "FH WELL 3 targets endometriotic hormonal-inflammatory balance first; PHENOTYPE INFLAMATION clears systemic inflammation; PRO IMMUNE GOLD modulates immune response."
+      },
+      {
+        "key": "PREGNANCY",
+        "label": "Pregnancy",
+        "phases": ["HEALTHY - 9"],
+        "rationale": "HEALTHY-9 is PREGNANCY ONLY — single kit, no other kits during pregnancy",
+        "absoluteRule": "NO other kits. Period."
+      },
+      {
+        "key": "IRON_DEFICIENCY",
+        "label": "Iron Deficiency / Anaemia",
+        "phases": ["IRON UP GOLD", "HAIR FACT TE GOLD", "PRO IMMUNE GOLD"],
+        "rationale": "IRON UP GOLD restores ferritin first (non-negotiable); TE GOLD stops shedding once iron is corrected; PRO IMMUNE explicitly listed for iron deficiency cases"
+      },
+      {
+        "key": "SCALP_INFLAM",
+        "label": "Scalp Inflammation (Dandruff / Oily / Seborrhoea)",
+        "phases": ["PHENOTYPE INFLAMATION", "AGA_GENDER (resolves to MPHL or FPHL at runtime)"],
+        "rationale": "Inflammation must be cleared before AGA correction"
+      },
+      {
+        "key": "HAIR_BREAKAGE",
+        "label": "Hair Breakage (Chemical / Heat / Hard water)",
+        "phases": ["HAIR FACT HAIR BREAKAGE REPAIR(HBR)", "PHENOTYPE INFLAMATION"],
+        "rationale": "HBR repairs shaft damage first; PHENOTYPE INFLAMMATION clears scalp inflammation. TE GOLD added only if active shedding signals present"
+      },
+      {
+        "key": "NIGHT_SHIFT",
+        "label": "Night Shift / Circadian Disruption",
+        "phases": ["HAIR FACT NIGHT SHIFT", "HAIR FACT TE GOLD", "PHENOTYPE INFLAMATION"],
+        "rationale": "Circadian reset is the primary driver (NIGHT SHIFT first); TE GOLD repairs concurrent shedding; PHENOTYPE INFLAMATION clears the oxidative/inflammatory load from chronic sleep disruption."
+      },
+      {
+        "key": "FREQUENT_FLYING",
+        "label": "Frequent Flying / Circadian + Immune Stress",
+        "phases": ["HAIR FACT FREQUENT FLYERS", "HAIR FACT TE GOLD", "PHENOTYPE INFLAMATION"],
+        "rationale": "Circadian and travel stress corrected first; TE GOLD repairs concurrent shedding; PHENOTYPE INFLAMATION clears cabin radiation and passive smoke oxidative load."
+      },
+      {
+        "key": "OXIDATIVE",
+        "label": "Smoking / Alcohol / Vaping / Oxidative Stress",
+        "phases": ["PHENOTYPE INFLAMATION", "OXIDATIVE STRESS", "PRO IMMUNE GOLD"],
+        "rationale": "Inflammation and oxidative damage require sequential correction; PHENOTYPE INFLAMATION enables the OXIDATIVE STRESS kit; PRO IMMUNE GOLD rebuilds immune defence."
+      },
+      {
+        "key": "WEIGHT_LOSS",
+        "label": "Sudden Weight Loss (Crash diet / GLP-1 / Illness)",
+        "phases": ["RAPID WEIGHT LOSS SHIELD", "HAIR FACT TE GOLD (REDUCED SCOPE)", "PRO IMMUNE GOLD"],
+        "rationale": "Rapid weight loss is the PRECIPITATING EVENT. Phase 1: RAPID WEIGHT LOSS SHIELD arrests shedding at the GLP-1/nutrient-deficit trigger. Phase 2: HAIR FACT TE GOLD in REDUCED SCOPE only — iron/ferritin repletion + residual stress-TE. Full-scope TE GOLD FORBIDDEN (ingredient overlap with Shield: Iron, B12, Zinc, Biotin, Selenium, Amino Complex). Phase 3: PRO IMMUNE GOLD rebuilds immunity."
+      },
+      {
+        "key": "TTM",
+        "label": "Trichotillomania (Hair Pulling / OCD)",
+        "phases": ["HAIR FACT TTM (OCD)", "HAIR FACT TE GOLD", "PHENOTYPE INFLAMATION"],
+        "rationale": "TTM kit (NAC+Inositol+Magnesium+B6+Zinc+Ashwagandha) addresses the neurological OCD-driven pulling urge first; TE GOLD repairs follicle damage and shedding caused by pulling; PHENOTYPE INFLAMMATION clears scalp trauma-induced inflammatory load"
+      },
+      {
+        "key": "CHRONIC_MEDICAL",
+        "label": "Chronic Medical Condition (BP / other)",
+        "phases": ["PRO IMMUNE GOLD", "PHENOTYPE INFLAMATION"],
+        "rationale": "PRO IMMUNE GOLD rebuilds immune resilience first (medication often depletes immunity). PHENOTYPE INFLAMATION clears chronic inflammation. PRO FACT META B ONLY when true metabolic signal present (obesity, sedentary, pre-diabetes, diabetes)."
+      },
+      {
+        "key": "DIABETES",
+        "label": "Diabetes / Pre-Diabetes (Metabolic Hair Loss)",
+        "phases": ["PRO FACT META B", "PHENOTYPE INFLAMATION", "PRO IMMUNE GOLD"],
+        "rationale": "Insulin resistance drives androgen amplification and chronic inflammation. PRO FACT META B corrects insulin-AMPK pathway first; PHENOTYPE INFLAMATION clears chronic hyperglycaemia-driven inflammatory load; PRO IMMUNE GOLD rebuilds immune resilience."
+      },
+      {
+        "key": "GUT_ISSUES",
+        "label": "Gut Issues (GERD / IBS / Bloating / Crohn's)",
+        "phases": ["PRO FACT GI GOLD", "PHENOTYPE INFLAMATION", "PRO IMMUNE GOLD", "HAIR FACT TE GOLD"],
+        "rationale": "Gut-hair axis must be cleared first (GI GOLD); PHENOTYPE INFLAMATION addresses gut-driven systemic inflammation; PRO IMMUNE GOLD rebuilds gut-depleted immunity; TE GOLD addresses TE shedding last once gut absorption is restored."
+      },
+      {
+        "key": "MOUTH_ULCERS",
+        "label": "Mouth / Tongue Ulcers (Immune-Gut link)",
+        "phases": ["PHENOTYPE INFLAMATION", "PRO IMMUNE GOLD", "OXIDATIVE STRESS"],
+        "rationale": "Gut-immune inflammation cleared first; PRO IMMUNE GOLD rebuilds immune defence; OXIDATIVE STRESS kit addresses the free radical load driving ulceration."
+      },
+      {
+        "key": "MULTI",
+        "label": "Multi-factorial (Stress + Gut + Pattern combined)",
+        "phases": ["PHENOTYPE INFLAMATION", "HAIR FACT TE GOLD", "PRO FACT GI GOLD", "AGA_GENDER"],
+        "rationale": "Inflammation is the universal terrain for multi-factorial — always Phase 1; TE GOLD stops active shedding; GI GOLD restores absorption; AGA_GENDER corrects pattern loss last"
+      },
+      {
+        "key": "EARLY_GREY",
+        "label": "Early / Premature Greying",
+        "phases": ["EARLY GREYING CARE GOLD", "OXIDATIVE STRESS", "PRO IMMUNE GOLD"],
+        "rationale": "Root cause corrected first along with specific nutritional deficiencies; OXIDATIVE STRESS addresses free radical damage driving premature pigment loss; PRO IMMUNE GOLD builds immunity to protect melanocytes."
+      },
+      {
+        "key": "REGROW_ONLY",
+        "label": "Hair Regrowth — Active Shedding Stopped",
+        "phases": ["PRO IMMUNE GOLD", "PHENOTYPE INFLAMATION", "PRO FACT META B"],
+        "rationale": "No active shedding — TE GOLD is NEVER prescribed for regrowth-only patients. PRO IMMUNE GOLD stimulates follicle re-entry into anagen phase via EGF/Colostrum/Lactoferrin; PHENOTYPE INFLAMATION clears residual scalp inflammation; PRO FACT META B corrects metabolic terrain sustaining dormancy."
+      }
+    ]
+  },
+
+  "dynamicTransitions": [
+    {
+      "id": "DT_001",
+      "name": "VEG_KIT_SWAP",
+      "description": "resolveKit() swaps kit names to VEG variants when isVeg=true",
+      "trigger": "diet includes 'Vegetarian' OR 'Vegan' OR 'Jain'",
+      "swaps": [
+        { "from": "HAIR FACT TE GOLD", "to": "HAIR FACT TE GOLD VEG" },
+        { "from": "HAIR FACT PERI MENOPAUSE", "to": "HAIR FACT PERI MENOPAUSE VEG" },
+        { "from": "F-PCOS -1", "to": "F-PCOS VEG -1" },
+        { "from": "PRO IMMUNE GOLD", "to": "PRO IMMUNE VEG" },
+        { "from": "EARLY GREYING CARE GOLD", "to": "EARLY GREYING CARE VEG" }
+      ],
+      "sourceCodeReference": "resolveKit() lines 3420-3438"
+    },
+    {
+      "id": "DT_002",
+      "name": "AGA_GENDER_RESOLUTION",
+      "description": "AGA_GENDER placeholder resolved to MPHL or FPHL based on sex",
+      "trigger": "kitName === 'AGA_GENDER'",
+      "resolution": { "isMale=true": "MPHL", "isMale=false": "FPHL" },
+      "sourceCodeReference": "resolveKit() line 3424"
+    },
+    {
+      "id": "DT_003",
+      "name": "MPHL_FPHL_PLUS_UPGRADE",
+      "description": "MPHL/FPHL upgraded to PLUS variant when grade 4/5",
+      "trigger": "isGrade45=true",
+      "resolution": { "male": "MPHL PLUS", "female": "FPHL PLUS" },
+      "sourceCodeReference": "getFunnelKits lines 3481, 4499"
+    },
+    {
+      "id": "DT_004",
+      "name": "GLP1_EARLY_SHIELD_POSITION",
+      "description": "v39: GLP-1 within 6 months → RAPID WEIGHT LOSS SHIELD always forced to position 0 in protocol array",
+      "trigger": "cause includes 'within 6 months'",
+      "action": "Remove Shield from wherever it is; unshift to position 0. Re-enforced after liftPhase reordering.",
+      "sourceCodeReference": "getFunnelKits lines 3895-3901, 3991-3998"
+    },
+    {
+      "id": "DT_005",
+      "name": "GLP1_LATE_SHIELD_POSITION",
+      "description": "v39: GLP-1 after 6 months → RAPID WEIGHT LOSS SHIELD always forced to position 1 (after primary kit)",
+      "trigger": "cause includes 'after 6 months'",
+      "action": "Remove Shield from wherever it is; splice to position 1. Re-enforced after liftPhase reordering.",
+      "sourceCodeReference": "getFunnelKits lines 3903-4010"
+    },
+    {
+      "id": "DT_006",
+      "name": "TE_GOLD_SUPPRESSION_THINNING",
+      "description": "v39: 'Just thinning, no visible fall' → TE GOLD removed from entire protocol regardless of dominant condition",
+      "trigger": "count includes 'thinning' OR 'no visible fall'",
+      "action": "Filter out 'HAIR FACT TE GOLD' and 'HAIR FACT TE GOLD VEG' from phases array",
+      "sourceCodeReference": "getFunnelKits lines 4012-4019"
+    },
+    {
+      "id": "DT_007",
+      "name": "TE_GOLD_SUPPRESSION_REGROW",
+      "description": "isRegrowGoal=true → TE GOLD removed from ALL protocols (cannot stop shedding that has already stopped)",
+      "trigger": "goal includes 'stopped' or 'regrow'",
+      "action": "Filter TE GOLD from phases; inject PRO IMMUNE GOLD if not already present",
+      "sourceCodeReference": "getFunnelKits lines 3492-3508"
+    },
+    {
+      "id": "DT_008",
+      "name": "ACTIVE_SHEDDING_TE_GOLD_PROMOTION",
+      "description": "When active shedding detected, TE GOLD is moved to position 0 (Phase 1) in the protocol",
+      "trigger": "hasActiveShedding=true (not regrow goal, not thinning-only, + shedding count or cause signals)",
+      "action": "Remove TE GOLD from wherever it is; unshift to position 0",
+      "sourceCodeReference": "getFunnelKits lines 3925-3942"
+    },
+    {
+      "id": "DT_009",
+      "name": "THYROID_HYPO_METABOLIC_SWAP",
+      "description": "v34 Override: THYROID_HYPO + obesity/sedentary → PRO FACT META B HYPOTHYROID swapped for PRO FACT META B",
+      "trigger": "dominantKey === 'THYROID_HYPO' AND hasMetabolicSignal=true",
+      "action": "Replace 'PRO FACT META B HYPOTHYROID' with 'PRO FACT META B' in phases array",
+      "sourceCodeReference": "getFunnelKits lines 3529-3535"
+    },
+    {
+      "id": "DT_010",
+      "name": "PCOS_OBESITY_THYROID_MERGE",
+      "description": "v38: PCOS_OBESITY + Hypothyroid → single PRO FACT META B covers all axes (drops META B PCOS + META B HYPOTHYROID)",
+      "trigger": "dominantKey === 'PCOS_OBESITY' AND (thyroid includes 'Hypothyroidism' OR hormonal includes 'Thyroid')",
+      "action": "Remove PRO FACT META B PCOS and PRO FACT META B HYPOTHYROID; insert PRO FACT META B at position 0",
+      "sourceCodeReference": "getFunnelKits lines 3640-3649"
+    },
+    {
+      "id": "DT_011",
+      "name": "PCOS_ONLY_DIABETES_UPGRADE",
+      "description": "PCOS_ONLY + pre-diabetes/diabetes → F-PCOS-1 upgraded to PRO FACT META B PCOS",
+      "trigger": "dominantKey === 'PCOS_ONLY' AND (thyroid includes 'Pre diabetes' OR 'Diabetes')",
+      "action": "Replace F-PCOS -1 with PRO FACT META B PCOS in phases; or remove F-PCOS -1 if META B PCOS already present",
+      "sourceCodeReference": "getFunnelKits lines 3619-3628"
+    },
+    {
+      "id": "DT_012",
+      "name": "FEMALE_UNDER30_AGA_OVERRIDE",
+      "description": "Female < 30 with genetics + AGA_FEMALE_123 dominant → protocol overridden to TE + PRO IMMUNE (FPHL not appropriate)",
+      "trigger": "!isMale AND dominantKey === 'AGA_FEMALE_123' AND age < 30",
+      "action": "Override phases to ['HAIR FACT TE GOLD', 'PRO IMMUNE GOLD']",
+      "sourceCodeReference": "getFunnelKits lines 3696-3699"
+    },
+    {
+      "id": "DT_013",
+      "name": "PRO_IMMUNE_ALWAYS_LAST",
+      "description": "Step 9: PRO IMMUNE GOLD/VEG always moved to final position in protocol",
+      "trigger": "PRO IMMUNE GOLD or PRO IMMUNE VEG present AND not already last position",
+      "action": "Splice PRO IMMUNE from current position; push to end of phases array",
+      "sourceCodeReference": "getFunnelKits lines 4106-4121"
+    },
+    {
+      "id": "DT_014",
+      "name": "GREY_CO_CONDITION_INJECTION",
+      "description": "S._hasGreyGoal=true → EARLY GREYING CARE appended to end of protocol after all hair fall kits",
+      "trigger": "S._hasGreyGoal=true AND dominant !== 'EARLY_GREY'",
+      "action": "Push EARLY GREYING CARE GOLD (or VEG) to end of phases; also push OXIDATIVE STRESS if PHENOTYPE INFLAMATION not already present and phases.length < 5",
+      "sourceCodeReference": "getFunnelKits lines 3874-3890; lines 4092-4103"
+    },
+    {
+      "id": "DT_015",
+      "name": "PCOS_POSTPARTUM_TE_UNSHIFT",
+      "description": "PCOS + Post-partum (not breastfeeding) → TE GOLD moved to Phase 1 (active shedding priority over hormonal correction)",
+      "trigger": "(cause includes 'Post partum' OR hormonal includes 'Post-delivery') AND NOT breastfeeding",
+      "action": "Unshift TE GOLD (or VEG variant) to position 0 if not already present",
+      "sourceCodeReference": "getFunnelKits lines 3631-3638"
+    },
+    {
+      "id": "DT_016",
+      "name": "GRADE_SKIP_IF_AA",
+      "description": "If Alopecia Areata selected in immunity → grade question is skipped entirely",
+      "trigger": "ans.immunity includes 'Alopecia Areata'",
+      "action": "grade question _skipIf returns true; step is skipped in chat flow",
+      "sourceCodeReference": "STEPS[19]._skipIf line 3149; chat loop line 8233"
+    },
+    {
+      "id": "DT_017",
+      "name": "SCALP_MUTUAL_EXCLUSION",
+      "description": "Runtime enforcement of scalp option mutual exclusivity via _scalpExclusive object",
+      "trigger": "User selects mutually exclusive scalp option",
+      "action": "Deselect opposing option: Dry↔Oily; Dandruff simple↔Dandruff+Itching",
+      "sourceCodeReference": "STEPS[7]._scalpExclusive line 3059; rendering logic"
+    },
+    {
+      "id": "DT_018",
+      "name": "HBR_CAP_REMOVAL",
+      "description": "If protocol already has 5+ kits, HBR kit is removed (lower priority than core clinical kits)",
+      "trigger": "phases.length > 5 AND HBR in phases",
+      "action": "Filter HBR from phases array",
+      "sourceCodeReference": "getFunnelKits lines 3969-3971"
+    },
+    {
+      "id": "DT_019",
+      "name": "PRIORITY_LIFT_REORDERING",
+      "description": "liftPhase() ensures clinical priority order: TE GOLD > IRON UP GOLD > F-PCOS -1 > F-PCOS VEG -1 > PRO FACT META B PCOS — these are always moved to front",
+      "trigger": "After injection pool processing",
+      "action": "Sequential liftPhase() calls for: TE GOLD (VEG), IRON UP GOLD, F-PCOS -1, F-PCOS VEG -1, PRO FACT META B PCOS",
+      "sourceCodeReference": "getFunnelKits lines 3973-3986"
+    },
+    {
+      "id": "DT_020",
+      "name": "KIT_CAP_CALCULATION",
+      "description": "Kit cap dynamically calculated based on active signal count (smoking, metabolic, gut, regrow goal)",
+      "trigger": "After injection pool is built",
+      "calculation": "activeSignalCount = [smokingVaping, hasMetabolicSignal, hasGut, isRegrowGoal].filter(Boolean).length; injectionTarget: >=3 → 7 kits; >=2 or regrow → 6; strong secondary >=2 or smoking → 5; secondary >=1 → 4; else current phases.length",
+      "sourceCodeReference": "getFunnelKits lines 3848-3860"
+    }
+  ],
+
+  "derivedSignals": [
+    { "signal": "isVeg", "derivedFrom": ["diet"], "formula": "diet.some(d => d.includes('Vegetarian') || d.includes('Vegan') || d.includes('Jain'))" },
+    { "signal": "isMale", "derivedFrom": ["sex"], "formula": "ans.sex === 'Male'" },
+    { "signal": "isRegrowGoal", "derivedFrom": ["goal"], "formula": "goal includes 'stopped' or 'regrow' AND NOT hair fall" },
+    { "signal": "hasGreyGoal", "derivedFrom": ["goal"], "formula": "goal includes 'Early greying' or 'greying'" },
+    { "signal": "isGrade45", "derivedFrom": ["grade"], "formula": "grade.includes('Grade 4') || grade.includes('Grade 5')" },
+    { "signal": "isGrade123", "derivedFrom": ["grade"], "formula": "grade.includes('Grade 1') || grade.includes('Grade 2') || grade.includes('Grade 3')" },
+    { "signal": "hasNoVisibleFall", "derivedFrom": ["count"], "formula": "count.includes('thinning') || count.includes('no visible fall')" },
+    { "signal": "hasActiveShedding", "derivedFrom": ["goal", "count", "dominantKey", "duration", "cause"], "formula": "!isRegrowGoal AND !hasNoVisibleFall AND (dominantKey starts with 'TE_' OR count includes 50/100/Noticeable OR duration 1-3/3-6 months OR cause includes Stress/Nutritional/Medication/Illness/Surgery)" },
+    { "signal": "hasMetabolicSignal", "derivedFrom": ["lifestyle", "hormonal", "diet", "thyroid"], "formula": "lifestyle includes Obesity/Sedentary/weight/Weight gain OR hormonal includes Obesity OR diet includes Irregular/poor/Keto/Crash OR thyroid includes Pre diabetes/Diabetes" },
+    { "signal": "hasGLP1EarlyFlag", "derivedFrom": ["cause"], "formula": "cause.some(c => c.includes('within 6 months'))" },
+    { "signal": "hasGLP1LateFlag", "derivedFrom": ["cause"], "formula": "cause.some(c => c.includes('after 6 months'))" },
+    { "signal": "hasCrashDiet", "derivedFrom": ["cause", "diet"], "formula": "cause includes GLP-1/crash diet/Post crash OR diet includes Crash/Keto OR hasGLP1Early OR hasGLP1Late" },
+    { "signal": "hasAGAsignals", "derivedFrom": ["count", "hairtype", "cause", "scalp", "lifestyle", "duration", "age"], "formula": "count.includes('thinning') OR hairtype includes Thinning/widening/parting OR cause includes Genetics/Family history OR scalp includes Dandruff/Oily OR lifestyle includes Bodybuilding/Heavy gym OR duration includes 6-12/More than OR age > 30" },
+    { "signal": "pcosObese", "derivedFrom": ["hormonal", "lifestyle"], "formula": "hormonal includes 'Obesity' OR 'PCOS / PCOD + Obesity' OR lifestyle includes Obesity/Sedentary/weight" },
+    { "signal": "hasPeri", "derivedFrom": ["hormonal"], "formula": "hormonal includes Peri-menopause/Peri menopause/Perimenopause/peri/Peri-Menopause" },
+    { "signal": "hasDiabetesSignal", "derivedFrom": ["thyroid"], "formula": "thyroid includes 'Pre diabetes' OR 'Diabetes'" },
+    { "signal": "severity", "derivedFrom": ["grade"], "formula": "grade 4/5 → 'Severe' (confidence 90); grade 1/2 → 'Mild' (confidence 78); else → 'Moderate' (confidence 82)" },
+    { "signal": "oxidativeCount", "derivedFrom": ["lifestyle", "immunity"], "formula": "(lifestyle includes Smoking/Vaping ? 1 : 0) + (lifestyle includes Alcohol ? 1 : 0) + (immunity includes Asthma ? 1 : 0)" }
+  ],
+
+  "diagnosisSignals": [
+    { "signal": "ALOPECIA_AREATA", "score": 105, "clinicalBasis": "CD8+ T-cell autoimmune follicle attack", "diagnosticMarker": "circular patches", "keyQuestion": "immunity" },
+    { "signal": "TTM", "score": 102, "clinicalBasis": "Compulsive hair pulling causing follicle trauma", "diagnosticMarker": "hair pulling habit", "keyQuestion": "cause" },
+    { "signal": "THYROID_HYPO/HYPER", "score": 100, "clinicalBasis": "T3/T4 metabolic axis disruption affecting follicle cycling", "diagnosticMarker": "thyroid disorder confirmed", "keyQuestion": "thyroid" },
+    { "signal": "PERI/MENO/POST_MENOPAUSE", "score": 98, "clinicalBasis": "Oestrogen decline → follicle miniaturisation + TE shedding", "diagnosticMarker": "hormonal transition", "keyQuestion": "hormonal" },
+    { "signal": "PCOS", "score": 92-101, "clinicalBasis": "Androgen excess via LH/FSH imbalance + insulin resistance", "diagnosticMarker": "PCOS/PCOD selection", "keyQuestion": "hormonal" },
+    { "signal": "TE_POSTPREG", "score": 92, "clinicalBasis": "Post-partum hormonal crash + nutritional depletion", "diagnosticMarker": "post partum + breastfeeding", "keyQuestion": "cause/hormonal" },
+    { "signal": "WEIGHT_LOSS", "score": 90, "clinicalBasis": "Nutrient depletion triggering synchronous telogen effluvium", "diagnosticMarker": "GLP-1/crash diet", "keyQuestion": "cause/diet" },
+    { "signal": "DIABETES", "score": 90, "clinicalBasis": "Insulin resistance → androgen amplification → follicle miniaturisation", "diagnosticMarker": "pre-diabetes/diabetes", "keyQuestion": "thyroid" },
+    { "signal": "IRON_DEFICIENCY", "score": 80, "clinicalBasis": "Ferritin below 40 ng/mL → body redirects iron from follicles to vital organs", "diagnosticMarker": "iron/anaemia confirmed", "keyQuestion": "deficiency" },
+    { "signal": "CHRONIC_MEDICAL", "score": 80, "clinicalBasis": "Chronic medication depletes immune reserves and drives inflammatory load", "diagnosticMarker": "on medication", "keyQuestion": "medical" },
+    { "signal": "TE_ILLNESS", "score": 72, "clinicalBasis": "Post-illness/surgery immune depletion triggers mass follicle cycling disruption", "diagnosticMarker": "medication/illness/surgery", "keyQuestion": "cause" },
+    { "signal": "GUT_ISSUES", "score": 62, "clinicalBasis": "Gut dysbiosis impairs nutrient absorption; leaky gut drives systemic inflammation", "diagnosticMarker": "IBS/GERD/bloating/Crohn's", "keyQuestion": "gut" },
+    { "signal": "NIGHT_SHIFT", "score": 62, "clinicalBasis": "Melatonin-serotonin cycle disruption → follicle circadian rhythm loss", "diagnosticMarker": "night shift work", "keyQuestion": "lifestyle" },
+    { "signal": "SCALP_INFLAM", "score": "42-62", "clinicalBasis": "Malassezia/NF-kB activation → sebaceous hyperactivity → follicle miniaturisation", "diagnosticMarker": "scalp inflammation signals", "keyQuestion": "scalp" },
+    { "signal": "AGA (MPHL/FPHL)", "score": "45-70", "clinicalBasis": "5-alpha reductase converts testosterone to DHT → follicle miniaturisation", "diagnosticMarker": "genetics/thinning/grade/age", "keyQuestion": "hairtype/cause/grade/age" },
+    { "signal": "TE_STRESS", "score": 55, "clinicalBasis": "HPA axis dysregulation → cortisol elevation → premature catagen shift", "diagnosticMarker": "stress/anxiety/depression", "keyQuestion": "cause" },
+    { "signal": "TE_NUTRITION", "score": 58, "clinicalBasis": "Nutritional deficiency depletes hair matrix proliferation substrate", "diagnosticMarker": "nutritional deficiencies", "keyQuestion": "cause" }
+  ],
+
+  "therapySignals": [
+    { "kit": "HAIR FACT TE GOLD", "vegVariant": "HAIR FACT TE GOLD VEG", "primaryMechanism": "Amino acid mTOR activation + cortisol lowering + ferritin restoration + anagen extension via Melatonin", "trigger": "Active shedding; TE dominant protocols; Phase 1 in most TE scenarios" },
+    { "kit": "PRO IMMUNE GOLD", "vegVariant": "PRO IMMUNE VEG", "primaryMechanism": "Dermal Papilla stimulation via EGF (Colostrum/Lactoferrin) + NF-kB suppression + gut-hair axis repair", "trigger": "Regrow goal; immune compromise; illness; iron deficiency; gut issues; always last phase" },
+    { "kit": "PHENOTYPE INFLAMATION", "vegVariant": null, "primaryMechanism": "NF-kB/TNF-alpha/IL-6 suppression via Curcumin; glutathione restoration via NAC; terrain clearance before MPHL/FPHL", "trigger": "Scalp inflammation; smoking/vaping; AGA protocols Phase 2; must precede MPHL/FPHL" },
+    { "kit": "MPHL", "vegVariant": "MPHL PLUS (Grade 4/5)", "primaryMechanism": "5-alpha reductase inhibition via Beta-Sitosterol + Saw Palmetto; DHT reduction; microcirculation via Pine Bark", "trigger": "Male pattern hair loss Grades 1-3" },
+    { "kit": "FPHL", "vegVariant": "FPHL PLUS (Grade 4/5)", "primaryMechanism": "Spearmint anti-androgen (spares oestrogen); Brewer's Yeast biotin/silica; follicle basement membrane repair (NEM in PLUS)", "trigger": "Female pattern hair loss Grades 1-3" },
+    { "kit": "PRO FACT META B", "vegVariant": null, "primaryMechanism": "AMPK activation via Berberine; insulin-androgen axis correction; NMN NAD+ restoration; dual target: Hypothyroid + metabolic", "trigger": "Obesity/sedentary/pre-diabetes/diabetes/Hypothyroid+metabolic; v34 dual-condition integrated kit" },
+    { "kit": "PRO FACT META B PCOS", "vegVariant": null, "primaryMechanism": "Berberine AMPK/insulin + Inositol+D-Chiro+Spearmint androgen suppression; single kit for PCOS+Obesity", "trigger": "PCOS_OBESITY; NEVER combined with F-PCOS -1" },
+    { "kit": "F-PCOS -1", "vegVariant": "F-PCOS VEG -1", "primaryMechanism": "Inositol+D-Chiro correct AMPK; Spearmint reduces free testosterone 51%; NAC+Vit D correct ovarian oxidative stress", "trigger": "PCOS_ONLY (no obesity); NEVER with PRO FACT META B PCOS" },
+    { "kit": "RAPID WEIGHT LOSS SHIELD", "vegVariant": null, "primaryMechanism": "Emergency nutrient repletion: Iron+Folic Acid+B12 for haematopoietic supply; Zinc+Selenium+Biotin for keratinocyte rebuild; Amino Complex+D3 for shaft synthesis", "trigger": "GLP-1 receptor agonist; crash diet; illness-induced rapid weight loss; Phase 1 precipitating event" },
+    { "kit": "IRON UP GOLD", "vegVariant": null, "primaryMechanism": "Iron Bisglycinate (3x absorption vs ferrous sulphate) restores ferritin above 40 ng/mL threshold; Vitamin C co-administration", "trigger": "Iron deficiency/anaemia confirmed; always high priority insertion" },
+    { "kit": "PRO FACT GI GOLD", "vegVariant": null, "primaryMechanism": "Lactobacillus/Bifidobacterium microbiome restoration; L-Glutamine mucosal repair; Digestive Enzymes for iron/B12 absorption; without this all other kits absorb at 20-30% efficiency", "trigger": "IBS/GERD/Crohn/Acid reflux (strong gut signals only — mild bloating alone insufficient)" },
+    { "kit": "OXIDATIVE STRESS", "vegVariant": null, "primaryMechanism": "Mitochondrial ROS clearance via Astaxanthin (6000x singlet oxygen quenching); CoQ10+ALA mitochondrial protection; Glutathione+Selenium Phase II detox", "trigger": "2+ oxidative signals: smoking+alcohol; smoking+asthma; greying co-condition; night shift+greying" },
+    { "kit": "HAIR FACT HAIR BREAKAGE REPAIR(HBR)", "vegVariant": null, "primaryMechanism": "Shaft structural repair; keratin rebuilding; not follicle treatment — targets shaft damage", "trigger": "Confirmed broken/short hairs OR hard water damage; heat/chemical alone insufficient" },
+    { "kit": "LACTIHEALTH", "vegVariant": null, "primaryMechanism": "Breastfeeding nutritional demand support", "trigger": "Post-partum + breastfeeding (TE_POSTPREG); Phase 1 of breastfeeding protocol" },
+    { "kit": "EARLY GREYING CARE GOLD", "vegVariant": "EARLY GREYING CARE VEG", "primaryMechanism": "Catalase replenishment (H2O2 breakdown in melanocytes); Copper for tyrosinase; PABA+B12+Folic Acid melanocyte DNA methylation", "trigger": "Early greying sole concern (EARLY_GREY protocol); or co-concern (appended at end of hair fall protocol)" },
+    { "kit": "HAIR FACT ALOPECIA AREATA", "vegVariant": null, "primaryMechanism": "Autoimmune modulation; AA-specific formulation", "trigger": "ALOPECIA_AREATA dominant protocol" },
+    { "kit": "HAIR FACT TTM (OCD)", "vegVariant": null, "primaryMechanism": "NAC glutamate modulation in nucleus accumbens (pulling urge -56%); Inositol serotonin receptor; Ashwagandha+Magnesium cortisol+neural excitability", "trigger": "TTM protocol" },
+    { "kit": "HAIR FACT NIGHT SHIFT", "vegVariant": null, "primaryMechanism": "Melatonin-serotonin circadian cycle restoration; follicle circadian rhythm repair", "trigger": "NIGHT_SHIFT protocol; lifestyle includes Night shift" },
+    { "kit": "HAIR FACT FREQUENT FLYERS", "vegVariant": null, "primaryMechanism": "Oxidative stress protection from cabin radiation; circadian disruption correction; dehydration-immune support", "trigger": "FREQUENT_FLYING protocol" },
+    { "kit": "HAIR FACT PERI MENOPAUSE", "vegVariant": "HAIR FACT PERI MENOPAUSE VEG", "primaryMechanism": "Hormonal fluctuation stabilisation during peri-menopausal transition", "trigger": "PERI_MENOPAUSE protocol Phase 1" },
+    { "kit": "PRO FACT META B MENOPAUSE", "vegVariant": null, "primaryMechanism": "Sustained oestrogen decline correction + metabolic shift at menopause", "trigger": "MENOPAUSE protocol Phase 1" },
+    { "kit": "PRO FACT META B POSTMENOPAUSE", "vegVariant": null, "primaryMechanism": "Post-menopausal metabolic shift correction", "trigger": "POST_MENOPAUSE protocol Phase 1" },
+    { "kit": "PRO FACT META B HYPOTHYROID", "vegVariant": null, "primaryMechanism": "T3 metabolic correction; Ashwagandha+B-Complex+CoQ10 support T3 conversion", "trigger": "THYROID_HYPO protocol WITHOUT metabolic co-morbidity; swapped for PRO FACT META B if obesity/sedentary also present" },
+    { "kit": "PRO FACT THYROID CARE", "vegVariant": null, "primaryMechanism": "Hyperthyroid metabolic overactivity correction", "trigger": "THYROID_HYPER protocol Phase 1" },
+    { "kit": "FH WELL 3", "vegVariant": null, "primaryMechanism": "Endometriotic hormonal-inflammatory balance", "trigger": "ENDOMETRIOSIS protocol Phase 1" },
+    { "kit": "HEALTHY - 9", "vegVariant": null, "primaryMechanism": "Pregnancy nutritional support", "trigger": "PREGNANCY absolute lock; single kit only" }
+  ],
+
+  "kitSignals": [
+    { "kitSignal": "VEG_SWAP_REQUIRED", "trigger": "isVeg=true", "affectedKits": ["TE GOLD", "PERI MENOPAUSE", "F-PCOS -1", "PRO IMMUNE GOLD", "EARLY GREYING CARE GOLD"] },
+    { "kitSignal": "TE_GOLD_REDUCED_SCOPE", "trigger": "WEIGHT_LOSS protocol; Shield in Phase 1", "instruction": "TE GOLD in REDUCED SCOPE only — iron/ferritin + residual stress-TE; exclude Iron/B12/Zinc/Biotin/Selenium/Amino explanation (covered by Shield)" },
+    { "kitSignal": "PCOS_INGREDIENT_OVERLAP_FORBIDDEN", "trigger": "PCOS_OBESITY or PCOS_ONLY with diabetes", "instruction": "NEVER prescribe F-PCOS -1 and PRO FACT META B PCOS in same protocol — Inositol/D-Chiro/Spearmint/NAC/Chromium/Zinc duplication" },
+    { "kitSignal": "META_B_HYPOTHYROID_FORBIDDEN_WITH_META_B", "trigger": "Both in same protocol", "instruction": "FORBIDDEN: PRO FACT META B HYPOTHYROID and PRO FACT META B in same protocol" },
+    { "kitSignal": "META_B_PCOS_FORBIDDEN_WITH_META_B_HYPOTHYROID", "trigger": "Both in same protocol", "instruction": "FORBIDDEN: PRO FACT META B PCOS and PRO FACT META B HYPOTHYROID together" },
+    { "kitSignal": "FPHL_PCOS_OVERLAP", "trigger": "Quercetin+Resveratrol appear in both PHENOTYPE INFLAMATION and PRO IMMUNE GOLD", "instruction": "Attribute NF-kB suppression to PHENOTYPE; in PRO IMMUNE lead with EGF/Colostrum DPC stimulation and gut-hair axis (Lactobacillus/Bioperine)" }
+  ],
+
+  "riskSignals": [
+    { "risk": "Pre-diabetes/Diabetes", "mechanism": "Microvascular compromise → poor follicle oxygen supply → delays recovery", "clinical_flag": true },
+    { "risk": "Smoking/Vaping", "mechanism": "ROS load depletes antioxidant reserves → extends inflammation phase", "clinical_flag": true },
+    { "risk": "B12 deficiency", "mechanism": "Impairs follicle matrix cell proliferation → delays anagen re-entry", "clinical_flag": true },
+    { "risk": "Gut dysbiosis (IBS/bloating)", "mechanism": "Nutrient malabsorption → kits underperform without GI correction", "clinical_flag": true },
+    { "risk": "Obesity/Sedentary", "mechanism": "Insulin resistance → elevated androgens → amplifies MPHL/FPHL risk", "clinical_flag": true },
+    { "risk": "Grade 4/5 bald areas", "mechanism": "Follicles no longer viable — cannot be regrown; only hair remaining areas treatable", "clinical_flag": true },
+    { "risk": "Alopecia Areata", "mechanism": "Autoimmune — no cure; unpredictable relapse/remission; JAK inhibitors + dermatologist required", "clinical_flag": true }
+  ],
+
+  "severitySignals": [
+    { "signal": "Grade 1/2 → Mild", "confidence": 78, "sourceCodeReference": "localClinicalEngine line 5098" },
+    { "signal": "Grade 4/5 → Severe", "confidence": 90, "sourceCodeReference": "localClinicalEngine line 5097" },
+    { "signal": "Default → Moderate", "confidence": 82, "sourceCodeReference": "localClinicalEngine line 5094" },
+    { "signal": "PCOS priority 101 (Hypothyroid co-condition)", "implication": "PCOS dominates even over THYROID_HYPO (100)" },
+    { "signal": "SCALP_INFLAM score 62 (female <30)", "implication": "Higher PHENOTYPE INFLAMATION probability for young females with oily/inflamed scalp" }
+  ],
+
+  "hiddenRules": [
+    {
+      "ruleId": "HR_001",
+      "name": "THYROID_IN_HORMONAL_CROSS_DEPENDENCY",
+      "description": "THYROID_HYPO score is triggered by EITHER thyroid field ('Hypothyroidism') OR hormonal field ('Thyroid'). Cross-field dependency that is not obvious from UI.",
+      "sourceCodeReference": "matchProtocol line 4278; also hasThyroid(v) + hasHormonal(v) both checked"
+    },
+    {
+      "ruleId": "HR_002",
+      "name": "PCOS_PRIORITY_BOOST_FROM_THYROID",
+      "description": "If PCOS + Hypothyroidism both selected, PCOS score is boosted to 101 — making it beat THYROID_HYPO at 100. This hidden coupling means thyroid co-morbidity with PCOS unexpectedly elevates PCOS to dominant (not thyroid).",
+      "sourceCodeReference": "matchProtocol line 4301"
+    },
+    {
+      "ruleId": "HR_003",
+      "name": "HORMONAL_THYROID_OPTION_RUNTIME_REMOVED",
+      "description": "'Thyroid disorder' option is programmatically removed from hormonal question at runtime via IIFE. The HTML originally includes it; an IIFE deletes it before any user sees it. Downstream code that checks hormonal includes 'Thyroid' still works because of the cross-dependency with thyroid field.",
+      "sourceCodeReference": "IIFE lines 3156-3167"
+    },
+    {
+      "ruleId": "HR_004",
+      "name": "TE_GOLD_REGROW_SUPPRESSION_ABSOLUTE",
+      "description": "TE GOLD is suppressed for ALL protocols when isRegrowGoal=true — even protocols like THYROID_HYPO and PERI_MENOPAUSE that normally include TE GOLD. However, if hormonal conditions are detected under regrow path (post-menopause, PCOS, thyroid), those hormonal protocols take precedence over REGROW_ONLY.",
+      "sourceCodeReference": "getFunnelKits lines 3492-3508"
+    },
+    {
+      "ruleId": "HR_005",
+      "name": "PCOS_PRECISION_STACK_CAP_7",
+      "description": "PCOS protocols use a dedicated cap of 7 kits (vs standard 4-5 for other protocols). This allows PCOS+Obesity+FPHL+Inflammation+Immune+HBR to coexist when clinical signals support it.",
+      "sourceCodeReference": "getFunnelKits lines 3651-3653"
+    },
+    {
+      "ruleId": "HR_006",
+      "name": "OXIDATIVE_STRESS_2_SIGNAL_THRESHOLD",
+      "description": "OXIDATIVE STRESS kit is only injected as a standalone phase when oxidativeCount >= 2 (requires at least 2 of: Smoking/Vaping, Alcohol, Asthma) AND PHENOTYPE INFLAMATION is not already in the protocol. Single smoking selection → PHENOTYPE only. Two signals → OXIDATIVE STRESS added as separate phase.",
+      "sourceCodeReference": "getFunnelKits lines 4771-4779"
+    },
+    {
+      "ruleId": "HR_007",
+      "name": "HEAT_CHEMICAL_TREATMENT_INSUFFICIENT_FOR_HBR",
+      "description": "Heat styling or chemical treatment alone does NOT trigger HBR kit. Patient must ALSO report broken/short hair strands (hairtype). This is a hidden coupling: treatment question alone is insufficient; hairtype must corroborate.",
+      "sourceCodeReference": "getFunnelKits lines 4817-4830; matchProtocol lines 4360-4367"
+    },
+    {
+      "ruleId": "HR_008",
+      "name": "ACTIVE_SHEDDING_TE_GOLD_PROMOTION_OVERRIDES_PROTOCOL",
+      "description": "hasActiveShedding=true causes TE GOLD to be unshifted to position 0, overriding the clinically-sequenced PROTOCOL_SEQUENCER phase order. This happens AFTER the sequencer lookup, meaning TE GOLD can jump ahead of protocol-specified Phase 1 kits (like PRO IMMUNE GOLD in THYROID_HYPER).",
+      "sourceCodeReference": "getFunnelKits lines 3925-3942"
+    },
+    {
+      "ruleId": "HR_009",
+      "name": "PCOS_ONLY_SIGNAL_GATE",
+      "description": "At runtime, a PCOS_ONLY patient with no metabolic signals present gets F-PCOS -1 re-inserted as Phase 1 (after TE GOLD if active shedding), even if the injection pool logic was not triggered. This is a late-stage injection at lines 3944-3959.",
+      "sourceCodeReference": "getFunnelKits lines 3944-3959"
+    },
+    {
+      "ruleId": "HR_010",
+      "name": "IRON_UP_GOLD_POSITION_LOGIC",
+      "description": "IRON UP GOLD is inserted after the PCOS/TE kit but before other injection pool kits, via a specific position-finding algorithm. It checks for F-PCOS positions first, then META B PCOS, then TE GOLD — inserting IRON UP GOLD directly after whichever is found.",
+      "sourceCodeReference": "getFunnelKits lines 3961-3966"
+    },
+    {
+      "ruleId": "HR_011",
+      "name": "DURATION_HAIRTYPE_QUESTION_TRIPLE_SKIP",
+      "description": "Three questions (duration, count, hairtype) all share the same _skipIf logic: skip if goal includes 'regrow', 'greying', 'Greying', or 'Early greying'. These are separate _skipIf functions per step — not a single shared rule. The chat loop evaluates each individually.",
+      "sourceCodeReference": "STEPS[4]._skipIf, STEPS[5]._skipIf, STEPS[6]._skipIf lines 3035, 3043, 3051"
+    },
+    {
+      "ruleId": "HR_012",
+      "name": "PCOS_STACK_HANDLED_FLAG",
+      "description": "S._pcosStackHandled=true prevents duplicate PRO IMMUNE injection from the generic injection pool (Step 5b) when PCOS precision stack has already handled immune kit injection. Without this flag, PCOS patients would receive double PRO IMMUNE injection.",
+      "sourceCodeReference": "getFunnelKits lines 3668-3670, 3686"
+    },
+    {
+      "ruleId": "HR_013",
+      "name": "REGROW_GOAL_PCOS_SCORES_POPULATED_FOR_UI",
+      "description": "Under regrow goal + PCOS path, S._conditionScores is manually populated before the early return so the 'Conditions Detected' UI section renders correctly (would otherwise be empty).",
+      "sourceCodeReference": "matchProtocol lines 4198-4221"
+    }
+  ],
+
+  "summary": {
+    "totalQuestionCount": 21,
+    "totalConditionalBranches": 47,
+    "totalScoringSignals": 38,
+    "totalDynamicRules": 20,
+    "totalProtocolKeys": 30,
+    "totalKitVariants": 28,
+    "ambiguousLogicFound": [
+      {
+        "id": "AMB_001",
+        "description": "'Erratic / Outside eating (3-4x/week)' in lifestyle is tagged to hasMetabolicSignal via diet field matching 'Irregular'/'poor', but this is a lifestyle option, not a diet option. The has() check in diet array would not catch this. The lifestyle option label contains 'Erratic' and 'eating' — cross-array dependency is implicit.",
+        "location": "getFunnelKits hasMetabolicSignal calculation line 3517 vs STEPS[10] lifestyle option 'Erratic'"
+      },
+      {
+        "id": "AMB_002",
+        "description": "GLP-1 'after 6 months' adds both WEIGHT_LOSS score +90 AND TE_STRESS score +50 simultaneously. This means two conditions are scored, but WEIGHT_LOSS at 90 still dominates TE_STRESS at 50. The practical effect is TE GOLD being promoted to Kit 1 via hasActiveShedding logic — but this promotion happens INDEPENDENTLY of the score, making the +50 TE_STRESS score effectively unused.",
+        "location": "matchProtocol lines 4331-4336; getFunnelKits active shedding logic lines 3925-3942"
+      },
+      {
+        "id": "AMB_003",
+        "description": "'None of the above' option handling: several multi-select questions include a 'None of the above' option. No explicit deselection logic exists — if a user selects 'None' AND another option, both would be sent to the scoring engine. No mutual exclusion enforced for 'None'.",
+        "location": "Multiple STEPS — no _scalpExclusive equivalent for 'None'"
+      },
+      {
+        "id": "AMB_004",
+        "description": "hasActiveShedding signal combines 'OR duration includes 1-3/3-6' — but duration question is skipped for regrow/greying goals. If goal='Reduce hair fall' was selected AND duration was answered as '1-3 months', the signal fires correctly. However, if duration was skipped (regrow goal) but the same hasActiveShedding check runs (which it does for non-regrow goals), the stale ans.duration value from a prior session could affect scoring.",
+        "location": "getFunnelKits hasActiveShedding calculation lines 3928-3936"
+      }
+    ],
+    "clinicalArchitectureObservations": [
+      "The system uses a dual-layer engine: (1) matchProtocol() as a weighted scoring engine producing a dominant protocol key; (2) getFunnelKits() as a modifier injection engine that applies co-condition kit injections on top. These are cleanly separated.",
+      "PROTOCOL_SEQUENCER acts as a lookup table of clinically-ordered phase arrays — this is the only place where kit sequence is authoritative. All other logic only adds/removes/repositions relative to this baseline.",
+      "VEG kit variants are resolved at a single resolveKit() function — centralized and easy to maintain.",
+      "The 'PRO IMMUNE always last' rule (Step 9) is an architectural pattern that ensures the growth supply kit is always delivered into a prepared terrain. This is a deliberate biological sequencing principle baked into code.",
+      "Kit cap calculation is dynamic (4-7 kits) based on patient complexity — this prevents over-prescription for simple cases while allowing comprehensive protocols for multi-factorial presentations.",
+      "The PCOS precision stack (S._pcosStackHandled flag) is the most complex sub-engine, with 7+ decision points and a dedicated cap. It represents a clinically-grounded attempt to prevent over-prescription ('a doctor does not prescribe 4-5 kits for a pure PCOS case')."
+    ],
+    "dangerousHiddenCouplings": [
+      "COUPLING_001: THYROID_HYPO triggered by BOTH thyroid field AND hormonal field — if hormonal 'Thyroid' option was not removed by IIFE (e.g. bug in IIFE), patients could get double THYROID_HYPO scoring.",
+      "COUPLING_002: PCOS priority boost (92→101) when Hypothyroid co-selected causes PCOS to outrank its own co-morbidity (thyroid). If a patient has severe hypothyroid as the true primary driver plus mild PCOS, the system still routes to PCOS protocol — potentially under-treating the thyroid.",
+      "COUPLING_003: hasActiveShedding unshifts TE GOLD to position 0 AFTER protocol sequencer sets the order, creating silent override of the PROTOCOL_SEQUENCER's clinically-intended Phase 1 kit. For protocols where PRO IMMUNE is intended to be Phase 1 (AGA_MALE_45, THYROID_HYPER), active shedding will displace it.",
+      "COUPLING_004: GLP-1 early re-enforcement runs TWICE — once in the main GLP-1 early block (lines 3895-3901) and once in a re-enforcement block (lines 3991-3998) after liftPhase reordering. If liftPhase is modified to include RAPID WEIGHT LOSS SHIELD, this double-enforcement could create unexpected ordering.",
+      "COUPLING_005: S._pcosStackHandled flag prevents generic PRO IMMUNE injection for PCOS patients. But this flag is set on S (global state object). If getFunnelKits() is called multiple times without resetting S, the flag persists and incorrectly blocks PRO IMMUNE for non-PCOS subsequent calls."
+    ],
+    "suggestedNormalizationOpportunities": [
+      "NORM_001: The hasActiveShedding calculation is duplicated in both buildPrompt() (for LLM instruction) and getFunnelKits() (for kit ordering). Extract to a shared function.",
+      "NORM_002: The _skipIf function for duration/count/hairtype is identical across all three STEPS — could be a single shared predicate function reference.",
+      "NORM_003: The has(arr, v) helper is defined independently in matchProtocol(), getFunnelKits(), and localClinicalEngine() — three copies of the same case-insensitive substring matcher.",
+      "NORM_004: Protocol-key-to-label mapping exists in PROTOCOL_SEQUENCER[key].label AND is also reconstructed in localClinicalEngine() as a separate variable. Single source of truth would reduce drift.",
+      "NORM_005: VEG variant lookup in resolveKit() uses string comparison chains (if/else if). Could be expressed as a lookup table for cleaner extension when new VEG variants are added.",
+      "NORM_006: The scoring engine in matchProtocol() and the injection pool in getFunnelKits() have overlapping logic for detecting scalp inflammation, immune signals, and metabolic signals. Shared signal detection functions would reduce inconsistency risk."
+    ]
+  }
+}

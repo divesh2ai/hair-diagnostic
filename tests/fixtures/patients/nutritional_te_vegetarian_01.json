@@ -1,0 +1,35 @@
+{
+  "id": "nutritional_te_vegetarian_01",
+  "description": "Nutritional TE in vegetarian patient — veg kit variants must be selected. TE GOLD VEG (not standard) must be recommended. PHENOTYPE INFLAMATION clears nutritional-stress inflammatory load. Tests vegetarian flag + veg kit alias resolution (isVeg=true).",
+  "budget": "STANDARD",
+  "answers": {
+    "sex": "Female",
+    "age": "25",
+    "grade": "Grade 2",
+    "goal": ["Reduce hair fall"],
+    "cause": ["Nutritional deficiency"],
+    "diet": ["Vegetarian", "Irregular"],
+    "deficiency": ["Vitamin D", "Zinc"],
+    "scalp": [],
+    "lifestyle": [],
+    "thyroid": [],
+    "hormonal": [],
+    "immunity": [],
+    "gut": [],
+    "hairtype": [],
+    "treatment": [],
+    "duration": "3–6 months",
+    "count": "50–100 strands"
+  },
+  "expected": {
+    "diagnoses": ["TE_NUTRITION"],
+    "scalpStates": ["NORMAL_SCALP"],
+    "rootCauses": ["POOR_NUTRITION"],
+    "therapyNeeds": ["SHEDDING_ARREST", "INFLAMMATION_CONTROL"],
+    "topKit": "HAIR FACT TE GOLD VEG",
+    "mustIncludeKits": ["HAIR FACT TE GOLD VEG", "PHENOTYPE INFLAMATION"],
+    "mustExcludeKits": ["HAIR FACT TE GOLD", "PRO FACT META B HYPOTHYROID", "MPHL"],
+    "mustTriggerRules": ["ACTIVE_SHEDDING"],
+    "mustBlockRules": ["GLP1_EARLY", "GLP1_LATE", "RULE1_HYPO_METABOLIC"]
+  }
+}

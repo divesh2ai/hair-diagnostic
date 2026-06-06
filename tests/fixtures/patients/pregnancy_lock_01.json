@@ -1,0 +1,35 @@
+{
+  "id": "pregnancy_lock_01",
+  "description": "Pregnancy absolute lock — HEALTHY-9 is the ONLY kit prescribed. No other kits permitted during pregnancy. Single-kit invariant regardless of all other signals or budget. Tests the pregnancy contraindication override at the final stage of the kit scorer pipeline.",
+  "budget": "COMPREHENSIVE",
+  "answers": {
+    "sex": "Female",
+    "age": "27",
+    "grade": "Grade 2",
+    "goal": ["Reduce hair fall"],
+    "hormonal": ["Currently pregnant"],
+    "scalp": [],
+    "cause": [],
+    "lifestyle": [],
+    "thyroid": [],
+    "immunity": [],
+    "deficiency": [],
+    "gut": [],
+    "diet": [],
+    "hairtype": [],
+    "treatment": [],
+    "duration": "1–3 months",
+    "count": "50–100 strands"
+  },
+  "expected": {
+    "diagnoses": ["PREGNANCY"],
+    "scalpStates": ["NORMAL_SCALP"],
+    "rootCauses": [],
+    "therapyNeeds": ["PREGNANCY_SUPPORT"],
+    "topKit": "HEALTHY - 9",
+    "mustIncludeKits": ["HEALTHY - 9"],
+    "mustExcludeKits": ["HAIR FACT TE GOLD", "PRO IMMUNE GOLD", "FPHL", "MPHL", "PHENOTYPE INFLAMATION", "RAPID WEIGHT LOSS SHIELD"],
+    "mustTriggerRules": [],
+    "mustBlockRules": ["GLP1_EARLY", "GLP1_LATE", "RULE1_HYPO_METABOLIC"]
+  }
+}

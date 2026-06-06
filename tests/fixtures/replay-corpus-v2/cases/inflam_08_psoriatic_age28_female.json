@@ -1,0 +1,117 @@
+{
+  "caseId": "inflam_08_psoriatic_age28_female",
+  "corpusVersion": "2.0.0",
+  "description": "Inflammatory scalp dysfunction — psoriatic, 28y Female.",
+  "category": "INFLAMMATORY_SCALP",
+  "severity": "moderate",
+  "presentationClarity": "clear",
+  "demographicProfile": {
+    "sex": "Female",
+    "age": "28",
+    "region": null,
+    "dietType": "Mixed"
+  },
+  "questionnaireAnswers": {
+    "sex": "Female",
+    "age": "28",
+    "goal": [
+      "Reduce hair fall"
+    ],
+    "grade": "Grade 1",
+    "scalp": [
+      "Psoriasis on scalp"
+    ],
+    "cause": [
+      "Scalp infection"
+    ],
+    "lifestyle": [],
+    "thyroid": [],
+    "hormonal": [],
+    "immunity": [],
+    "deficiency": [],
+    "gut": [],
+    "diet": [],
+    "hairtype": [
+      "Diffuse shedding"
+    ],
+    "treatment": [],
+    "duration": "6–12 months",
+    "count": "100–200 hairs/day"
+  },
+  "expectedSignals": [
+    {
+      "signalId": "sex-female",
+      "minConfidence": 0.99
+    },
+    {
+      "signalId": "age-mid-modifier",
+      "minConfidence": 0.99
+    },
+    {
+      "signalId": "psoriatic-scalp",
+      "minConfidence": 0.9,
+      "mustBePrimary": true
+    }
+  ],
+  "expectedPathways": [
+    {
+      "pathwayId": "scalp-inflammation",
+      "minActivation": 0.6,
+      "role": "leading"
+    }
+  ],
+  "expectedRootCauses": [
+    {
+      "causeId": "inflammatory-scalp-dysfunction",
+      "minPosterior": 0.45,
+      "surfaceAs": "lead"
+    }
+  ],
+  "expectedDiagnosis": {
+    "primary": "inflammatory-scalp-dysfunction",
+    "secondary": [],
+    "legacyDiagnosisKey": "PSORIATIC_SCALP",
+    "legacyDiagnosisKeyAlternates": [
+      "INFLAMMATORY_SCALP"
+    ]
+  },
+  "expectedSeverity": "moderate",
+  "expectedProtocolClass": "INFLAMMATORY",
+  "expectedTherapyNeeds": [
+    "INFLAMMATION_CONTROL",
+    "SCALP_DECONGESTION"
+  ],
+  "expectedMonitoringRequirements": {
+    "required": [
+      "SCALP_EXAM_3M",
+      "GLOBAL_PHOTO_3M"
+    ],
+    "recommended": [
+      "TRICHOSCOPY_6M"
+    ],
+    "forbidden": []
+  },
+  "expectedNarrativeThemes": {
+    "themes": [
+      "INFLAMMATORY_QUIESCENCE",
+      "REVERSIBILITY_REASSURANCE"
+    ],
+    "mustContainTokens": [
+      "inflammation",
+      "scalp"
+    ],
+    "mustNotContainTokens": [
+      "guaranteed"
+    ]
+  },
+  "clinicalRationale": {
+    "whyPrimary": "28-year-old female with dominant scalp-surface inflammation signals (psoriatic) and mild associated shedding. Scalp-inflammation pathway leads with ≥0.60 activation; pattern signal is absent, so the inflammatory cause is the named driver rather than a downstream modifier. Protocol class INFLAMMATORY focuses on scalp decongestion and topical inflammation control; once the surface dermatosis quiets, follicle cycling normalizes.",
+    "whyNotCompetitors": {
+      "androgen-driven-miniaturization": "Pattern signal absent; miniaturization not above floor.",
+      "stress-driven-telogen-effluvium": "Shedding is mild and explained by inflammatory shed; no synchronized telogen precipitant.",
+      "autoimmune-hair-loss": "No patchy/areata markers.",
+      "nutritional-hair-stress": "No deficiency signals.",
+      "multifactorial-hair-loss": "Single dominant pathway."
+    }
+  }
+}

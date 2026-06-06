@@ -1,0 +1,4381 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`snapshot — AGA spectrum > female_aga_stress_01 (Female AGA Grade 2 full stack) 1`] = `
+{
+  "clinicalProfile": {
+    "primaryDiagnosis": "AGA_FEMALE_123",
+    "primaryScore": 70,
+    "rootCauses": [
+      "STRESS",
+      "GENETICS",
+      "DHT",
+    ],
+    "scalpStates": [
+      "OILY_SCALP",
+      "DANDRUFF",
+    ],
+    "secondaryDiagnoses": [
+      {
+        "key": "TE_STRESS",
+        "score": 55,
+      },
+      {
+        "key": "SCALP_INFLAM",
+        "score": 42,
+      },
+    ],
+    "severity": "MILD",
+  },
+  "recommendation": {
+    "appliedRules": [
+      "ACTIVE_SHEDDING: TE GOLD promoted to Phase 1. Active shedding confirmed — arresting fall is non-negotiable first step.",
+    ],
+    "protocolLabel": "Female Pattern Hair Loss — FPHL (Grade 1-2-3)",
+    "rankedKits": [
+      {
+        "kitId": "HAIR FACT TE GOLD",
+        "matchedNeeds": [
+          "SHEDDING_ARREST",
+        ],
+        "phase": 1,
+        "score": 100,
+      },
+      {
+        "kitId": "PHENOTYPE INFLAMATION",
+        "matchedNeeds": [
+          "INFLAMMATION_CONTROL",
+        ],
+        "phase": 2,
+        "score": 92,
+      },
+      {
+        "kitId": "FPHL",
+        "matchedNeeds": [
+          "DHT_SUPPRESSION",
+        ],
+        "phase": 3,
+        "score": 84,
+      },
+      {
+        "kitId": "PRO FACT META B",
+        "matchedNeeds": [
+          "METABOLIC_SUPPORT",
+        ],
+        "phase": 4,
+        "score": 76,
+      },
+      {
+        "kitId": "PRO IMMUNE GOLD",
+        "matchedNeeds": [
+          "FOLLICLE_STIMULATION",
+        ],
+        "phase": 5,
+        "score": 68,
+      },
+    ],
+  },
+  "therapyNeeds": [
+    "SHEDDING_ARREST",
+    "INFLAMMATION_CONTROL",
+    "DHT_SUPPRESSION",
+    "METABOLIC_SUPPORT",
+    "FOLLICLE_STIMULATION",
+  ],
+}
+`;
+
+exports[`snapshot — AGA spectrum > female_aga_under30_01 (AGA_FEMALE_UNDER30 special protocol) 1`] = `
+{
+  "clinicalProfile": {
+    "primaryDiagnosis": "AGA_FEMALE_123",
+    "primaryScore": 65,
+    "rootCauses": [
+      "GENETICS",
+      "DHT",
+    ],
+    "scalpStates": [
+      "OILY_SCALP",
+      "DANDRUFF",
+    ],
+    "secondaryDiagnoses": [
+      {
+        "key": "SCALP_INFLAM",
+        "score": 62,
+      },
+    ],
+    "severity": "MILD",
+  },
+  "recommendation": {
+    "appliedRules": [
+      "AGA_FEMALE_UNDER30: Female under 30 with genetics. Follicle not yet miniaturised — TE GOLD + PRO IMMUNE instead of FPHL.",
+      "SIGNAL_GATED_INJECTION: FPHL added — signal confirmed.",
+      "SIGNAL_GATED_INJECTION: PHENOTYPE INFLAMATION added — signal confirmed.",
+      "ACTIVE_SHEDDING: TE GOLD promoted to Phase 1. Active shedding confirmed — arresting fall is non-negotiable first step.",
+      "PRO_IMMUNE_LAST: PRO IMMUNE moved to final phase — nutritional regrowth supply into a clean follicle environment.",
+    ],
+    "protocolLabel": "Female Pattern Hair Loss — FPHL (Grade 1-2-3)",
+    "rankedKits": [
+      {
+        "kitId": "HAIR FACT TE GOLD",
+        "matchedNeeds": [
+          "SHEDDING_ARREST",
+        ],
+        "phase": 1,
+        "score": 100,
+      },
+      {
+        "kitId": "FPHL",
+        "matchedNeeds": [
+          "DHT_SUPPRESSION",
+        ],
+        "phase": 2,
+        "score": 92,
+      },
+      {
+        "kitId": "PHENOTYPE INFLAMATION",
+        "matchedNeeds": [
+          "INFLAMMATION_CONTROL",
+        ],
+        "phase": 3,
+        "score": 84,
+      },
+      {
+        "kitId": "PRO IMMUNE GOLD",
+        "matchedNeeds": [
+          "FOLLICLE_STIMULATION",
+        ],
+        "phase": 4,
+        "score": 76,
+      },
+    ],
+  },
+  "therapyNeeds": [
+    "SHEDDING_ARREST",
+    "INFLAMMATION_CONTROL",
+    "DHT_SUPPRESSION",
+    "METABOLIC_SUPPORT",
+    "FOLLICLE_STIMULATION",
+  ],
+}
+`;
+
+exports[`snapshot — AGA spectrum > male_aga_grade45_01 (Male AGA Grade 4 — MPHL leads, PRO IMMUNE last) 1`] = `
+{
+  "clinicalProfile": {
+    "primaryDiagnosis": "AGA_MALE_45",
+    "primaryScore": 95,
+    "rootCauses": [
+      "GENETICS",
+      "DHT",
+    ],
+    "scalpStates": [
+      "OILY_SCALP",
+    ],
+    "secondaryDiagnoses": [],
+    "severity": "SEVERE",
+  },
+  "recommendation": {
+    "appliedRules": [
+      "NO_VISIBLE_FALL: TE GOLD removed. Patient reports thinning only — no active shedding phase.",
+      "FINAL_NO_VISIBLE_FALL: TE GOLD stripped on final pass — confirmed thinning-only patient.",
+      "PRO_IMMUNE_LAST: PRO IMMUNE moved to final phase — nutritional regrowth supply into a clean follicle environment.",
+    ],
+    "protocolLabel": "Male Pattern Hair Loss — MPHL (Grade 4-5 Advanced)",
+    "rankedKits": [
+      {
+        "kitId": "MPHL",
+        "matchedNeeds": [
+          "DHT_SUPPRESSION",
+        ],
+        "phase": 1,
+        "score": 100,
+      },
+      {
+        "kitId": "PHENOTYPE INFLAMATION",
+        "matchedNeeds": [
+          "INFLAMMATION_CONTROL",
+        ],
+        "phase": 2,
+        "score": 92,
+      },
+      {
+        "kitId": "PRO IMMUNE GOLD",
+        "matchedNeeds": [
+          "IMMUNE_MODULATION",
+        ],
+        "phase": 3,
+        "score": 84,
+      },
+    ],
+  },
+  "therapyNeeds": [
+    "IMMUNE_MODULATION",
+    "DHT_SUPPRESSION",
+    "INFLAMMATION_CONTROL",
+  ],
+}
+`;
+
+exports[`snapshot — AGA spectrum > male_aga_oily_01 (Male AGA Grade 2 full stack) 1`] = `
+{
+  "clinicalProfile": {
+    "primaryDiagnosis": "AGA_MALE_123",
+    "primaryScore": 70,
+    "rootCauses": [
+      "STRESS",
+      "GENETICS",
+      "METABOLIC",
+      "DHT",
+    ],
+    "scalpStates": [
+      "OILY_SCALP",
+      "DANDRUFF",
+    ],
+    "secondaryDiagnoses": [
+      {
+        "key": "TE_STRESS",
+        "score": 55,
+      },
+      {
+        "key": "SCALP_INFLAM",
+        "score": 42,
+      },
+    ],
+    "severity": "MILD",
+  },
+  "recommendation": {
+    "appliedRules": [
+      "ACTIVE_SHEDDING: TE GOLD promoted to Phase 1. Active shedding confirmed — arresting fall is non-negotiable first step.",
+    ],
+    "protocolLabel": "Male Pattern Hair Loss — MPHL (Grade 1-2-3)",
+    "rankedKits": [
+      {
+        "kitId": "HAIR FACT TE GOLD",
+        "matchedNeeds": [
+          "SHEDDING_ARREST",
+        ],
+        "phase": 1,
+        "score": 100,
+      },
+      {
+        "kitId": "PHENOTYPE INFLAMATION",
+        "matchedNeeds": [
+          "INFLAMMATION_CONTROL",
+        ],
+        "phase": 2,
+        "score": 92,
+      },
+      {
+        "kitId": "MPHL",
+        "matchedNeeds": [
+          "DHT_SUPPRESSION",
+        ],
+        "phase": 3,
+        "score": 84,
+      },
+      {
+        "kitId": "PRO FACT META B",
+        "matchedNeeds": [
+          "METABOLIC_SUPPORT",
+        ],
+        "phase": 4,
+        "score": 76,
+      },
+      {
+        "kitId": "PRO IMMUNE GOLD",
+        "matchedNeeds": [
+          "FOLLICLE_STIMULATION",
+        ],
+        "phase": 5,
+        "score": 68,
+      },
+    ],
+  },
+  "therapyNeeds": [
+    "SHEDDING_ARREST",
+    "INFLAMMATION_CONTROL",
+    "DHT_SUPPRESSION",
+    "METABOLIC_SUPPORT",
+    "FOLLICLE_STIMULATION",
+  ],
+}
+`;
+
+exports[`snapshot — AGA spectrum female_aga_stress_01 (Female AGA Grade 2 full stack) 1`] = `
+{
+  "clinicalProfile": {
+    "primaryDiagnosis": "AGA_FEMALE_123",
+    "primaryScore": 70,
+    "rootCauses": [
+      "STRESS",
+      "GENETICS",
+      "DHT",
+    ],
+    "scalpStates": [
+      "OILY_SCALP",
+      "DANDRUFF",
+    ],
+    "secondaryDiagnoses": [
+      {
+        "key": "TE_STRESS",
+        "score": 55,
+      },
+      {
+        "key": "SCALP_INFLAM",
+        "score": 42,
+      },
+    ],
+    "severity": "MILD",
+  },
+  "recommendation": {
+    "appliedRules": [
+      "ACTIVE_SHEDDING: TE GOLD promoted to Phase 1. Active shedding confirmed — arresting fall is non-negotiable first step.",
+    ],
+    "protocolLabel": "Female Pattern Hair Loss — FPHL (Grade 1-2-3)",
+    "rankedKits": [
+      {
+        "kitId": "HAIR FACT TE GOLD",
+        "matchedNeeds": [
+          "SHEDDING_ARREST",
+        ],
+        "phase": 1,
+        "score": 100,
+      },
+      {
+        "kitId": "PHENOTYPE INFLAMATION",
+        "matchedNeeds": [
+          "INFLAMMATION_CONTROL",
+        ],
+        "phase": 2,
+        "score": 92,
+      },
+      {
+        "kitId": "FPHL",
+        "matchedNeeds": [
+          "DHT_SUPPRESSION",
+        ],
+        "phase": 3,
+        "score": 84,
+      },
+      {
+        "kitId": "PRO FACT META B",
+        "matchedNeeds": [
+          "METABOLIC_SUPPORT",
+        ],
+        "phase": 4,
+        "score": 76,
+      },
+      {
+        "kitId": "PRO IMMUNE GOLD",
+        "matchedNeeds": [
+          "FOLLICLE_STIMULATION",
+        ],
+        "phase": 5,
+        "score": 68,
+      },
+    ],
+  },
+  "therapyNeeds": [
+    "SHEDDING_ARREST",
+    "INFLAMMATION_CONTROL",
+    "DHT_SUPPRESSION",
+    "METABOLIC_SUPPORT",
+    "FOLLICLE_STIMULATION",
+  ],
+}
+`;
+
+exports[`snapshot — AGA spectrum female_aga_under30_01 (AGA_FEMALE_UNDER30 special protocol) 1`] = `
+{
+  "clinicalProfile": {
+    "primaryDiagnosis": "AGA_FEMALE_123",
+    "primaryScore": 65,
+    "rootCauses": [
+      "GENETICS",
+      "DHT",
+    ],
+    "scalpStates": [
+      "OILY_SCALP",
+      "DANDRUFF",
+    ],
+    "secondaryDiagnoses": [
+      {
+        "key": "SCALP_INFLAM",
+        "score": 62,
+      },
+    ],
+    "severity": "MILD",
+  },
+  "recommendation": {
+    "appliedRules": [
+      "AGA_FEMALE_UNDER30: Female under 30 with genetics. Follicle not yet miniaturised — TE GOLD + PRO IMMUNE instead of FPHL.",
+      "SIGNAL_GATED_INJECTION: FPHL added — signal confirmed.",
+      "SIGNAL_GATED_INJECTION: PHENOTYPE INFLAMATION added — signal confirmed.",
+      "ACTIVE_SHEDDING: TE GOLD promoted to Phase 1. Active shedding confirmed — arresting fall is non-negotiable first step.",
+      "PRO_IMMUNE_LAST: PRO IMMUNE moved to final phase — nutritional regrowth supply into a clean follicle environment.",
+    ],
+    "protocolLabel": "Female Pattern Hair Loss — FPHL (Grade 1-2-3)",
+    "rankedKits": [
+      {
+        "kitId": "HAIR FACT TE GOLD",
+        "matchedNeeds": [
+          "SHEDDING_ARREST",
+        ],
+        "phase": 1,
+        "score": 100,
+      },
+      {
+        "kitId": "FPHL",
+        "matchedNeeds": [
+          "DHT_SUPPRESSION",
+        ],
+        "phase": 2,
+        "score": 92,
+      },
+      {
+        "kitId": "PHENOTYPE INFLAMATION",
+        "matchedNeeds": [
+          "INFLAMMATION_CONTROL",
+        ],
+        "phase": 3,
+        "score": 84,
+      },
+      {
+        "kitId": "PRO IMMUNE GOLD",
+        "matchedNeeds": [
+          "FOLLICLE_STIMULATION",
+        ],
+        "phase": 4,
+        "score": 76,
+      },
+    ],
+  },
+  "therapyNeeds": [
+    "SHEDDING_ARREST",
+    "INFLAMMATION_CONTROL",
+    "DHT_SUPPRESSION",
+    "METABOLIC_SUPPORT",
+    "FOLLICLE_STIMULATION",
+  ],
+}
+`;
+
+exports[`snapshot — AGA spectrum male_aga_grade45_01 (Male AGA Grade 4 — MPHL leads, PRO IMMUNE last) 1`] = `
+{
+  "clinicalProfile": {
+    "primaryDiagnosis": "AGA_MALE_45",
+    "primaryScore": 95,
+    "rootCauses": [
+      "GENETICS",
+      "DHT",
+    ],
+    "scalpStates": [
+      "OILY_SCALP",
+    ],
+    "secondaryDiagnoses": [],
+    "severity": "SEVERE",
+  },
+  "recommendation": {
+    "appliedRules": [
+      "NO_VISIBLE_FALL: TE GOLD removed. Patient reports thinning only — no active shedding phase.",
+      "FINAL_NO_VISIBLE_FALL: TE GOLD stripped on final pass — confirmed thinning-only patient.",
+      "PRO_IMMUNE_LAST: PRO IMMUNE moved to final phase — nutritional regrowth supply into a clean follicle environment.",
+    ],
+    "protocolLabel": "Male Pattern Hair Loss — MPHL (Grade 4-5 Advanced)",
+    "rankedKits": [
+      {
+        "kitId": "MPHL",
+        "matchedNeeds": [
+          "DHT_SUPPRESSION",
+        ],
+        "phase": 1,
+        "score": 100,
+      },
+      {
+        "kitId": "PHENOTYPE INFLAMATION",
+        "matchedNeeds": [
+          "INFLAMMATION_CONTROL",
+        ],
+        "phase": 2,
+        "score": 92,
+      },
+      {
+        "kitId": "PRO IMMUNE GOLD",
+        "matchedNeeds": [
+          "IMMUNE_MODULATION",
+        ],
+        "phase": 3,
+        "score": 84,
+      },
+    ],
+  },
+  "therapyNeeds": [
+    "IMMUNE_MODULATION",
+    "DHT_SUPPRESSION",
+    "INFLAMMATION_CONTROL",
+  ],
+}
+`;
+
+exports[`snapshot — AGA spectrum male_aga_oily_01 (Male AGA Grade 2 full stack) 1`] = `
+{
+  "clinicalProfile": {
+    "primaryDiagnosis": "AGA_MALE_123",
+    "primaryScore": 70,
+    "rootCauses": [
+      "STRESS",
+      "GENETICS",
+      "METABOLIC",
+      "DHT",
+    ],
+    "scalpStates": [
+      "OILY_SCALP",
+      "DANDRUFF",
+    ],
+    "secondaryDiagnoses": [
+      {
+        "key": "TE_STRESS",
+        "score": 55,
+      },
+      {
+        "key": "SCALP_INFLAM",
+        "score": 42,
+      },
+    ],
+    "severity": "MILD",
+  },
+  "recommendation": {
+    "appliedRules": [
+      "ACTIVE_SHEDDING: TE GOLD promoted to Phase 1. Active shedding confirmed — arresting fall is non-negotiable first step.",
+    ],
+    "protocolLabel": "Male Pattern Hair Loss — MPHL (Grade 1-2-3)",
+    "rankedKits": [
+      {
+        "kitId": "HAIR FACT TE GOLD",
+        "matchedNeeds": [
+          "SHEDDING_ARREST",
+        ],
+        "phase": 1,
+        "score": 100,
+      },
+      {
+        "kitId": "PHENOTYPE INFLAMATION",
+        "matchedNeeds": [
+          "INFLAMMATION_CONTROL",
+        ],
+        "phase": 2,
+        "score": 92,
+      },
+      {
+        "kitId": "MPHL",
+        "matchedNeeds": [
+          "DHT_SUPPRESSION",
+        ],
+        "phase": 3,
+        "score": 84,
+      },
+      {
+        "kitId": "PRO FACT META B",
+        "matchedNeeds": [
+          "METABOLIC_SUPPORT",
+        ],
+        "phase": 4,
+        "score": 76,
+      },
+      {
+        "kitId": "PRO IMMUNE GOLD",
+        "matchedNeeds": [
+          "FOLLICLE_STIMULATION",
+        ],
+        "phase": 5,
+        "score": 68,
+      },
+    ],
+  },
+  "therapyNeeds": [
+    "SHEDDING_ARREST",
+    "INFLAMMATION_CONTROL",
+    "DHT_SUPPRESSION",
+    "METABOLIC_SUPPORT",
+    "FOLLICLE_STIMULATION",
+  ],
+}
+`;
+
+exports[`snapshot — PCOS stack logic > pcos_diabetes_upgrade_01 (PCOS_DIABETES_UPGRADE) 1`] = `
+{
+  "clinicalProfile": {
+    "primaryDiagnosis": "PCOS_ONLY",
+    "primaryScore": 92,
+    "rootCauses": [
+      "PCOS",
+      "METABOLIC",
+    ],
+    "scalpStates": [
+      "NORMAL_SCALP",
+    ],
+    "secondaryDiagnoses": [
+      {
+        "key": "DIABETES",
+        "score": 90,
+      },
+      {
+        "key": "AGA_FEMALE_123",
+        "score": 50,
+      },
+    ],
+    "severity": "MILD",
+  },
+  "recommendation": {
+    "appliedRules": [
+      "METABOLIC_GENERIC: metabolic signal detected → PRO FACT META B injected.",
+      "PCOS_DIABETES_UPGRADE: PCOS_ONLY + diabetes/pre-diabetes → F-PCOS-1 upgraded to PRO FACT META B PCOS.",
+      "ACTIVE_SHEDDING: TE GOLD promoted to Phase 1. Active shedding confirmed — arresting fall is non-negotiable first step.",
+    ],
+    "protocolLabel": "PCOS — Hormonal Hair Loss",
+    "rankedKits": [
+      {
+        "kitId": "HAIR FACT TE GOLD",
+        "matchedNeeds": [
+          "SHEDDING_ARREST",
+        ],
+        "phase": 1,
+        "score": 100,
+      },
+      {
+        "kitId": "PRO FACT META B PCOS",
+        "matchedNeeds": [
+          "METABOLIC_SUPPORT",
+          "ANDROGENIC_CORRECTION",
+        ],
+        "phase": 2,
+        "score": 92,
+      },
+      {
+        "kitId": "PHENOTYPE INFLAMATION",
+        "matchedNeeds": [
+          "INFLAMMATION_CONTROL",
+        ],
+        "phase": 3,
+        "score": 84,
+      },
+      {
+        "kitId": "PRO FACT META B",
+        "matchedNeeds": [
+          "METABOLIC_SUPPORT",
+        ],
+        "phase": 4,
+        "score": 76,
+      },
+    ],
+  },
+  "therapyNeeds": [
+    "ANDROGENIC_CORRECTION",
+    "INFLAMMATION_CONTROL",
+    "SHEDDING_ARREST",
+    "METABOLIC_SUPPORT",
+  ],
+}
+`;
+
+exports[`snapshot — PCOS stack logic > pcos_obesity_01 (PRO FACT META B PCOS — no F-PCOS-1) 1`] = `
+{
+  "clinicalProfile": {
+    "primaryDiagnosis": "PCOS_OBESITY",
+    "primaryScore": 92,
+    "rootCauses": [
+      "PCOS",
+      "METABOLIC",
+    ],
+    "scalpStates": [
+      "NORMAL_SCALP",
+    ],
+    "secondaryDiagnoses": [
+      {
+        "key": "AGA_FEMALE_123",
+        "score": 50,
+      },
+    ],
+    "severity": "MILD",
+  },
+  "recommendation": {
+    "appliedRules": [
+      "ACTIVE_SHEDDING: TE GOLD promoted to Phase 1. Active shedding confirmed — arresting fall is non-negotiable first step.",
+    ],
+    "protocolLabel": "PCOS + Metabolic (Insulin Resistance)",
+    "rankedKits": [
+      {
+        "kitId": "HAIR FACT TE GOLD",
+        "matchedNeeds": [],
+        "phase": 1,
+        "score": 100,
+      },
+      {
+        "kitId": "PRO FACT META B PCOS",
+        "matchedNeeds": [
+          "METABOLIC_SUPPORT",
+          "ANDROGENIC_CORRECTION",
+        ],
+        "phase": 2,
+        "score": 92,
+      },
+      {
+        "kitId": "PHENOTYPE INFLAMATION",
+        "matchedNeeds": [
+          "INFLAMMATION_CONTROL",
+        ],
+        "phase": 3,
+        "score": 84,
+      },
+    ],
+  },
+  "therapyNeeds": [
+    "METABOLIC_SUPPORT",
+    "ANDROGENIC_CORRECTION",
+    "INFLAMMATION_CONTROL",
+  ],
+}
+`;
+
+exports[`snapshot — PCOS stack logic > pcos_obesity_hypothyroid_01 (triple-axis single META B) 1`] = `
+{
+  "clinicalProfile": {
+    "primaryDiagnosis": "PCOS_OBESITY",
+    "primaryScore": 101,
+    "rootCauses": [
+      "HYPOTHYROID",
+      "PCOS",
+      "METABOLIC",
+    ],
+    "scalpStates": [
+      "NORMAL_SCALP",
+    ],
+    "secondaryDiagnoses": [
+      {
+        "key": "THYROID_HYPO",
+        "score": 100,
+      },
+      {
+        "key": "AGA_FEMALE_123",
+        "score": 50,
+      },
+    ],
+    "severity": "MILD",
+  },
+  "recommendation": {
+    "appliedRules": [
+      "PCOS_OBESITY_HYPO: PCOS_OBESITY + Hypothyroid → single PRO FACT META B. Covers AMPK/insulin + androgen + T3 axes in one kit. Avoids PCOS/HYPOTHYROID variant duplication.",
+      "ACTIVE_SHEDDING: TE GOLD promoted to Phase 1. Active shedding confirmed — arresting fall is non-negotiable first step.",
+    ],
+    "protocolLabel": "PCOS + Metabolic (Insulin Resistance)",
+    "rankedKits": [
+      {
+        "kitId": "HAIR FACT TE GOLD",
+        "matchedNeeds": [],
+        "phase": 1,
+        "score": 100,
+      },
+      {
+        "kitId": "PRO FACT META B",
+        "matchedNeeds": [
+          "METABOLIC_SUPPORT",
+        ],
+        "phase": 2,
+        "score": 92,
+      },
+      {
+        "kitId": "PHENOTYPE INFLAMATION",
+        "matchedNeeds": [
+          "INFLAMMATION_CONTROL",
+        ],
+        "phase": 3,
+        "score": 84,
+      },
+    ],
+  },
+  "therapyNeeds": [
+    "METABOLIC_SUPPORT",
+    "ANDROGENIC_CORRECTION",
+    "INFLAMMATION_CONTROL",
+    "THYROID_SUPPORT",
+  ],
+}
+`;
+
+exports[`snapshot — PCOS stack logic > pcos_only_dandruff_01 (F-PCOS-1 base) 1`] = `
+{
+  "clinicalProfile": {
+    "primaryDiagnosis": "PCOS_ONLY",
+    "primaryScore": 92,
+    "rootCauses": [
+      "PCOS",
+      "DHT",
+    ],
+    "scalpStates": [
+      "OILY_SCALP",
+      "DANDRUFF",
+    ],
+    "secondaryDiagnoses": [
+      {
+        "key": "AGA_FEMALE_123",
+        "score": 65,
+      },
+      {
+        "key": "SCALP_INFLAM",
+        "score": 62,
+      },
+    ],
+    "severity": "MILD",
+  },
+  "recommendation": {
+    "appliedRules": [
+      "ACTIVE_SHEDDING: TE GOLD promoted to Phase 1. Active shedding confirmed — arresting fall is non-negotiable first step.",
+    ],
+    "protocolLabel": "PCOS — Hormonal Hair Loss",
+    "rankedKits": [
+      {
+        "kitId": "HAIR FACT TE GOLD",
+        "matchedNeeds": [
+          "SHEDDING_ARREST",
+        ],
+        "phase": 1,
+        "score": 100,
+      },
+      {
+        "kitId": "F-PCOS -1",
+        "matchedNeeds": [
+          "ANDROGENIC_CORRECTION",
+        ],
+        "phase": 2,
+        "score": 92,
+      },
+      {
+        "kitId": "PHENOTYPE INFLAMATION",
+        "matchedNeeds": [
+          "INFLAMMATION_CONTROL",
+        ],
+        "phase": 3,
+        "score": 84,
+      },
+    ],
+  },
+  "therapyNeeds": [
+    "ANDROGENIC_CORRECTION",
+    "INFLAMMATION_CONTROL",
+    "SHEDDING_ARREST",
+  ],
+}
+`;
+
+exports[`snapshot — PCOS stack logic > pcos_only_iron_fphl_01 (PCOS + iron + FPHL stack) 1`] = `
+{
+  "clinicalProfile": {
+    "primaryDiagnosis": "PCOS_ONLY",
+    "primaryScore": 92,
+    "rootCauses": [
+      "GENETICS",
+      "IRON_DEFICIENCY",
+      "PCOS",
+    ],
+    "scalpStates": [
+      "NORMAL_SCALP",
+    ],
+    "secondaryDiagnoses": [
+      {
+        "key": "IRON_DEFICIENCY",
+        "score": 80,
+      },
+      {
+        "key": "AGA_FEMALE_123",
+        "score": 70,
+      },
+    ],
+    "severity": "MILD",
+  },
+  "recommendation": {
+    "appliedRules": [
+      "PCOS_IRON: confirmed iron deficiency → IRON UP GOLD added.",
+      "PCOS_FPHL: strong pattern-loss signal detected → FPHL added.",
+      "PCOS_IMMUNE: systemic immune compromise confirmed → PRO IMMUNE added.",
+      "ACTIVE_SHEDDING: TE GOLD promoted to Phase 1. Active shedding confirmed — arresting fall is non-negotiable first step.",
+    ],
+    "protocolLabel": "PCOS — Hormonal Hair Loss",
+    "rankedKits": [
+      {
+        "kitId": "HAIR FACT TE GOLD",
+        "matchedNeeds": [
+          "SHEDDING_ARREST",
+        ],
+        "phase": 1,
+        "score": 100,
+      },
+      {
+        "kitId": "IRON UP GOLD",
+        "matchedNeeds": [
+          "IRON_REPLETION",
+        ],
+        "phase": 2,
+        "score": 92,
+      },
+      {
+        "kitId": "F-PCOS -1",
+        "matchedNeeds": [
+          "ANDROGENIC_CORRECTION",
+        ],
+        "phase": 3,
+        "score": 84,
+      },
+      {
+        "kitId": "PHENOTYPE INFLAMATION",
+        "matchedNeeds": [
+          "INFLAMMATION_CONTROL",
+        ],
+        "phase": 4,
+        "score": 76,
+      },
+      {
+        "kitId": "FPHL",
+        "matchedNeeds": [],
+        "phase": 5,
+        "score": 68,
+      },
+      {
+        "kitId": "PRO IMMUNE GOLD",
+        "matchedNeeds": [],
+        "phase": 6,
+        "score": 60,
+      },
+    ],
+  },
+  "therapyNeeds": [
+    "ANDROGENIC_CORRECTION",
+    "INFLAMMATION_CONTROL",
+    "SHEDDING_ARREST",
+    "IRON_REPLETION",
+  ],
+}
+`;
+
+exports[`snapshot — PCOS stack logic > pcos_only_metabolic_injection_01 (PCOS_META_B_INJECTION) 1`] = `
+{
+  "clinicalProfile": {
+    "primaryDiagnosis": "PCOS_ONLY",
+    "primaryScore": 92,
+    "rootCauses": [
+      "PCOS",
+      "POOR_NUTRITION",
+      "DHT",
+    ],
+    "scalpStates": [
+      "DANDRUFF",
+    ],
+    "secondaryDiagnoses": [
+      {
+        "key": "AGA_FEMALE_123",
+        "score": 65,
+      },
+      {
+        "key": "SCALP_INFLAM",
+        "score": 62,
+      },
+    ],
+    "severity": "MILD",
+  },
+  "recommendation": {
+    "appliedRules": [
+      "METABOLIC_GENERIC: metabolic signal detected → PRO FACT META B injected.",
+      "ACTIVE_SHEDDING: TE GOLD promoted to Phase 1. Active shedding confirmed — arresting fall is non-negotiable first step.",
+    ],
+    "protocolLabel": "PCOS — Hormonal Hair Loss",
+    "rankedKits": [
+      {
+        "kitId": "HAIR FACT TE GOLD",
+        "matchedNeeds": [
+          "SHEDDING_ARREST",
+        ],
+        "phase": 1,
+        "score": 100,
+      },
+      {
+        "kitId": "F-PCOS -1",
+        "matchedNeeds": [
+          "ANDROGENIC_CORRECTION",
+        ],
+        "phase": 2,
+        "score": 92,
+      },
+      {
+        "kitId": "PHENOTYPE INFLAMATION",
+        "matchedNeeds": [
+          "INFLAMMATION_CONTROL",
+        ],
+        "phase": 3,
+        "score": 84,
+      },
+      {
+        "kitId": "PRO FACT META B",
+        "matchedNeeds": [],
+        "phase": 4,
+        "score": 76,
+      },
+    ],
+  },
+  "therapyNeeds": [
+    "ANDROGENIC_CORRECTION",
+    "INFLAMMATION_CONTROL",
+    "SHEDDING_ARREST",
+  ],
+}
+`;
+
+exports[`snapshot — PCOS stack logic pcos_diabetes_upgrade_01 (PCOS_DIABETES_UPGRADE) 1`] = `
+{
+  "clinicalProfile": {
+    "primaryDiagnosis": "PCOS_ONLY",
+    "primaryScore": 92,
+    "rootCauses": [
+      "PCOS",
+      "METABOLIC",
+    ],
+    "scalpStates": [
+      "NORMAL_SCALP",
+    ],
+    "secondaryDiagnoses": [
+      {
+        "key": "DIABETES",
+        "score": 90,
+      },
+      {
+        "key": "AGA_FEMALE_123",
+        "score": 50,
+      },
+    ],
+    "severity": "MILD",
+  },
+  "recommendation": {
+    "appliedRules": [
+      "METABOLIC_GENERIC: metabolic signal detected → PRO FACT META B injected.",
+      "PCOS_DIABETES_UPGRADE: PCOS_ONLY + diabetes/pre-diabetes → F-PCOS-1 upgraded to PRO FACT META B PCOS.",
+      "ACTIVE_SHEDDING: TE GOLD promoted to Phase 1. Active shedding confirmed — arresting fall is non-negotiable first step.",
+    ],
+    "protocolLabel": "PCOS — Hormonal Hair Loss",
+    "rankedKits": [
+      {
+        "kitId": "HAIR FACT TE GOLD",
+        "matchedNeeds": [
+          "SHEDDING_ARREST",
+        ],
+        "phase": 1,
+        "score": 100,
+      },
+      {
+        "kitId": "PRO FACT META B PCOS",
+        "matchedNeeds": [
+          "METABOLIC_SUPPORT",
+          "ANDROGENIC_CORRECTION",
+        ],
+        "phase": 2,
+        "score": 92,
+      },
+      {
+        "kitId": "PHENOTYPE INFLAMATION",
+        "matchedNeeds": [
+          "INFLAMMATION_CONTROL",
+        ],
+        "phase": 3,
+        "score": 84,
+      },
+      {
+        "kitId": "PRO FACT META B",
+        "matchedNeeds": [
+          "METABOLIC_SUPPORT",
+        ],
+        "phase": 4,
+        "score": 76,
+      },
+    ],
+  },
+  "therapyNeeds": [
+    "ANDROGENIC_CORRECTION",
+    "INFLAMMATION_CONTROL",
+    "SHEDDING_ARREST",
+    "METABOLIC_SUPPORT",
+  ],
+}
+`;
+
+exports[`snapshot — PCOS stack logic pcos_obesity_01 (PRO FACT META B PCOS — no F-PCOS-1) 1`] = `
+{
+  "clinicalProfile": {
+    "primaryDiagnosis": "PCOS_OBESITY",
+    "primaryScore": 92,
+    "rootCauses": [
+      "PCOS",
+      "METABOLIC",
+    ],
+    "scalpStates": [
+      "NORMAL_SCALP",
+    ],
+    "secondaryDiagnoses": [
+      {
+        "key": "AGA_FEMALE_123",
+        "score": 50,
+      },
+    ],
+    "severity": "MILD",
+  },
+  "recommendation": {
+    "appliedRules": [
+      "ACTIVE_SHEDDING: TE GOLD promoted to Phase 1. Active shedding confirmed — arresting fall is non-negotiable first step.",
+    ],
+    "protocolLabel": "PCOS + Metabolic (Insulin Resistance)",
+    "rankedKits": [
+      {
+        "kitId": "HAIR FACT TE GOLD",
+        "matchedNeeds": [],
+        "phase": 1,
+        "score": 100,
+      },
+      {
+        "kitId": "PRO FACT META B PCOS",
+        "matchedNeeds": [
+          "METABOLIC_SUPPORT",
+          "ANDROGENIC_CORRECTION",
+        ],
+        "phase": 2,
+        "score": 92,
+      },
+      {
+        "kitId": "PHENOTYPE INFLAMATION",
+        "matchedNeeds": [
+          "INFLAMMATION_CONTROL",
+        ],
+        "phase": 3,
+        "score": 84,
+      },
+    ],
+  },
+  "therapyNeeds": [
+    "METABOLIC_SUPPORT",
+    "ANDROGENIC_CORRECTION",
+    "INFLAMMATION_CONTROL",
+  ],
+}
+`;
+
+exports[`snapshot — PCOS stack logic pcos_obesity_hypothyroid_01 (triple-axis single META B) 1`] = `
+{
+  "clinicalProfile": {
+    "primaryDiagnosis": "PCOS_OBESITY",
+    "primaryScore": 101,
+    "rootCauses": [
+      "HYPOTHYROID",
+      "PCOS",
+      "METABOLIC",
+    ],
+    "scalpStates": [
+      "NORMAL_SCALP",
+    ],
+    "secondaryDiagnoses": [
+      {
+        "key": "THYROID_HYPO",
+        "score": 100,
+      },
+      {
+        "key": "AGA_FEMALE_123",
+        "score": 50,
+      },
+    ],
+    "severity": "MILD",
+  },
+  "recommendation": {
+    "appliedRules": [
+      "PCOS_OBESITY_HYPO: PCOS_OBESITY + Hypothyroid → single PRO FACT META B. Covers AMPK/insulin + androgen + T3 axes in one kit. Avoids PCOS/HYPOTHYROID variant duplication.",
+      "ACTIVE_SHEDDING: TE GOLD promoted to Phase 1. Active shedding confirmed — arresting fall is non-negotiable first step.",
+    ],
+    "protocolLabel": "PCOS + Metabolic (Insulin Resistance)",
+    "rankedKits": [
+      {
+        "kitId": "HAIR FACT TE GOLD",
+        "matchedNeeds": [],
+        "phase": 1,
+        "score": 100,
+      },
+      {
+        "kitId": "PRO FACT META B",
+        "matchedNeeds": [
+          "METABOLIC_SUPPORT",
+        ],
+        "phase": 2,
+        "score": 92,
+      },
+      {
+        "kitId": "PHENOTYPE INFLAMATION",
+        "matchedNeeds": [
+          "INFLAMMATION_CONTROL",
+        ],
+        "phase": 3,
+        "score": 84,
+      },
+    ],
+  },
+  "therapyNeeds": [
+    "METABOLIC_SUPPORT",
+    "ANDROGENIC_CORRECTION",
+    "INFLAMMATION_CONTROL",
+    "THYROID_SUPPORT",
+  ],
+}
+`;
+
+exports[`snapshot — PCOS stack logic pcos_only_dandruff_01 (F-PCOS-1 base) 1`] = `
+{
+  "clinicalProfile": {
+    "primaryDiagnosis": "PCOS_ONLY",
+    "primaryScore": 92,
+    "rootCauses": [
+      "PCOS",
+      "DHT",
+    ],
+    "scalpStates": [
+      "OILY_SCALP",
+      "DANDRUFF",
+    ],
+    "secondaryDiagnoses": [
+      {
+        "key": "AGA_FEMALE_123",
+        "score": 65,
+      },
+      {
+        "key": "SCALP_INFLAM",
+        "score": 62,
+      },
+    ],
+    "severity": "MILD",
+  },
+  "recommendation": {
+    "appliedRules": [
+      "ACTIVE_SHEDDING: TE GOLD promoted to Phase 1. Active shedding confirmed — arresting fall is non-negotiable first step.",
+    ],
+    "protocolLabel": "PCOS — Hormonal Hair Loss",
+    "rankedKits": [
+      {
+        "kitId": "HAIR FACT TE GOLD",
+        "matchedNeeds": [
+          "SHEDDING_ARREST",
+        ],
+        "phase": 1,
+        "score": 100,
+      },
+      {
+        "kitId": "F-PCOS -1",
+        "matchedNeeds": [
+          "ANDROGENIC_CORRECTION",
+        ],
+        "phase": 2,
+        "score": 92,
+      },
+      {
+        "kitId": "PHENOTYPE INFLAMATION",
+        "matchedNeeds": [
+          "INFLAMMATION_CONTROL",
+        ],
+        "phase": 3,
+        "score": 84,
+      },
+    ],
+  },
+  "therapyNeeds": [
+    "ANDROGENIC_CORRECTION",
+    "INFLAMMATION_CONTROL",
+    "SHEDDING_ARREST",
+  ],
+}
+`;
+
+exports[`snapshot — PCOS stack logic pcos_only_iron_fphl_01 (PCOS + iron + FPHL stack) 1`] = `
+{
+  "clinicalProfile": {
+    "primaryDiagnosis": "PCOS_ONLY",
+    "primaryScore": 92,
+    "rootCauses": [
+      "GENETICS",
+      "IRON_DEFICIENCY",
+      "PCOS",
+    ],
+    "scalpStates": [
+      "NORMAL_SCALP",
+    ],
+    "secondaryDiagnoses": [
+      {
+        "key": "IRON_DEFICIENCY",
+        "score": 80,
+      },
+      {
+        "key": "AGA_FEMALE_123",
+        "score": 70,
+      },
+    ],
+    "severity": "MILD",
+  },
+  "recommendation": {
+    "appliedRules": [
+      "PCOS_IRON: confirmed iron deficiency → IRON UP GOLD added.",
+      "PCOS_FPHL: strong pattern-loss signal detected → FPHL added.",
+      "PCOS_IMMUNE: systemic immune compromise confirmed → PRO IMMUNE added.",
+      "ACTIVE_SHEDDING: TE GOLD promoted to Phase 1. Active shedding confirmed — arresting fall is non-negotiable first step.",
+    ],
+    "protocolLabel": "PCOS — Hormonal Hair Loss",
+    "rankedKits": [
+      {
+        "kitId": "HAIR FACT TE GOLD",
+        "matchedNeeds": [
+          "SHEDDING_ARREST",
+        ],
+        "phase": 1,
+        "score": 100,
+      },
+      {
+        "kitId": "IRON UP GOLD",
+        "matchedNeeds": [
+          "IRON_REPLETION",
+        ],
+        "phase": 2,
+        "score": 92,
+      },
+      {
+        "kitId": "F-PCOS -1",
+        "matchedNeeds": [
+          "ANDROGENIC_CORRECTION",
+        ],
+        "phase": 3,
+        "score": 84,
+      },
+      {
+        "kitId": "PHENOTYPE INFLAMATION",
+        "matchedNeeds": [
+          "INFLAMMATION_CONTROL",
+        ],
+        "phase": 4,
+        "score": 76,
+      },
+      {
+        "kitId": "FPHL",
+        "matchedNeeds": [],
+        "phase": 5,
+        "score": 68,
+      },
+      {
+        "kitId": "PRO IMMUNE GOLD",
+        "matchedNeeds": [],
+        "phase": 6,
+        "score": 60,
+      },
+    ],
+  },
+  "therapyNeeds": [
+    "ANDROGENIC_CORRECTION",
+    "INFLAMMATION_CONTROL",
+    "SHEDDING_ARREST",
+    "IRON_REPLETION",
+  ],
+}
+`;
+
+exports[`snapshot — PCOS stack logic pcos_only_metabolic_injection_01 (PCOS_META_B_INJECTION) 1`] = `
+{
+  "clinicalProfile": {
+    "primaryDiagnosis": "PCOS_ONLY",
+    "primaryScore": 92,
+    "rootCauses": [
+      "PCOS",
+      "POOR_NUTRITION",
+      "DHT",
+    ],
+    "scalpStates": [
+      "DANDRUFF",
+    ],
+    "secondaryDiagnoses": [
+      {
+        "key": "AGA_FEMALE_123",
+        "score": 65,
+      },
+      {
+        "key": "SCALP_INFLAM",
+        "score": 62,
+      },
+    ],
+    "severity": "MILD",
+  },
+  "recommendation": {
+    "appliedRules": [
+      "METABOLIC_GENERIC: metabolic signal detected → PRO FACT META B injected.",
+      "ACTIVE_SHEDDING: TE GOLD promoted to Phase 1. Active shedding confirmed — arresting fall is non-negotiable first step.",
+    ],
+    "protocolLabel": "PCOS — Hormonal Hair Loss",
+    "rankedKits": [
+      {
+        "kitId": "HAIR FACT TE GOLD",
+        "matchedNeeds": [
+          "SHEDDING_ARREST",
+        ],
+        "phase": 1,
+        "score": 100,
+      },
+      {
+        "kitId": "F-PCOS -1",
+        "matchedNeeds": [
+          "ANDROGENIC_CORRECTION",
+        ],
+        "phase": 2,
+        "score": 92,
+      },
+      {
+        "kitId": "PHENOTYPE INFLAMATION",
+        "matchedNeeds": [
+          "INFLAMMATION_CONTROL",
+        ],
+        "phase": 3,
+        "score": 84,
+      },
+      {
+        "kitId": "PRO FACT META B",
+        "matchedNeeds": [],
+        "phase": 4,
+        "score": 76,
+      },
+    ],
+  },
+  "therapyNeeds": [
+    "ANDROGENIC_CORRECTION",
+    "INFLAMMATION_CONTROL",
+    "SHEDDING_ARREST",
+  ],
+}
+`;
+
+exports[`snapshot — RULE 1: PRO FACT META B substitution > hypothyroid_clean_01 (RULE 1 negative) 1`] = `
+{
+  "clinicalProfile": {
+    "primaryDiagnosis": "THYROID_HYPO",
+    "primaryScore": 100,
+    "rootCauses": [
+      "HYPOTHYROID",
+    ],
+    "scalpStates": [
+      "NORMAL_SCALP",
+    ],
+    "secondaryDiagnoses": [
+      {
+        "key": "AGA_FEMALE_123",
+        "score": 50,
+      },
+    ],
+    "severity": "MILD",
+  },
+  "recommendation": {
+    "appliedRules": [
+      "ACTIVE_SHEDDING: TE GOLD promoted to Phase 1. Active shedding confirmed — arresting fall is non-negotiable first step.",
+    ],
+    "protocolLabel": "Thyroid (Hypothyroid)",
+    "rankedKits": [
+      {
+        "kitId": "HAIR FACT TE GOLD",
+        "matchedNeeds": [
+          "SHEDDING_ARREST",
+        ],
+        "phase": 1,
+        "score": 100,
+      },
+      {
+        "kitId": "PRO FACT META B HYPOTHYROID",
+        "matchedNeeds": [
+          "THYROID_SUPPORT",
+        ],
+        "phase": 2,
+        "score": 92,
+      },
+      {
+        "kitId": "PHENOTYPE INFLAMATION",
+        "matchedNeeds": [
+          "INFLAMMATION_CONTROL",
+        ],
+        "phase": 3,
+        "score": 84,
+      },
+    ],
+  },
+  "therapyNeeds": [
+    "THYROID_SUPPORT",
+    "INFLAMMATION_CONTROL",
+    "SHEDDING_ARREST",
+  ],
+}
+`;
+
+exports[`snapshot — RULE 1: PRO FACT META B substitution > hypothyroid_crash_diet_01 (RULE 1 + crash diet) 1`] = `
+{
+  "clinicalProfile": {
+    "primaryDiagnosis": "THYROID_HYPO",
+    "primaryScore": 100,
+    "rootCauses": [
+      "HYPOTHYROID",
+      "RAPID_WEIGHT_LOSS",
+    ],
+    "scalpStates": [
+      "NORMAL_SCALP",
+    ],
+    "secondaryDiagnoses": [
+      {
+        "key": "WEIGHT_LOSS",
+        "score": 90,
+      },
+      {
+        "key": "AGA_FEMALE_123",
+        "score": 50,
+      },
+    ],
+    "severity": "MILD",
+  },
+  "recommendation": {
+    "appliedRules": [
+      "RULE1_HYPO_METABOLIC: Hypothyroid + metabolic signal detected. PRO FACT META B replaces PRO FACT META B HYPOTHYROID. Single integrated kit covers T3 metabolic correction AND insulin/adipose-tissue correction. Avoids AMPK/Berberine/NMN duplication.",
+      "ACTIVE_SHEDDING: TE GOLD promoted to Phase 1. Active shedding confirmed — arresting fall is non-negotiable first step.",
+    ],
+    "protocolLabel": "Thyroid (Hypothyroid)",
+    "rankedKits": [
+      {
+        "kitId": "HAIR FACT TE GOLD",
+        "matchedNeeds": [
+          "SHEDDING_ARREST",
+        ],
+        "phase": 1,
+        "score": 100,
+      },
+      {
+        "kitId": "PRO FACT META B",
+        "matchedNeeds": [],
+        "phase": 2,
+        "score": 92,
+      },
+      {
+        "kitId": "PHENOTYPE INFLAMATION",
+        "matchedNeeds": [
+          "INFLAMMATION_CONTROL",
+        ],
+        "phase": 3,
+        "score": 84,
+      },
+    ],
+  },
+  "therapyNeeds": [
+    "THYROID_SUPPORT",
+    "INFLAMMATION_CONTROL",
+    "SHEDDING_ARREST",
+  ],
+}
+`;
+
+exports[`snapshot — RULE 1: PRO FACT META B substitution > hypothyroid_obesity_rule1_01 (RULE 1 positive) 1`] = `
+{
+  "clinicalProfile": {
+    "primaryDiagnosis": "THYROID_HYPO",
+    "primaryScore": 100,
+    "rootCauses": [
+      "HYPOTHYROID",
+      "METABOLIC",
+    ],
+    "scalpStates": [
+      "NORMAL_SCALP",
+    ],
+    "secondaryDiagnoses": [
+      {
+        "key": "AGA_FEMALE_123",
+        "score": 50,
+      },
+    ],
+    "severity": "MILD",
+  },
+  "recommendation": {
+    "appliedRules": [
+      "RULE1_HYPO_METABOLIC: Hypothyroid + metabolic signal detected. PRO FACT META B replaces PRO FACT META B HYPOTHYROID. Single integrated kit covers T3 metabolic correction AND insulin/adipose-tissue correction. Avoids AMPK/Berberine/NMN duplication.",
+      "ACTIVE_SHEDDING: TE GOLD promoted to Phase 1. Active shedding confirmed — arresting fall is non-negotiable first step.",
+    ],
+    "protocolLabel": "Thyroid (Hypothyroid)",
+    "rankedKits": [
+      {
+        "kitId": "HAIR FACT TE GOLD",
+        "matchedNeeds": [
+          "SHEDDING_ARREST",
+        ],
+        "phase": 1,
+        "score": 100,
+      },
+      {
+        "kitId": "PRO FACT META B",
+        "matchedNeeds": [
+          "METABOLIC_SUPPORT",
+        ],
+        "phase": 2,
+        "score": 92,
+      },
+      {
+        "kitId": "PHENOTYPE INFLAMATION",
+        "matchedNeeds": [
+          "INFLAMMATION_CONTROL",
+        ],
+        "phase": 3,
+        "score": 84,
+      },
+    ],
+  },
+  "therapyNeeds": [
+    "THYROID_SUPPORT",
+    "INFLAMMATION_CONTROL",
+    "SHEDDING_ARREST",
+    "METABOLIC_SUPPORT",
+  ],
+}
+`;
+
+exports[`snapshot — RULE 1: PRO FACT META B substitution hypothyroid_clean_01 (RULE 1 negative) 1`] = `
+{
+  "clinicalProfile": {
+    "primaryDiagnosis": "THYROID_HYPO",
+    "primaryScore": 100,
+    "rootCauses": [
+      "HYPOTHYROID",
+    ],
+    "scalpStates": [
+      "NORMAL_SCALP",
+    ],
+    "secondaryDiagnoses": [
+      {
+        "key": "AGA_FEMALE_123",
+        "score": 50,
+      },
+    ],
+    "severity": "MILD",
+  },
+  "recommendation": {
+    "appliedRules": [
+      "ACTIVE_SHEDDING: TE GOLD promoted to Phase 1. Active shedding confirmed — arresting fall is non-negotiable first step.",
+    ],
+    "protocolLabel": "Thyroid (Hypothyroid)",
+    "rankedKits": [
+      {
+        "kitId": "HAIR FACT TE GOLD",
+        "matchedNeeds": [
+          "SHEDDING_ARREST",
+        ],
+        "phase": 1,
+        "score": 100,
+      },
+      {
+        "kitId": "PRO FACT META B HYPOTHYROID",
+        "matchedNeeds": [
+          "THYROID_SUPPORT",
+        ],
+        "phase": 2,
+        "score": 92,
+      },
+      {
+        "kitId": "PHENOTYPE INFLAMATION",
+        "matchedNeeds": [
+          "INFLAMMATION_CONTROL",
+        ],
+        "phase": 3,
+        "score": 84,
+      },
+    ],
+  },
+  "therapyNeeds": [
+    "THYROID_SUPPORT",
+    "INFLAMMATION_CONTROL",
+    "SHEDDING_ARREST",
+  ],
+}
+`;
+
+exports[`snapshot — RULE 1: PRO FACT META B substitution hypothyroid_crash_diet_01 (RULE 1 + crash diet) 1`] = `
+{
+  "clinicalProfile": {
+    "primaryDiagnosis": "THYROID_HYPO",
+    "primaryScore": 100,
+    "rootCauses": [
+      "HYPOTHYROID",
+      "RAPID_WEIGHT_LOSS",
+    ],
+    "scalpStates": [
+      "NORMAL_SCALP",
+    ],
+    "secondaryDiagnoses": [
+      {
+        "key": "WEIGHT_LOSS",
+        "score": 90,
+      },
+      {
+        "key": "AGA_FEMALE_123",
+        "score": 50,
+      },
+    ],
+    "severity": "MILD",
+  },
+  "recommendation": {
+    "appliedRules": [
+      "RULE1_HYPO_METABOLIC: Hypothyroid + metabolic signal detected. PRO FACT META B replaces PRO FACT META B HYPOTHYROID. Single integrated kit covers T3 metabolic correction AND insulin/adipose-tissue correction. Avoids AMPK/Berberine/NMN duplication.",
+      "ACTIVE_SHEDDING: TE GOLD promoted to Phase 1. Active shedding confirmed — arresting fall is non-negotiable first step.",
+    ],
+    "protocolLabel": "Thyroid (Hypothyroid)",
+    "rankedKits": [
+      {
+        "kitId": "HAIR FACT TE GOLD",
+        "matchedNeeds": [
+          "SHEDDING_ARREST",
+        ],
+        "phase": 1,
+        "score": 100,
+      },
+      {
+        "kitId": "PRO FACT META B",
+        "matchedNeeds": [],
+        "phase": 2,
+        "score": 92,
+      },
+      {
+        "kitId": "PHENOTYPE INFLAMATION",
+        "matchedNeeds": [
+          "INFLAMMATION_CONTROL",
+        ],
+        "phase": 3,
+        "score": 84,
+      },
+    ],
+  },
+  "therapyNeeds": [
+    "THYROID_SUPPORT",
+    "INFLAMMATION_CONTROL",
+    "SHEDDING_ARREST",
+  ],
+}
+`;
+
+exports[`snapshot — RULE 1: PRO FACT META B substitution hypothyroid_obesity_rule1_01 (RULE 1 positive) 1`] = `
+{
+  "clinicalProfile": {
+    "primaryDiagnosis": "THYROID_HYPO",
+    "primaryScore": 100,
+    "rootCauses": [
+      "HYPOTHYROID",
+      "METABOLIC",
+    ],
+    "scalpStates": [
+      "NORMAL_SCALP",
+    ],
+    "secondaryDiagnoses": [
+      {
+        "key": "AGA_FEMALE_123",
+        "score": 50,
+      },
+    ],
+    "severity": "MILD",
+  },
+  "recommendation": {
+    "appliedRules": [
+      "RULE1_HYPO_METABOLIC: Hypothyroid + metabolic signal detected. PRO FACT META B replaces PRO FACT META B HYPOTHYROID. Single integrated kit covers T3 metabolic correction AND insulin/adipose-tissue correction. Avoids AMPK/Berberine/NMN duplication.",
+      "ACTIVE_SHEDDING: TE GOLD promoted to Phase 1. Active shedding confirmed — arresting fall is non-negotiable first step.",
+    ],
+    "protocolLabel": "Thyroid (Hypothyroid)",
+    "rankedKits": [
+      {
+        "kitId": "HAIR FACT TE GOLD",
+        "matchedNeeds": [
+          "SHEDDING_ARREST",
+        ],
+        "phase": 1,
+        "score": 100,
+      },
+      {
+        "kitId": "PRO FACT META B",
+        "matchedNeeds": [
+          "METABOLIC_SUPPORT",
+        ],
+        "phase": 2,
+        "score": 92,
+      },
+      {
+        "kitId": "PHENOTYPE INFLAMATION",
+        "matchedNeeds": [
+          "INFLAMMATION_CONTROL",
+        ],
+        "phase": 3,
+        "score": 84,
+      },
+    ],
+  },
+  "therapyNeeds": [
+    "THYROID_SUPPORT",
+    "INFLAMMATION_CONTROL",
+    "SHEDDING_ARREST",
+    "METABOLIC_SUPPORT",
+  ],
+}
+`;
+
+exports[`snapshot — RULE 2: RAPID WEIGHT LOSS SHIELD precedence > crash_diet_rapid_loss_01 (no GLP-1 flag — SHIELD in base protocol only) 1`] = `
+{
+  "clinicalProfile": {
+    "primaryDiagnosis": "WEIGHT_LOSS",
+    "primaryScore": 90,
+    "rootCauses": [
+      "RAPID_WEIGHT_LOSS",
+    ],
+    "scalpStates": [
+      "NORMAL_SCALP",
+    ],
+    "secondaryDiagnoses": [],
+    "severity": "MILD",
+  },
+  "recommendation": {
+    "appliedRules": [
+      "METABOLIC_GENERIC: metabolic signal detected → PRO FACT META B injected.",
+      "ACTIVE_SHEDDING: TE GOLD promoted to Phase 1. Active shedding confirmed — arresting fall is non-negotiable first step.",
+      "PRO_IMMUNE_LAST: PRO IMMUNE moved to final phase — nutritional regrowth supply into a clean follicle environment.",
+    ],
+    "protocolLabel": "Sudden Weight Loss (Crash diet / GLP-1 / Illness)",
+    "rankedKits": [
+      {
+        "kitId": "HAIR FACT TE GOLD",
+        "matchedNeeds": [
+          "SHEDDING_ARREST",
+        ],
+        "phase": 1,
+        "score": 100,
+      },
+      {
+        "kitId": "RAPID WEIGHT LOSS SHIELD",
+        "matchedNeeds": [
+          "WEIGHT_LOSS_RECOVERY",
+          "SHEDDING_ARREST",
+        ],
+        "phase": 2,
+        "score": 92,
+      },
+      {
+        "kitId": "PRO FACT META B",
+        "matchedNeeds": [],
+        "phase": 3,
+        "score": 84,
+      },
+      {
+        "kitId": "PRO IMMUNE GOLD",
+        "matchedNeeds": [
+          "IMMUNE_MODULATION",
+        ],
+        "phase": 4,
+        "score": 76,
+      },
+    ],
+  },
+  "therapyNeeds": [
+    "WEIGHT_LOSS_RECOVERY",
+    "SHEDDING_ARREST",
+    "IMMUNE_MODULATION",
+  ],
+}
+`;
+
+exports[`snapshot — RULE 2: RAPID WEIGHT LOSS SHIELD precedence > glp1_early_shield_01 (GLP1 Early — SHIELD Phase 1) 1`] = `
+{
+  "clinicalProfile": {
+    "primaryDiagnosis": "WEIGHT_LOSS",
+    "primaryScore": 90,
+    "rootCauses": [
+      "RAPID_WEIGHT_LOSS",
+    ],
+    "scalpStates": [
+      "NORMAL_SCALP",
+    ],
+    "secondaryDiagnoses": [
+      {
+        "key": "AGA_FEMALE_123",
+        "score": 50,
+      },
+    ],
+    "severity": "MILD",
+  },
+  "recommendation": {
+    "appliedRules": [
+      "GLP1_EARLY: RAPID WEIGHT LOSS SHIELD enforced at position 0. Acute nutritional shedding phase is active — shield arrests it at trigger level.",
+      "ACTIVE_SHEDDING: TE GOLD promoted to Phase 1. Active shedding confirmed — arresting fall is non-negotiable first step.",
+      "GLP1_EARLY: RAPID WEIGHT LOSS SHIELD enforced at position 0. Acute nutritional shedding phase is active — shield arrests it at trigger level.",
+    ],
+    "protocolLabel": "Sudden Weight Loss (Crash diet / GLP-1 / Illness)",
+    "rankedKits": [
+      {
+        "kitId": "RAPID WEIGHT LOSS SHIELD",
+        "matchedNeeds": [
+          "WEIGHT_LOSS_RECOVERY",
+          "SHEDDING_ARREST",
+        ],
+        "phase": 1,
+        "score": 100,
+      },
+      {
+        "kitId": "HAIR FACT TE GOLD",
+        "matchedNeeds": [
+          "SHEDDING_ARREST",
+        ],
+        "phase": 2,
+        "score": 92,
+      },
+      {
+        "kitId": "PRO IMMUNE GOLD",
+        "matchedNeeds": [
+          "IMMUNE_MODULATION",
+        ],
+        "phase": 3,
+        "score": 84,
+      },
+    ],
+  },
+  "therapyNeeds": [
+    "WEIGHT_LOSS_RECOVERY",
+    "SHEDDING_ARREST",
+    "IMMUNE_MODULATION",
+  ],
+}
+`;
+
+exports[`snapshot — RULE 2: RAPID WEIGHT LOSS SHIELD precedence > glp1_late_iron_deficiency_01 (GLP1 Late + iron — SHIELD survives priority lifting) 1`] = `
+{
+  "clinicalProfile": {
+    "primaryDiagnosis": "WEIGHT_LOSS",
+    "primaryScore": 90,
+    "rootCauses": [
+      "IRON_DEFICIENCY",
+      "RAPID_WEIGHT_LOSS",
+    ],
+    "scalpStates": [
+      "NORMAL_SCALP",
+    ],
+    "secondaryDiagnoses": [
+      {
+        "key": "IRON_DEFICIENCY",
+        "score": 80,
+      },
+      {
+        "key": "TE_STRESS",
+        "score": 50,
+      },
+      {
+        "key": "AGA_FEMALE_123",
+        "score": 50,
+      },
+    ],
+    "severity": "MILD",
+  },
+  "recommendation": {
+    "appliedRules": [
+      "SIGNAL_GATED_INJECTION: IRON UP GOLD added — signal confirmed.",
+      "GLP1_LATE: RAPID WEIGHT LOSS SHIELD enforced at position 1. Acute shedding peak has passed — TE GOLD leads at position 0, Shield supports nutritional recovery at Phase 2.",
+      "ACTIVE_SHEDDING: TE GOLD promoted to Phase 1. Active shedding confirmed — arresting fall is non-negotiable first step.",
+      "GLP1_LATE: RAPID WEIGHT LOSS SHIELD enforced at position 1. Acute shedding peak has passed — TE GOLD leads at position 0, Shield supports nutritional recovery at Phase 2.",
+    ],
+    "protocolLabel": "Sudden Weight Loss (Crash diet / GLP-1 / Illness)",
+    "rankedKits": [
+      {
+        "kitId": "HAIR FACT TE GOLD",
+        "matchedNeeds": [
+          "SHEDDING_ARREST",
+        ],
+        "phase": 1,
+        "score": 100,
+      },
+      {
+        "kitId": "RAPID WEIGHT LOSS SHIELD",
+        "matchedNeeds": [
+          "WEIGHT_LOSS_RECOVERY",
+          "SHEDDING_ARREST",
+        ],
+        "phase": 2,
+        "score": 92,
+      },
+      {
+        "kitId": "IRON UP GOLD",
+        "matchedNeeds": [
+          "IRON_REPLETION",
+        ],
+        "phase": 3,
+        "score": 84,
+      },
+      {
+        "kitId": "PRO IMMUNE GOLD",
+        "matchedNeeds": [
+          "IMMUNE_MODULATION",
+        ],
+        "phase": 4,
+        "score": 76,
+      },
+    ],
+  },
+  "therapyNeeds": [
+    "WEIGHT_LOSS_RECOVERY",
+    "SHEDDING_ARREST",
+    "IMMUNE_MODULATION",
+    "IRON_REPLETION",
+  ],
+}
+`;
+
+exports[`snapshot — RULE 2: RAPID WEIGHT LOSS SHIELD precedence > glp1_late_shield_01 (GLP1 Late — SHIELD Phase 2) 1`] = `
+{
+  "clinicalProfile": {
+    "primaryDiagnosis": "WEIGHT_LOSS",
+    "primaryScore": 90,
+    "rootCauses": [
+      "RAPID_WEIGHT_LOSS",
+    ],
+    "scalpStates": [
+      "NORMAL_SCALP",
+    ],
+    "secondaryDiagnoses": [
+      {
+        "key": "TE_STRESS",
+        "score": 50,
+      },
+      {
+        "key": "AGA_FEMALE_123",
+        "score": 50,
+      },
+    ],
+    "severity": "MILD",
+  },
+  "recommendation": {
+    "appliedRules": [
+      "GLP1_LATE: RAPID WEIGHT LOSS SHIELD enforced at position 1. Acute shedding peak has passed — TE GOLD leads at position 0, Shield supports nutritional recovery at Phase 2.",
+      "ACTIVE_SHEDDING: TE GOLD promoted to Phase 1. Active shedding confirmed — arresting fall is non-negotiable first step.",
+      "GLP1_LATE: RAPID WEIGHT LOSS SHIELD enforced at position 1. Acute shedding peak has passed — TE GOLD leads at position 0, Shield supports nutritional recovery at Phase 2.",
+    ],
+    "protocolLabel": "Sudden Weight Loss (Crash diet / GLP-1 / Illness)",
+    "rankedKits": [
+      {
+        "kitId": "HAIR FACT TE GOLD",
+        "matchedNeeds": [
+          "SHEDDING_ARREST",
+        ],
+        "phase": 1,
+        "score": 100,
+      },
+      {
+        "kitId": "RAPID WEIGHT LOSS SHIELD",
+        "matchedNeeds": [
+          "WEIGHT_LOSS_RECOVERY",
+          "SHEDDING_ARREST",
+        ],
+        "phase": 2,
+        "score": 92,
+      },
+      {
+        "kitId": "PRO IMMUNE GOLD",
+        "matchedNeeds": [
+          "IMMUNE_MODULATION",
+        ],
+        "phase": 3,
+        "score": 84,
+      },
+    ],
+  },
+  "therapyNeeds": [
+    "WEIGHT_LOSS_RECOVERY",
+    "SHEDDING_ARREST",
+    "IMMUNE_MODULATION",
+  ],
+}
+`;
+
+exports[`snapshot — RULE 2: RAPID WEIGHT LOSS SHIELD precedence crash_diet_rapid_loss_01 (no GLP-1 flag — SHIELD in base protocol only) 1`] = `
+{
+  "clinicalProfile": {
+    "primaryDiagnosis": "WEIGHT_LOSS",
+    "primaryScore": 90,
+    "rootCauses": [
+      "RAPID_WEIGHT_LOSS",
+    ],
+    "scalpStates": [
+      "NORMAL_SCALP",
+    ],
+    "secondaryDiagnoses": [],
+    "severity": "MILD",
+  },
+  "recommendation": {
+    "appliedRules": [
+      "METABOLIC_GENERIC: metabolic signal detected → PRO FACT META B injected.",
+      "ACTIVE_SHEDDING: TE GOLD promoted to Phase 1. Active shedding confirmed — arresting fall is non-negotiable first step.",
+      "PRO_IMMUNE_LAST: PRO IMMUNE moved to final phase — nutritional regrowth supply into a clean follicle environment.",
+    ],
+    "protocolLabel": "Sudden Weight Loss (Crash diet / GLP-1 / Illness)",
+    "rankedKits": [
+      {
+        "kitId": "HAIR FACT TE GOLD",
+        "matchedNeeds": [
+          "SHEDDING_ARREST",
+        ],
+        "phase": 1,
+        "score": 100,
+      },
+      {
+        "kitId": "RAPID WEIGHT LOSS SHIELD",
+        "matchedNeeds": [
+          "WEIGHT_LOSS_RECOVERY",
+          "SHEDDING_ARREST",
+        ],
+        "phase": 2,
+        "score": 92,
+      },
+      {
+        "kitId": "PRO FACT META B",
+        "matchedNeeds": [],
+        "phase": 3,
+        "score": 84,
+      },
+      {
+        "kitId": "PRO IMMUNE GOLD",
+        "matchedNeeds": [
+          "IMMUNE_MODULATION",
+        ],
+        "phase": 4,
+        "score": 76,
+      },
+    ],
+  },
+  "therapyNeeds": [
+    "WEIGHT_LOSS_RECOVERY",
+    "SHEDDING_ARREST",
+    "IMMUNE_MODULATION",
+  ],
+}
+`;
+
+exports[`snapshot — RULE 2: RAPID WEIGHT LOSS SHIELD precedence glp1_early_shield_01 (GLP1 Early — SHIELD Phase 1) 1`] = `
+{
+  "clinicalProfile": {
+    "primaryDiagnosis": "WEIGHT_LOSS",
+    "primaryScore": 90,
+    "rootCauses": [
+      "RAPID_WEIGHT_LOSS",
+    ],
+    "scalpStates": [
+      "NORMAL_SCALP",
+    ],
+    "secondaryDiagnoses": [
+      {
+        "key": "AGA_FEMALE_123",
+        "score": 50,
+      },
+    ],
+    "severity": "MILD",
+  },
+  "recommendation": {
+    "appliedRules": [
+      "GLP1_EARLY: RAPID WEIGHT LOSS SHIELD enforced at position 0. Acute nutritional shedding phase is active — shield arrests it at trigger level.",
+      "ACTIVE_SHEDDING: TE GOLD promoted to Phase 1. Active shedding confirmed — arresting fall is non-negotiable first step.",
+      "GLP1_EARLY: RAPID WEIGHT LOSS SHIELD enforced at position 0. Acute nutritional shedding phase is active — shield arrests it at trigger level.",
+    ],
+    "protocolLabel": "Sudden Weight Loss (Crash diet / GLP-1 / Illness)",
+    "rankedKits": [
+      {
+        "kitId": "RAPID WEIGHT LOSS SHIELD",
+        "matchedNeeds": [
+          "WEIGHT_LOSS_RECOVERY",
+          "SHEDDING_ARREST",
+        ],
+        "phase": 1,
+        "score": 100,
+      },
+      {
+        "kitId": "HAIR FACT TE GOLD",
+        "matchedNeeds": [
+          "SHEDDING_ARREST",
+        ],
+        "phase": 2,
+        "score": 92,
+      },
+      {
+        "kitId": "PRO IMMUNE GOLD",
+        "matchedNeeds": [
+          "IMMUNE_MODULATION",
+        ],
+        "phase": 3,
+        "score": 84,
+      },
+    ],
+  },
+  "therapyNeeds": [
+    "WEIGHT_LOSS_RECOVERY",
+    "SHEDDING_ARREST",
+    "IMMUNE_MODULATION",
+  ],
+}
+`;
+
+exports[`snapshot — RULE 2: RAPID WEIGHT LOSS SHIELD precedence glp1_late_iron_deficiency_01 (GLP1 Late + iron — SHIELD survives priority lifting) 1`] = `
+{
+  "clinicalProfile": {
+    "primaryDiagnosis": "WEIGHT_LOSS",
+    "primaryScore": 90,
+    "rootCauses": [
+      "IRON_DEFICIENCY",
+      "RAPID_WEIGHT_LOSS",
+    ],
+    "scalpStates": [
+      "NORMAL_SCALP",
+    ],
+    "secondaryDiagnoses": [
+      {
+        "key": "IRON_DEFICIENCY",
+        "score": 80,
+      },
+      {
+        "key": "TE_STRESS",
+        "score": 50,
+      },
+      {
+        "key": "AGA_FEMALE_123",
+        "score": 50,
+      },
+    ],
+    "severity": "MILD",
+  },
+  "recommendation": {
+    "appliedRules": [
+      "SIGNAL_GATED_INJECTION: IRON UP GOLD added — signal confirmed.",
+      "GLP1_LATE: RAPID WEIGHT LOSS SHIELD enforced at position 1. Acute shedding peak has passed — TE GOLD leads at position 0, Shield supports nutritional recovery at Phase 2.",
+      "ACTIVE_SHEDDING: TE GOLD promoted to Phase 1. Active shedding confirmed — arresting fall is non-negotiable first step.",
+      "GLP1_LATE: RAPID WEIGHT LOSS SHIELD enforced at position 1. Acute shedding peak has passed — TE GOLD leads at position 0, Shield supports nutritional recovery at Phase 2.",
+    ],
+    "protocolLabel": "Sudden Weight Loss (Crash diet / GLP-1 / Illness)",
+    "rankedKits": [
+      {
+        "kitId": "HAIR FACT TE GOLD",
+        "matchedNeeds": [
+          "SHEDDING_ARREST",
+        ],
+        "phase": 1,
+        "score": 100,
+      },
+      {
+        "kitId": "RAPID WEIGHT LOSS SHIELD",
+        "matchedNeeds": [
+          "WEIGHT_LOSS_RECOVERY",
+          "SHEDDING_ARREST",
+        ],
+        "phase": 2,
+        "score": 92,
+      },
+      {
+        "kitId": "IRON UP GOLD",
+        "matchedNeeds": [
+          "IRON_REPLETION",
+        ],
+        "phase": 3,
+        "score": 84,
+      },
+      {
+        "kitId": "PRO IMMUNE GOLD",
+        "matchedNeeds": [
+          "IMMUNE_MODULATION",
+        ],
+        "phase": 4,
+        "score": 76,
+      },
+    ],
+  },
+  "therapyNeeds": [
+    "WEIGHT_LOSS_RECOVERY",
+    "SHEDDING_ARREST",
+    "IMMUNE_MODULATION",
+    "IRON_REPLETION",
+  ],
+}
+`;
+
+exports[`snapshot — RULE 2: RAPID WEIGHT LOSS SHIELD precedence glp1_late_shield_01 (GLP1 Late — SHIELD Phase 2) 1`] = `
+{
+  "clinicalProfile": {
+    "primaryDiagnosis": "WEIGHT_LOSS",
+    "primaryScore": 90,
+    "rootCauses": [
+      "RAPID_WEIGHT_LOSS",
+    ],
+    "scalpStates": [
+      "NORMAL_SCALP",
+    ],
+    "secondaryDiagnoses": [
+      {
+        "key": "TE_STRESS",
+        "score": 50,
+      },
+      {
+        "key": "AGA_FEMALE_123",
+        "score": 50,
+      },
+    ],
+    "severity": "MILD",
+  },
+  "recommendation": {
+    "appliedRules": [
+      "GLP1_LATE: RAPID WEIGHT LOSS SHIELD enforced at position 1. Acute shedding peak has passed — TE GOLD leads at position 0, Shield supports nutritional recovery at Phase 2.",
+      "ACTIVE_SHEDDING: TE GOLD promoted to Phase 1. Active shedding confirmed — arresting fall is non-negotiable first step.",
+      "GLP1_LATE: RAPID WEIGHT LOSS SHIELD enforced at position 1. Acute shedding peak has passed — TE GOLD leads at position 0, Shield supports nutritional recovery at Phase 2.",
+    ],
+    "protocolLabel": "Sudden Weight Loss (Crash diet / GLP-1 / Illness)",
+    "rankedKits": [
+      {
+        "kitId": "HAIR FACT TE GOLD",
+        "matchedNeeds": [
+          "SHEDDING_ARREST",
+        ],
+        "phase": 1,
+        "score": 100,
+      },
+      {
+        "kitId": "RAPID WEIGHT LOSS SHIELD",
+        "matchedNeeds": [
+          "WEIGHT_LOSS_RECOVERY",
+          "SHEDDING_ARREST",
+        ],
+        "phase": 2,
+        "score": 92,
+      },
+      {
+        "kitId": "PRO IMMUNE GOLD",
+        "matchedNeeds": [
+          "IMMUNE_MODULATION",
+        ],
+        "phase": 3,
+        "score": 84,
+      },
+    ],
+  },
+  "therapyNeeds": [
+    "WEIGHT_LOSS_RECOVERY",
+    "SHEDDING_ARREST",
+    "IMMUNE_MODULATION",
+  ],
+}
+`;
+
+exports[`snapshot — active shedding precedence > medication_illness_te_01 (PRO IMMUNE repositioned last) 1`] = `
+{
+  "clinicalProfile": {
+    "primaryDiagnosis": "TE_ILLNESS",
+    "primaryScore": 72,
+    "rootCauses": [
+      "MEDICATION",
+      "ILLNESS",
+    ],
+    "scalpStates": [
+      "NORMAL_SCALP",
+    ],
+    "secondaryDiagnoses": [
+      {
+        "key": "AGA_FEMALE_123",
+        "score": 50,
+      },
+    ],
+    "severity": "MILD",
+  },
+  "recommendation": {
+    "appliedRules": [
+      "ACTIVE_SHEDDING: TE GOLD promoted to Phase 1. Active shedding confirmed — arresting fall is non-negotiable first step.",
+      "PRO_IMMUNE_LAST: PRO IMMUNE moved to final phase — nutritional regrowth supply into a clean follicle environment.",
+    ],
+    "protocolLabel": "Telogen Effluvium (Illness / Surgery / Medication)",
+    "rankedKits": [
+      {
+        "kitId": "HAIR FACT TE GOLD",
+        "matchedNeeds": [
+          "SHEDDING_ARREST",
+        ],
+        "phase": 1,
+        "score": 100,
+      },
+      {
+        "kitId": "PHENOTYPE INFLAMATION",
+        "matchedNeeds": [
+          "INFLAMMATION_CONTROL",
+        ],
+        "phase": 2,
+        "score": 92,
+      },
+      {
+        "kitId": "PRO IMMUNE GOLD",
+        "matchedNeeds": [
+          "IMMUNE_MODULATION",
+        ],
+        "phase": 3,
+        "score": 84,
+      },
+    ],
+  },
+  "therapyNeeds": [
+    "IMMUNE_MODULATION",
+    "SHEDDING_ARREST",
+    "INFLAMMATION_CONTROL",
+  ],
+}
+`;
+
+exports[`snapshot — active shedding precedence > postpartum_breastfeeding_01 (TE GOLD promoted over LACTIHEALTH) 1`] = `
+{
+  "clinicalProfile": {
+    "primaryDiagnosis": "TE_POSTPREG",
+    "primaryScore": 92,
+    "rootCauses": [
+      "POST_PARTUM",
+    ],
+    "scalpStates": [
+      "NORMAL_SCALP",
+    ],
+    "secondaryDiagnoses": [],
+    "severity": "MILD",
+  },
+  "recommendation": {
+    "appliedRules": [
+      "ACTIVE_SHEDDING: TE GOLD promoted to Phase 1. Active shedding confirmed — arresting fall is non-negotiable first step.",
+    ],
+    "protocolLabel": "Telogen Effluvium (Post-pregnancy / Breastfeeding)",
+    "rankedKits": [
+      {
+        "kitId": "HAIR FACT TE GOLD",
+        "matchedNeeds": [
+          "SHEDDING_ARREST",
+        ],
+        "phase": 1,
+        "score": 100,
+      },
+      {
+        "kitId": "LACTIHEALTH",
+        "matchedNeeds": [
+          "LACTATION_SUPPORT",
+        ],
+        "phase": 2,
+        "score": 92,
+      },
+      {
+        "kitId": "PRO IMMUNE GOLD",
+        "matchedNeeds": [
+          "IMMUNE_MODULATION",
+        ],
+        "phase": 3,
+        "score": 84,
+      },
+    ],
+  },
+  "therapyNeeds": [
+    "LACTATION_SUPPORT",
+    "SHEDDING_ARREST",
+    "IMMUNE_MODULATION",
+  ],
+}
+`;
+
+exports[`snapshot — active shedding precedence > postpartum_delivery_01 (TE GOLD Phase 1, no LACTIHEALTH) 1`] = `
+{
+  "clinicalProfile": {
+    "primaryDiagnosis": "TE_DELIVERY",
+    "primaryScore": 90,
+    "rootCauses": [
+      "POST_PARTUM",
+    ],
+    "scalpStates": [
+      "NORMAL_SCALP",
+    ],
+    "secondaryDiagnoses": [],
+    "severity": "MILD",
+  },
+  "recommendation": {
+    "appliedRules": [
+      "ACTIVE_SHEDDING: TE GOLD promoted to Phase 1. Active shedding confirmed — arresting fall is non-negotiable first step.",
+    ],
+    "protocolLabel": "Post-delivery / Not Breastfeeding",
+    "rankedKits": [
+      {
+        "kitId": "HAIR FACT TE GOLD",
+        "matchedNeeds": [
+          "SHEDDING_ARREST",
+        ],
+        "phase": 1,
+        "score": 100,
+      },
+      {
+        "kitId": "PRO IMMUNE GOLD",
+        "matchedNeeds": [
+          "IMMUNE_MODULATION",
+        ],
+        "phase": 2,
+        "score": 92,
+      },
+    ],
+  },
+  "therapyNeeds": [
+    "SHEDDING_ARREST",
+    "IMMUNE_MODULATION",
+  ],
+}
+`;
+
+exports[`snapshot — active shedding precedence medication_illness_te_01 (PRO IMMUNE repositioned last) 1`] = `
+{
+  "clinicalProfile": {
+    "primaryDiagnosis": "TE_ILLNESS",
+    "primaryScore": 72,
+    "rootCauses": [
+      "MEDICATION",
+      "ILLNESS",
+    ],
+    "scalpStates": [
+      "NORMAL_SCALP",
+    ],
+    "secondaryDiagnoses": [
+      {
+        "key": "AGA_FEMALE_123",
+        "score": 50,
+      },
+    ],
+    "severity": "MILD",
+  },
+  "recommendation": {
+    "appliedRules": [
+      "ACTIVE_SHEDDING: TE GOLD promoted to Phase 1. Active shedding confirmed — arresting fall is non-negotiable first step.",
+      "PRO_IMMUNE_LAST: PRO IMMUNE moved to final phase — nutritional regrowth supply into a clean follicle environment.",
+    ],
+    "protocolLabel": "Telogen Effluvium (Illness / Surgery / Medication)",
+    "rankedKits": [
+      {
+        "kitId": "HAIR FACT TE GOLD",
+        "matchedNeeds": [
+          "SHEDDING_ARREST",
+        ],
+        "phase": 1,
+        "score": 100,
+      },
+      {
+        "kitId": "PHENOTYPE INFLAMATION",
+        "matchedNeeds": [
+          "INFLAMMATION_CONTROL",
+        ],
+        "phase": 2,
+        "score": 92,
+      },
+      {
+        "kitId": "PRO IMMUNE GOLD",
+        "matchedNeeds": [
+          "IMMUNE_MODULATION",
+        ],
+        "phase": 3,
+        "score": 84,
+      },
+    ],
+  },
+  "therapyNeeds": [
+    "IMMUNE_MODULATION",
+    "SHEDDING_ARREST",
+    "INFLAMMATION_CONTROL",
+  ],
+}
+`;
+
+exports[`snapshot — active shedding precedence postpartum_breastfeeding_01 (TE GOLD promoted over LACTIHEALTH) 1`] = `
+{
+  "clinicalProfile": {
+    "primaryDiagnosis": "TE_POSTPREG",
+    "primaryScore": 92,
+    "rootCauses": [
+      "POST_PARTUM",
+    ],
+    "scalpStates": [
+      "NORMAL_SCALP",
+    ],
+    "secondaryDiagnoses": [],
+    "severity": "MILD",
+  },
+  "recommendation": {
+    "appliedRules": [
+      "ACTIVE_SHEDDING: TE GOLD promoted to Phase 1. Active shedding confirmed — arresting fall is non-negotiable first step.",
+    ],
+    "protocolLabel": "Telogen Effluvium (Post-pregnancy / Breastfeeding)",
+    "rankedKits": [
+      {
+        "kitId": "HAIR FACT TE GOLD",
+        "matchedNeeds": [
+          "SHEDDING_ARREST",
+        ],
+        "phase": 1,
+        "score": 100,
+      },
+      {
+        "kitId": "LACTIHEALTH",
+        "matchedNeeds": [
+          "LACTATION_SUPPORT",
+        ],
+        "phase": 2,
+        "score": 92,
+      },
+      {
+        "kitId": "PRO IMMUNE GOLD",
+        "matchedNeeds": [
+          "IMMUNE_MODULATION",
+        ],
+        "phase": 3,
+        "score": 84,
+      },
+    ],
+  },
+  "therapyNeeds": [
+    "LACTATION_SUPPORT",
+    "SHEDDING_ARREST",
+    "IMMUNE_MODULATION",
+  ],
+}
+`;
+
+exports[`snapshot — active shedding precedence postpartum_delivery_01 (TE GOLD Phase 1, no LACTIHEALTH) 1`] = `
+{
+  "clinicalProfile": {
+    "primaryDiagnosis": "TE_DELIVERY",
+    "primaryScore": 90,
+    "rootCauses": [
+      "POST_PARTUM",
+    ],
+    "scalpStates": [
+      "NORMAL_SCALP",
+    ],
+    "secondaryDiagnoses": [],
+    "severity": "MILD",
+  },
+  "recommendation": {
+    "appliedRules": [
+      "ACTIVE_SHEDDING: TE GOLD promoted to Phase 1. Active shedding confirmed — arresting fall is non-negotiable first step.",
+    ],
+    "protocolLabel": "Post-delivery / Not Breastfeeding",
+    "rankedKits": [
+      {
+        "kitId": "HAIR FACT TE GOLD",
+        "matchedNeeds": [
+          "SHEDDING_ARREST",
+        ],
+        "phase": 1,
+        "score": 100,
+      },
+      {
+        "kitId": "PRO IMMUNE GOLD",
+        "matchedNeeds": [
+          "IMMUNE_MODULATION",
+        ],
+        "phase": 2,
+        "score": 92,
+      },
+    ],
+  },
+  "therapyNeeds": [
+    "SHEDDING_ARREST",
+    "IMMUNE_MODULATION",
+  ],
+}
+`;
+
+exports[`snapshot — contraindications > pregnancy_lock_01 (HEALTHY-9 only) 1`] = `
+{
+  "clinicalProfile": {
+    "primaryDiagnosis": "PREGNANCY",
+    "primaryScore": 100,
+    "rootCauses": [],
+    "scalpStates": [
+      "NORMAL_SCALP",
+    ],
+    "secondaryDiagnoses": [],
+    "severity": "MILD",
+  },
+  "recommendation": {
+    "appliedRules": [
+      "ACTIVE_SHEDDING: TE GOLD promoted to Phase 1. Active shedding confirmed — arresting fall is non-negotiable first step.",
+      "PREGNANCY_LOCK: single-kit protocol enforced. All other kits suppressed — safety constraint.",
+    ],
+    "protocolLabel": "Pregnancy",
+    "rankedKits": [
+      {
+        "kitId": "HEALTHY - 9",
+        "matchedNeeds": [
+          "PREGNANCY_SUPPORT",
+        ],
+        "phase": 1,
+        "score": 100,
+      },
+    ],
+  },
+  "therapyNeeds": [
+    "PREGNANCY_SUPPORT",
+  ],
+}
+`;
+
+exports[`snapshot — contraindications pregnancy_lock_01 (HEALTHY-9 only) 1`] = `
+{
+  "clinicalProfile": {
+    "primaryDiagnosis": "PREGNANCY",
+    "primaryScore": 100,
+    "rootCauses": [],
+    "scalpStates": [
+      "NORMAL_SCALP",
+    ],
+    "secondaryDiagnoses": [],
+    "severity": "MILD",
+  },
+  "recommendation": {
+    "appliedRules": [
+      "ACTIVE_SHEDDING: TE GOLD promoted to Phase 1. Active shedding confirmed — arresting fall is non-negotiable first step.",
+      "PREGNANCY_LOCK: single-kit protocol enforced. All other kits suppressed — safety constraint.",
+    ],
+    "protocolLabel": "Pregnancy",
+    "rankedKits": [
+      {
+        "kitId": "HEALTHY - 9",
+        "matchedNeeds": [
+          "PREGNANCY_SUPPORT",
+        ],
+        "phase": 1,
+        "score": 100,
+      },
+    ],
+  },
+  "therapyNeeds": [
+    "PREGNANCY_SUPPORT",
+  ],
+}
+`;
+
+exports[`snapshot — grey goal prioritisation > greying_sole_concern_01 (EARLY_GREY lock) 1`] = `
+{
+  "clinicalProfile": {
+    "primaryDiagnosis": "EARLY_GREY",
+    "primaryScore": 100,
+    "rootCauses": [],
+    "scalpStates": [
+      "NORMAL_SCALP",
+    ],
+    "secondaryDiagnoses": [],
+    "severity": "MODERATE",
+  },
+  "recommendation": {
+    "appliedRules": [],
+    "protocolLabel": "Early / Premature Greying",
+    "rankedKits": [
+      {
+        "kitId": "EARLY GREYING CARE GOLD",
+        "matchedNeeds": [
+          "MELANOCYTE_PROTECTION",
+        ],
+        "phase": 1,
+        "score": 100,
+      },
+      {
+        "kitId": "OXIDATIVE STRESS",
+        "matchedNeeds": [
+          "ANTIOXIDANT_SUPPORT",
+        ],
+        "phase": 2,
+        "score": 92,
+      },
+      {
+        "kitId": "PRO IMMUNE GOLD",
+        "matchedNeeds": [
+          "IMMUNE_MODULATION",
+        ],
+        "phase": 3,
+        "score": 84,
+      },
+    ],
+  },
+  "therapyNeeds": [
+    "MELANOCYTE_PROTECTION",
+    "ANTIOXIDANT_SUPPORT",
+    "IMMUNE_MODULATION",
+  ],
+}
+`;
+
+exports[`snapshot — grey goal prioritisation > greying_with_hairloss_01 (grey appended last) 1`] = `
+{
+  "clinicalProfile": {
+    "primaryDiagnosis": "TE_STRESS",
+    "primaryScore": 55,
+    "rootCauses": [
+      "STRESS",
+    ],
+    "scalpStates": [
+      "NORMAL_SCALP",
+    ],
+    "secondaryDiagnoses": [
+      {
+        "key": "AGA_FEMALE_123",
+        "score": 50,
+      },
+    ],
+    "severity": "MILD",
+  },
+  "recommendation": {
+    "appliedRules": [
+      "GREY_GOAL: EARLY GREYING CARE appended as final phase. Hair fall primary protocol takes precedence; grey co-concern addressed last.",
+      "ACTIVE_SHEDDING: TE GOLD promoted to Phase 1. Active shedding confirmed — arresting fall is non-negotiable first step.",
+    ],
+    "protocolLabel": "Telogen Effluvium (Stress / Anxiety / Depression)",
+    "rankedKits": [
+      {
+        "kitId": "HAIR FACT TE GOLD",
+        "matchedNeeds": [
+          "SHEDDING_ARREST",
+        ],
+        "phase": 1,
+        "score": 100,
+      },
+      {
+        "kitId": "PHENOTYPE INFLAMATION",
+        "matchedNeeds": [
+          "INFLAMMATION_CONTROL",
+        ],
+        "phase": 2,
+        "score": 92,
+      },
+      {
+        "kitId": "EARLY GREYING CARE GOLD",
+        "matchedNeeds": [
+          "MELANOCYTE_PROTECTION",
+        ],
+        "phase": 3,
+        "score": 84,
+      },
+    ],
+  },
+  "therapyNeeds": [
+    "SHEDDING_ARREST",
+    "INFLAMMATION_CONTROL",
+    "MELANOCYTE_PROTECTION",
+  ],
+}
+`;
+
+exports[`snapshot — grey goal prioritisation greying_sole_concern_01 (EARLY_GREY lock) 1`] = `
+{
+  "clinicalProfile": {
+    "primaryDiagnosis": "EARLY_GREY",
+    "primaryScore": 100,
+    "rootCauses": [],
+    "scalpStates": [
+      "NORMAL_SCALP",
+    ],
+    "secondaryDiagnoses": [],
+    "severity": "MODERATE",
+  },
+  "recommendation": {
+    "appliedRules": [],
+    "protocolLabel": "Early / Premature Greying",
+    "rankedKits": [
+      {
+        "kitId": "EARLY GREYING CARE GOLD",
+        "matchedNeeds": [
+          "MELANOCYTE_PROTECTION",
+        ],
+        "phase": 1,
+        "score": 100,
+      },
+      {
+        "kitId": "OXIDATIVE STRESS",
+        "matchedNeeds": [
+          "ANTIOXIDANT_SUPPORT",
+        ],
+        "phase": 2,
+        "score": 92,
+      },
+      {
+        "kitId": "PRO IMMUNE GOLD",
+        "matchedNeeds": [
+          "IMMUNE_MODULATION",
+        ],
+        "phase": 3,
+        "score": 84,
+      },
+    ],
+  },
+  "therapyNeeds": [
+    "MELANOCYTE_PROTECTION",
+    "ANTIOXIDANT_SUPPORT",
+    "IMMUNE_MODULATION",
+  ],
+}
+`;
+
+exports[`snapshot — grey goal prioritisation greying_with_hairloss_01 (grey appended last) 1`] = `
+{
+  "clinicalProfile": {
+    "primaryDiagnosis": "TE_STRESS",
+    "primaryScore": 55,
+    "rootCauses": [
+      "STRESS",
+    ],
+    "scalpStates": [
+      "NORMAL_SCALP",
+    ],
+    "secondaryDiagnoses": [
+      {
+        "key": "AGA_FEMALE_123",
+        "score": 50,
+      },
+    ],
+    "severity": "MILD",
+  },
+  "recommendation": {
+    "appliedRules": [
+      "GREY_GOAL: EARLY GREYING CARE appended as final phase. Hair fall primary protocol takes precedence; grey co-concern addressed last.",
+      "ACTIVE_SHEDDING: TE GOLD promoted to Phase 1. Active shedding confirmed — arresting fall is non-negotiable first step.",
+    ],
+    "protocolLabel": "Telogen Effluvium (Stress / Anxiety / Depression)",
+    "rankedKits": [
+      {
+        "kitId": "HAIR FACT TE GOLD",
+        "matchedNeeds": [
+          "SHEDDING_ARREST",
+        ],
+        "phase": 1,
+        "score": 100,
+      },
+      {
+        "kitId": "PHENOTYPE INFLAMATION",
+        "matchedNeeds": [
+          "INFLAMMATION_CONTROL",
+        ],
+        "phase": 2,
+        "score": 92,
+      },
+      {
+        "kitId": "EARLY GREYING CARE GOLD",
+        "matchedNeeds": [
+          "MELANOCYTE_PROTECTION",
+        ],
+        "phase": 3,
+        "score": 84,
+      },
+    ],
+  },
+  "therapyNeeds": [
+    "SHEDDING_ARREST",
+    "INFLAMMATION_CONTROL",
+    "MELANOCYTE_PROTECTION",
+  ],
+}
+`;
+
+exports[`snapshot — hormonal spectrum > hypothyroid_peri_menopause_01 (THYROID_HYPO beats PERI_MENOPAUSE) 1`] = `
+{
+  "clinicalProfile": {
+    "primaryDiagnosis": "THYROID_HYPO",
+    "primaryScore": 100,
+    "rootCauses": [
+      "HYPOTHYROID",
+      "HORMONAL_SHIFT",
+    ],
+    "scalpStates": [
+      "NORMAL_SCALP",
+    ],
+    "secondaryDiagnoses": [
+      {
+        "key": "PERI_MENOPAUSE",
+        "score": 98,
+      },
+      {
+        "key": "AGA_FEMALE_123",
+        "score": 50,
+      },
+    ],
+    "severity": "MILD",
+  },
+  "recommendation": {
+    "appliedRules": [
+      "ACTIVE_SHEDDING: TE GOLD promoted to Phase 1. Active shedding confirmed — arresting fall is non-negotiable first step.",
+    ],
+    "protocolLabel": "Thyroid (Hypothyroid)",
+    "rankedKits": [
+      {
+        "kitId": "HAIR FACT TE GOLD",
+        "matchedNeeds": [
+          "SHEDDING_ARREST",
+        ],
+        "phase": 1,
+        "score": 100,
+      },
+      {
+        "kitId": "PRO FACT META B HYPOTHYROID",
+        "matchedNeeds": [
+          "THYROID_SUPPORT",
+        ],
+        "phase": 2,
+        "score": 92,
+      },
+      {
+        "kitId": "PHENOTYPE INFLAMATION",
+        "matchedNeeds": [
+          "INFLAMMATION_CONTROL",
+        ],
+        "phase": 3,
+        "score": 84,
+      },
+    ],
+  },
+  "therapyNeeds": [
+    "THYROID_SUPPORT",
+    "INFLAMMATION_CONTROL",
+    "SHEDDING_ARREST",
+  ],
+}
+`;
+
+exports[`snapshot — hormonal spectrum > peri_menopause_metabolic_01 (PERI_MENO_METABOLIC injection) 1`] = `
+{
+  "clinicalProfile": {
+    "primaryDiagnosis": "PERI_MENOPAUSE",
+    "primaryScore": 98,
+    "rootCauses": [
+      "METABOLIC",
+      "HORMONAL_SHIFT",
+    ],
+    "scalpStates": [
+      "NORMAL_SCALP",
+    ],
+    "secondaryDiagnoses": [
+      {
+        "key": "AGA_FEMALE_123",
+        "score": 50,
+      },
+    ],
+    "severity": "MILD",
+  },
+  "recommendation": {
+    "appliedRules": [
+      "PERI_MENO_METABOLIC: metabolic signal detected → PRO FACT META B injected at Phase 2 of PERI protocol.",
+      "ACTIVE_SHEDDING: TE GOLD promoted to Phase 1. Active shedding confirmed — arresting fall is non-negotiable first step.",
+    ],
+    "protocolLabel": "Peri-Menopause",
+    "rankedKits": [
+      {
+        "kitId": "HAIR FACT TE GOLD",
+        "matchedNeeds": [
+          "SHEDDING_ARREST",
+        ],
+        "phase": 1,
+        "score": 100,
+      },
+      {
+        "kitId": "HAIR FACT PERI MENOPAUSE",
+        "matchedNeeds": [
+          "HORMONAL_REBALANCING",
+        ],
+        "phase": 2,
+        "score": 92,
+      },
+      {
+        "kitId": "PRO FACT META B",
+        "matchedNeeds": [
+          "METABOLIC_SUPPORT",
+        ],
+        "phase": 3,
+        "score": 84,
+      },
+      {
+        "kitId": "FPHL",
+        "matchedNeeds": [
+          "DHT_SUPPRESSION",
+        ],
+        "phase": 4,
+        "score": 76,
+      },
+    ],
+  },
+  "therapyNeeds": [
+    "HORMONAL_REBALANCING",
+    "DHT_SUPPRESSION",
+    "SHEDDING_ARREST",
+    "IMMUNE_MODULATION",
+    "METABOLIC_SUPPORT",
+  ],
+}
+`;
+
+exports[`snapshot — hormonal spectrum > peri_menopause_stress_01 (PERI_MENOPAUSE dominant) 1`] = `
+{
+  "clinicalProfile": {
+    "primaryDiagnosis": "PERI_MENOPAUSE",
+    "primaryScore": 98,
+    "rootCauses": [
+      "STRESS",
+      "HORMONAL_SHIFT",
+    ],
+    "scalpStates": [
+      "NORMAL_SCALP",
+    ],
+    "secondaryDiagnoses": [
+      {
+        "key": "TE_STRESS",
+        "score": 55,
+      },
+      {
+        "key": "AGA_FEMALE_123",
+        "score": 50,
+      },
+    ],
+    "severity": "MILD",
+  },
+  "recommendation": {
+    "appliedRules": [
+      "ACTIVE_SHEDDING: TE GOLD promoted to Phase 1. Active shedding confirmed — arresting fall is non-negotiable first step.",
+    ],
+    "protocolLabel": "Peri-Menopause",
+    "rankedKits": [
+      {
+        "kitId": "HAIR FACT TE GOLD",
+        "matchedNeeds": [
+          "SHEDDING_ARREST",
+        ],
+        "phase": 1,
+        "score": 100,
+      },
+      {
+        "kitId": "HAIR FACT PERI MENOPAUSE",
+        "matchedNeeds": [
+          "HORMONAL_REBALANCING",
+        ],
+        "phase": 2,
+        "score": 92,
+      },
+      {
+        "kitId": "FPHL",
+        "matchedNeeds": [
+          "DHT_SUPPRESSION",
+        ],
+        "phase": 3,
+        "score": 84,
+      },
+      {
+        "kitId": "PRO IMMUNE GOLD",
+        "matchedNeeds": [
+          "IMMUNE_MODULATION",
+        ],
+        "phase": 4,
+        "score": 76,
+      },
+    ],
+  },
+  "therapyNeeds": [
+    "HORMONAL_REBALANCING",
+    "DHT_SUPPRESSION",
+    "SHEDDING_ARREST",
+    "IMMUNE_MODULATION",
+  ],
+}
+`;
+
+exports[`snapshot — hormonal spectrum > post_menopause_diffuse_01 (POST_MENOPAUSE protocol) 1`] = `
+{
+  "clinicalProfile": {
+    "primaryDiagnosis": "POST_MENOPAUSE",
+    "primaryScore": 98,
+    "rootCauses": [
+      "HORMONAL_SHIFT",
+    ],
+    "scalpStates": [
+      "NORMAL_SCALP",
+    ],
+    "secondaryDiagnoses": [
+      {
+        "key": "AGA_FEMALE_123",
+        "score": 50,
+      },
+    ],
+    "severity": "MILD",
+  },
+  "recommendation": {
+    "appliedRules": [
+      "ACTIVE_SHEDDING: TE GOLD promoted to Phase 1. Active shedding confirmed — arresting fall is non-negotiable first step.",
+    ],
+    "protocolLabel": "Post-Menopause",
+    "rankedKits": [
+      {
+        "kitId": "HAIR FACT TE GOLD",
+        "matchedNeeds": [
+          "SHEDDING_ARREST",
+        ],
+        "phase": 1,
+        "score": 100,
+      },
+      {
+        "kitId": "PRO FACT META B POSTMENOPAUSE",
+        "matchedNeeds": [
+          "HORMONAL_REBALANCING",
+        ],
+        "phase": 2,
+        "score": 92,
+      },
+      {
+        "kitId": "FPHL",
+        "matchedNeeds": [
+          "DHT_SUPPRESSION",
+        ],
+        "phase": 3,
+        "score": 84,
+      },
+      {
+        "kitId": "PRO IMMUNE GOLD",
+        "matchedNeeds": [
+          "IMMUNE_MODULATION",
+        ],
+        "phase": 4,
+        "score": 76,
+      },
+    ],
+  },
+  "therapyNeeds": [
+    "HORMONAL_REBALANCING",
+    "DHT_SUPPRESSION",
+    "SHEDDING_ARREST",
+    "IMMUNE_MODULATION",
+  ],
+}
+`;
+
+exports[`snapshot — hormonal spectrum hypothyroid_peri_menopause_01 (THYROID_HYPO beats PERI_MENOPAUSE) 1`] = `
+{
+  "clinicalProfile": {
+    "primaryDiagnosis": "THYROID_HYPO",
+    "primaryScore": 100,
+    "rootCauses": [
+      "HYPOTHYROID",
+      "HORMONAL_SHIFT",
+    ],
+    "scalpStates": [
+      "NORMAL_SCALP",
+    ],
+    "secondaryDiagnoses": [
+      {
+        "key": "PERI_MENOPAUSE",
+        "score": 98,
+      },
+      {
+        "key": "AGA_FEMALE_123",
+        "score": 50,
+      },
+    ],
+    "severity": "MILD",
+  },
+  "recommendation": {
+    "appliedRules": [
+      "ACTIVE_SHEDDING: TE GOLD promoted to Phase 1. Active shedding confirmed — arresting fall is non-negotiable first step.",
+    ],
+    "protocolLabel": "Thyroid (Hypothyroid)",
+    "rankedKits": [
+      {
+        "kitId": "HAIR FACT TE GOLD",
+        "matchedNeeds": [
+          "SHEDDING_ARREST",
+        ],
+        "phase": 1,
+        "score": 100,
+      },
+      {
+        "kitId": "PRO FACT META B HYPOTHYROID",
+        "matchedNeeds": [
+          "THYROID_SUPPORT",
+        ],
+        "phase": 2,
+        "score": 92,
+      },
+      {
+        "kitId": "PHENOTYPE INFLAMATION",
+        "matchedNeeds": [
+          "INFLAMMATION_CONTROL",
+        ],
+        "phase": 3,
+        "score": 84,
+      },
+    ],
+  },
+  "therapyNeeds": [
+    "THYROID_SUPPORT",
+    "INFLAMMATION_CONTROL",
+    "SHEDDING_ARREST",
+  ],
+}
+`;
+
+exports[`snapshot — hormonal spectrum peri_menopause_metabolic_01 (PERI_MENO_METABOLIC injection) 1`] = `
+{
+  "clinicalProfile": {
+    "primaryDiagnosis": "PERI_MENOPAUSE",
+    "primaryScore": 98,
+    "rootCauses": [
+      "METABOLIC",
+      "HORMONAL_SHIFT",
+    ],
+    "scalpStates": [
+      "NORMAL_SCALP",
+    ],
+    "secondaryDiagnoses": [
+      {
+        "key": "AGA_FEMALE_123",
+        "score": 50,
+      },
+    ],
+    "severity": "MILD",
+  },
+  "recommendation": {
+    "appliedRules": [
+      "PERI_MENO_METABOLIC: metabolic signal detected → PRO FACT META B injected at Phase 2 of PERI protocol.",
+      "ACTIVE_SHEDDING: TE GOLD promoted to Phase 1. Active shedding confirmed — arresting fall is non-negotiable first step.",
+    ],
+    "protocolLabel": "Peri-Menopause",
+    "rankedKits": [
+      {
+        "kitId": "HAIR FACT TE GOLD",
+        "matchedNeeds": [
+          "SHEDDING_ARREST",
+        ],
+        "phase": 1,
+        "score": 100,
+      },
+      {
+        "kitId": "HAIR FACT PERI MENOPAUSE",
+        "matchedNeeds": [
+          "HORMONAL_REBALANCING",
+        ],
+        "phase": 2,
+        "score": 92,
+      },
+      {
+        "kitId": "PRO FACT META B",
+        "matchedNeeds": [
+          "METABOLIC_SUPPORT",
+        ],
+        "phase": 3,
+        "score": 84,
+      },
+      {
+        "kitId": "FPHL",
+        "matchedNeeds": [
+          "DHT_SUPPRESSION",
+        ],
+        "phase": 4,
+        "score": 76,
+      },
+    ],
+  },
+  "therapyNeeds": [
+    "HORMONAL_REBALANCING",
+    "DHT_SUPPRESSION",
+    "SHEDDING_ARREST",
+    "IMMUNE_MODULATION",
+    "METABOLIC_SUPPORT",
+  ],
+}
+`;
+
+exports[`snapshot — hormonal spectrum peri_menopause_stress_01 (PERI_MENOPAUSE dominant) 1`] = `
+{
+  "clinicalProfile": {
+    "primaryDiagnosis": "PERI_MENOPAUSE",
+    "primaryScore": 98,
+    "rootCauses": [
+      "STRESS",
+      "HORMONAL_SHIFT",
+    ],
+    "scalpStates": [
+      "NORMAL_SCALP",
+    ],
+    "secondaryDiagnoses": [
+      {
+        "key": "TE_STRESS",
+        "score": 55,
+      },
+      {
+        "key": "AGA_FEMALE_123",
+        "score": 50,
+      },
+    ],
+    "severity": "MILD",
+  },
+  "recommendation": {
+    "appliedRules": [
+      "ACTIVE_SHEDDING: TE GOLD promoted to Phase 1. Active shedding confirmed — arresting fall is non-negotiable first step.",
+    ],
+    "protocolLabel": "Peri-Menopause",
+    "rankedKits": [
+      {
+        "kitId": "HAIR FACT TE GOLD",
+        "matchedNeeds": [
+          "SHEDDING_ARREST",
+        ],
+        "phase": 1,
+        "score": 100,
+      },
+      {
+        "kitId": "HAIR FACT PERI MENOPAUSE",
+        "matchedNeeds": [
+          "HORMONAL_REBALANCING",
+        ],
+        "phase": 2,
+        "score": 92,
+      },
+      {
+        "kitId": "FPHL",
+        "matchedNeeds": [
+          "DHT_SUPPRESSION",
+        ],
+        "phase": 3,
+        "score": 84,
+      },
+      {
+        "kitId": "PRO IMMUNE GOLD",
+        "matchedNeeds": [
+          "IMMUNE_MODULATION",
+        ],
+        "phase": 4,
+        "score": 76,
+      },
+    ],
+  },
+  "therapyNeeds": [
+    "HORMONAL_REBALANCING",
+    "DHT_SUPPRESSION",
+    "SHEDDING_ARREST",
+    "IMMUNE_MODULATION",
+  ],
+}
+`;
+
+exports[`snapshot — hormonal spectrum post_menopause_diffuse_01 (POST_MENOPAUSE protocol) 1`] = `
+{
+  "clinicalProfile": {
+    "primaryDiagnosis": "POST_MENOPAUSE",
+    "primaryScore": 98,
+    "rootCauses": [
+      "HORMONAL_SHIFT",
+    ],
+    "scalpStates": [
+      "NORMAL_SCALP",
+    ],
+    "secondaryDiagnoses": [
+      {
+        "key": "AGA_FEMALE_123",
+        "score": 50,
+      },
+    ],
+    "severity": "MILD",
+  },
+  "recommendation": {
+    "appliedRules": [
+      "ACTIVE_SHEDDING: TE GOLD promoted to Phase 1. Active shedding confirmed — arresting fall is non-negotiable first step.",
+    ],
+    "protocolLabel": "Post-Menopause",
+    "rankedKits": [
+      {
+        "kitId": "HAIR FACT TE GOLD",
+        "matchedNeeds": [
+          "SHEDDING_ARREST",
+        ],
+        "phase": 1,
+        "score": 100,
+      },
+      {
+        "kitId": "PRO FACT META B POSTMENOPAUSE",
+        "matchedNeeds": [
+          "HORMONAL_REBALANCING",
+        ],
+        "phase": 2,
+        "score": 92,
+      },
+      {
+        "kitId": "FPHL",
+        "matchedNeeds": [
+          "DHT_SUPPRESSION",
+        ],
+        "phase": 3,
+        "score": 84,
+      },
+      {
+        "kitId": "PRO IMMUNE GOLD",
+        "matchedNeeds": [
+          "IMMUNE_MODULATION",
+        ],
+        "phase": 4,
+        "score": 76,
+      },
+    ],
+  },
+  "therapyNeeds": [
+    "HORMONAL_REBALANCING",
+    "DHT_SUPPRESSION",
+    "SHEDDING_ARREST",
+    "IMMUNE_MODULATION",
+  ],
+}
+`;
+
+exports[`snapshot — injection gating > crown_thinning_no_visible_fall_01 (NO_VISIBLE_FALL strips TE GOLD) 1`] = `
+{
+  "clinicalProfile": {
+    "primaryDiagnosis": "AGA_MALE_123",
+    "primaryScore": 70,
+    "rootCauses": [
+      "GENETICS",
+      "DHT",
+    ],
+    "scalpStates": [
+      "OILY_SCALP",
+    ],
+    "secondaryDiagnoses": [
+      {
+        "key": "SCALP_INFLAM",
+        "score": 42,
+      },
+    ],
+    "severity": "MODERATE",
+  },
+  "recommendation": {
+    "appliedRules": [
+      "NO_VISIBLE_FALL: TE GOLD removed. Patient reports thinning only — no active shedding phase.",
+      "FINAL_NO_VISIBLE_FALL: TE GOLD stripped on final pass — confirmed thinning-only patient.",
+    ],
+    "protocolLabel": "Male Pattern Hair Loss — MPHL (Grade 1-2-3)",
+    "rankedKits": [
+      {
+        "kitId": "PHENOTYPE INFLAMATION",
+        "matchedNeeds": [
+          "INFLAMMATION_CONTROL",
+        ],
+        "phase": 1,
+        "score": 100,
+      },
+      {
+        "kitId": "MPHL",
+        "matchedNeeds": [
+          "DHT_SUPPRESSION",
+        ],
+        "phase": 2,
+        "score": 92,
+      },
+      {
+        "kitId": "PRO FACT META B",
+        "matchedNeeds": [
+          "METABOLIC_SUPPORT",
+        ],
+        "phase": 3,
+        "score": 84,
+      },
+      {
+        "kitId": "PRO IMMUNE GOLD",
+        "matchedNeeds": [
+          "FOLLICLE_STIMULATION",
+        ],
+        "phase": 4,
+        "score": 76,
+      },
+    ],
+  },
+  "therapyNeeds": [
+    "SHEDDING_ARREST",
+    "INFLAMMATION_CONTROL",
+    "DHT_SUPPRESSION",
+    "METABOLIC_SUPPORT",
+    "FOLLICLE_STIMULATION",
+  ],
+}
+`;
+
+exports[`snapshot — injection gating > female_aga_regrow_fphl_01 (REGROW_GOAL_AGA female — FPHL not MPHL) 1`] = `
+{
+  "clinicalProfile": {
+    "primaryDiagnosis": "AGA_FEMALE_123",
+    "primaryScore": 92,
+    "rootCauses": [
+      "GENETICS",
+    ],
+    "scalpStates": [
+      "NORMAL_SCALP",
+    ],
+    "secondaryDiagnoses": [],
+    "severity": "MODERATE",
+  },
+  "recommendation": {
+    "appliedRules": [
+      "REGROW_GOAL_AGA: TE GOLD stripped. Pattern-loss kit + PRO IMMUNE substituted for active shedding stack.",
+    ],
+    "protocolLabel": "Female Pattern Hair Loss — FPHL (Grade 1-2-3)",
+    "rankedKits": [
+      {
+        "kitId": "FPHL",
+        "matchedNeeds": [
+          "DHT_SUPPRESSION",
+        ],
+        "phase": 1,
+        "score": 100,
+      },
+      {
+        "kitId": "PRO IMMUNE GOLD",
+        "matchedNeeds": [
+          "FOLLICLE_STIMULATION",
+        ],
+        "phase": 2,
+        "score": 92,
+      },
+    ],
+  },
+  "therapyNeeds": [
+    "SHEDDING_ARREST",
+    "INFLAMMATION_CONTROL",
+    "DHT_SUPPRESSION",
+    "METABOLIC_SUPPORT",
+    "FOLLICLE_STIMULATION",
+  ],
+}
+`;
+
+exports[`snapshot — injection gating > regrow_only_male_aga_01 (REGROW_GOAL_AGA — TE GOLD never prescribed) 1`] = `
+{
+  "clinicalProfile": {
+    "primaryDiagnosis": "AGA_MALE_123",
+    "primaryScore": 92,
+    "rootCauses": [
+      "GENETICS",
+    ],
+    "scalpStates": [
+      "NORMAL_SCALP",
+    ],
+    "secondaryDiagnoses": [],
+    "severity": "MODERATE",
+  },
+  "recommendation": {
+    "appliedRules": [
+      "REGROW_GOAL_AGA: TE GOLD stripped. Pattern-loss kit + PRO IMMUNE substituted for active shedding stack.",
+    ],
+    "protocolLabel": "Male Pattern Hair Loss — MPHL (Grade 1-2-3)",
+    "rankedKits": [
+      {
+        "kitId": "MPHL",
+        "matchedNeeds": [
+          "DHT_SUPPRESSION",
+        ],
+        "phase": 1,
+        "score": 100,
+      },
+      {
+        "kitId": "PRO IMMUNE GOLD",
+        "matchedNeeds": [
+          "FOLLICLE_STIMULATION",
+        ],
+        "phase": 2,
+        "score": 92,
+      },
+    ],
+  },
+  "therapyNeeds": [
+    "SHEDDING_ARREST",
+    "INFLAMMATION_CONTROL",
+    "DHT_SUPPRESSION",
+    "METABOLIC_SUPPORT",
+    "FOLLICLE_STIMULATION",
+  ],
+}
+`;
+
+exports[`snapshot — injection gating crown_thinning_no_visible_fall_01 (NO_VISIBLE_FALL strips TE GOLD) 1`] = `
+{
+  "clinicalProfile": {
+    "primaryDiagnosis": "AGA_MALE_123",
+    "primaryScore": 70,
+    "rootCauses": [
+      "GENETICS",
+      "DHT",
+    ],
+    "scalpStates": [
+      "OILY_SCALP",
+    ],
+    "secondaryDiagnoses": [
+      {
+        "key": "SCALP_INFLAM",
+        "score": 42,
+      },
+    ],
+    "severity": "MODERATE",
+  },
+  "recommendation": {
+    "appliedRules": [
+      "NO_VISIBLE_FALL: TE GOLD removed. Patient reports thinning only — no active shedding phase.",
+      "FINAL_NO_VISIBLE_FALL: TE GOLD stripped on final pass — confirmed thinning-only patient.",
+    ],
+    "protocolLabel": "Male Pattern Hair Loss — MPHL (Grade 1-2-3)",
+    "rankedKits": [
+      {
+        "kitId": "PHENOTYPE INFLAMATION",
+        "matchedNeeds": [
+          "INFLAMMATION_CONTROL",
+        ],
+        "phase": 1,
+        "score": 100,
+      },
+      {
+        "kitId": "MPHL",
+        "matchedNeeds": [
+          "DHT_SUPPRESSION",
+        ],
+        "phase": 2,
+        "score": 92,
+      },
+      {
+        "kitId": "PRO FACT META B",
+        "matchedNeeds": [
+          "METABOLIC_SUPPORT",
+        ],
+        "phase": 3,
+        "score": 84,
+      },
+      {
+        "kitId": "PRO IMMUNE GOLD",
+        "matchedNeeds": [
+          "FOLLICLE_STIMULATION",
+        ],
+        "phase": 4,
+        "score": 76,
+      },
+    ],
+  },
+  "therapyNeeds": [
+    "SHEDDING_ARREST",
+    "INFLAMMATION_CONTROL",
+    "DHT_SUPPRESSION",
+    "METABOLIC_SUPPORT",
+    "FOLLICLE_STIMULATION",
+  ],
+}
+`;
+
+exports[`snapshot — injection gating female_aga_regrow_fphl_01 (REGROW_GOAL_AGA female — FPHL not MPHL) 1`] = `
+{
+  "clinicalProfile": {
+    "primaryDiagnosis": "AGA_FEMALE_123",
+    "primaryScore": 92,
+    "rootCauses": [
+      "GENETICS",
+    ],
+    "scalpStates": [
+      "NORMAL_SCALP",
+    ],
+    "secondaryDiagnoses": [],
+    "severity": "MODERATE",
+  },
+  "recommendation": {
+    "appliedRules": [
+      "REGROW_GOAL_AGA: TE GOLD stripped. Pattern-loss kit + PRO IMMUNE substituted for active shedding stack.",
+    ],
+    "protocolLabel": "Female Pattern Hair Loss — FPHL (Grade 1-2-3)",
+    "rankedKits": [
+      {
+        "kitId": "FPHL",
+        "matchedNeeds": [
+          "DHT_SUPPRESSION",
+        ],
+        "phase": 1,
+        "score": 100,
+      },
+      {
+        "kitId": "PRO IMMUNE GOLD",
+        "matchedNeeds": [
+          "FOLLICLE_STIMULATION",
+        ],
+        "phase": 2,
+        "score": 92,
+      },
+    ],
+  },
+  "therapyNeeds": [
+    "SHEDDING_ARREST",
+    "INFLAMMATION_CONTROL",
+    "DHT_SUPPRESSION",
+    "METABOLIC_SUPPORT",
+    "FOLLICLE_STIMULATION",
+  ],
+}
+`;
+
+exports[`snapshot — injection gating regrow_only_male_aga_01 (REGROW_GOAL_AGA — TE GOLD never prescribed) 1`] = `
+{
+  "clinicalProfile": {
+    "primaryDiagnosis": "AGA_MALE_123",
+    "primaryScore": 92,
+    "rootCauses": [
+      "GENETICS",
+    ],
+    "scalpStates": [
+      "NORMAL_SCALP",
+    ],
+    "secondaryDiagnoses": [],
+    "severity": "MODERATE",
+  },
+  "recommendation": {
+    "appliedRules": [
+      "REGROW_GOAL_AGA: TE GOLD stripped. Pattern-loss kit + PRO IMMUNE substituted for active shedding stack.",
+    ],
+    "protocolLabel": "Male Pattern Hair Loss — MPHL (Grade 1-2-3)",
+    "rankedKits": [
+      {
+        "kitId": "MPHL",
+        "matchedNeeds": [
+          "DHT_SUPPRESSION",
+        ],
+        "phase": 1,
+        "score": 100,
+      },
+      {
+        "kitId": "PRO IMMUNE GOLD",
+        "matchedNeeds": [
+          "FOLLICLE_STIMULATION",
+        ],
+        "phase": 2,
+        "score": 92,
+      },
+    ],
+  },
+  "therapyNeeds": [
+    "SHEDDING_ARREST",
+    "INFLAMMATION_CONTROL",
+    "DHT_SUPPRESSION",
+    "METABOLIC_SUPPORT",
+    "FOLLICLE_STIMULATION",
+  ],
+}
+`;
+
+exports[`snapshot — veg / lifestyle / gut > gut_stress_shedding_01 (GUT_ISSUES protocol) 1`] = `
+{
+  "clinicalProfile": {
+    "primaryDiagnosis": "GUT_ISSUES",
+    "primaryScore": 62,
+    "rootCauses": [
+      "STRESS",
+      "GUT_MALABSORPTION",
+    ],
+    "scalpStates": [
+      "NORMAL_SCALP",
+    ],
+    "secondaryDiagnoses": [
+      {
+        "key": "TE_STRESS",
+        "score": 55,
+      },
+    ],
+    "severity": "MILD",
+  },
+  "recommendation": {
+    "appliedRules": [
+      "ACTIVE_SHEDDING: TE GOLD promoted to Phase 1. Active shedding confirmed — arresting fall is non-negotiable first step.",
+    ],
+    "protocolLabel": "Gut Issues (GERD / IBS / Bloating / Crohn's)",
+    "rankedKits": [
+      {
+        "kitId": "HAIR FACT TE GOLD",
+        "matchedNeeds": [
+          "SHEDDING_ARREST",
+        ],
+        "phase": 1,
+        "score": 100,
+      },
+      {
+        "kitId": "PRO FACT GI GOLD",
+        "matchedNeeds": [
+          "GUT_RESTORATION",
+        ],
+        "phase": 2,
+        "score": 92,
+      },
+      {
+        "kitId": "PHENOTYPE INFLAMATION",
+        "matchedNeeds": [
+          "INFLAMMATION_CONTROL",
+        ],
+        "phase": 3,
+        "score": 84,
+      },
+      {
+        "kitId": "PRO IMMUNE GOLD",
+        "matchedNeeds": [
+          "IMMUNE_MODULATION",
+        ],
+        "phase": 4,
+        "score": 76,
+      },
+    ],
+  },
+  "therapyNeeds": [
+    "GUT_RESTORATION",
+    "INFLAMMATION_CONTROL",
+    "IMMUNE_MODULATION",
+    "SHEDDING_ARREST",
+  ],
+}
+`;
+
+exports[`snapshot — veg / lifestyle / gut > night_shift_oxidative_01 (NIGHT_SHIFT + oxidative) 1`] = `
+{
+  "clinicalProfile": {
+    "primaryDiagnosis": "NIGHT_SHIFT",
+    "primaryScore": 62,
+    "rootCauses": [
+      "STRESS",
+      "OXIDATIVE_STRESS",
+      "CIRCADIAN_DISRUPTION",
+    ],
+    "scalpStates": [
+      "NORMAL_SCALP",
+    ],
+    "secondaryDiagnoses": [
+      {
+        "key": "OXIDATIVE",
+        "score": 58,
+      },
+      {
+        "key": "TE_STRESS",
+        "score": 55,
+      },
+      {
+        "key": "AGA_MALE_123",
+        "score": 50,
+      },
+    ],
+    "severity": "MILD",
+  },
+  "recommendation": {
+    "appliedRules": [
+      "ACTIVE_SHEDDING: TE GOLD promoted to Phase 1. Active shedding confirmed — arresting fall is non-negotiable first step.",
+    ],
+    "protocolLabel": "Night Shift / Circadian Disruption",
+    "rankedKits": [
+      {
+        "kitId": "HAIR FACT TE GOLD",
+        "matchedNeeds": [
+          "SHEDDING_ARREST",
+        ],
+        "phase": 1,
+        "score": 100,
+      },
+      {
+        "kitId": "HAIR FACT NIGHT SHIFT",
+        "matchedNeeds": [
+          "CIRCADIAN_RESET",
+        ],
+        "phase": 2,
+        "score": 92,
+      },
+      {
+        "kitId": "PHENOTYPE INFLAMATION",
+        "matchedNeeds": [
+          "INFLAMMATION_CONTROL",
+        ],
+        "phase": 3,
+        "score": 84,
+      },
+    ],
+  },
+  "therapyNeeds": [
+    "CIRCADIAN_RESET",
+    "SHEDDING_ARREST",
+    "INFLAMMATION_CONTROL",
+    "ANTIOXIDANT_SUPPORT",
+  ],
+}
+`;
+
+exports[`snapshot — veg / lifestyle / gut > nutritional_te_vegetarian_01 (veg kit aliases) 1`] = `
+{
+  "clinicalProfile": {
+    "primaryDiagnosis": "TE_NUTRITION",
+    "primaryScore": 58,
+    "rootCauses": [
+      "POOR_NUTRITION",
+    ],
+    "scalpStates": [
+      "NORMAL_SCALP",
+    ],
+    "secondaryDiagnoses": [],
+    "severity": "MILD",
+  },
+  "recommendation": {
+    "appliedRules": [
+      "METABOLIC_GENERIC: metabolic signal detected → PRO FACT META B injected.",
+      "SIGNAL_GATED_INJECTION: PRO IMMUNE VEG added — signal confirmed.",
+      "ACTIVE_SHEDDING: TE GOLD promoted to Phase 1. Active shedding confirmed — arresting fall is non-negotiable first step.",
+    ],
+    "protocolLabel": "Telogen Effluvium (Nutritional deficiency)",
+    "rankedKits": [
+      {
+        "kitId": "HAIR FACT TE GOLD VEG",
+        "matchedNeeds": [
+          "SHEDDING_ARREST",
+        ],
+        "phase": 1,
+        "score": 100,
+      },
+      {
+        "kitId": "PHENOTYPE INFLAMATION",
+        "matchedNeeds": [
+          "INFLAMMATION_CONTROL",
+        ],
+        "phase": 2,
+        "score": 92,
+      },
+      {
+        "kitId": "PRO FACT META B",
+        "matchedNeeds": [],
+        "phase": 3,
+        "score": 84,
+      },
+      {
+        "kitId": "PRO IMMUNE VEG",
+        "matchedNeeds": [],
+        "phase": 4,
+        "score": 76,
+      },
+    ],
+  },
+  "therapyNeeds": [
+    "SHEDDING_ARREST",
+    "INFLAMMATION_CONTROL",
+  ],
+}
+`;
+
+exports[`snapshot — veg / lifestyle / gut > sedentary_stress_te_01 (METABOLIC_GENERIC injection) 1`] = `
+{
+  "clinicalProfile": {
+    "primaryDiagnosis": "TE_STRESS",
+    "primaryScore": 55,
+    "rootCauses": [
+      "STRESS",
+      "METABOLIC",
+    ],
+    "scalpStates": [
+      "NORMAL_SCALP",
+    ],
+    "secondaryDiagnoses": [
+      {
+        "key": "AGA_FEMALE_123",
+        "score": 50,
+      },
+    ],
+    "severity": "MILD",
+  },
+  "recommendation": {
+    "appliedRules": [
+      "METABOLIC_GENERIC: metabolic signal detected → PRO FACT META B injected.",
+      "ACTIVE_SHEDDING: TE GOLD promoted to Phase 1. Active shedding confirmed — arresting fall is non-negotiable first step.",
+    ],
+    "protocolLabel": "Telogen Effluvium (Stress / Anxiety / Depression)",
+    "rankedKits": [
+      {
+        "kitId": "HAIR FACT TE GOLD",
+        "matchedNeeds": [
+          "SHEDDING_ARREST",
+        ],
+        "phase": 1,
+        "score": 100,
+      },
+      {
+        "kitId": "PHENOTYPE INFLAMATION",
+        "matchedNeeds": [
+          "INFLAMMATION_CONTROL",
+        ],
+        "phase": 2,
+        "score": 92,
+      },
+      {
+        "kitId": "PRO FACT META B",
+        "matchedNeeds": [
+          "METABOLIC_SUPPORT",
+        ],
+        "phase": 3,
+        "score": 84,
+      },
+    ],
+  },
+  "therapyNeeds": [
+    "SHEDDING_ARREST",
+    "INFLAMMATION_CONTROL",
+    "METABOLIC_SUPPORT",
+  ],
+}
+`;
+
+exports[`snapshot — veg / lifestyle / gut gut_stress_shedding_01 (GUT_ISSUES protocol) 1`] = `
+{
+  "clinicalProfile": {
+    "primaryDiagnosis": "GUT_ISSUES",
+    "primaryScore": 62,
+    "rootCauses": [
+      "STRESS",
+      "GUT_MALABSORPTION",
+    ],
+    "scalpStates": [
+      "NORMAL_SCALP",
+    ],
+    "secondaryDiagnoses": [
+      {
+        "key": "TE_STRESS",
+        "score": 55,
+      },
+    ],
+    "severity": "MILD",
+  },
+  "recommendation": {
+    "appliedRules": [
+      "ACTIVE_SHEDDING: TE GOLD promoted to Phase 1. Active shedding confirmed — arresting fall is non-negotiable first step.",
+    ],
+    "protocolLabel": "Gut Issues (GERD / IBS / Bloating / Crohn's)",
+    "rankedKits": [
+      {
+        "kitId": "HAIR FACT TE GOLD",
+        "matchedNeeds": [
+          "SHEDDING_ARREST",
+        ],
+        "phase": 1,
+        "score": 100,
+      },
+      {
+        "kitId": "PRO FACT GI GOLD",
+        "matchedNeeds": [
+          "GUT_RESTORATION",
+        ],
+        "phase": 2,
+        "score": 92,
+      },
+      {
+        "kitId": "PHENOTYPE INFLAMATION",
+        "matchedNeeds": [
+          "INFLAMMATION_CONTROL",
+        ],
+        "phase": 3,
+        "score": 84,
+      },
+      {
+        "kitId": "PRO IMMUNE GOLD",
+        "matchedNeeds": [
+          "IMMUNE_MODULATION",
+        ],
+        "phase": 4,
+        "score": 76,
+      },
+    ],
+  },
+  "therapyNeeds": [
+    "GUT_RESTORATION",
+    "INFLAMMATION_CONTROL",
+    "IMMUNE_MODULATION",
+    "SHEDDING_ARREST",
+  ],
+}
+`;
+
+exports[`snapshot — veg / lifestyle / gut night_shift_oxidative_01 (NIGHT_SHIFT + oxidative) 1`] = `
+{
+  "clinicalProfile": {
+    "primaryDiagnosis": "NIGHT_SHIFT",
+    "primaryScore": 62,
+    "rootCauses": [
+      "STRESS",
+      "OXIDATIVE_STRESS",
+      "CIRCADIAN_DISRUPTION",
+    ],
+    "scalpStates": [
+      "NORMAL_SCALP",
+    ],
+    "secondaryDiagnoses": [
+      {
+        "key": "OXIDATIVE",
+        "score": 58,
+      },
+      {
+        "key": "TE_STRESS",
+        "score": 55,
+      },
+      {
+        "key": "AGA_MALE_123",
+        "score": 50,
+      },
+    ],
+    "severity": "MILD",
+  },
+  "recommendation": {
+    "appliedRules": [
+      "ACTIVE_SHEDDING: TE GOLD promoted to Phase 1. Active shedding confirmed — arresting fall is non-negotiable first step.",
+    ],
+    "protocolLabel": "Night Shift / Circadian Disruption",
+    "rankedKits": [
+      {
+        "kitId": "HAIR FACT TE GOLD",
+        "matchedNeeds": [
+          "SHEDDING_ARREST",
+        ],
+        "phase": 1,
+        "score": 100,
+      },
+      {
+        "kitId": "HAIR FACT NIGHT SHIFT",
+        "matchedNeeds": [
+          "CIRCADIAN_RESET",
+        ],
+        "phase": 2,
+        "score": 92,
+      },
+      {
+        "kitId": "PHENOTYPE INFLAMATION",
+        "matchedNeeds": [
+          "INFLAMMATION_CONTROL",
+        ],
+        "phase": 3,
+        "score": 84,
+      },
+    ],
+  },
+  "therapyNeeds": [
+    "CIRCADIAN_RESET",
+    "SHEDDING_ARREST",
+    "INFLAMMATION_CONTROL",
+    "ANTIOXIDANT_SUPPORT",
+  ],
+}
+`;
+
+exports[`snapshot — veg / lifestyle / gut nutritional_te_vegetarian_01 (veg kit aliases) 1`] = `
+{
+  "clinicalProfile": {
+    "primaryDiagnosis": "TE_NUTRITION",
+    "primaryScore": 58,
+    "rootCauses": [
+      "POOR_NUTRITION",
+    ],
+    "scalpStates": [
+      "NORMAL_SCALP",
+    ],
+    "secondaryDiagnoses": [],
+    "severity": "MILD",
+  },
+  "recommendation": {
+    "appliedRules": [
+      "METABOLIC_GENERIC: metabolic signal detected → PRO FACT META B injected.",
+      "SIGNAL_GATED_INJECTION: PRO IMMUNE VEG added — signal confirmed.",
+      "ACTIVE_SHEDDING: TE GOLD promoted to Phase 1. Active shedding confirmed — arresting fall is non-negotiable first step.",
+    ],
+    "protocolLabel": "Telogen Effluvium (Nutritional deficiency)",
+    "rankedKits": [
+      {
+        "kitId": "HAIR FACT TE GOLD VEG",
+        "matchedNeeds": [
+          "SHEDDING_ARREST",
+        ],
+        "phase": 1,
+        "score": 100,
+      },
+      {
+        "kitId": "PHENOTYPE INFLAMATION",
+        "matchedNeeds": [
+          "INFLAMMATION_CONTROL",
+        ],
+        "phase": 2,
+        "score": 92,
+      },
+      {
+        "kitId": "PRO FACT META B",
+        "matchedNeeds": [],
+        "phase": 3,
+        "score": 84,
+      },
+      {
+        "kitId": "PRO IMMUNE VEG",
+        "matchedNeeds": [],
+        "phase": 4,
+        "score": 76,
+      },
+    ],
+  },
+  "therapyNeeds": [
+    "SHEDDING_ARREST",
+    "INFLAMMATION_CONTROL",
+  ],
+}
+`;
+
+exports[`snapshot — veg / lifestyle / gut sedentary_stress_te_01 (METABOLIC_GENERIC injection) 1`] = `
+{
+  "clinicalProfile": {
+    "primaryDiagnosis": "TE_STRESS",
+    "primaryScore": 55,
+    "rootCauses": [
+      "STRESS",
+      "METABOLIC",
+    ],
+    "scalpStates": [
+      "NORMAL_SCALP",
+    ],
+    "secondaryDiagnoses": [
+      {
+        "key": "AGA_FEMALE_123",
+        "score": 50,
+      },
+    ],
+    "severity": "MILD",
+  },
+  "recommendation": {
+    "appliedRules": [
+      "METABOLIC_GENERIC: metabolic signal detected → PRO FACT META B injected.",
+      "ACTIVE_SHEDDING: TE GOLD promoted to Phase 1. Active shedding confirmed — arresting fall is non-negotiable first step.",
+    ],
+    "protocolLabel": "Telogen Effluvium (Stress / Anxiety / Depression)",
+    "rankedKits": [
+      {
+        "kitId": "HAIR FACT TE GOLD",
+        "matchedNeeds": [
+          "SHEDDING_ARREST",
+        ],
+        "phase": 1,
+        "score": 100,
+      },
+      {
+        "kitId": "PHENOTYPE INFLAMATION",
+        "matchedNeeds": [
+          "INFLAMMATION_CONTROL",
+        ],
+        "phase": 2,
+        "score": 92,
+      },
+      {
+        "kitId": "PRO FACT META B",
+        "matchedNeeds": [
+          "METABOLIC_SUPPORT",
+        ],
+        "phase": 3,
+        "score": 84,
+      },
+    ],
+  },
+  "therapyNeeds": [
+    "SHEDDING_ARREST",
+    "INFLAMMATION_CONTROL",
+    "METABOLIC_SUPPORT",
+  ],
+}
+`;

@@ -1,0 +1,173 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "clinical-engine.cause-ranker.CauseGraph@1.0.0",
+  "title": "CauseGraph",
+  "description": "The explainability DAG produced by the Cause Ranker. Nodes: Signals, Pathways, Causes. Edges: signal→pathway (inherited from PathwayGraph), signal→cause (direct cue), pathway→cause (LLR-weighted), cause→cause (dissent / co-leading / competing). Every conclusion the rest of the system reaches about a cause must be expressible as a walk over this graph. The graph is a strict DAG; cycles are rejected by IC-CG-3.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "causeGraphId","assessmentId","causeRankId","graphSnapshotId","evaluatedAt",
+    "registryVersions","engineVersion","nodes","edges","provenance"
+  ],
+  "properties": {
+    "causeGraphId":    { "type": "string", "format": "uuid" },
+    "assessmentId":    { "type": "string", "format": "uuid" },
+    "causeRankId":     { "type": "string", "format": "uuid" },
+    "graphSnapshotId": { "type": "string", "format": "uuid", "description": "FK to the underlying PathwayGraph." },
+    "evaluatedAt":     { "type": "string", "format": "date-time" },
+
+    "registryVersions": {
+      "type": "object",
+      "required": ["signals","pathways","causes","causesConfidenceModel"],
+      "properties": {
+        "signals":               { "type": "string", "pattern": "^\\d+\\.\\d+\\.\\d+$" },
+        "pathways":              { "type": "string", "pattern": "^\\d+\\.\\d+\\.\\d+$" },
+        "causes":                { "type": "string", "pattern": "^\\d+\\.\\d+\\.\\d+$" },
+        "causesConfidenceModel": { "type": "string", "pattern": "^\\d+\\.\\d+\\.\\d+$" }
+      }
+    },
+    "engineVersion": { "type": "string", "pattern": "^\\d+\\.\\d+\\.\\d+$" },
+
+    "nodes": {
+      "type": "array",
+      "minItems": 21,
+      "description": "At minimum: 10 causes + 10 pathways + N signals. Subthreshold pathways and excluded causes are still emitted as nodes for transparency.",
+      "items": {
+        "oneOf": [
+          { "$ref": "#/definitions/SignalNode" },
+          { "$ref": "#/definitions/PathwayNode" },
+          { "$ref": "#/definitions/CauseNode" }
+        ]
+      }
+    },
+
+    "edges": {
+      "type": "array",
+      "items": {
+        "oneOf": [
+          { "$ref": "#/definitions/SignalPathwayEdge" },
+          { "$ref": "#/definitions/SignalCauseEdge" },
+          { "$ref": "#/definitions/PathwayCauseEdge" },
+          { "$ref": "#/definitions/CauseCauseEdge" }
+        ]
+      }
+    },
+
+    "provenance": {
+      "type": "object",
+      "required": ["causesEvaluated","causesEmitted","causesExcluded","computeMs"],
+      "properties": {
+        "causesEvaluated":   { "type": "integer", "const": 10 },
+        "causesEmitted":     { "type": "integer", "minimum": 0, "maximum": 10 },
+        "causesExcluded":    { "type": "integer", "minimum": 0, "maximum": 10 },
+        "causesSubthreshold":{ "type": "integer", "minimum": 0, "maximum": 10 },
+        "computeMs":         { "type": "number",  "minimum": 0.0 }
+      }
+    }
+  },
+
+  "definitions": {
+
+    "SignalNode": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind","id","signalId","present","confidence","evidenceTier"],
+      "properties": {
+        "kind":         { "const": "signal" },
+        "id":           { "type": "string", "pattern": "^node\\.signal\\.[a-z][a-z0-9-]+$" },
+        "signalId":     { "type": "string" },
+        "present":      { "type": "boolean" },
+        "confidence":   { "type": "number", "minimum": 0.0, "maximum": 1.0 },
+        "evidenceTier": { "type": "string", "enum": ["established","emerging","heuristic"] }
+      }
+    },
+
+    "PathwayNode": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind","id","pathwayId","activation","activationBand","confidence","subthreshold"],
+      "properties": {
+        "kind":           { "const": "pathway" },
+        "id":             { "type": "string", "pattern": "^node\\.pathway\\.[a-z][a-z0-9-]+$" },
+        "pathwayId":      { "type": "string" },
+        "activation":     { "type": "number", "minimum": 0.0, "maximum": 1.0 },
+        "activationBand": { "type": "string", "enum": ["dormant","latent","active","dominant","entrenched"] },
+        "confidence":     { "type": "number", "minimum": 0.05, "maximum": 0.98 },
+        "subthreshold":   { "type": "boolean" }
+      }
+    },
+
+    "CauseNode": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind","id","causeId","posterior","confidence","band","rank","logScore","excluded"],
+      "properties": {
+        "kind":       { "const": "cause" },
+        "id":         { "type": "string", "pattern": "^node\\.cause\\.[a-z][a-z0-9-]+$" },
+        "causeId":    { "type": "string" },
+        "posterior":  { "type": "number", "minimum": 0.0, "maximum": 1.0 },
+        "confidence": { "type": "number", "minimum": 0.0, "maximum": 1.0 },
+        "band":       { "type": "string", "enum": ["leading","considered","subthreshold","excluded"] },
+        "rank":       { "type": "integer", "minimum": 1, "maximum": 10 },
+        "logScore":   { "type": "number" },
+        "excluded":   { "type": "boolean" }
+      }
+    },
+
+    "SignalPathwayEdge": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind","from","to","weight","confidence"],
+      "properties": {
+        "kind":          { "type": "string", "enum": ["supports","inhibits","required-gate"] },
+        "from":          { "type": "string", "pattern": "^node\\.signal\\.[a-z][a-z0-9-]+$" },
+        "to":            { "type": "string", "pattern": "^node\\.pathway\\.[a-z][a-z0-9-]+$" },
+        "weight":        { "type": "number", "minimum": -1.0, "maximum": 1.0 },
+        "confidence":    { "type": "number", "minimum": 0.0,  "maximum": 1.0 },
+        "contribution":  { "type": "number" }
+      }
+    },
+
+    "SignalCauseEdge": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind","from","to","llr","confidence","contribution","role"],
+      "properties": {
+        "kind":         { "type": "string", "enum": ["direct-cue","conflicts-with","excludes"] },
+        "from":         { "type": "string", "pattern": "^node\\.signal\\.[a-z][a-z0-9-]+$" },
+        "to":           { "type": "string", "pattern": "^node\\.cause\\.[a-z][a-z0-9-]+$" },
+        "llr":          { "type": "number", "minimum": -3.0, "maximum": 3.0 },
+        "confidence":   { "type": "number", "minimum": 0.0,  "maximum": 1.0 },
+        "contribution": { "type": "number", "description": "confidence × llr" },
+        "role":         { "type": "string", "enum": ["primary","supporting","modulator","competing","conflicting","exclusionary"] }
+      }
+    },
+
+    "PathwayCauseEdge": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind","from","to","llr","activation","contribution","role"],
+      "properties": {
+        "kind":         { "type": "string", "enum": ["supports","competes","excludes"] },
+        "from":         { "type": "string", "pattern": "^node\\.pathway\\.[a-z][a-z0-9-]+$" },
+        "to":           { "type": "string", "pattern": "^node\\.cause\\.[a-z][a-z0-9-]+$" },
+        "llr":          { "type": "number", "minimum": -3.0, "maximum": 3.0 },
+        "activation":   { "type": "number", "minimum": 0.0,  "maximum": 1.0 },
+        "contribution": { "type": "number", "description": "activation × llr" },
+        "role":         { "type": "string", "enum": ["primary","supporting","modulator","competing","exclusionary"] }
+      }
+    },
+
+    "CauseCauseEdge": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind","from","to","margin"],
+      "properties": {
+        "kind":   { "type": "string", "enum": ["dissents","co-leads-with","composite-of"] },
+        "from":   { "type": "string", "pattern": "^node\\.cause\\.[a-z][a-z0-9-]+$" },
+        "to":     { "type": "string", "pattern": "^node\\.cause\\.[a-z][a-z0-9-]+$" },
+        "margin": { "type": "number", "minimum": 0.0, "maximum": 1.0, "description": "Posterior gap between the two causes." }
+      }
+    }
+  }
+}

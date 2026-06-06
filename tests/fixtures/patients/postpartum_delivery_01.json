@@ -1,0 +1,35 @@
+{
+  "id": "postpartum_delivery_01",
+  "description": "Post-delivery TE — not breastfeeding → TE_DELIVERY (score 90). Distinct from TE_POSTPREG: no LACTIHEALTH. TE GOLD stops shedding; PRO IMMUNE rebuilds immunity depleted by delivery.",
+  "budget": "STANDARD",
+  "answers": {
+    "sex": "Female",
+    "age": "30",
+    "grade": "Grade 2",
+    "goal": ["Reduce hair fall"],
+    "cause": ["Post partum", "not feeding"],
+    "hormonal": [],
+    "scalp": [],
+    "lifestyle": [],
+    "duration": "1–3 months",
+    "count": "50–100 strands",
+    "thyroid": [],
+    "immunity": [],
+    "deficiency": [],
+    "gut": [],
+    "diet": [],
+    "hairtype": [],
+    "treatment": []
+  },
+  "expected": {
+    "diagnoses": ["TE_DELIVERY"],
+    "scalpStates": ["NORMAL_SCALP"],
+    "rootCauses": ["POST_PARTUM"],
+    "therapyNeeds": ["SHEDDING_ARREST", "IMMUNE_MODULATION"],
+    "topKit": "HAIR FACT TE GOLD",
+    "mustIncludeKits": ["HAIR FACT TE GOLD", "PRO IMMUNE GOLD"],
+    "mustExcludeKits": ["LACTIHEALTH", "MPHL", "FPHL", "RAPID WEIGHT LOSS SHIELD"],
+    "mustTriggerRules": ["ACTIVE_SHEDDING"],
+    "mustBlockRules": ["GLP1_EARLY", "GLP1_LATE", "RULE1_HYPO_METABOLIC"]
+  }
+}

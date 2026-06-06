@@ -1,0 +1,35 @@
+{
+  "id": "glp1_late_shield_01",
+  "description": "RULE 2: GLP-1 late (after 6 months) → RAPID WEIGHT LOSS SHIELD enforced at Phase 2. Acute shedding peak has passed — TE GOLD leads at Phase 1, SHIELD provides nutritional recovery at Phase 2. Validates that SHIELD never leaps to Phase 1 for late-stage GLP-1 cases.",
+  "budget": "COMPREHENSIVE",
+  "answers": {
+    "sex": "Female",
+    "age": "35",
+    "grade": "Grade 2",
+    "goal": ["Reduce hair fall"],
+    "cause": ["GLP-1 receptor agonist (hair loss after 6 months)"],
+    "scalp": [],
+    "lifestyle": [],
+    "thyroid": [],
+    "hormonal": [],
+    "immunity": [],
+    "deficiency": [],
+    "gut": [],
+    "diet": [],
+    "hairtype": [],
+    "treatment": [],
+    "duration": "3–6 months",
+    "count": "50–100 strands"
+  },
+  "expected": {
+    "diagnoses": ["WEIGHT_LOSS"],
+    "scalpStates": ["NORMAL_SCALP"],
+    "rootCauses": ["RAPID_WEIGHT_LOSS"],
+    "therapyNeeds": ["WEIGHT_LOSS_RECOVERY", "SHEDDING_ARREST", "IMMUNE_MODULATION"],
+    "topKit": "HAIR FACT TE GOLD",
+    "mustIncludeKits": ["HAIR FACT TE GOLD", "RAPID WEIGHT LOSS SHIELD", "PRO IMMUNE GOLD"],
+    "mustExcludeKits": ["PRO FACT META B HYPOTHYROID", "F-PCOS -1", "LACTIHEALTH"],
+    "mustTriggerRules": ["GLP1_LATE"],
+    "mustBlockRules": ["GLP1_EARLY", "RULE1_HYPO_METABOLIC", "PCOS_DIABETES_UPGRADE"]
+  }
+}

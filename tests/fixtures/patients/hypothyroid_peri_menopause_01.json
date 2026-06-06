@@ -1,0 +1,35 @@
+{
+  "id": "hypothyroid_peri_menopause_01",
+  "description": "Hypothyroid + peri-menopausal combination — two high-scoring conditions. THYROID_HYPO scores 100 vs PERI_MENOPAUSE 98 → Thyroid wins as primary. RULE 1 does NOT fire (no obesity/sedentary). PRO FACT META B HYPOTHYROID must be present (thyroid-specific kit). Tests hormonal-metabolic dominance hierarchy.",
+  "budget": "COMPREHENSIVE",
+  "answers": {
+    "sex": "Female",
+    "age": "50",
+    "grade": "Grade 2",
+    "goal": ["Reduce hair fall"],
+    "thyroid": ["Hypothyroidism"],
+    "hormonal": ["Peri-menopause"],
+    "scalp": [],
+    "cause": [],
+    "lifestyle": [],
+    "immunity": [],
+    "deficiency": [],
+    "gut": [],
+    "diet": [],
+    "hairtype": [],
+    "treatment": [],
+    "duration": "3–6 months",
+    "count": "50–100 strands"
+  },
+  "expected": {
+    "diagnoses": ["THYROID_HYPO"],
+    "scalpStates": ["NORMAL_SCALP"],
+    "rootCauses": ["HYPOTHYROID", "HORMONAL_SHIFT"],
+    "therapyNeeds": ["THYROID_SUPPORT", "INFLAMMATION_CONTROL", "SHEDDING_ARREST"],
+    "topKit": "HAIR FACT TE GOLD",
+    "mustIncludeKits": ["HAIR FACT TE GOLD", "PRO FACT META B HYPOTHYROID", "PHENOTYPE INFLAMATION"],
+    "mustExcludeKits": ["PRO FACT META B", "PRO FACT META B PCOS", "LACTIHEALTH"],
+    "mustTriggerRules": ["ACTIVE_SHEDDING"],
+    "mustBlockRules": ["RULE1_HYPO_METABOLIC", "PERI_MENO_METABOLIC", "GLP1_EARLY", "GLP1_LATE"]
+  }
+}

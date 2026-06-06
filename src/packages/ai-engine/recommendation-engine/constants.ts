@@ -1,0 +1,64 @@
+export const THERAPY_PHASES = {
+  INITIATION: 'INITIATION',
+  ACCELERATION: 'ACCELERATION',
+  MAINTENANCE: 'MAINTENANCE',
+  OPTIMIZATION: 'OPTIMIZATION'
+} as const;
+
+export const TOPICAL_FREQUENCIES = {
+  ONCE_DAILY: 'ONCE_DAILY',
+  TWICE_DAILY: 'TWICE_DAILY',
+  EVERY_OTHER_DAY: 'EVERY_OTHER_DAY',
+  WEEKLY: 'WEEKLY'
+} as const;
+
+export const SERUM_WINDOWS = {
+  MORNING: 'MORNING',
+  EVENING: 'EVENING',
+  POST_WASH: 'POST_WASH',
+  PRE_WORKOUT: 'PRE_WORKOUT'
+} as const;
+
+export const PROCEDURE_INTERVALS = {
+  WEEKLY: 1,
+  BI_WEEKLY: 2,
+  MONTHLY: 4,
+  QUARTERLY: 12,
+  BI_ANNUAL: 24,
+  ANNUAL: 52
+} as const;
+
+export const EXPECTED_RESPONSE_WINDOWS = {
+  EARLY_RESPONDER: 3,
+  AVERAGE_RESPONDER: 6,
+  LATE_RESPONDER: 9,
+  MAX_BENEFIT: 12
+} as const;
+
+export const ESCALATION_THRESHOLDS = {
+  MILD_NO_RESPONSE: 3,
+  MODERATE_NO_RESPONSE: 6,
+  SEVERE_NO_RESPONSE: 4,
+  SHEDDING_PROLONGED: 2
+} as const;
+
+export const SEVERITY_MULTIPLIERS: ReadonlyMap<string, number> = new Map([
+  ['MILD', 1.0],
+  ['MODERATE', 1.5],
+  ['SEVERE', 2.0],
+  ['EXTREME', 3.0]
+]);
+
+export const PROCEDURE_COMPATIBILITY: ReadonlyMap<string, readonly string[]> = new Map([
+  ['PRP', ['MICRONEEDLING', 'LLLT']],
+  ['MICRONEEDLING', ['PRP', 'EXOSOMES', 'MINOXIDIL_TOPICAL']],
+  ['LLLT', ['ALL']],
+  ['MESOTHERAPY', ['LLLT']]
+]);
+
+export const HAIR_CYCLE_PHASES = {
+  ANAGEN: 'ANAGEN',
+  CATAGEN: 'CATAGEN',
+  TELOGEN: 'TELOGEN',
+  EXOGEN: 'EXOGEN'
+} as const;

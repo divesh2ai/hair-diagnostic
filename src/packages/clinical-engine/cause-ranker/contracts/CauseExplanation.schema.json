@@ -1,0 +1,134 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "clinical-engine.cause-ranker.CauseExplanation@1.0.0",
+  "title": "CauseExplanation",
+  "description": "Per-cause explainability projection. One CauseExplanation per cause emitted in the top-N. Carries the full attribution chain from signals → pathways → cause, the dissent context, and the doctor/patient/scientific framings needed by report builders. The Cause Ranker emits one per emitted CauseEntry; Narrative Intelligence consumes them; Doctor Report binds them to UI.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "explanationId","causeRankId","causeId","posterior","confidence","band",
+    "attribution","framings","dissentContext","registryVersions","engineVersion"
+  ],
+  "properties": {
+    "explanationId":   { "type": "string", "format": "uuid" },
+    "causeRankId":     { "type": "string", "format": "uuid", "description": "FK to parent CauseRank." },
+    "causeId": {
+      "type": "string",
+      "enum": [
+        "androgen-driven-miniaturization",
+        "stress-driven-telogen-effluvium",
+        "nutritional-hair-stress",
+        "hormonal-hair-loss",
+        "metabolic-hair-dysfunction",
+        "autoimmune-hair-loss",
+        "gut-hair-axis-dysfunction",
+        "inflammatory-scalp-dysfunction",
+        "hair-shaft-damage-syndrome",
+        "multifactorial-hair-loss"
+      ]
+    },
+    "posterior":  { "type": "number", "minimum": 0.0, "maximum": 1.0 },
+    "confidence": { "type": "number", "minimum": 0.0, "maximum": 1.0 },
+    "band":       { "type": "string", "enum": ["leading","considered","subthreshold","excluded"] },
+
+    "attribution": {
+      "type": "object",
+      "required": ["topPathwayContributors","topSignalContributors","conflictingEvidence","exclusionsApplied"],
+      "properties": {
+        "topPathwayContributors": {
+          "type": "array",
+          "description": "Pathways ranked by (activation × llr) absolute contribution. Top 5 emitted.",
+          "items": {
+            "type": "object",
+            "required": ["pathwayId","role","activation","activationBand","llr","contribution"],
+            "properties": {
+              "pathwayId":      { "type": "string" },
+              "role":           { "type": "string", "enum": ["primary","supporting","modulator","competing","exclusionary"] },
+              "activation":     { "type": "number", "minimum": 0.0, "maximum": 1.0 },
+              "activationBand": { "type": "string", "enum": ["dormant","latent","active","dominant","entrenched"] },
+              "llr":            { "type": "number" },
+              "contribution":   { "type": "number", "description": "activation × llr" },
+              "notes":          { "type": "string" }
+            }
+          }
+        },
+        "topSignalContributors": {
+          "type": "array",
+          "description": "Signals ranked by (confidence × llr) absolute contribution. Top 5 emitted.",
+          "items": {
+            "type": "object",
+            "required": ["signalId","role","confidence","llr","contribution","evidenceTier"],
+            "properties": {
+              "signalId":     { "type": "string" },
+              "role":         { "type": "string", "enum": ["primary","supporting","modulator","competing","conflicting","exclusionary"] },
+              "confidence":   { "type": "number", "minimum": 0.0, "maximum": 1.0 },
+              "llr":          { "type": "number" },
+              "contribution": { "type": "number" },
+              "evidenceTier": { "type": "string", "enum": ["established","emerging","heuristic"] }
+            }
+          }
+        },
+        "conflictingEvidence": {
+          "type": "array",
+          "description": "Signals/pathways present that argue AGAINST this cause. Surfaced so doctors can see what was overcome.",
+          "items": {
+            "type": "object",
+            "required": ["referenceId","referenceKind","contribution"],
+            "properties": {
+              "referenceId":   { "type": "string" },
+              "referenceKind": { "type": "string", "enum": ["signal","pathway"] },
+              "contribution":  { "type": "number", "description": "Negative value: how much this evidence subtracted from the cause logScore." },
+              "rationale":     { "type": "string" }
+            }
+          }
+        },
+        "exclusionsApplied": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["exclusionRuleId","reason"],
+            "properties": {
+              "exclusionRuleId": { "type": "string" },
+              "reason":          { "type": "string" }
+            }
+          }
+        }
+      }
+    },
+
+    "framings": {
+      "type": "object",
+      "required": ["doctorFraming","patientFraming","scientificFraming"],
+      "properties": {
+        "clinicalConcept":   { "type": "string", "description": "Language-neutral concept id from the registry." },
+        "analogyClass":      { "type": "string" },
+        "doctorFraming":     { "type": "string" },
+        "patientFraming":    { "type": "string" },
+        "scientificFraming": { "type": "string" }
+      }
+    },
+
+    "dissentContext": {
+      "type": "object",
+      "required": ["isLeader","leadershipMargin","competingCauseIds"],
+      "properties": {
+        "isLeader":           { "type": "boolean" },
+        "leadershipMargin":   { "type": "number" },
+        "competingCauseIds":  { "type": "array", "items": { "type": "string" } },
+        "couldHaveBeen":      { "type": "array", "items": { "type": "string" }, "description": "Cause IDs that would have led under a small perturbation of evidence (sensitivity probe)." }
+      }
+    },
+
+    "registryVersions": {
+      "type": "object",
+      "required": ["signals","pathways","causes","causesConfidenceModel"],
+      "properties": {
+        "signals":                { "type": "string", "pattern": "^\\d+\\.\\d+\\.\\d+$" },
+        "pathways":               { "type": "string", "pattern": "^\\d+\\.\\d+\\.\\d+$" },
+        "causes":                 { "type": "string", "pattern": "^\\d+\\.\\d+\\.\\d+$" },
+        "causesConfidenceModel":  { "type": "string", "pattern": "^\\d+\\.\\d+\\.\\d+$" }
+      }
+    },
+    "engineVersion": { "type": "string", "pattern": "^\\d+\\.\\d+\\.\\d+$" }
+  }
+}

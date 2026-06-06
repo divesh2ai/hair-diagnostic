@@ -1,0 +1,138 @@
+{
+  "caseId": "male_aga_24_g7_age27",
+  "corpusVersion": "2.0.0",
+  "description": "Male AGA Norwood 7, 27y.",
+  "category": "MALE_AGA",
+  "severity": "severe",
+  "presentationClarity": "clear",
+  "demographicProfile": {
+    "sex": "Male",
+    "age": "27",
+    "region": null,
+    "dietType": "Mixed"
+  },
+  "questionnaireAnswers": {
+    "sex": "Male",
+    "age": "27",
+    "goal": [
+      "Reduce hair fall"
+    ],
+    "grade": "Grade 7",
+    "scalp": [
+      "Oily scalp"
+    ],
+    "cause": [
+      "Family history"
+    ],
+    "lifestyle": [],
+    "thyroid": [],
+    "hormonal": [],
+    "immunity": [],
+    "deficiency": [],
+    "gut": [],
+    "diet": [],
+    "hairtype": [
+      "Thinning at crown",
+      "Receding hairline"
+    ],
+    "treatment": [],
+    "duration": "More than 1 year",
+    "count": "thinning visible, minimal fall"
+  },
+  "expectedSignals": [
+    {
+      "signalId": "pattern-thinning-marker",
+      "minConfidence": 0.75,
+      "mustBePrimary": true
+    },
+    {
+      "signalId": "thinning-without-shedding",
+      "minConfidence": 0.55
+    },
+    {
+      "signalId": "grade45-severity-marker",
+      "minConfidence": 0.75
+    },
+    {
+      "signalId": "sex-male",
+      "minConfidence": 0.99
+    },
+    {
+      "signalId": "age-mid-modifier",
+      "minConfidence": 0.99
+    },
+    {
+      "signalId": "genetic-predisposition-reported",
+      "minConfidence": 0.7
+    },
+    {
+      "signalId": "oily-scalp",
+      "minConfidence": 0.7
+    }
+  ],
+  "expectedPathways": [
+    {
+      "pathwayId": "follicular-miniaturization",
+      "minActivation": 0.6,
+      "role": "leading"
+    }
+  ],
+  "expectedRootCauses": [
+    {
+      "causeId": "androgen-driven-miniaturization",
+      "minPosterior": 0.45,
+      "surfaceAs": "lead"
+    }
+  ],
+  "expectedDiagnosis": {
+    "primary": "androgen-driven-miniaturization",
+    "secondary": [],
+    "legacyDiagnosisKey": "AGA_MALE_45",
+    "legacyDiagnosisKeyAlternates": [
+      "AGA_GRADE45_LOCK"
+    ]
+  },
+  "expectedSeverity": "severe",
+  "expectedProtocolClass": "MPHL",
+  "expectedTherapyNeeds": [
+    "DHT_SUPPRESSION",
+    "INFLAMMATION_CONTROL"
+  ],
+  "expectedMonitoringRequirements": {
+    "required": [
+      "GLOBAL_PHOTO_3M",
+      "TRICHOSCOPY_6M"
+    ],
+    "recommended": [
+      "SHED_COUNT_MONTHLY"
+    ],
+    "forbidden": [
+      "MENSTRUAL_DIARY",
+      "ANDROGEN_PANEL_6M"
+    ]
+  },
+  "expectedNarrativeThemes": {
+    "themes": [
+      "ANDROGENIC_PROGRESSION",
+      "EXPECTATION_SETTING_SLOW"
+    ],
+    "mustContainTokens": [
+      "androgen",
+      "miniatur"
+    ],
+    "mustNotContainTokens": [
+      "guaranteed regrowth",
+      "cure"
+    ]
+  },
+  "clinicalRationale": {
+    "whyPrimary": "Male, age 27, with progressive Norwood-7 pattern thinning concentrated at crown/temporal regions, family history positive, seborrheic scalp tendency, and minimal active shedding. The pattern topology (terminal-to-vellus transition without diffuse shed) is the definitional signature of androgen-driven miniaturization. Pathway activation is dominated by follicular miniaturization (≥0.60) with the telogen pathway only modestly activated, which the cause registry's log-likelihood weights resolve into a dominant posterior for androgen-driven miniaturization. The case therefore leads on the androgenic cause with the standard MPHL protocol class and Norwood-grade-locked kit gating.",
+    "whyNotCompetitors": {
+      "stress-driven-telogen-effluvium": "Architectural thinning without heavy diffuse shedding makes a telogen-driven explanation weaker; TE would require a synchronized precipitant and acute timing that this case does not show.",
+      "inflammatory-scalp-dysfunction": "Normal/oily scalp without burning, pustules, or psoriatic plaques does not support inflammation as the primary explanation.",
+      "autoimmune-hair-loss": "No patchy loss, no areata history, no scarring markers — autoimmune cause is excluded at the signal layer.",
+      "nutritional-hair-stress": "No reported deficiency markers and no nutritional risk pattern.",
+      "multifactorial-hair-loss": "Only one or two pathways exceed 0.40 activation; compositeRule (≥3 pathways) is not satisfied so multifactorial cannot lead."
+    }
+  }
+}

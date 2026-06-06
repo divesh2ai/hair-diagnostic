@@ -1,0 +1,2261 @@
+{
+  "$schema": "./validation-schema.json",
+  "registry": "signals",
+  "version": "1.0.0",
+  "frozenContract": "ClinicalIntelligence@1.0/Signal",
+  "authoredFrom": [
+    "src/packages/ai-engine/questionnaire-engine/schema/questionnaire.schema.json",
+    "src/packages/ai-engine/clinical-engine/rules/{agaRules,hormonalRules,metabolicRules,teRules,lifestyleRules,absoluteLocks}.ts",
+    "DrFACT_Condition_Mapping_Latest Final.xlsx (authoritative seed)"
+  ],
+  "designNotes": "Signals are biological OBSERVATIONS only. Legacy scoringSignals[] codes that encode protocol routing (KIT_GENDER_RESOLVER, VEG_KIT_SWAP, GI_GOLD_INJECTION, MPHL_FPHL_PLUS_VARIANT, etc.) are NOT promoted to Signals — they will migrate to Protocol Intelligence registries. Legacy codes that encode cause priors (AGA_GENETICS, TE_STRESS_SCORE numeric weights) are decomposed: the biological observation becomes a Signal here; the cause prior weighting migrates to registries/causes/priors. Legacy hard locks (PREGNANCY_LOCK, AGA_GRADE45_LOCK) emit a Signal AND register an EligibilityRule + RecoveryFloor downstream.",
+  "signals": [
+
+    {
+      "id": "pattern-thinning-marker",
+      "name": "Pattern Thinning Marker",
+      "category": "hair-loss-pattern",
+      "biologicalSystem": "integumentary",
+      "description": "Self-observed widening parting or visible thinning in patterned distribution. Classic AGA/FPHL morphology signal.",
+      "signalType": "SELF_REPORTED",
+      "polarity": "pathological",
+      "temporality": "progressive",
+      "confidenceBase": 0.80,
+      "evidenceTier": "established",
+      "severityContribution": 0.35,
+      "pathwayRelevance": [
+        { "pathwayId": "follicular-miniaturization", "weight": 0.75, "modulation": "required-gate" }
+      ],
+      "causeRelevance": [
+        { "causeId": "androgen-driven-miniaturization", "contribution": 0.70 },
+        { "causeId": "hormonal-hair-loss", "contribution": 0.35 }
+      ],
+      "corroboratingSignals": ["thinning-without-shedding","chronic-duration-marker","genetic-predisposition-reported"],
+      "conflictingSignals": ["patchy-loss-marker"],
+      "narrativeMeaning": {
+        "clinicalConcept": "concept.pattern_hair_loss",
+        "patientFacingTone": "informative",
+        "doctorFacingFraming": "diagnostic",
+        "visualMotif": "motif.parting_widening",
+        "analogyClass": "analogy.gradual_thinning"
+      },
+      "legacySignalCodes": ["AGA_PATTERN_SIGNAL","AGA_COUNT_SIGNAL"]
+    },
+
+    {
+      "id": "diffuse-shedding-marker",
+      "name": "Diffuse Telogen Shedding Marker",
+      "category": "hair-loss-pattern",
+      "biologicalSystem": "integumentary",
+      "description": "Full-length hairs released with intact white bulb — classic telogen-phase release.",
+      "signalType": "SELF_REPORTED",
+      "polarity": "pathological",
+      "temporality": "acute",
+      "confidenceBase": 0.85,
+      "evidenceTier": "established",
+      "severityContribution": 0.30,
+      "pathwayRelevance": [
+        { "pathwayId": "telogen-cycle-disruption", "weight": 0.80, "modulation": "required-gate" }
+      ],
+      "causeRelevance": [
+        { "causeId": "stress-driven-telogen-effluvium", "contribution": 0.60 },
+        { "causeId": "nutritional-hair-stress", "contribution": 0.40 }
+      ],
+      "corroboratingSignals": ["active-shedding-mild","active-shedding-heavy","acute-duration-marker"],
+      "conflictingSignals": ["thinning-without-shedding"],
+      "narrativeMeaning": {
+        "clinicalConcept": "concept.telogen_effluvium",
+        "patientFacingTone": "reassuring",
+        "doctorFacingFraming": "diagnostic",
+        "visualMotif": "motif.shedding_bulb",
+        "analogyClass": "analogy.cycle_disruption"
+      },
+      "legacySignalCodes": ["TE_WHITE_BULB"]
+    },
+
+    {
+      "id": "shaft-breakage-marker",
+      "name": "Shaft Breakage Marker",
+      "category": "hair-loss-pattern",
+      "biologicalSystem": "integumentary",
+      "description": "Broken short hair fragments rather than full-length release. Indicates cortical/cuticle compromise.",
+      "signalType": "SELF_REPORTED",
+      "polarity": "pathological",
+      "temporality": "chronic",
+      "confidenceBase": 0.82,
+      "evidenceTier": "established",
+      "severityContribution": 0.25,
+      "pathwayRelevance": [
+        { "pathwayId": "hair-shaft-damage", "weight": 0.85, "modulation": "required-gate" }
+      ],
+      "causeRelevance": [
+        { "causeId": "hair-shaft-damage-syndrome", "contribution": 0.80 }
+      ],
+      "corroboratingSignals": ["heat-styling-exposure","chemical-treatment-exposure","hard-water-exposure"],
+      "narrativeMeaning": {
+        "clinicalConcept": "concept.shaft_compromise",
+        "patientFacingTone": "informative",
+        "doctorFacingFraming": "diagnostic",
+        "visualMotif": "motif.breakage",
+        "analogyClass": "analogy.structural_wear"
+      },
+      "legacySignalCodes": ["HAIR_BREAKAGE_SCORE","HBR_TREATMENT_SIGNAL"]
+    },
+
+    {
+      "id": "patchy-loss-marker",
+      "name": "Patchy Loss Marker",
+      "category": "hair-loss-pattern",
+      "biologicalSystem": "immune",
+      "description": "Circular bald patches or coin-sized spots. Hallmark autoimmune follicular targeting morphology.",
+      "signalType": "SELF_REPORTED",
+      "polarity": "pathological",
+      "temporality": "episodic",
+      "confidenceBase": 0.88,
+      "evidenceTier": "established",
+      "severityContribution": 0.55,
+      "pathwayRelevance": [
+        { "pathwayId": "immune-dysregulation", "weight": 0.90, "modulation": "required-gate" }
+      ],
+      "causeRelevance": [
+        { "causeId": "autoimmune-hair-loss", "contribution": 0.85 }
+      ],
+      "corroboratingSignals": ["alopecia-areata-history"],
+      "conflictingSignals": ["pattern-thinning-marker"],
+      "narrativeMeaning": {
+        "clinicalConcept": "concept.alopecia_areata",
+        "patientFacingTone": "informative",
+        "doctorFacingFraming": "diagnostic",
+        "visualMotif": "motif.patchy",
+        "analogyClass": "analogy.immune_targeting"
+      },
+      "legacySignalCodes": ["AA_SIGNAL"]
+    },
+
+    {
+      "id": "active-shedding-mild",
+      "name": "Active Shedding (50–100/day)",
+      "category": "hair-loss-pattern",
+      "biologicalSystem": "integumentary",
+      "description": "Patient-counted daily shedding in the 50–100 range. Above resting telogen.",
+      "signalType": "SELF_REPORTED",
+      "polarity": "pathological",
+      "temporality": "acute",
+      "confidenceBase": 0.70,
+      "evidenceTier": "established",
+      "severityContribution": 0.20,
+      "pathwayRelevance": [
+        { "pathwayId": "telogen-cycle-disruption", "weight": 0.55, "modulation": "supports" }
+      ],
+      "causeRelevance": [
+        { "causeId": "stress-driven-telogen-effluvium", "contribution": 0.45 },
+        { "causeId": "nutritional-hair-stress", "contribution": 0.35 }
+      ],
+      "narrativeMeaning": {
+        "clinicalConcept": "concept.elevated_shed",
+        "patientFacingTone": "reassuring",
+        "doctorFacingFraming": "corroborative",
+        "visualMotif": "motif.shedding_mild",
+        "analogyClass": "analogy.cycle_disruption"
+      },
+      "legacySignalCodes": ["ACTIVE_SHEDDING_SIGNAL","ACTIVE_SHEDDING_TE"]
+    },
+
+    {
+      "id": "active-shedding-heavy",
+      "name": "Active Shedding (100+/day)",
+      "category": "hair-loss-pattern",
+      "biologicalSystem": "integumentary",
+      "description": "Patient-counted daily shedding exceeding 100 strands.",
+      "signalType": "SELF_REPORTED",
+      "polarity": "pathological",
+      "temporality": "acute",
+      "confidenceBase": 0.80,
+      "evidenceTier": "established",
+      "severityContribution": 0.40,
+      "pathwayRelevance": [
+        { "pathwayId": "telogen-cycle-disruption", "weight": 0.75, "modulation": "supports" }
+      ],
+      "causeRelevance": [
+        { "causeId": "stress-driven-telogen-effluvium", "contribution": 0.55 },
+        { "causeId": "nutritional-hair-stress", "contribution": 0.40 }
+      ],
+      "narrativeMeaning": {
+        "clinicalConcept": "concept.heavy_shed",
+        "patientFacingTone": "informative",
+        "doctorFacingFraming": "corroborative",
+        "visualMotif": "motif.shedding_heavy",
+        "analogyClass": "analogy.cycle_disruption"
+      },
+      "legacySignalCodes": ["ACTIVE_SHEDDING_SIGNAL"]
+    },
+
+    {
+      "id": "thinning-without-shedding",
+      "name": "Thinning Without Visible Shedding",
+      "category": "hair-loss-pattern",
+      "biologicalSystem": "integumentary",
+      "description": "Patient reports density loss without active fall — consistent with miniaturization rather than telogen release.",
+      "signalType": "SELF_REPORTED",
+      "polarity": "pathological",
+      "temporality": "progressive",
+      "confidenceBase": 0.78,
+      "evidenceTier": "established",
+      "severityContribution": 0.35,
+      "pathwayRelevance": [
+        { "pathwayId": "follicular-miniaturization", "weight": 0.65, "modulation": "supports" },
+        { "pathwayId": "telogen-cycle-disruption", "weight": -0.40, "modulation": "inhibits" }
+      ],
+      "causeRelevance": [
+        { "causeId": "androgen-driven-miniaturization", "contribution": 0.55 }
+      ],
+      "conflictingSignals": ["diffuse-shedding-marker"],
+      "narrativeMeaning": {
+        "clinicalConcept": "concept.miniaturization",
+        "patientFacingTone": "informative",
+        "doctorFacingFraming": "differential",
+        "visualMotif": "motif.density_loss",
+        "analogyClass": "analogy.gradual_thinning"
+      },
+      "legacySignalCodes": ["TE_GOLD_SUPPRESSION_V39"]
+    },
+
+    {
+      "id": "acute-duration-marker",
+      "name": "Acute Duration (≤6 months)",
+      "category": "hair-loss-pattern",
+      "biologicalSystem": "integumentary",
+      "description": "Onset within last 6 months — favors telogen mechanisms over established miniaturization.",
+      "signalType": "DIRECT",
+      "polarity": "modifier",
+      "temporality": "acute",
+      "confidenceBase": 0.85,
+      "evidenceTier": "established",
+      "severityContribution": 0.10,
+      "pathwayRelevance": [
+        { "pathwayId": "telogen-cycle-disruption", "weight": 0.45, "modulation": "supports" }
+      ],
+      "causeRelevance": [
+        { "causeId": "stress-driven-telogen-effluvium", "contribution": 0.35 }
+      ],
+      "narrativeMeaning": {
+        "clinicalConcept": "concept.acute_onset",
+        "patientFacingTone": "reassuring",
+        "doctorFacingFraming": "corroborative",
+        "visualMotif": "motif.recent",
+        "analogyClass": "analogy.cycle_disruption"
+      }
+    },
+
+    {
+      "id": "subacute-duration-marker",
+      "name": "Subacute Duration (6–12 months)",
+      "category": "hair-loss-pattern",
+      "biologicalSystem": "integumentary",
+      "description": "Onset 6–12 months ago — chronic TE territory; miniaturization may begin to unmask.",
+      "signalType": "DIRECT",
+      "polarity": "modifier",
+      "temporality": "chronic",
+      "confidenceBase": 0.80,
+      "evidenceTier": "established",
+      "severityContribution": 0.20,
+      "pathwayRelevance": [
+        { "pathwayId": "telogen-cycle-disruption", "weight": 0.35, "modulation": "supports" },
+        { "pathwayId": "follicular-miniaturization", "weight": 0.25, "modulation": "supports" },
+        { "pathwayId": "oxidative-stress", "weight": 0.30, "modulation": "supports" }
+      ],
+      "causeRelevance": [
+        { "causeId": "stress-driven-telogen-effluvium", "contribution": 0.20 },
+        { "causeId": "androgen-driven-miniaturization", "contribution": 0.20 }
+      ],
+      "narrativeMeaning": {
+        "clinicalConcept": "concept.subacute_onset",
+        "patientFacingTone": "informative",
+        "doctorFacingFraming": "corroborative",
+        "visualMotif": "motif.subacute",
+        "analogyClass": "analogy.cycle_disruption"
+      }
+    },
+
+    {
+      "id": "chronic-duration-marker",
+      "name": "Chronic Duration (>1 year)",
+      "category": "progression-risks",
+      "biologicalSystem": "integumentary",
+      "description": "More than 12 months — established miniaturization or chronic inflammatory phenotype likely.",
+      "signalType": "DIRECT",
+      "polarity": "pathological",
+      "temporality": "chronic",
+      "confidenceBase": 0.85,
+      "evidenceTier": "established",
+      "severityContribution": 0.40,
+      "pathwayRelevance": [
+        { "pathwayId": "follicular-miniaturization", "weight": 0.50, "modulation": "supports" },
+        { "pathwayId": "scalp-inflammation", "weight": 0.30, "modulation": "supports" }
+      ],
+      "causeRelevance": [
+        { "causeId": "androgen-driven-miniaturization", "contribution": 0.45 },
+        { "causeId": "inflammatory-scalp-dysfunction", "contribution": 0.30 }
+      ],
+      "narrativeMeaning": {
+        "clinicalConcept": "concept.chronic_loss",
+        "patientFacingTone": "informative",
+        "doctorFacingFraming": "diagnostic",
+        "visualMotif": "motif.chronic",
+        "analogyClass": "analogy.gradual_thinning"
+      },
+      "legacySignalCodes": ["AGA_DURATION_BONUS"]
+    },
+
+    {
+      "id": "grade123-severity-marker",
+      "name": "Severity Grade 1–3",
+      "category": "hair-loss-pattern",
+      "biologicalSystem": "integumentary",
+      "description": "Mild-to-moderate visible loss. Follicular reserve largely preserved.",
+      "signalType": "SELF_REPORTED",
+      "polarity": "modifier",
+      "temporality": "progressive",
+      "confidenceBase": 0.85,
+      "evidenceTier": "established",
+      "severityContribution": 0.25,
+      "pathwayRelevance": [
+        { "pathwayId": "follicular-miniaturization", "weight": 0.30, "modulation": "supports" }
+      ],
+      "causeRelevance": [
+        { "causeId": "androgen-driven-miniaturization", "contribution": 0.20 }
+      ],
+      "narrativeMeaning": {
+        "clinicalConcept": "concept.mild_moderate_loss",
+        "patientFacingTone": "reassuring",
+        "doctorFacingFraming": "corroborative",
+        "visualMotif": "motif.grade_low",
+        "analogyClass": "analogy.gradual_thinning"
+      }
+    },
+
+    {
+      "id": "grade45-severity-marker",
+      "name": "Severity Grade 4–5",
+      "category": "progression-risks",
+      "biologicalSystem": "integumentary",
+      "description": "Extensive or near-complete loss. Follicular reserve significantly depleted; reversibility ceiling lowered.",
+      "signalType": "SELF_REPORTED",
+      "polarity": "pathological",
+      "temporality": "chronic",
+      "confidenceBase": 0.90,
+      "evidenceTier": "established",
+      "severityContribution": 0.70,
+      "pathwayRelevance": [
+        { "pathwayId": "follicular-miniaturization", "weight": 0.85, "modulation": "supports" }
+      ],
+      "causeRelevance": [
+        { "causeId": "androgen-driven-miniaturization", "contribution": 0.65 }
+      ],
+      "narrativeMeaning": {
+        "clinicalConcept": "concept.advanced_loss",
+        "patientFacingTone": "informative",
+        "doctorFacingFraming": "diagnostic",
+        "visualMotif": "motif.grade_high",
+        "analogyClass": "analogy.gradual_thinning"
+      },
+      "legacySignalCodes": ["AGA_GRADE45_LOCK"]
+    },
+
+    {
+      "id": "dandruff-presence",
+      "name": "Dandruff Presence",
+      "category": "scalp-state",
+      "biologicalSystem": "integumentary",
+      "description": "Visible flaking attributable to seborrheic activity and microbiome imbalance.",
+      "signalType": "DIRECT",
+      "polarity": "pathological",
+      "temporality": "chronic",
+      "confidenceBase": 0.85,
+      "evidenceTier": "established",
+      "severityContribution": 0.20,
+      "pathwayRelevance": [
+        { "pathwayId": "scalp-inflammation", "weight": 0.50, "modulation": "supports" }
+      ],
+      "causeRelevance": [
+        { "causeId": "inflammatory-scalp-dysfunction", "contribution": 0.55 }
+      ],
+      "corroboratingSignals": ["dandruff-with-itching","oily-scalp"],
+      "narrativeMeaning": {
+        "clinicalConcept": "concept.seborrheic_activity",
+        "patientFacingTone": "reassuring",
+        "doctorFacingFraming": "diagnostic",
+        "visualMotif": "motif.flaking",
+        "analogyClass": "analogy.barrier_breakdown"
+      },
+      "legacySignalCodes": ["SCALP_INFLAM_SCORE","AGA_SIGNALS_BOOST"]
+    },
+
+    {
+      "id": "dandruff-with-itching",
+      "name": "Dandruff + Itching (Seborrheic Dermatitis Pattern)",
+      "category": "inflammation",
+      "biologicalSystem": "immune",
+      "description": "Co-occurring flaking and pruritus — strong seborrheic dermatitis pattern with active inflammatory component.",
+      "signalType": "DERIVED",
+      "polarity": "pathological",
+      "temporality": "chronic",
+      "confidenceBase": 0.90,
+      "evidenceTier": "established",
+      "severityContribution": 0.45,
+      "pathwayRelevance": [
+        { "pathwayId": "scalp-inflammation", "weight": 0.85, "modulation": "required-gate" }
+      ],
+      "causeRelevance": [
+        { "causeId": "inflammatory-scalp-dysfunction", "contribution": 0.80 }
+      ],
+      "corroboratingSignals": ["dandruff-presence","scalp-redness"],
+      "narrativeMeaning": {
+        "clinicalConcept": "concept.seborrheic_dermatitis",
+        "patientFacingTone": "informative",
+        "doctorFacingFraming": "diagnostic",
+        "visualMotif": "motif.seb_derm",
+        "analogyClass": "analogy.barrier_breakdown"
+      },
+      "legacySignalCodes": ["PHENOTYPE_INJECTION"]
+    },
+
+    {
+      "id": "oily-scalp",
+      "name": "Oily Scalp",
+      "category": "sebum-regulation",
+      "biologicalSystem": "integumentary",
+      "description": "Excess sebum production. Contextual: in males or females 30+, raises miniaturization risk; in younger females, indicates inflammatory phenotype.",
+      "signalType": "DIRECT",
+      "polarity": "pathological",
+      "temporality": "chronic",
+      "confidenceBase": 0.80,
+      "evidenceTier": "established",
+      "severityContribution": 0.20,
+      "pathwayRelevance": [
+        { "pathwayId": "scalp-inflammation", "weight": 0.35, "modulation": "supports" },
+        { "pathwayId": "follicular-miniaturization", "weight": 0.20, "modulation": "supports" }
+      ],
+      "causeRelevance": [
+        { "causeId": "inflammatory-scalp-dysfunction", "contribution": 0.40 },
+        { "causeId": "androgen-driven-miniaturization", "contribution": 0.25 }
+      ],
+      "narrativeMeaning": {
+        "clinicalConcept": "concept.sebum_overproduction",
+        "patientFacingTone": "informative",
+        "doctorFacingFraming": "corroborative",
+        "visualMotif": "motif.oily",
+        "analogyClass": "analogy.barrier_breakdown"
+      },
+      "legacySignalCodes": ["AGA_SIGNALS_BOOST"]
+    },
+
+    {
+      "id": "dry-scalp",
+      "name": "Dry Scalp",
+      "category": "sebum-regulation",
+      "biologicalSystem": "integumentary",
+      "description": "Insufficient sebum / barrier dryness.",
+      "signalType": "DIRECT",
+      "polarity": "pathological",
+      "temporality": "chronic",
+      "confidenceBase": 0.75,
+      "evidenceTier": "established",
+      "severityContribution": 0.10,
+      "pathwayRelevance": [
+        { "pathwayId": "scalp-inflammation", "weight": 0.20, "modulation": "supports" }
+      ],
+      "causeRelevance": [
+        { "causeId": "inflammatory-scalp-dysfunction", "contribution": 0.15 }
+      ],
+      "narrativeMeaning": {
+        "clinicalConcept": "concept.dry_scalp",
+        "patientFacingTone": "reassuring",
+        "doctorFacingFraming": "corroborative",
+        "visualMotif": "motif.dry",
+        "analogyClass": "analogy.barrier_breakdown"
+      }
+    },
+
+    {
+      "id": "scalp-redness",
+      "name": "Scalp Redness / Irritation",
+      "category": "inflammation",
+      "biologicalSystem": "immune",
+      "description": "Visible erythema. Active inflammatory marker.",
+      "signalType": "DIRECT",
+      "polarity": "pathological",
+      "temporality": "acute",
+      "confidenceBase": 0.85,
+      "evidenceTier": "established",
+      "severityContribution": 0.35,
+      "pathwayRelevance": [
+        { "pathwayId": "scalp-inflammation", "weight": 0.65, "modulation": "supports" }
+      ],
+      "causeRelevance": [
+        { "causeId": "inflammatory-scalp-dysfunction", "contribution": 0.60 }
+      ],
+      "corroboratingSignals": ["scalp-pustules","scalp-burning"],
+      "narrativeMeaning": {
+        "clinicalConcept": "concept.active_inflammation",
+        "patientFacingTone": "informative",
+        "doctorFacingFraming": "diagnostic",
+        "visualMotif": "motif.erythema",
+        "analogyClass": "analogy.barrier_breakdown"
+      },
+      "legacySignalCodes": ["SCALP_INFLAM_SCORE","PHENOTYPE_INJECTION"]
+    },
+
+    {
+      "id": "scalp-pustules",
+      "name": "Scalp Pustules / Boils",
+      "category": "inflammation",
+      "biologicalSystem": "immune",
+      "description": "Pustular lesions indicating bacterial/inflammatory follicular involvement.",
+      "signalType": "DIRECT",
+      "polarity": "pathological",
+      "temporality": "acute",
+      "confidenceBase": 0.88,
+      "evidenceTier": "established",
+      "severityContribution": 0.45,
+      "pathwayRelevance": [
+        { "pathwayId": "scalp-inflammation", "weight": 0.75, "modulation": "supports" }
+      ],
+      "causeRelevance": [
+        { "causeId": "inflammatory-scalp-dysfunction", "contribution": 0.65 }
+      ],
+      "corroboratingSignals": ["scalp-redness"],
+      "narrativeMeaning": {
+        "clinicalConcept": "concept.folliculitis",
+        "patientFacingTone": "informative",
+        "doctorFacingFraming": "diagnostic",
+        "visualMotif": "motif.pustule",
+        "analogyClass": "analogy.barrier_breakdown"
+      }
+    },
+
+    {
+      "id": "scalp-burning",
+      "name": "Scalp Burning Sensation",
+      "category": "inflammation",
+      "biologicalSystem": "nervous",
+      "description": "Patient-reported burning — neurogenic inflammatory marker.",
+      "signalType": "SELF_REPORTED",
+      "polarity": "pathological",
+      "temporality": "episodic",
+      "confidenceBase": 0.72,
+      "evidenceTier": "emerging",
+      "severityContribution": 0.30,
+      "pathwayRelevance": [
+        { "pathwayId": "scalp-inflammation", "weight": 0.50, "modulation": "supports" }
+      ],
+      "causeRelevance": [
+        { "causeId": "inflammatory-scalp-dysfunction", "contribution": 0.45 }
+      ],
+      "narrativeMeaning": {
+        "clinicalConcept": "concept.burning_scalp",
+        "patientFacingTone": "informative",
+        "doctorFacingFraming": "corroborative",
+        "visualMotif": "motif.burning",
+        "analogyClass": "analogy.barrier_breakdown"
+      }
+    },
+
+    {
+      "id": "psoriatic-scalp",
+      "name": "Psoriatic Scalp",
+      "category": "inflammation",
+      "biologicalSystem": "immune",
+      "description": "Psoriasis-pattern scalp involvement: thick scaling, plaque morphology.",
+      "signalType": "CLINICAL",
+      "polarity": "pathological",
+      "temporality": "chronic",
+      "confidenceBase": 0.85,
+      "evidenceTier": "established",
+      "severityContribution": 0.55,
+      "pathwayRelevance": [
+        { "pathwayId": "scalp-inflammation", "weight": 0.80, "modulation": "supports" },
+        { "pathwayId": "immune-dysregulation", "weight": 0.50, "modulation": "supports" }
+      ],
+      "causeRelevance": [
+        { "causeId": "inflammatory-scalp-dysfunction", "contribution": 0.65 },
+        { "causeId": "autoimmune-hair-loss", "contribution": 0.30 }
+      ],
+      "narrativeMeaning": {
+        "clinicalConcept": "concept.psoriatic_scalp",
+        "patientFacingTone": "informative",
+        "doctorFacingFraming": "diagnostic",
+        "visualMotif": "motif.psoriasis",
+        "analogyClass": "analogy.immune_targeting"
+      }
+    },
+
+    {
+      "id": "normal-scalp",
+      "name": "Normal Scalp",
+      "category": "scalp-state",
+      "biologicalSystem": "integumentary",
+      "description": "No notable scalp pathology reported. Used as protective/anti-inflammation prior.",
+      "signalType": "DIRECT",
+      "polarity": "protective",
+      "temporality": "chronic",
+      "confidenceBase": 0.70,
+      "evidenceTier": "established",
+      "severityContribution": 0.0,
+      "pathwayRelevance": [
+        { "pathwayId": "scalp-inflammation", "weight": -0.30, "modulation": "inhibits" }
+      ],
+      "causeRelevance": [
+        { "causeId": "inflammatory-scalp-dysfunction", "contribution": -0.25 }
+      ],
+      "narrativeMeaning": {
+        "clinicalConcept": "concept.healthy_scalp",
+        "patientFacingTone": "reassuring",
+        "doctorFacingFraming": "corroborative",
+        "visualMotif": "motif.healthy",
+        "analogyClass": "analogy.baseline_health"
+      }
+    },
+
+    {
+      "id": "genetic-predisposition-reported",
+      "name": "Family History of Hair Loss",
+      "category": "etiology-markers",
+      "biologicalSystem": "genetic",
+      "description": "Patient reports family history pointing to genetic susceptibility.",
+      "signalType": "SELF_REPORTED",
+      "polarity": "pathological",
+      "temporality": "chronic",
+      "confidenceBase": 0.80,
+      "evidenceTier": "established",
+      "severityContribution": 0.30,
+      "pathwayRelevance": [
+        { "pathwayId": "follicular-miniaturization", "weight": 0.55, "modulation": "supports" }
+      ],
+      "causeRelevance": [
+        { "causeId": "androgen-driven-miniaturization", "contribution": 0.65 }
+      ],
+      "narrativeMeaning": {
+        "clinicalConcept": "concept.genetic_susceptibility",
+        "patientFacingTone": "informative",
+        "doctorFacingFraming": "corroborative",
+        "visualMotif": "motif.family_tree",
+        "analogyClass": "analogy.inherited_trait"
+      },
+      "legacySignalCodes": ["AGA_GENETICS"]
+    },
+
+    {
+      "id": "chronic-stress-reported",
+      "name": "Chronic Stress / Anxiety / Depression",
+      "category": "stress-indicators",
+      "biologicalSystem": "nervous",
+      "description": "Patient-reported psychological load. HPA-axis driver of telogen disruption.",
+      "signalType": "SELF_REPORTED",
+      "polarity": "pathological",
+      "temporality": "chronic",
+      "confidenceBase": 0.78,
+      "evidenceTier": "established",
+      "severityContribution": 0.30,
+      "pathwayRelevance": [
+        { "pathwayId": "telogen-cycle-disruption", "weight": 0.65, "modulation": "supports" },
+        { "pathwayId": "oxidative-stress", "weight": 0.30, "modulation": "supports" }
+      ],
+      "causeRelevance": [
+        { "causeId": "stress-driven-telogen-effluvium", "contribution": 0.75 }
+      ],
+      "narrativeMeaning": {
+        "clinicalConcept": "concept.psychogenic_load",
+        "patientFacingTone": "reassuring",
+        "doctorFacingFraming": "diagnostic",
+        "visualMotif": "motif.stress",
+        "analogyClass": "analogy.cycle_disruption"
+      },
+      "legacySignalCodes": ["TE_STRESS_SCORE"]
+    },
+
+    {
+      "id": "trichotillomania-behavior",
+      "name": "Hair-Pulling Behavior",
+      "category": "stress-indicators",
+      "biologicalSystem": "nervous",
+      "description": "Self-reported repeated pulling. Mechanical follicular trauma over time.",
+      "signalType": "BEHAVIORAL",
+      "polarity": "pathological",
+      "temporality": "chronic",
+      "confidenceBase": 0.85,
+      "evidenceTier": "established",
+      "severityContribution": 0.40,
+      "pathwayRelevance": [
+        { "pathwayId": "hair-shaft-damage", "weight": 0.50, "modulation": "supports" },
+        { "pathwayId": "scalp-inflammation", "weight": 0.30, "modulation": "supports" }
+      ],
+      "causeRelevance": [
+        { "causeId": "hair-shaft-damage-syndrome", "contribution": 0.40 },
+        { "causeId": "multifactorial-hair-loss", "contribution": 0.30 }
+      ],
+      "narrativeMeaning": {
+        "clinicalConcept": "concept.ttm",
+        "patientFacingTone": "reassuring",
+        "doctorFacingFraming": "diagnostic",
+        "visualMotif": "motif.behavioral",
+        "analogyClass": "analogy.structural_wear"
+      },
+      "legacySignalCodes": ["TTM_SCORE"]
+    },
+
+    {
+      "id": "nutritional-cause-self-reported",
+      "name": "Self-Reported Nutritional Cause",
+      "category": "etiology-markers",
+      "biologicalSystem": "metabolic",
+      "description": "Patient attributes loss to nutritional deficiency.",
+      "signalType": "SELF_REPORTED",
+      "polarity": "pathological",
+      "temporality": "chronic",
+      "confidenceBase": 0.65,
+      "evidenceTier": "emerging",
+      "severityContribution": 0.25,
+      "pathwayRelevance": [
+        { "pathwayId": "nutritional-limitation", "weight": 0.55, "modulation": "supports" },
+        { "pathwayId": "telogen-cycle-disruption", "weight": 0.30, "modulation": "supports" }
+      ],
+      "causeRelevance": [
+        { "causeId": "nutritional-hair-stress", "contribution": 0.60 }
+      ],
+      "narrativeMeaning": {
+        "clinicalConcept": "concept.nutritional_attribution",
+        "patientFacingTone": "informative",
+        "doctorFacingFraming": "corroborative",
+        "visualMotif": "motif.nutrition",
+        "analogyClass": "analogy.substrate_deficit"
+      },
+      "legacySignalCodes": ["TE_NUTRITION_SCORE"]
+    },
+
+    {
+      "id": "post-illness-recovery",
+      "name": "Post Medication / Illness / Surgery",
+      "category": "etiology-markers",
+      "biologicalSystem": "immune",
+      "description": "Hair loss attributed to recent medical event — classic acute TE trigger.",
+      "signalType": "SELF_REPORTED",
+      "polarity": "pathological",
+      "temporality": "acute",
+      "confidenceBase": 0.82,
+      "evidenceTier": "established",
+      "severityContribution": 0.30,
+      "pathwayRelevance": [
+        { "pathwayId": "telogen-cycle-disruption", "weight": 0.70, "modulation": "supports" },
+        { "pathwayId": "immune-dysregulation", "weight": 0.30, "modulation": "supports" }
+      ],
+      "causeRelevance": [
+        { "causeId": "stress-driven-telogen-effluvium", "contribution": 0.45 },
+        { "causeId": "multifactorial-hair-loss", "contribution": 0.25 }
+      ],
+      "narrativeMeaning": {
+        "clinicalConcept": "concept.post_illness_te",
+        "patientFacingTone": "reassuring",
+        "doctorFacingFraming": "diagnostic",
+        "visualMotif": "motif.recovery",
+        "analogyClass": "analogy.cycle_disruption"
+      },
+      "legacySignalCodes": ["TE_ILLNESS_SCORE"]
+    },
+
+    {
+      "id": "postpartum-lactating",
+      "name": "Post Partum (Lactating)",
+      "category": "etiology-markers",
+      "biologicalSystem": "endocrine",
+      "description": "Currently breastfeeding — physiological hormonal transition.",
+      "signalType": "SELF_REPORTED",
+      "polarity": "pathological",
+      "temporality": "acute",
+      "confidenceBase": 0.92,
+      "evidenceTier": "established",
+      "severityContribution": 0.30,
+      "pathwayRelevance": [
+        { "pathwayId": "telogen-cycle-disruption", "weight": 0.75, "modulation": "supports" },
+        { "pathwayId": "hormonal-dysregulation", "weight": 0.55, "modulation": "supports" }
+      ],
+      "causeRelevance": [
+        { "causeId": "stress-driven-telogen-effluvium", "contribution": 0.45 },
+        { "causeId": "hormonal-hair-loss", "contribution": 0.35 }
+      ],
+      "narrativeMeaning": {
+        "clinicalConcept": "concept.postpartum_lactating",
+        "patientFacingTone": "reassuring",
+        "doctorFacingFraming": "diagnostic",
+        "visualMotif": "motif.postpartum",
+        "analogyClass": "analogy.life_stage"
+      },
+      "legacySignalCodes": ["TE_POSTPREG_SCORE"]
+    },
+
+    {
+      "id": "postpartum-not-lactating",
+      "name": "Post Partum (Not Lactating)",
+      "category": "etiology-markers",
+      "biologicalSystem": "endocrine",
+      "description": "Recent delivery, weaned — hormonal transition phase.",
+      "signalType": "SELF_REPORTED",
+      "polarity": "pathological",
+      "temporality": "acute",
+      "confidenceBase": 0.90,
+      "evidenceTier": "established",
+      "severityContribution": 0.25,
+      "pathwayRelevance": [
+        { "pathwayId": "telogen-cycle-disruption", "weight": 0.65, "modulation": "supports" },
+        { "pathwayId": "hormonal-dysregulation", "weight": 0.40, "modulation": "supports" }
+      ],
+      "causeRelevance": [
+        { "causeId": "stress-driven-telogen-effluvium", "contribution": 0.40 },
+        { "causeId": "hormonal-hair-loss", "contribution": 0.30 }
+      ],
+      "narrativeMeaning": {
+        "clinicalConcept": "concept.postpartum",
+        "patientFacingTone": "reassuring",
+        "doctorFacingFraming": "diagnostic",
+        "visualMotif": "motif.postpartum",
+        "analogyClass": "analogy.life_stage"
+      },
+      "legacySignalCodes": ["TE_DELIVERY_SCORE","POSTPREG_SCORE"]
+    },
+
+    {
+      "id": "glp1-recent",
+      "name": "GLP-1 Receptor Agonist (<6 months)",
+      "category": "etiology-markers",
+      "biologicalSystem": "metabolic",
+      "description": "Rapid weight loss from GLP-1 within last 6 months — acute substrate-deficit + TE trigger.",
+      "signalType": "SELF_REPORTED",
+      "polarity": "pathological",
+      "temporality": "acute",
+      "confidenceBase": 0.85,
+      "evidenceTier": "emerging",
+      "severityContribution": 0.45,
+      "pathwayRelevance": [
+        { "pathwayId": "telogen-cycle-disruption", "weight": 0.80, "modulation": "supports" },
+        { "pathwayId": "nutritional-limitation", "weight": 0.55, "modulation": "supports" },
+        { "pathwayId": "metabolic-dysfunction", "weight": 0.30, "modulation": "supports" }
+      ],
+      "causeRelevance": [
+        { "causeId": "nutritional-hair-stress", "contribution": 0.50 },
+        { "causeId": "metabolic-hair-dysfunction", "contribution": 0.35 }
+      ],
+      "narrativeMeaning": {
+        "clinicalConcept": "concept.glp1_recent",
+        "patientFacingTone": "informative",
+        "doctorFacingFraming": "diagnostic",
+        "visualMotif": "motif.weight_loss",
+        "analogyClass": "analogy.substrate_deficit"
+      },
+      "legacySignalCodes": ["WEIGHT_LOSS_SCORE"]
+    },
+
+    {
+      "id": "glp1-late",
+      "name": "GLP-1 Receptor Agonist (>6 months)",
+      "category": "etiology-markers",
+      "biologicalSystem": "metabolic",
+      "description": "GLP-1 use beyond 6-month window — chronic substrate-deficit risk.",
+      "signalType": "SELF_REPORTED",
+      "polarity": "pathological",
+      "temporality": "chronic",
+      "confidenceBase": 0.80,
+      "evidenceTier": "emerging",
+      "severityContribution": 0.35,
+      "pathwayRelevance": [
+        { "pathwayId": "nutritional-limitation", "weight": 0.55, "modulation": "supports" },
+        { "pathwayId": "metabolic-dysfunction", "weight": 0.35, "modulation": "supports" }
+      ],
+      "causeRelevance": [
+        { "causeId": "nutritional-hair-stress", "contribution": 0.45 },
+        { "causeId": "metabolic-hair-dysfunction", "contribution": 0.35 }
+      ],
+      "narrativeMeaning": {
+        "clinicalConcept": "concept.glp1_late",
+        "patientFacingTone": "informative",
+        "doctorFacingFraming": "diagnostic",
+        "visualMotif": "motif.weight_loss",
+        "analogyClass": "analogy.substrate_deficit"
+      },
+      "legacySignalCodes": ["WEIGHT_LOSS_SCORE"]
+    },
+
+    {
+      "id": "crash-diet-pattern",
+      "name": "Crash Diet / Keto / Intermittent Fasting",
+      "category": "nutritional-indicators",
+      "biologicalSystem": "metabolic",
+      "description": "Severely restrictive dietary pattern. Substrate-deficit risk.",
+      "signalType": "BEHAVIORAL",
+      "polarity": "pathological",
+      "temporality": "chronic",
+      "confidenceBase": 0.75,
+      "evidenceTier": "established",
+      "severityContribution": 0.35,
+      "pathwayRelevance": [
+        { "pathwayId": "nutritional-limitation", "weight": 0.60, "modulation": "supports" },
+        { "pathwayId": "telogen-cycle-disruption", "weight": 0.40, "modulation": "supports" },
+        { "pathwayId": "metabolic-dysfunction", "weight": 0.25, "modulation": "supports" }
+      ],
+      "causeRelevance": [
+        { "causeId": "nutritional-hair-stress", "contribution": 0.55 },
+        { "causeId": "metabolic-hair-dysfunction", "contribution": 0.25 }
+      ],
+      "narrativeMeaning": {
+        "clinicalConcept": "concept.restrictive_diet",
+        "patientFacingTone": "informative",
+        "doctorFacingFraming": "corroborative",
+        "visualMotif": "motif.restriction",
+        "analogyClass": "analogy.substrate_deficit"
+      },
+      "legacySignalCodes": ["WEIGHT_LOSS_DIET","METABOLIC_DIET"]
+    },
+
+    {
+      "id": "irregular-diet-pattern",
+      "name": "Irregular / Poor Diet",
+      "category": "nutritional-indicators",
+      "biologicalSystem": "metabolic",
+      "description": "Patient reports inconsistent or low-quality dietary intake.",
+      "signalType": "BEHAVIORAL",
+      "polarity": "pathological",
+      "temporality": "chronic",
+      "confidenceBase": 0.65,
+      "evidenceTier": "emerging",
+      "severityContribution": 0.20,
+      "pathwayRelevance": [
+        { "pathwayId": "nutritional-limitation", "weight": 0.45, "modulation": "supports" },
+        { "pathwayId": "metabolic-dysfunction", "weight": 0.20, "modulation": "supports" }
+      ],
+      "causeRelevance": [
+        { "causeId": "nutritional-hair-stress", "contribution": 0.35 }
+      ],
+      "narrativeMeaning": {
+        "clinicalConcept": "concept.dietary_irregularity",
+        "patientFacingTone": "informative",
+        "doctorFacingFraming": "corroborative",
+        "visualMotif": "motif.irregularity",
+        "analogyClass": "analogy.substrate_deficit"
+      },
+      "legacySignalCodes": ["METABOLIC_DIET"]
+    },
+
+    {
+      "id": "vegetarian-diet",
+      "name": "Vegetarian Diet",
+      "category": "nutritional-indicators",
+      "biologicalSystem": "metabolic",
+      "description": "Plant-based diet — modifier for nutrient (heme iron, B12) availability.",
+      "signalType": "BEHAVIORAL",
+      "polarity": "modifier",
+      "temporality": "chronic",
+      "confidenceBase": 0.92,
+      "evidenceTier": "established",
+      "severityContribution": 0.10,
+      "pathwayRelevance": [
+        { "pathwayId": "nutritional-limitation", "weight": 0.25, "modulation": "supports" }
+      ],
+      "causeRelevance": [
+        { "causeId": "nutritional-hair-stress", "contribution": 0.15 }
+      ],
+      "narrativeMeaning": {
+        "clinicalConcept": "concept.vegetarian",
+        "patientFacingTone": "informative",
+        "doctorFacingFraming": "corroborative",
+        "visualMotif": "motif.veg",
+        "analogyClass": "analogy.substrate_deficit"
+      },
+      "legacySignalCodes": ["VEG_KIT_SWAP"]
+    },
+
+    {
+      "id": "vegan-diet",
+      "name": "Vegan Diet",
+      "category": "nutritional-indicators",
+      "biologicalSystem": "metabolic",
+      "description": "Fully plant-based — elevated nutrient-availability modifier.",
+      "signalType": "BEHAVIORAL",
+      "polarity": "modifier",
+      "temporality": "chronic",
+      "confidenceBase": 0.92,
+      "evidenceTier": "established",
+      "severityContribution": 0.15,
+      "pathwayRelevance": [
+        { "pathwayId": "nutritional-limitation", "weight": 0.35, "modulation": "supports" }
+      ],
+      "causeRelevance": [
+        { "causeId": "nutritional-hair-stress", "contribution": 0.20 }
+      ],
+      "narrativeMeaning": {
+        "clinicalConcept": "concept.vegan",
+        "patientFacingTone": "informative",
+        "doctorFacingFraming": "corroborative",
+        "visualMotif": "motif.vegan",
+        "analogyClass": "analogy.substrate_deficit"
+      },
+      "legacySignalCodes": ["VEG_KIT_SWAP"]
+    },
+
+    {
+      "id": "high-protein-diet",
+      "name": "High-Protein Diet",
+      "category": "nutritional-indicators",
+      "biologicalSystem": "endocrine",
+      "description": "Self-reported high-protein intake — modifier for androgen-axis dynamics.",
+      "signalType": "BEHAVIORAL",
+      "polarity": "modifier",
+      "temporality": "chronic",
+      "confidenceBase": 0.65,
+      "evidenceTier": "heuristic",
+      "severityContribution": 0.10,
+      "pathwayRelevance": [
+        { "pathwayId": "follicular-miniaturization", "weight": 0.15, "modulation": "supports" }
+      ],
+      "causeRelevance": [
+        { "causeId": "androgen-driven-miniaturization", "contribution": 0.15 }
+      ],
+      "narrativeMeaning": {
+        "clinicalConcept": "concept.high_protein",
+        "patientFacingTone": "informative",
+        "doctorFacingFraming": "corroborative",
+        "visualMotif": "motif.protein",
+        "analogyClass": "analogy.substrate_deficit"
+      }
+    },
+
+    {
+      "id": "iron-deficiency-reported",
+      "name": "Iron Deficiency / Anaemia",
+      "category": "nutritional-indicators",
+      "biologicalSystem": "metabolic",
+      "description": "Patient reports diagnosed iron deficiency or anaemia. Direct substrate constraint on follicle.",
+      "signalType": "CLINICAL",
+      "polarity": "pathological",
+      "temporality": "chronic",
+      "confidenceBase": 0.92,
+      "evidenceTier": "established",
+      "severityContribution": 0.45,
+      "pathwayRelevance": [
+        { "pathwayId": "nutritional-limitation", "weight": 0.85, "modulation": "required-gate" },
+        { "pathwayId": "telogen-cycle-disruption", "weight": 0.45, "modulation": "supports" }
+      ],
+      "causeRelevance": [
+        { "causeId": "nutritional-hair-stress", "contribution": 0.85 }
+      ],
+      "narrativeMeaning": {
+        "clinicalConcept": "concept.iron_deficiency",
+        "patientFacingTone": "reassuring",
+        "doctorFacingFraming": "diagnostic",
+        "visualMotif": "motif.iron",
+        "analogyClass": "analogy.substrate_deficit"
+      },
+      "legacySignalCodes": ["IRON_DEFICIENCY_SCORE"]
+    },
+
+    {
+      "id": "vitamin-d-deficiency-reported",
+      "name": "Vitamin D3 Deficiency",
+      "category": "nutritional-indicators",
+      "biologicalSystem": "metabolic",
+      "description": "Patient reports diagnosed Vitamin D3 deficiency.",
+      "signalType": "CLINICAL",
+      "polarity": "pathological",
+      "temporality": "chronic",
+      "confidenceBase": 0.85,
+      "evidenceTier": "established",
+      "severityContribution": 0.25,
+      "pathwayRelevance": [
+        { "pathwayId": "nutritional-limitation", "weight": 0.50, "modulation": "supports" },
+        { "pathwayId": "immune-dysregulation", "weight": 0.20, "modulation": "supports" }
+      ],
+      "causeRelevance": [
+        { "causeId": "nutritional-hair-stress", "contribution": 0.40 }
+      ],
+      "narrativeMeaning": {
+        "clinicalConcept": "concept.vit_d_deficiency",
+        "patientFacingTone": "reassuring",
+        "doctorFacingFraming": "diagnostic",
+        "visualMotif": "motif.vit_d",
+        "analogyClass": "analogy.substrate_deficit"
+      }
+    },
+
+    {
+      "id": "vitamin-b12-deficiency-reported",
+      "name": "Vitamin B12 Deficiency",
+      "category": "nutritional-indicators",
+      "biologicalSystem": "metabolic",
+      "description": "Patient reports B12 deficiency — impairs follicle matrix cell proliferation.",
+      "signalType": "CLINICAL",
+      "polarity": "pathological",
+      "temporality": "chronic",
+      "confidenceBase": 0.85,
+      "evidenceTier": "established",
+      "severityContribution": 0.30,
+      "pathwayRelevance": [
+        { "pathwayId": "nutritional-limitation", "weight": 0.55, "modulation": "supports" },
+        { "pathwayId": "telogen-cycle-disruption", "weight": 0.30, "modulation": "supports" }
+      ],
+      "causeRelevance": [
+        { "causeId": "nutritional-hair-stress", "contribution": 0.50 }
+      ],
+      "narrativeMeaning": {
+        "clinicalConcept": "concept.b12_deficiency",
+        "patientFacingTone": "reassuring",
+        "doctorFacingFraming": "diagnostic",
+        "visualMotif": "motif.b12",
+        "analogyClass": "analogy.substrate_deficit"
+      }
+    },
+
+    {
+      "id": "hypothyroid-diagnosis",
+      "name": "Hypothyroidism",
+      "category": "hormonal-indicators",
+      "biologicalSystem": "endocrine",
+      "description": "Diagnosed hypothyroidism. Direct hormonal driver of TE + miniaturization.",
+      "signalType": "CLINICAL",
+      "polarity": "pathological",
+      "temporality": "chronic",
+      "confidenceBase": 0.95,
+      "evidenceTier": "established",
+      "severityContribution": 0.50,
+      "pathwayRelevance": [
+        { "pathwayId": "hormonal-dysregulation", "weight": 0.90, "modulation": "required-gate" },
+        { "pathwayId": "telogen-cycle-disruption", "weight": 0.55, "modulation": "supports" },
+        { "pathwayId": "metabolic-dysfunction", "weight": 0.40, "modulation": "supports" }
+      ],
+      "causeRelevance": [
+        { "causeId": "hormonal-hair-loss", "contribution": 0.85 }
+      ],
+      "narrativeMeaning": {
+        "clinicalConcept": "concept.hypothyroid",
+        "patientFacingTone": "informative",
+        "doctorFacingFraming": "diagnostic",
+        "visualMotif": "motif.thyroid",
+        "analogyClass": "analogy.endocrine_imbalance"
+      },
+      "legacySignalCodes": ["THYROID_HYPO_SCORE","THYROID_IN_HORMONAL"]
+    },
+
+    {
+      "id": "hyperthyroid-diagnosis",
+      "name": "Hyperthyroidism",
+      "category": "hormonal-indicators",
+      "biologicalSystem": "endocrine",
+      "description": "Diagnosed hyperthyroidism.",
+      "signalType": "CLINICAL",
+      "polarity": "pathological",
+      "temporality": "chronic",
+      "confidenceBase": 0.95,
+      "evidenceTier": "established",
+      "severityContribution": 0.50,
+      "pathwayRelevance": [
+        { "pathwayId": "hormonal-dysregulation", "weight": 0.90, "modulation": "required-gate" },
+        { "pathwayId": "telogen-cycle-disruption", "weight": 0.55, "modulation": "supports" }
+      ],
+      "causeRelevance": [
+        { "causeId": "hormonal-hair-loss", "contribution": 0.85 }
+      ],
+      "narrativeMeaning": {
+        "clinicalConcept": "concept.hyperthyroid",
+        "patientFacingTone": "informative",
+        "doctorFacingFraming": "diagnostic",
+        "visualMotif": "motif.thyroid",
+        "analogyClass": "analogy.endocrine_imbalance"
+      },
+      "legacySignalCodes": ["THYROID_HYPER_SCORE"]
+    },
+
+    {
+      "id": "prediabetes-state",
+      "name": "Pre-Diabetes",
+      "category": "metabolic-indicators",
+      "biologicalSystem": "metabolic",
+      "description": "Patient reports pre-diabetic state. Insulin-resistance precursor.",
+      "signalType": "CLINICAL",
+      "polarity": "pathological",
+      "temporality": "chronic",
+      "confidenceBase": 0.85,
+      "evidenceTier": "established",
+      "severityContribution": 0.35,
+      "pathwayRelevance": [
+        { "pathwayId": "metabolic-dysfunction", "weight": 0.75, "modulation": "required-gate" },
+        { "pathwayId": "oxidative-stress", "weight": 0.30, "modulation": "supports" }
+      ],
+      "causeRelevance": [
+        { "causeId": "metabolic-hair-dysfunction", "contribution": 0.65 }
+      ],
+      "narrativeMeaning": {
+        "clinicalConcept": "concept.prediabetes",
+        "patientFacingTone": "informative",
+        "doctorFacingFraming": "diagnostic",
+        "visualMotif": "motif.metabolic",
+        "analogyClass": "analogy.metabolic_imbalance"
+      },
+      "legacySignalCodes": ["DIABETES_SCORE","METABOLIC_SIGNAL_DIABETES"]
+    },
+
+    {
+      "id": "diabetes-state",
+      "name": "Diabetes",
+      "category": "metabolic-indicators",
+      "biologicalSystem": "metabolic",
+      "description": "Diagnosed diabetes.",
+      "signalType": "CLINICAL",
+      "polarity": "pathological",
+      "temporality": "chronic",
+      "confidenceBase": 0.92,
+      "evidenceTier": "established",
+      "severityContribution": 0.45,
+      "pathwayRelevance": [
+        { "pathwayId": "metabolic-dysfunction", "weight": 0.85, "modulation": "required-gate" },
+        { "pathwayId": "oxidative-stress", "weight": 0.45, "modulation": "supports" }
+      ],
+      "causeRelevance": [
+        { "causeId": "metabolic-hair-dysfunction", "contribution": 0.80 }
+      ],
+      "narrativeMeaning": {
+        "clinicalConcept": "concept.diabetes",
+        "patientFacingTone": "informative",
+        "doctorFacingFraming": "diagnostic",
+        "visualMotif": "motif.metabolic",
+        "analogyClass": "analogy.metabolic_imbalance"
+      },
+      "legacySignalCodes": ["DIABETES_SCORE"]
+    },
+
+    {
+      "id": "obesity-sedentary",
+      "name": "Obesity / Sedentary",
+      "category": "metabolic-indicators",
+      "biologicalSystem": "metabolic",
+      "description": "BMI/lifestyle pattern indicating insulin-androgen axis perturbation.",
+      "signalType": "SELF_REPORTED",
+      "polarity": "pathological",
+      "temporality": "chronic",
+      "confidenceBase": 0.75,
+      "evidenceTier": "established",
+      "severityContribution": 0.30,
+      "pathwayRelevance": [
+        { "pathwayId": "metabolic-dysfunction", "weight": 0.60, "modulation": "supports" },
+        { "pathwayId": "hormonal-dysregulation", "weight": 0.30, "modulation": "supports" }
+      ],
+      "causeRelevance": [
+        { "causeId": "metabolic-hair-dysfunction", "contribution": 0.55 }
+      ],
+      "narrativeMeaning": {
+        "clinicalConcept": "concept.obesity_sedentary",
+        "patientFacingTone": "informative",
+        "doctorFacingFraming": "corroborative",
+        "visualMotif": "motif.metabolic",
+        "analogyClass": "analogy.metabolic_imbalance"
+      },
+      "legacySignalCodes": ["METABOLIC_SIGNAL"]
+    },
+
+    {
+      "id": "bodybuilding-pattern",
+      "name": "Heavy Gym / Bodybuilding",
+      "category": "lifestyle-indicators",
+      "biologicalSystem": "endocrine",
+      "description": "Intensive resistance training pattern — androgen-axis modifier.",
+      "signalType": "BEHAVIORAL",
+      "polarity": "modifier",
+      "temporality": "chronic",
+      "confidenceBase": 0.70,
+      "evidenceTier": "emerging",
+      "severityContribution": 0.20,
+      "pathwayRelevance": [
+        { "pathwayId": "follicular-miniaturization", "weight": 0.30, "modulation": "supports" }
+      ],
+      "causeRelevance": [
+        { "causeId": "androgen-driven-miniaturization", "contribution": 0.25 }
+      ],
+      "narrativeMeaning": {
+        "clinicalConcept": "concept.bodybuilding",
+        "patientFacingTone": "informative",
+        "doctorFacingFraming": "corroborative",
+        "visualMotif": "motif.gym",
+        "analogyClass": "analogy.endocrine_imbalance"
+      },
+      "legacySignalCodes": ["AGA_GYM_SIGNAL"]
+    },
+
+    {
+      "id": "smoking-exposure",
+      "name": "Smoking / Vaping",
+      "category": "lifestyle-indicators",
+      "biologicalSystem": "vascular",
+      "description": "Tobacco/nicotine exposure — ROS load and vasoactive effects.",
+      "signalType": "BEHAVIORAL",
+      "polarity": "pathological",
+      "temporality": "chronic",
+      "confidenceBase": 0.85,
+      "evidenceTier": "established",
+      "severityContribution": 0.30,
+      "pathwayRelevance": [
+        { "pathwayId": "oxidative-stress", "weight": 0.75, "modulation": "supports" },
+        { "pathwayId": "scalp-inflammation", "weight": 0.30, "modulation": "supports" }
+      ],
+      "causeRelevance": [
+        { "causeId": "multifactorial-hair-loss", "contribution": 0.20 }
+      ],
+      "corroboratingSignals": ["alcohol-exposure"],
+      "narrativeMeaning": {
+        "clinicalConcept": "concept.smoking",
+        "patientFacingTone": "informative",
+        "doctorFacingFraming": "corroborative",
+        "visualMotif": "motif.oxidative",
+        "analogyClass": "analogy.oxidative_load"
+      },
+      "legacySignalCodes": ["OXIDATIVE_SCORE","OXIDATIVE_COUNT"]
+    },
+
+    {
+      "id": "alcohol-exposure",
+      "name": "Alcohol (Frequent)",
+      "category": "lifestyle-indicators",
+      "biologicalSystem": "vascular",
+      "description": "Regular alcohol intake — hepatic/oxidative load and nutrient interference.",
+      "signalType": "BEHAVIORAL",
+      "polarity": "pathological",
+      "temporality": "chronic",
+      "confidenceBase": 0.78,
+      "evidenceTier": "established",
+      "severityContribution": 0.20,
+      "pathwayRelevance": [
+        { "pathwayId": "oxidative-stress", "weight": 0.55, "modulation": "supports" },
+        { "pathwayId": "nutritional-limitation", "weight": 0.20, "modulation": "supports" }
+      ],
+      "causeRelevance": [
+        { "causeId": "multifactorial-hair-loss", "contribution": 0.15 }
+      ],
+      "corroboratingSignals": ["smoking-exposure"],
+      "narrativeMeaning": {
+        "clinicalConcept": "concept.alcohol",
+        "patientFacingTone": "informative",
+        "doctorFacingFraming": "corroborative",
+        "visualMotif": "motif.alcohol",
+        "analogyClass": "analogy.oxidative_load"
+      },
+      "legacySignalCodes": ["OXIDATIVE_SCORE","OXIDATIVE_COUNT"]
+    },
+
+    {
+      "id": "night-shift-exposure",
+      "name": "Night Shift Work",
+      "category": "lifestyle-indicators",
+      "biologicalSystem": "nervous",
+      "description": "Shift-work circadian disruption.",
+      "signalType": "BEHAVIORAL",
+      "polarity": "pathological",
+      "temporality": "chronic",
+      "confidenceBase": 0.88,
+      "evidenceTier": "established",
+      "severityContribution": 0.25,
+      "pathwayRelevance": [
+        { "pathwayId": "telogen-cycle-disruption", "weight": 0.45, "modulation": "supports" },
+        { "pathwayId": "oxidative-stress", "weight": 0.35, "modulation": "supports" }
+      ],
+      "causeRelevance": [
+        { "causeId": "stress-driven-telogen-effluvium", "contribution": 0.30 },
+        { "causeId": "multifactorial-hair-loss", "contribution": 0.20 }
+      ],
+      "narrativeMeaning": {
+        "clinicalConcept": "concept.shift_work",
+        "patientFacingTone": "informative",
+        "doctorFacingFraming": "corroborative",
+        "visualMotif": "motif.circadian",
+        "analogyClass": "analogy.circadian_disruption"
+      },
+      "legacySignalCodes": ["NIGHT_SHIFT_SCORE"]
+    },
+
+    {
+      "id": "frequent-flying-exposure",
+      "name": "Frequent Flying",
+      "category": "lifestyle-indicators",
+      "biologicalSystem": "nervous",
+      "description": "Frequent time-zone shifts — circadian and oxidative load.",
+      "signalType": "BEHAVIORAL",
+      "polarity": "pathological",
+      "temporality": "chronic",
+      "confidenceBase": 0.80,
+      "evidenceTier": "emerging",
+      "severityContribution": 0.20,
+      "pathwayRelevance": [
+        { "pathwayId": "telogen-cycle-disruption", "weight": 0.35, "modulation": "supports" },
+        { "pathwayId": "oxidative-stress", "weight": 0.30, "modulation": "supports" }
+      ],
+      "causeRelevance": [
+        { "causeId": "multifactorial-hair-loss", "contribution": 0.15 }
+      ],
+      "narrativeMeaning": {
+        "clinicalConcept": "concept.travel",
+        "patientFacingTone": "informative",
+        "doctorFacingFraming": "corroborative",
+        "visualMotif": "motif.travel",
+        "analogyClass": "analogy.circadian_disruption"
+      },
+      "legacySignalCodes": ["FREQUENT_FLYING_SCORE"]
+    },
+
+    {
+      "id": "alopecia-areata-history",
+      "name": "Alopecia Areata History",
+      "category": "immune-indicators",
+      "biologicalSystem": "immune",
+      "description": "Diagnosed or self-identified history of alopecia areata.",
+      "signalType": "CLINICAL",
+      "polarity": "pathological",
+      "temporality": "episodic",
+      "confidenceBase": 0.90,
+      "evidenceTier": "established",
+      "severityContribution": 0.55,
+      "pathwayRelevance": [
+        { "pathwayId": "immune-dysregulation", "weight": 0.85, "modulation": "required-gate" }
+      ],
+      "causeRelevance": [
+        { "causeId": "autoimmune-hair-loss", "contribution": 0.85 }
+      ],
+      "narrativeMeaning": {
+        "clinicalConcept": "concept.alopecia_areata_hx",
+        "patientFacingTone": "informative",
+        "doctorFacingFraming": "diagnostic",
+        "visualMotif": "motif.autoimmune",
+        "analogyClass": "analogy.immune_targeting"
+      },
+      "legacySignalCodes": ["AA_SCORE","AA_SIGNAL"]
+    },
+
+    {
+      "id": "recurrent-infection-pattern",
+      "name": "Recurrent Infections / Cold / Fever",
+      "category": "immune-indicators",
+      "biologicalSystem": "immune",
+      "description": "Frequent infections — immune-compromise marker.",
+      "signalType": "SELF_REPORTED",
+      "polarity": "pathological",
+      "temporality": "chronic",
+      "confidenceBase": 0.65,
+      "evidenceTier": "emerging",
+      "severityContribution": 0.20,
+      "pathwayRelevance": [
+        { "pathwayId": "immune-dysregulation", "weight": 0.35, "modulation": "supports" }
+      ],
+      "causeRelevance": [
+        { "causeId": "multifactorial-hair-loss", "contribution": 0.15 }
+      ],
+      "narrativeMeaning": {
+        "clinicalConcept": "concept.recurrent_infection",
+        "patientFacingTone": "reassuring",
+        "doctorFacingFraming": "corroborative",
+        "visualMotif": "motif.immune",
+        "analogyClass": "analogy.immune_targeting"
+      },
+      "legacySignalCodes": ["IMMUNE_INJECTION"]
+    },
+
+    {
+      "id": "allergy-cluster",
+      "name": "Allergy Cluster",
+      "category": "immune-indicators",
+      "biologicalSystem": "immune",
+      "description": "Allergic atopy.",
+      "signalType": "SELF_REPORTED",
+      "polarity": "pathological",
+      "temporality": "chronic",
+      "confidenceBase": 0.70,
+      "evidenceTier": "emerging",
+      "severityContribution": 0.15,
+      "pathwayRelevance": [
+        { "pathwayId": "immune-dysregulation", "weight": 0.30, "modulation": "supports" }
+      ],
+      "causeRelevance": [
+        { "causeId": "multifactorial-hair-loss", "contribution": 0.10 }
+      ],
+      "narrativeMeaning": {
+        "clinicalConcept": "concept.allergy",
+        "patientFacingTone": "reassuring",
+        "doctorFacingFraming": "corroborative",
+        "visualMotif": "motif.allergy",
+        "analogyClass": "analogy.immune_targeting"
+      }
+    },
+
+    {
+      "id": "asthma-history",
+      "name": "Asthma History",
+      "category": "immune-indicators",
+      "biologicalSystem": "immune",
+      "description": "Chronic asthma.",
+      "signalType": "CLINICAL",
+      "polarity": "pathological",
+      "temporality": "chronic",
+      "confidenceBase": 0.85,
+      "evidenceTier": "established",
+      "severityContribution": 0.15,
+      "pathwayRelevance": [
+        { "pathwayId": "immune-dysregulation", "weight": 0.30, "modulation": "supports" },
+        { "pathwayId": "oxidative-stress", "weight": 0.20, "modulation": "supports" }
+      ],
+      "causeRelevance": [
+        { "causeId": "multifactorial-hair-loss", "contribution": 0.10 }
+      ],
+      "narrativeMeaning": {
+        "clinicalConcept": "concept.asthma",
+        "patientFacingTone": "reassuring",
+        "doctorFacingFraming": "corroborative",
+        "visualMotif": "motif.asthma",
+        "analogyClass": "analogy.immune_targeting"
+      }
+    },
+
+    {
+      "id": "skin-rash-history",
+      "name": "Skin Rashes / Eczema",
+      "category": "immune-indicators",
+      "biologicalSystem": "immune",
+      "description": "Atopic dermatitis or eczema history.",
+      "signalType": "SELF_REPORTED",
+      "polarity": "pathological",
+      "temporality": "chronic",
+      "confidenceBase": 0.78,
+      "evidenceTier": "established",
+      "severityContribution": 0.15,
+      "pathwayRelevance": [
+        { "pathwayId": "immune-dysregulation", "weight": 0.30, "modulation": "supports" },
+        { "pathwayId": "scalp-inflammation", "weight": 0.25, "modulation": "supports" }
+      ],
+      "causeRelevance": [
+        { "causeId": "inflammatory-scalp-dysfunction", "contribution": 0.20 }
+      ],
+      "narrativeMeaning": {
+        "clinicalConcept": "concept.eczema",
+        "patientFacingTone": "reassuring",
+        "doctorFacingFraming": "corroborative",
+        "visualMotif": "motif.eczema",
+        "analogyClass": "analogy.immune_targeting"
+      }
+    },
+
+    {
+      "id": "scarring-alopecia-history",
+      "name": "Scarring Alopecia",
+      "category": "progression-risks",
+      "biologicalSystem": "immune",
+      "description": "Cicatricial alopecia — follicular destruction with scarring. Hard recovery ceiling.",
+      "signalType": "CLINICAL",
+      "polarity": "pathological",
+      "temporality": "chronic",
+      "confidenceBase": 0.95,
+      "evidenceTier": "established",
+      "severityContribution": 0.85,
+      "pathwayRelevance": [
+        { "pathwayId": "immune-dysregulation", "weight": 0.70, "modulation": "supports" },
+        { "pathwayId": "scalp-inflammation", "weight": 0.60, "modulation": "supports" }
+      ],
+      "causeRelevance": [
+        { "causeId": "autoimmune-hair-loss", "contribution": 0.70 },
+        { "causeId": "inflammatory-scalp-dysfunction", "contribution": 0.40 }
+      ],
+      "narrativeMeaning": {
+        "clinicalConcept": "concept.scarring_alopecia",
+        "patientFacingTone": "informative",
+        "doctorFacingFraming": "diagnostic",
+        "visualMotif": "motif.scarring",
+        "analogyClass": "analogy.immune_targeting"
+      }
+    },
+
+    {
+      "id": "mouth-ulcers-cooccurrence",
+      "name": "Mouth Ulcers (Co-Occurring with Gut)",
+      "category": "gut-indicators",
+      "biologicalSystem": "digestive",
+      "description": "Recurrent mouth ulcers with gut symptoms — mucosal/inflammatory composite.",
+      "signalType": "SELF_REPORTED",
+      "polarity": "pathological",
+      "temporality": "episodic",
+      "confidenceBase": 0.75,
+      "evidenceTier": "emerging",
+      "severityContribution": 0.25,
+      "pathwayRelevance": [
+        { "pathwayId": "gut-hair-axis-dysfunction", "weight": 0.55, "modulation": "supports" },
+        { "pathwayId": "scalp-inflammation", "weight": 0.20, "modulation": "supports" }
+      ],
+      "causeRelevance": [
+        { "causeId": "gut-hair-axis-dysfunction", "contribution": 0.55 }
+      ],
+      "narrativeMeaning": {
+        "clinicalConcept": "concept.mouth_ulcers",
+        "patientFacingTone": "informative",
+        "doctorFacingFraming": "corroborative",
+        "visualMotif": "motif.mucosal",
+        "analogyClass": "analogy.absorption_compromise"
+      },
+      "legacySignalCodes": ["MOUTH_ULCERS_SCORE"]
+    },
+
+    {
+      "id": "gerd-symptoms",
+      "name": "GERD / Acid Reflux",
+      "category": "gut-indicators",
+      "biologicalSystem": "digestive",
+      "description": "Chronic acid reflux. Absorption and microbiome impact.",
+      "signalType": "SELF_REPORTED",
+      "polarity": "pathological",
+      "temporality": "chronic",
+      "confidenceBase": 0.78,
+      "evidenceTier": "established",
+      "severityContribution": 0.25,
+      "pathwayRelevance": [
+        { "pathwayId": "gut-hair-axis-dysfunction", "weight": 0.60, "modulation": "required-gate" },
+        { "pathwayId": "nutritional-limitation", "weight": 0.30, "modulation": "supports" }
+      ],
+      "causeRelevance": [
+        { "causeId": "gut-hair-axis-dysfunction", "contribution": 0.60 }
+      ],
+      "narrativeMeaning": {
+        "clinicalConcept": "concept.gerd",
+        "patientFacingTone": "informative",
+        "doctorFacingFraming": "diagnostic",
+        "visualMotif": "motif.gerd",
+        "analogyClass": "analogy.absorption_compromise"
+      },
+      "legacySignalCodes": ["GUT_ISSUES_SCORE","PRO_IMMUNE_GUT"]
+    },
+
+    {
+      "id": "ibs-or-constipation",
+      "name": "IBS / Crohn's / Constipation",
+      "category": "gut-indicators",
+      "biologicalSystem": "digestive",
+      "description": "Inflammatory bowel / dysmotility pattern. Strong gut signal.",
+      "signalType": "CLINICAL",
+      "polarity": "pathological",
+      "temporality": "chronic",
+      "confidenceBase": 0.85,
+      "evidenceTier": "established",
+      "severityContribution": 0.35,
+      "pathwayRelevance": [
+        { "pathwayId": "gut-hair-axis-dysfunction", "weight": 0.80, "modulation": "required-gate" },
+        { "pathwayId": "nutritional-limitation", "weight": 0.40, "modulation": "supports" }
+      ],
+      "causeRelevance": [
+        { "causeId": "gut-hair-axis-dysfunction", "contribution": 0.80 },
+        { "causeId": "nutritional-hair-stress", "contribution": 0.30 }
+      ],
+      "narrativeMeaning": {
+        "clinicalConcept": "concept.ibs_dysmotility",
+        "patientFacingTone": "informative",
+        "doctorFacingFraming": "diagnostic",
+        "visualMotif": "motif.ibs",
+        "analogyClass": "analogy.absorption_compromise"
+      },
+      "legacySignalCodes": ["GI_GOLD_INJECTION","GUT_ISSUES_SCORE"]
+    },
+
+    {
+      "id": "bloating-symptoms",
+      "name": "Bloating / Gas",
+      "category": "gut-indicators",
+      "biologicalSystem": "digestive",
+      "description": "Common dysbiosis/dysmotility marker.",
+      "signalType": "SELF_REPORTED",
+      "polarity": "pathological",
+      "temporality": "chronic",
+      "confidenceBase": 0.65,
+      "evidenceTier": "emerging",
+      "severityContribution": 0.15,
+      "pathwayRelevance": [
+        { "pathwayId": "gut-hair-axis-dysfunction", "weight": 0.40, "modulation": "supports" }
+      ],
+      "causeRelevance": [
+        { "causeId": "gut-hair-axis-dysfunction", "contribution": 0.30 }
+      ],
+      "narrativeMeaning": {
+        "clinicalConcept": "concept.bloating",
+        "patientFacingTone": "reassuring",
+        "doctorFacingFraming": "corroborative",
+        "visualMotif": "motif.bloating",
+        "analogyClass": "analogy.absorption_compromise"
+      }
+    },
+
+    {
+      "id": "pcos-diagnosis",
+      "name": "PCOS / PCOD",
+      "category": "hormonal-indicators",
+      "biologicalSystem": "endocrine",
+      "description": "Polycystic ovary syndrome — androgen-axis perturbation in females.",
+      "signalType": "CLINICAL",
+      "polarity": "pathological",
+      "temporality": "chronic",
+      "confidenceBase": 0.92,
+      "evidenceTier": "established",
+      "severityContribution": 0.45,
+      "pathwayRelevance": [
+        { "pathwayId": "hormonal-dysregulation", "weight": 0.85, "modulation": "required-gate" },
+        { "pathwayId": "follicular-miniaturization", "weight": 0.45, "modulation": "supports" }
+      ],
+      "causeRelevance": [
+        { "causeId": "hormonal-hair-loss", "contribution": 0.75 },
+        { "causeId": "androgen-driven-miniaturization", "contribution": 0.30 }
+      ],
+      "narrativeMeaning": {
+        "clinicalConcept": "concept.pcos",
+        "patientFacingTone": "informative",
+        "doctorFacingFraming": "diagnostic",
+        "visualMotif": "motif.pcos",
+        "analogyClass": "analogy.endocrine_imbalance"
+      },
+      "legacySignalCodes": ["PCOS_SCORE"]
+    },
+
+    {
+      "id": "pcos-with-metabolic",
+      "name": "PCOS + Metabolic Co-Pattern",
+      "category": "hormonal-indicators",
+      "biologicalSystem": "endocrine",
+      "description": "PCOS with obesity/weight/insulin-resistance overlay.",
+      "signalType": "CLINICAL",
+      "polarity": "pathological",
+      "temporality": "chronic",
+      "confidenceBase": 0.90,
+      "evidenceTier": "established",
+      "severityContribution": 0.55,
+      "pathwayRelevance": [
+        { "pathwayId": "hormonal-dysregulation", "weight": 0.80, "modulation": "supports" },
+        { "pathwayId": "metabolic-dysfunction", "weight": 0.75, "modulation": "supports" }
+      ],
+      "causeRelevance": [
+        { "causeId": "hormonal-hair-loss", "contribution": 0.65 },
+        { "causeId": "metabolic-hair-dysfunction", "contribution": 0.55 }
+      ],
+      "narrativeMeaning": {
+        "clinicalConcept": "concept.pcos_metabolic",
+        "patientFacingTone": "informative",
+        "doctorFacingFraming": "diagnostic",
+        "visualMotif": "motif.pcos_metabolic",
+        "analogyClass": "analogy.endocrine_imbalance"
+      },
+      "legacySignalCodes": ["PCOS_DIABETES_UPGRADE"]
+    },
+
+    {
+      "id": "endometriosis-diagnosis",
+      "name": "Endometriosis",
+      "category": "hormonal-indicators",
+      "biologicalSystem": "endocrine",
+      "description": "Diagnosed endometriosis.",
+      "signalType": "CLINICAL",
+      "polarity": "pathological",
+      "temporality": "chronic",
+      "confidenceBase": 0.92,
+      "evidenceTier": "established",
+      "severityContribution": 0.30,
+      "pathwayRelevance": [
+        { "pathwayId": "hormonal-dysregulation", "weight": 0.65, "modulation": "supports" },
+        { "pathwayId": "scalp-inflammation", "weight": 0.25, "modulation": "supports" }
+      ],
+      "causeRelevance": [
+        { "causeId": "hormonal-hair-loss", "contribution": 0.55 }
+      ],
+      "narrativeMeaning": {
+        "clinicalConcept": "concept.endometriosis",
+        "patientFacingTone": "informative",
+        "doctorFacingFraming": "diagnostic",
+        "visualMotif": "motif.endometriosis",
+        "analogyClass": "analogy.endocrine_imbalance"
+      },
+      "legacySignalCodes": ["ENDOMETRIOSIS_SCORE"]
+    },
+
+    {
+      "id": "pregnancy-state",
+      "name": "Currently Pregnant",
+      "category": "hormonal-indicators",
+      "biologicalSystem": "endocrine",
+      "description": "Active pregnancy. Hard eligibility floor for many therapies; not itself a hair pathology.",
+      "signalType": "DIRECT",
+      "polarity": "modifier",
+      "temporality": "acute",
+      "confidenceBase": 0.99,
+      "evidenceTier": "established",
+      "severityContribution": 0.0,
+      "pathwayRelevance": [
+        { "pathwayId": "hormonal-dysregulation", "weight": 0.30, "modulation": "supports" }
+      ],
+      "causeRelevance": [
+        { "causeId": "hormonal-hair-loss", "contribution": 0.20 }
+      ],
+      "narrativeMeaning": {
+        "clinicalConcept": "concept.pregnancy",
+        "patientFacingTone": "reassuring",
+        "doctorFacingFraming": "diagnostic",
+        "visualMotif": "motif.pregnancy",
+        "analogyClass": "analogy.life_stage"
+      },
+      "legacySignalCodes": ["PREGNANCY_LOCK"]
+    },
+
+    {
+      "id": "perimenopause-state",
+      "name": "Peri-menopause",
+      "category": "hormonal-indicators",
+      "biologicalSystem": "endocrine",
+      "description": "Reproductive-transition state with fluctuating estrogen/androgen ratio.",
+      "signalType": "SELF_REPORTED",
+      "polarity": "pathological",
+      "temporality": "chronic",
+      "confidenceBase": 0.88,
+      "evidenceTier": "established",
+      "severityContribution": 0.35,
+      "pathwayRelevance": [
+        { "pathwayId": "hormonal-dysregulation", "weight": 0.70, "modulation": "supports" },
+        { "pathwayId": "telogen-cycle-disruption", "weight": 0.40, "modulation": "supports" }
+      ],
+      "causeRelevance": [
+        { "causeId": "hormonal-hair-loss", "contribution": 0.70 }
+      ],
+      "narrativeMeaning": {
+        "clinicalConcept": "concept.perimenopause",
+        "patientFacingTone": "reassuring",
+        "doctorFacingFraming": "diagnostic",
+        "visualMotif": "motif.menopause",
+        "analogyClass": "analogy.life_stage"
+      },
+      "legacySignalCodes": ["PERI_MENOPAUSE_SCORE"]
+    },
+
+    {
+      "id": "menopause-state",
+      "name": "Menopause",
+      "category": "hormonal-indicators",
+      "biologicalSystem": "endocrine",
+      "description": "Menopausal state.",
+      "signalType": "SELF_REPORTED",
+      "polarity": "pathological",
+      "temporality": "chronic",
+      "confidenceBase": 0.90,
+      "evidenceTier": "established",
+      "severityContribution": 0.40,
+      "pathwayRelevance": [
+        { "pathwayId": "hormonal-dysregulation", "weight": 0.75, "modulation": "supports" },
+        { "pathwayId": "follicular-miniaturization", "weight": 0.35, "modulation": "supports" }
+      ],
+      "causeRelevance": [
+        { "causeId": "hormonal-hair-loss", "contribution": 0.75 }
+      ],
+      "narrativeMeaning": {
+        "clinicalConcept": "concept.menopause",
+        "patientFacingTone": "informative",
+        "doctorFacingFraming": "diagnostic",
+        "visualMotif": "motif.menopause",
+        "analogyClass": "analogy.life_stage"
+      },
+      "legacySignalCodes": ["MENOPAUSE_SCORE"]
+    },
+
+    {
+      "id": "postmenopause-state",
+      "name": "Post-menopause",
+      "category": "hormonal-indicators",
+      "biologicalSystem": "endocrine",
+      "description": "Post-menopausal — chronic low-estrogen state.",
+      "signalType": "SELF_REPORTED",
+      "polarity": "pathological",
+      "temporality": "chronic",
+      "confidenceBase": 0.92,
+      "evidenceTier": "established",
+      "severityContribution": 0.45,
+      "pathwayRelevance": [
+        { "pathwayId": "hormonal-dysregulation", "weight": 0.75, "modulation": "supports" },
+        { "pathwayId": "follicular-miniaturization", "weight": 0.45, "modulation": "supports" }
+      ],
+      "causeRelevance": [
+        { "causeId": "hormonal-hair-loss", "contribution": 0.75 },
+        { "causeId": "androgen-driven-miniaturization", "contribution": 0.35 }
+      ],
+      "narrativeMeaning": {
+        "clinicalConcept": "concept.postmenopause",
+        "patientFacingTone": "informative",
+        "doctorFacingFraming": "diagnostic",
+        "visualMotif": "motif.menopause",
+        "analogyClass": "analogy.life_stage"
+      },
+      "legacySignalCodes": ["POST_MENOPAUSE_SCORE"]
+    },
+
+    {
+      "id": "hrt-use",
+      "name": "Hormone Replacement Therapy (HRT)",
+      "category": "hormonal-indicators",
+      "biologicalSystem": "endocrine",
+      "description": "Active HRT — exogenous hormonal modifier.",
+      "signalType": "CLINICAL",
+      "polarity": "modifier",
+      "temporality": "chronic",
+      "confidenceBase": 0.92,
+      "evidenceTier": "established",
+      "severityContribution": 0.15,
+      "pathwayRelevance": [
+        { "pathwayId": "hormonal-dysregulation", "weight": 0.30, "modulation": "supports" }
+      ],
+      "causeRelevance": [
+        { "causeId": "hormonal-hair-loss", "contribution": 0.20 }
+      ],
+      "narrativeMeaning": {
+        "clinicalConcept": "concept.hrt",
+        "patientFacingTone": "informative",
+        "doctorFacingFraming": "corroborative",
+        "visualMotif": "motif.hrt",
+        "analogyClass": "analogy.endocrine_imbalance"
+      }
+    },
+
+    {
+      "id": "chronic-medical-on-medication",
+      "name": "Chronic Medical Condition on Medication",
+      "category": "adherence-risks",
+      "biologicalSystem": "immune",
+      "description": "Patient on long-term medication for chronic condition. Comorbidity + potential pharmacologic effect on hair cycle.",
+      "signalType": "CLINICAL",
+      "polarity": "pathological",
+      "temporality": "chronic",
+      "confidenceBase": 0.85,
+      "evidenceTier": "established",
+      "severityContribution": 0.20,
+      "pathwayRelevance": [
+        { "pathwayId": "telogen-cycle-disruption", "weight": 0.30, "modulation": "supports" },
+        { "pathwayId": "immune-dysregulation", "weight": 0.20, "modulation": "supports" }
+      ],
+      "causeRelevance": [
+        { "causeId": "multifactorial-hair-loss", "contribution": 0.30 }
+      ],
+      "narrativeMeaning": {
+        "clinicalConcept": "concept.chronic_medical",
+        "patientFacingTone": "informative",
+        "doctorFacingFraming": "diagnostic",
+        "visualMotif": "motif.medical",
+        "analogyClass": "analogy.systemic_load"
+      },
+      "legacySignalCodes": ["CHRONIC_MEDICAL_SCORE"]
+    },
+
+    {
+      "id": "heat-styling-exposure",
+      "name": "Heat Styling Exposure",
+      "category": "treatment-history",
+      "biologicalSystem": "integumentary",
+      "description": "Frequent heat-tool use.",
+      "signalType": "BEHAVIORAL",
+      "polarity": "pathological",
+      "temporality": "chronic",
+      "confidenceBase": 0.80,
+      "evidenceTier": "established",
+      "severityContribution": 0.20,
+      "pathwayRelevance": [
+        { "pathwayId": "hair-shaft-damage", "weight": 0.55, "modulation": "supports" }
+      ],
+      "causeRelevance": [
+        { "causeId": "hair-shaft-damage-syndrome", "contribution": 0.40 }
+      ],
+      "narrativeMeaning": {
+        "clinicalConcept": "concept.heat_styling",
+        "patientFacingTone": "reassuring",
+        "doctorFacingFraming": "corroborative",
+        "visualMotif": "motif.heat",
+        "analogyClass": "analogy.structural_wear"
+      },
+      "legacySignalCodes": ["HBR_TREATMENT_SIGNAL"]
+    },
+
+    {
+      "id": "chemical-treatment-exposure",
+      "name": "Chemical Treatment Exposure",
+      "category": "treatment-history",
+      "biologicalSystem": "integumentary",
+      "description": "Color, keratin, perming exposures.",
+      "signalType": "BEHAVIORAL",
+      "polarity": "pathological",
+      "temporality": "chronic",
+      "confidenceBase": 0.82,
+      "evidenceTier": "established",
+      "severityContribution": 0.25,
+      "pathwayRelevance": [
+        { "pathwayId": "hair-shaft-damage", "weight": 0.60, "modulation": "supports" }
+      ],
+      "causeRelevance": [
+        { "causeId": "hair-shaft-damage-syndrome", "contribution": 0.45 }
+      ],
+      "narrativeMeaning": {
+        "clinicalConcept": "concept.chemical_treatment",
+        "patientFacingTone": "informative",
+        "doctorFacingFraming": "corroborative",
+        "visualMotif": "motif.chemical",
+        "analogyClass": "analogy.structural_wear"
+      },
+      "legacySignalCodes": ["HBR_TREATMENT_SIGNAL"]
+    },
+
+    {
+      "id": "hard-water-exposure",
+      "name": "Hard Water Exposure",
+      "category": "treatment-history",
+      "biologicalSystem": "integumentary",
+      "description": "Self-reported hard-water exposure — cumulative mineral deposition affecting shaft and scalp barrier.",
+      "signalType": "SELF_REPORTED",
+      "polarity": "pathological",
+      "temporality": "chronic",
+      "confidenceBase": 0.75,
+      "evidenceTier": "emerging",
+      "severityContribution": 0.20,
+      "pathwayRelevance": [
+        { "pathwayId": "hair-shaft-damage", "weight": 0.50, "modulation": "supports" },
+        { "pathwayId": "scalp-inflammation", "weight": 0.20, "modulation": "supports" }
+      ],
+      "causeRelevance": [
+        { "causeId": "hair-shaft-damage-syndrome", "contribution": 0.40 }
+      ],
+      "narrativeMeaning": {
+        "clinicalConcept": "concept.hard_water",
+        "patientFacingTone": "informative",
+        "doctorFacingFraming": "corroborative",
+        "visualMotif": "motif.water",
+        "analogyClass": "analogy.structural_wear"
+      }
+    },
+
+    {
+      "id": "early-greying-presence",
+      "name": "Early Greying",
+      "category": "etiology-markers",
+      "biologicalSystem": "integumentary",
+      "description": "Self-reported premature greying.",
+      "signalType": "SELF_REPORTED",
+      "polarity": "modifier",
+      "temporality": "progressive",
+      "confidenceBase": 0.85,
+      "evidenceTier": "established",
+      "severityContribution": 0.10,
+      "pathwayRelevance": [
+        { "pathwayId": "oxidative-stress", "weight": 0.35, "modulation": "supports" }
+      ],
+      "causeRelevance": [
+        { "causeId": "multifactorial-hair-loss", "contribution": 0.15 }
+      ],
+      "narrativeMeaning": {
+        "clinicalConcept": "concept.early_greying",
+        "patientFacingTone": "reassuring",
+        "doctorFacingFraming": "corroborative",
+        "visualMotif": "motif.greying",
+        "analogyClass": "analogy.oxidative_load"
+      },
+      "legacySignalCodes": ["EARLY_GREY_LOCK","GREY_CO_CONDITION"]
+    },
+
+    {
+      "id": "age-young-modifier",
+      "name": "Age Modifier — Young (<25)",
+      "category": "demographic-modifiers",
+      "biologicalSystem": "genetic",
+      "description": "Age band under 25.",
+      "signalType": "DIRECT",
+      "polarity": "protective",
+      "temporality": "unknown",
+      "confidenceBase": 0.99,
+      "evidenceTier": "established",
+      "severityContribution": 0.0,
+      "pathwayRelevance": [
+        { "pathwayId": "follicular-miniaturization", "weight": -0.30, "modulation": "inhibits" }
+      ],
+      "causeRelevance": [
+        { "causeId": "stress-driven-telogen-effluvium", "contribution": 0.15 }
+      ],
+      "narrativeMeaning": {
+        "clinicalConcept": "concept.age_young",
+        "patientFacingTone": "reassuring",
+        "doctorFacingFraming": "corroborative",
+        "visualMotif": "motif.age",
+        "analogyClass": "analogy.demographic"
+      }
+    },
+
+    {
+      "id": "age-mid-modifier",
+      "name": "Age Modifier — Mid (25–40)",
+      "category": "demographic-modifiers",
+      "biologicalSystem": "genetic",
+      "description": "Age 25–40.",
+      "signalType": "DIRECT",
+      "polarity": "modifier",
+      "temporality": "unknown",
+      "confidenceBase": 0.99,
+      "evidenceTier": "established",
+      "severityContribution": 0.0,
+      "pathwayRelevance": [
+        { "pathwayId": "follicular-miniaturization", "weight": 0.15, "modulation": "supports" }
+      ],
+      "causeRelevance": [
+        { "causeId": "androgen-driven-miniaturization", "contribution": 0.20 }
+      ],
+      "narrativeMeaning": {
+        "clinicalConcept": "concept.age_mid",
+        "patientFacingTone": "informative",
+        "doctorFacingFraming": "corroborative",
+        "visualMotif": "motif.age",
+        "analogyClass": "analogy.demographic"
+      },
+      "legacySignalCodes": ["AGA_AGE_MODIFIER"]
+    },
+
+    {
+      "id": "age-mature-modifier",
+      "name": "Age Modifier — Mature (40–55)",
+      "category": "demographic-modifiers",
+      "biologicalSystem": "genetic",
+      "description": "Age 40–55.",
+      "signalType": "DIRECT",
+      "polarity": "modifier",
+      "temporality": "unknown",
+      "confidenceBase": 0.99,
+      "evidenceTier": "established",
+      "severityContribution": 0.10,
+      "pathwayRelevance": [
+        { "pathwayId": "follicular-miniaturization", "weight": 0.25, "modulation": "supports" },
+        { "pathwayId": "hormonal-dysregulation", "weight": 0.20, "modulation": "supports" }
+      ],
+      "causeRelevance": [
+        { "causeId": "androgen-driven-miniaturization", "contribution": 0.30 },
+        { "causeId": "hormonal-hair-loss", "contribution": 0.20 }
+      ],
+      "narrativeMeaning": {
+        "clinicalConcept": "concept.age_mature",
+        "patientFacingTone": "informative",
+        "doctorFacingFraming": "corroborative",
+        "visualMotif": "motif.age",
+        "analogyClass": "analogy.demographic"
+      },
+      "legacySignalCodes": ["AGA_AGE_MODIFIER"]
+    },
+
+    {
+      "id": "age-senior-modifier",
+      "name": "Age Modifier — Senior (>55)",
+      "category": "demographic-modifiers",
+      "biologicalSystem": "genetic",
+      "description": "Age over 55.",
+      "signalType": "DIRECT",
+      "polarity": "modifier",
+      "temporality": "unknown",
+      "confidenceBase": 0.99,
+      "evidenceTier": "established",
+      "severityContribution": 0.15,
+      "pathwayRelevance": [
+        { "pathwayId": "follicular-miniaturization", "weight": 0.30, "modulation": "supports" }
+      ],
+      "causeRelevance": [
+        { "causeId": "androgen-driven-miniaturization", "contribution": 0.30 }
+      ],
+      "narrativeMeaning": {
+        "clinicalConcept": "concept.age_senior",
+        "patientFacingTone": "informative",
+        "doctorFacingFraming": "corroborative",
+        "visualMotif": "motif.age",
+        "analogyClass": "analogy.demographic"
+      }
+    },
+
+    {
+      "id": "sex-male",
+      "name": "Sex — Male",
+      "category": "demographic-modifiers",
+      "biologicalSystem": "genetic",
+      "description": "Male — MPHL prior.",
+      "signalType": "DIRECT",
+      "polarity": "modifier",
+      "temporality": "unknown",
+      "confidenceBase": 0.99,
+      "evidenceTier": "established",
+      "severityContribution": 0.0,
+      "pathwayRelevance": [
+        { "pathwayId": "follicular-miniaturization", "weight": 0.30, "modulation": "supports" }
+      ],
+      "causeRelevance": [
+        { "causeId": "androgen-driven-miniaturization", "contribution": 0.40 }
+      ],
+      "narrativeMeaning": {
+        "clinicalConcept": "concept.sex_male",
+        "patientFacingTone": "informative",
+        "doctorFacingFraming": "corroborative",
+        "visualMotif": "motif.male",
+        "analogyClass": "analogy.demographic"
+      },
+      "legacySignalCodes": ["KIT_GENDER_RESOLVER"]
+    },
+
+    {
+      "id": "sex-female",
+      "name": "Sex — Female",
+      "category": "demographic-modifiers",
+      "biologicalSystem": "genetic",
+      "description": "Female — FPHL/hormonal-axis priors.",
+      "signalType": "DIRECT",
+      "polarity": "modifier",
+      "temporality": "unknown",
+      "confidenceBase": 0.99,
+      "evidenceTier": "established",
+      "severityContribution": 0.0,
+      "pathwayRelevance": [
+        { "pathwayId": "hormonal-dysregulation", "weight": 0.20, "modulation": "supports" }
+      ],
+      "causeRelevance": [
+        { "causeId": "hormonal-hair-loss", "contribution": 0.25 }
+      ],
+      "narrativeMeaning": {
+        "clinicalConcept": "concept.sex_female",
+        "patientFacingTone": "informative",
+        "doctorFacingFraming": "corroborative",
+        "visualMotif": "motif.female",
+        "analogyClass": "analogy.demographic"
+      },
+      "legacySignalCodes": ["KIT_GENDER_RESOLVER","FPHL_AGE_GATE"]
+    },
+
+    {
+      "id": "regrow-goal",
+      "name": "Goal — Regrowth Focus",
+      "category": "demographic-modifiers",
+      "biologicalSystem": "nervous",
+      "description": "Patient goal is regrowth (post-stabilization).",
+      "signalType": "DIRECT",
+      "polarity": "modifier",
+      "temporality": "unknown",
+      "confidenceBase": 0.95,
+      "evidenceTier": "established",
+      "severityContribution": 0.0,
+      "pathwayRelevance": [
+        { "pathwayId": "follicular-miniaturization", "weight": 0.10, "modulation": "supports" }
+      ],
+      "causeRelevance": [
+        { "causeId": "multifactorial-hair-loss", "contribution": 0.10 }
+      ],
+      "narrativeMeaning": {
+        "clinicalConcept": "concept.regrow_goal",
+        "patientFacingTone": "reassuring",
+        "doctorFacingFraming": "corroborative",
+        "visualMotif": "motif.goal",
+        "analogyClass": "analogy.demographic"
+      },
+      "legacySignalCodes": ["REGROW_GOAL_FLAG","GOAL_FILTER"]
+    }
+
+  ]
+}

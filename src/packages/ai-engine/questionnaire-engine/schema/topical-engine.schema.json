@@ -1,0 +1,594 @@
+{
+  "schemaVersion": "1.0",
+  "sourceFile": "DrFACT_revamp_v44.html",
+  "part": "PART3_TOPICAL_RECOMMENDATION_ENGINE",
+  "sourceLineRange": "2037–2815",
+
+  "topicalProductDatabase": {
+    "description": "TOPICAL_DATABASE — 14 products with matching tags, scalp compatibility, gender, contraindications and mechanism data",
+    "sourceLines": "2037–2103",
+    "products": [
+      {
+        "name": "Minoxidil 5%",
+        "tags": ["hairfall","thinning","alopecia","androgenetic"],
+        "scalpMatch": ["normal","oily"],
+        "gender": ["male","female"],
+        "contraindications": ["pregnancy"],
+        "hormonalSafe": false,
+        "harsh": true,
+        "category": null,
+        "usage": "Apply once daily to the affected scalp area as directed by the doctor.",
+        "note": "Growth active for pattern thinning; avoid for female patients during pregnancy or conception planning"
+      },
+      {
+        "name": "Minoxidil 2% + Finasteride 0.25% Topical",
+        "tags": ["hairfall","thinning","alopecia","pcos","androgenetic"],
+        "scalpMatch": ["normal","oily"],
+        "gender": ["male","female"],
+        "contraindications": ["pregnancy"],
+        "hormonalSafe": false,
+        "harsh": true,
+        "category": null,
+        "usage": "Apply at night on thinning zones only under doctor supervision.",
+        "note": "Doctor-choice topical for androgen-sensitive thinning; avoid in pregnancy or conception planning"
+      },
+      {
+        "name": "Minoxidil + Spironolactone Topical",
+        "tags": ["hairfall","thinning","pcos","hormonal"],
+        "scalpMatch": ["normal","oily"],
+        "gender": ["female"],
+        "contraindications": ["pregnancy"],
+        "hormonalSafe": false,
+        "harsh": true,
+        "category": null,
+        "usage": "Use only if prescribed for PCOS or androgen-linked female thinning.",
+        "note": "Avoid during pregnancy or conception planning"
+      },
+      {
+        "name": "Ketoconazole Lotion / Shampoo",
+        "tags": ["dandruff","fungal","itching"],
+        "scalpMatch": ["dandruff","oily","fungal"],
+        "gender": ["male","female"],
+        "contraindications": [],
+        "hormonalSafe": true,
+        "harsh": false,
+        "category": null,
+        "usage": "Use twice weekly; keep contact for 3-5 minutes before rinsing unless advised otherwise.",
+        "note": "Effective for Malassezia-driven dandruff, itching and oily scalp inflammation"
+      },
+      {
+        "name": "Ketoconazole + Growth Serum Combo",
+        "tags": ["dandruff","fungal","hairfall","thinning"],
+        "scalpMatch": ["dandruff","oily","fungal"],
+        "gender": ["male","female"],
+        "contraindications": [],
+        "hormonalSafe": true,
+        "harsh": false,
+        "category": null,
+        "usage": "Use ketoconazole twice weekly and a non-irritating growth serum on alternate nights.",
+        "note": "Best fit when dandruff and hairfall are both active"
+      },
+      {
+        "name": "F-Emugrow MCRD",
+        "tags": ["hairfall","thinning","alopecia","androgenetic","pattern","dht","transplant","sensitive"],
+        "scalpMatch": ["normal","dry","sensitive","inflammation","dandruff"],
+        "gender": ["male","female"],
+        "contraindications": ["pregnancy"],
+        "hormonalSafe": false,
+        "harsh": false,
+        "category": "oil",
+        "usage": "Apply to the affected scalp area as directed by the doctor. Massage gently for 2–3 minutes. Do not rinse. Use once daily or as prescribed.",
+        "note": "Suitable for pattern hair loss, thinning, and post-hair transplant care. Avoid in pregnancy or planning to conceive.",
+        "ingredients": "Emu Oil · Redensyl 3% · Dutasteride 0.5% · Clove Oil · Caffeine · Zinc Oxide · Copper Tripeptide · Magnesium Oxide · Melatonin",
+        "mechanism": "Dutasteride (0.5%) inhibits both Type I and Type II 5-alpha reductase — blocking DHT conversion more completely than Finasteride alone. Redensyl (3%) activates hair follicle stem cells and dermal papilla cell proliferation (anagen re-entry). Emu Oil improves dermal penetration of all co-delivered actives. Copper Tripeptide + Caffeine stimulate follicle microcirculation. Melatonin prolongs the anagen growth phase."
+      },
+      {
+        "name": "Trichogain Serum",
+        "tags": ["hairfall","thinning","sensitive"],
+        "scalpMatch": ["normal","dry","sensitive"],
+        "gender": ["male","female"],
+        "contraindications": [],
+        "hormonalSafe": true,
+        "harsh": false,
+        "category": null,
+        "usage": "Apply once daily or on alternate nights to thinning areas as tolerated.",
+        "note": "Non-minoxidil option for sensitive or dry scalp"
+      },
+      {
+        "name": "CR Serum",
+        "tags": ["hairfall","thinning","sensitive"],
+        "scalpMatch": ["dry","sensitive","normal"],
+        "gender": ["male","female"],
+        "contraindications": [],
+        "hormonalSafe": true,
+        "harsh": false,
+        "category": null,
+        "usage": "Apply on alternate nights unless the doctor changes frequency.",
+        "note": "Gentler topical support when harsh actives are not preferred"
+      },
+      {
+        "name": "F-Trichosure Pro",
+        "tags": ["menopause"],
+        "scalpMatch": ["normal","dry","sensitive"],
+        "gender": ["female"],
+        "contraindications": [],
+        "hormonalSafe": true,
+        "harsh": false,
+        "category": null,
+        "usage": "Apply as prescribed for female hormonal thinning support.",
+        "note": "Useful in peri-menopause, menopause or post-menopause related thinning"
+      },
+      {
+        "name": "Premature Greying Topical Support",
+        "tags": ["grey hair"],
+        "scalpMatch": ["normal","dry","sensitive"],
+        "gender": ["male","female"],
+        "contraindications": [],
+        "hormonalSafe": true,
+        "harsh": false,
+        "category": null,
+        "usage": "Use as directed on scalp or hair roots; pair with the prescribed greying kit.",
+        "note": "Topical support for early greying concerns"
+      },
+      {
+        "name": "F-Trichosilk D&F (Without Treatment)",
+        "tags": ["frizzy","dry hair","hair texture","frizz","dryness"],
+        "scalpMatch": ["dry","normal"],
+        "gender": ["male","female"],
+        "contraindications": [],
+        "hormonalSafe": true,
+        "harsh": false,
+        "category": "serum",
+        "usage": "Apply a small amount to damp or dry hair from mid-length to ends. Do not rinse. Use daily or as recommended by the doctor.",
+        "note": "Leave-in serum for dry and frizzy hair. Keeps frizz in check, prevents knots and tangles, hydrates the hair. Light and non-greasy formula. Recommended for everyday use.",
+        "ingredients": "Light leave-in serum complex; moisture-protective, anti-frizz, shine-enhancing. Non-greasy formula for dry and frizzy hair without heat or chemical treatment history.",
+        "mechanism": "Hydrates and coats hair shaft. Anti-frizz, moisture-protection and shine-enhancing. No active pharmaceutical ingredient."
+      },
+      {
+        "name": "F-Trichosilk D&F (With Treatment)",
+        "tags": ["frizzy","dry hair","heat styling","chemical treatment","damaged hair","hair texture","frizz","dryness"],
+        "scalpMatch": ["dry","normal","sensitive"],
+        "gender": ["male","female"],
+        "contraindications": [],
+        "hormonalSafe": true,
+        "harsh": false,
+        "category": "serum",
+        "usage": "Apply a small amount to damp or dry hair from mid-length to ends. Do not rinse. Use daily as a heat protectant before styling or as a finishing serum.",
+        "note": "Leave-in serum for treated and damaged hair. Boosts moisture and repairs hair fibres. Prevents dryness and frizziness. Heat protectant.",
+        "ingredients": "Leave-in serum with heat protectant complex; moisture-boosting, fibre-repair, anti-frizz, shine and bounce enhancing. For chemically treated or heat-damaged hair.",
+        "mechanism": "Heat protectant shield. Fibre repair, moisture retention, anti-frizz. No active pharmaceutical ingredient."
+      },
+      {
+        "name": "F-Biwash+ Anti-Dandruff Shampoo",
+        "tags": ["dandruff","itching","fungal","inflammation","psoriasis","seborrheic"],
+        "scalpMatch": ["dandruff","itching","oily","fungal","sensitive","inflammation","psoriasis"],
+        "gender": ["male","female"],
+        "contraindications": [],
+        "hormonalSafe": true,
+        "harsh": false,
+        "category": "shampoo",
+        "usage": "Use 2–3 times per week on wash days. Apply to wet scalp, lather gently for 3–5 minutes, then rinse thoroughly. Doctor to confirm frequency based on severity.",
+        "note": "Medicated anti-dandruff shampoo — reduces visible flakes, relieves itching, improves scalp hygiene. Effective in treatment of Dandruff and Seborrheic Dermatitis.",
+        "ingredients": "Medicated anti-dandruff complex; formulated to manage dandruff, scalp flaking, and itching. Gently cleanses while controlling dandruff-causing factors.",
+        "mechanism": "Antimicrobial and antifungal scalp cleansing. Controls Malassezia-driven dandruff and seborrheic dermatitis."
+      },
+      {
+        "name": "Trichonourish EVA / FHA-Andro+",
+        "tags": ["facial hair","hirsutism","pcos","androgenetic"],
+        "scalpMatch": [],
+        "gender": ["female"],
+        "contraindications": ["pregnancy"],
+        "hormonalSafe": false,
+        "harsh": false,
+        "category": null,
+        "usage": "Apply as directed by doctor to affected facial areas.",
+        "note": "Anti-androgen topical formulation targeting androgen-sensitive facial follicles — reduce unwanted facial hair growth driven by PCOS androgen excess. Avoid in pregnancy or planning to conceive."
+      }
+    ]
+  },
+
+  "topicalProtocolRows": {
+    "description": "TOPICAL_PROTOCOL_ROWS — 41 rows sourced from iv protocol April 26 spreadsheet; drives the Recommended Treatment shown in the report. Each row is a gender × age × grade × scalp × condition → treatment string.",
+    "sourceLines": "2107–2147",
+    "selectionAlgorithm": "getProtocolRecommendedTreatment() scores each row: base 40 pts + age bonus + scalpScore + conditionScore + hormonal bonus. Highest scorer wins. Row must match gender, age bracket, and grade before scoring.",
+    "rows": [
+      { "gender":"male", "age":"<25", "grade":"Grade 1-2", "scalp":"Normal-Oily", "key":"No minoxidil allergy", "treatment":"Minoxidil 5% topical +/- Finasteride 0.25% (separate or combo)" },
+      { "gender":"male", "age":"<25", "grade":"Grade 1-2", "scalp":"Normal-Oily", "key":"Heavy gym / high androgens", "treatment":"Minoxidil 5% topical +/- Finasteride 2.5% (initial 3-4 months, then taper to 0.25%)" },
+      { "gender":"male", "age":"<25", "grade":"Grade 1-2", "scalp":"Dry / Dandruff / Frizzy", "key":"Avoid topical minoxidil", "treatment":"F-Emugrow MCRD + Trichogain (alternate) +/- Oral Minoxidil if doctor approves" },
+      { "gender":"male", "age":"<25", "grade":"Grade 1-2", "scalp":"Psoriasis / Inflammation", "key":"Redness / scalp inflammation", "treatment":"F-Emugrow MCRD +/- Oral Minoxidil" },
+      { "gender":"male", "age":"<25", "grade":"Grade >=3", "scalp":"Normal-Oily", "key":"Standard case", "treatment":"Minoxidil 5% + Finasteride 0.25%" },
+      { "gender":"male", "age":"<25", "grade":"Grade >=3", "scalp":"Normal-Oily", "key":"Heavy gymmers", "treatment":"Finasteride 2.5% (initial) + Minoxidil" },
+      { "gender":"male", "age":"<25", "grade":"Grade >=3", "scalp":"Any", "key":"Plateau on topical / No Response", "treatment":"Finasteride 2.5% (initial) + Oral Minoxidil 1.25 to 2.5 mg" },
+      { "gender":"male", "age":"<25", "grade":"Grade >=3", "scalp":"Excess Dry / Dandruff", "key":"Avoid topical minoxidil", "treatment":"Replace with F-Emugrow MCRD + alternate-day 2.5 Finasteride gel for 3-4 months" },
+      { "gender":"male", "age":"<25", "grade":"Grade >=3", "scalp":"Psoriasis / Inflammation", "key":"", "treatment":"Replace with F-Emugrow MCRD + alternate-day 2.5 Finasteride gel for 3-4 months" },
+      { "gender":"male", "age":"25-55", "grade":"Grade 1-2", "scalp":"Normal-Oily", "key":"No allergy", "treatment":"Minoxidil 5% + Finasteride 0.25% (combo or separate)" },
+      { "gender":"male", "age":"25-55", "grade":"Grade 1-2", "scalp":"Normal-Oily", "key":"Gymmers", "treatment":"Prefer Finasteride 2.5% topical" },
+      { "gender":"male", "age":"25-55", "grade":"Grade 1-2", "scalp":"Any", "key":"Any topical intolerance", "treatment":"Oral Minoxidil 1.25-2.5 mg + Finasteride gel if tolerated" },
+      { "gender":"male", "age":"25-55", "grade":"Grade 1-2", "scalp":"Excess Dry / Dandruff", "key":"", "treatment":"F-Emugrow MCRD (replace minoxidil) + can be given Oral Minoxidil" },
+      { "gender":"male", "age":"25-55", "grade":"Grade 1-2", "scalp":"Psoriasis / Inflammation", "key":"", "treatment":"F-Emugrow MCRD +/- Oral Minoxidil" },
+      { "gender":"male", "age":"25-55", "grade":"Grade >=3", "scalp":"Normal-Oily", "key":"Standard", "treatment":"Finasteride topical 2.5% + Minoxidil" },
+      { "gender":"male", "age":"25-55", "grade":"Grade >=3", "scalp":"Any", "key":"Plateau", "treatment":"Finasteride topical 2.5% + Oral Minoxidil 1.25 to 2.5 mg" },
+      { "gender":"male", "age":"25-55", "grade":"Grade >=3", "scalp":"High androgens", "key":"Gymmers", "treatment":"Finasteride 2.5% strong with topical Minoxidil 5%" },
+      { "gender":"male", "age":"25-55", "grade":"Grade >=3", "scalp":"Excess Dry / Dandruff", "key":"", "treatment":"F-Emugrow MCRD with possible Oral Minoxidil and Finasteride topical 2.5%" },
+      { "gender":"male", "age":"25-55", "grade":"Grade >=3", "scalp":"Psoriasis / Inflammation", "key":"", "treatment":"F-Emugrow MCRD with doctor-directed topical or oral support" },
+      { "gender":"male", "age":">60", "grade":"Grade >=3", "scalp":"Any", "key":"", "treatment":"Minoxidil 5% + Finasteride 2.5% topical + F-Emugrow MCRD" },
+      { "gender":"male", "age":">60", "grade":"All Grades", "scalp":"Any", "key":"", "treatment":"Minoxidil 5% + Finasteride 2.5% topical + F-Emugrow MCRD" },
+      { "gender":"male", "age":">60", "grade":"All Grades", "scalp":"Normal-Oily", "key":"", "treatment":"Minoxidil 5% + Finasteride 2.5% topical + F-Emugrow MCRD" },
+      { "gender":"male", "age":">60", "grade":"All Grades", "scalp":"Excess Dry / Dandruff", "key":"", "treatment":"Minoxidil 5% + Finasteride 2.5% topical + F-Emugrow MCRD" },
+      { "gender":"male", "age":"<18", "grade":"Grade 1-2", "scalp":"Any", "key":"", "treatment":"Avoid Finasteride" },
+      { "gender":"male", "age":"<18", "grade":"Grade 1-2", "scalp":"Any", "key":"", "treatment":"Mild non-hormonal: F-Emugrow MCRD / Trichogain" },
+      { "gender":"male", "age":"<18", "grade":"Grade >=3", "scalp":"Any", "key":"", "treatment":"Strict doctor supervision" },
+      { "gender":"male", "age":"<18", "grade":"Grade >=3", "scalp":"Any", "key":"", "treatment":"Avoid Finasteride + cautious Minoxidil" },
+      { "gender":"female", "age":"<30", "grade":"Grade 1-2", "scalp":"Normal-Oily", "key":"", "treatment":"Extend 2% / Minoxidil 2%" },
+      { "gender":"female", "age":">30", "grade":"Grade 1-2", "scalp":"Normal-Oily + Hormonal issue", "key":"", "treatment":"Minoxidil 5% + Finasteride gel 0.25% topical; Minoxidil 5% + Finasteride gel 0.1% without hormonal issue (doctor choice)" },
+      { "gender":"female", "age":"<30", "grade":"Grade 1-2", "scalp":"Dry / Dandruff / Frizzy", "key":"", "treatment":"F-Emugrow MCR (avoid in pregnancy)" },
+      { "gender":"female", "age":"<30", "grade":"Grade 1-2", "scalp":"Psoriasis / Inflammation", "key":"", "treatment":"F-Emugrow MCR (avoid in pregnancy)" },
+      { "gender":"female", "age":">30", "grade":"Grade >=3", "scalp":"Normal-Oily without hormonal", "key":"", "treatment":"Minoxidil 5% + Finasteride gel 0.25% without hormonal issue (doctor choice); can consider F-Emugrow MCRD (avoid in pregnancy or planning to conceive)" },
+      { "gender":"female", "age":">30", "grade":"Grade >=3", "scalp":"Normal-Oily with hormonal issue", "key":"", "treatment":"Minoxidil 2% + Finasteride gel 0.25% hormonal issue (doctor choice); can consider F-Emugrow MCRD (avoid in pregnancy or planning to conceive)" },
+      { "gender":"female", "age":">30", "grade":"All Grades", "scalp":"Any", "key":"Raised Androgen / PCOD", "treatment":"Minoxidil 2% + Finasteride 0.25% topical (doctor choice)" },
+      { "gender":"female", "age":">30", "grade":"All Grades", "scalp":"Any", "key":"Peri Menopause", "treatment":"F-Trichosure pro or F-Emugrow MCRD or oral Minoxidil + spironolactone" },
+      { "gender":"female", "age":">30", "grade":"All Grades", "scalp":"Any", "key":"Menopause", "treatment":"F-Trichosure pro or F-Emugrow MCRD or oral Minoxidil + spironolactone" },
+      { "gender":"female", "age":">30", "grade":"All Grades", "scalp":"Any", "key":"Post Menopause", "treatment":"F-Trichosure pro or F-Emugrow MCRD or oral Minoxidil + spironolactone" },
+      { "gender":"female", "age":"<30", "grade":"All Grades", "scalp":"Any", "key":"PCOD / facial hair growth tendency", "treatment":"Oral Minoxidil + Spironolactone or Oral Minoxidil + Bicalutamide; Trichonourish EVA for facial hair growth / FHA-Andro+ for facial hair growth (avoid in pregnancy)" },
+      { "gender":"female", "age":">30", "grade":"All Grades", "scalp":"Any", "key":"PCOD / facial hair growth tendency", "treatment":"Oral Minoxidil + Spironolactone or Oral Minoxidil + Bicalutamide; Trichonourish EVA for facial hair growth / FHA-Andro+ for facial hair growth" }
+    ]
+  },
+
+  "patientNormalizationEngine": {
+    "function": "normalizePatientForTopicals(ans)",
+    "sourceLines": "2188–2254",
+    "description": "Converts raw STEPS answers into a structured patient object for topical engine input",
+    "inputFields": ["ans.gender OR ans.sex", "ans.scalp_condition OR ans.scalp", "ans.hair_issues OR ans.hairtype OR ans.goal", "ans.cause", "ans.immunity", "ans.hormonal_issues OR ans.hormonal", "ans.thyroid", "ans.extra OR ans.medical_detail", "ans.is_pregnant", "ans.planning_pregnancy"],
+    "outputFields": {
+      "gender": "Normalized to 'male' | 'female' | 'other'",
+      "age": "parseInt(ans.age) || 0",
+      "scalp_condition": "Deduplicated array of normalized scalp tokens: dandruff, itching, oily, dry, sensitive, psoriasis, inflammation, fungal, normal",
+      "hair_issues": "Derived from goal+cause+immunity text: hairfall, thinning, alopecia, grey hair, dandruff, fungal",
+      "hormonal_issues": "Derived from hormonal+thyroid text: pcos, thyroid, postpartum, menopause, pregnancy. Default 'none' if empty.",
+      "is_pregnant": "boolean — true if is_pregnant===true OR hormonal_issues includes 'pregnancy'",
+      "planning_pregnancy": "boolean — true if planning_pregnancy===true OR extra text includes conception intent phrases",
+      "hasDandruffItchingCombo": "boolean — true if any scalp answer has both 'dandruff' and 'itch' substrings",
+      "hasPsoriasis": "boolean — true if any scalp answer has 'psoriasis' substring"
+    },
+    "scalpTokenizationRules": [
+      "dandruff / flake → 'dandruff'",
+      "itch → 'itching'",
+      "oily → 'oily'",
+      "dry → 'dry'",
+      "sens → 'sensitive'",
+      "psoriasis → ['psoriasis','inflammation','sensitive']",
+      "red / irrit / burn / boil / pimple → ['sensitive','inflammation']",
+      "fungal → 'fungal'",
+      "normal → 'normal'",
+      "fallback if empty → ['normal']"
+    ]
+  },
+
+  "scoringHelpers": {
+    "sourceLines": "2299–2329",
+    "functions": [
+      {
+        "name": "_topicalProtocolScalpScore(rowScalp, patient, answerText)",
+        "description": "Scores how well a protocol row's scalp requirement matches the patient. Returns signed integer.",
+        "rules": [
+          { "rowScalp": "any / empty", "score": "+4 (neutral match)" },
+          { "rowScalp": "psoriasis / inflammation", "score": "+18 if patient has inflammation/sensitive/psoriasis, else -10" },
+          { "rowScalp": "dry / dandruff / frizzy", "score": "+18 if patient has dry/dandruff/itching/fungal, else -6" },
+          { "rowScalp": "high androgens", "score": "+18 if answerText has 'gym'/'androgen' OR patient has pcos, else -8" },
+          { "rowScalp": "normal oily with hormonal", "score": "+20 if normalOily AND hasHormonal, else -10" },
+          { "rowScalp": "normal oily without hormonal", "score": "+20 if normalOily AND !hasHormonal, else -8" },
+          { "rowScalp": "normal oily", "score": "+14 if normalOily, else -4" },
+          { "rowScalp": "other", "score": "+0" }
+        ]
+      },
+      {
+        "name": "_topicalProtocolConditionScore(rowKey, patient, answerText)",
+        "description": "Scores how well a protocol row's key condition matches the patient's clinical signals. Returns signed integer.",
+        "rules": [
+          { "key": "standard / no allergy / no minoxidil allergy", "score": "+2 (neutral)" },
+          { "key": "gym / high androgen — patient has gym/bodybuilding/androgen", "score": "+18" },
+          { "key": "plateau / no response — patient reports plateau/no response", "score": "+18" },
+          { "key": "intolerance", "score": "+16 if answerText has intolerance" },
+          { "key": "avoid topical minoxidil — patient has dry/dandruff/sensitive scalp", "score": "+16" },
+          { "key": "pcod / pcos / raised androgen — patient has pcos or pcod/androgen in text", "score": "+22" },
+          { "key": "peri menopause", "score": "+22 if answerText has peri+meno" },
+          { "key": "menopause (not post)", "score": "+22 if answerText has menopause and NOT post" },
+          { "key": "post menopause", "score": "+22 if answerText has post+menopause" },
+          { "key": "facial hair", "score": "+18 if answerText has facial hair/hirsut" },
+          { "key": "no match", "score": "-2" }
+        ]
+      }
+    ]
+  },
+
+  "recommendationEngine": {
+    "function": "recommendTopicals(patientInput, topicalDb)",
+    "sourceLines": "2354–2814",
+    "description": "Main topical recommendation engine. Builds recommended[] and caution[] arrays based on patient signals. Output capped at 6 recommended + 4 caution.",
+    "outputCap": { "recommended": 6, "caution": 4 },
+    "outputStructure": "{ topical_recommendations: { recommended: [...], caution: [...] } }",
+    "derivedPatientFlags": {
+      "isDryDandruff": "patient has dry/dandruff/itching OR ansText has frizzy/white flakes",
+      "isInflamed": "patient has inflammation/sensitive OR ansText has psoriasis/redness",
+      "isPsoriasisScalp": "patient.hasPsoriasis OR ansText has psoriasis",
+      "isDandruffItching": "patient.hasDandruffItchingCombo OR (dandruff AND itching both in scalp_condition)",
+      "isGymmer": "ansText has gym / bodybuilding",
+      "isPCOS": "patient hormonal_issues has pcos OR ansText has pcod",
+      "isPeriMeno": "ansText has peri AND meno",
+      "isMeno": "ansText has menopause OR post menopause — AND NOT isPeriMeno",
+      "hasHormonal": "any hormonal_issue !== 'none'",
+      "isPregnancy": "patient.is_pregnant OR patient.planning_pregnancy",
+      "isHypertension": "ansText has hypertension / blood pressure",
+      "isAdv": "gradeNum >= 3",
+      "hasFacialHair": "ansText has facial hair / hirsut / fha / trichonourish"
+    },
+    "decisionTree": [
+      {
+        "branch": "HYPERTENSION_OVERRIDE",
+        "condition": "isHypertension === true",
+        "action": "Early return with F-Emugrow MCRD + Trichogain as recommended; Oral Minoxidil 1.25mg (if BP controlled) as caution. Contraindication note: Minoxidil contraindicated due to systemic absorption causing BP fluctuation.",
+        "earlyReturn": true
+      },
+      {
+        "branch": "PREGNANCY_OVERRIDE",
+        "condition": "isPregnancy === true",
+        "action": "Early return with 'Doctor consultation required — no standard topical safe in pregnancy'. All Minoxidil, Finasteride, F-Emugrow MCRD contraindicated.",
+        "earlyReturn": true
+      },
+      {
+        "branch": "MALE_UNDER_18",
+        "condition": "gender=male AND age < 18",
+        "isAdv_false": "Recommend F-Emugrow MCRD / Trichogain (mild non-hormonal). Note: Avoid Finasteride entirely.",
+        "isAdv_true": "Recommend Strict doctor supervision. Note: Avoid Finasteride + cautious Minoxidil only under specialist."
+      },
+      {
+        "branch": "MALE_18_TO_55_PSORIASIS",
+        "condition": "gender=male AND age 18–55 AND isPsoriasisScalp",
+        "recommended": "F-Emugrow MCRD ± Oral Minoxidil (introduce only after inflammation controlled)",
+        "caution": ["Oral Minoxidil 1.25mg (after Phase 2 inflammation controlled)", "Topical Minoxidil 5% (avoid until remission)"],
+        "clinicalRationale": "Psoriasis: alcohol-based Minoxidil strips epidermal barrier and exacerbates immune-mediated flares. F-Emugrow MCRD is non-alcohol, peptide-based, anti-inflammatory vehicle."
+      },
+      {
+        "branch": "MALE_18_TO_55_DANDRUFF_ITCHING",
+        "condition": "gender=male AND age 18–55 AND isDandruffItching",
+        "recommended": "F-Emugrow MCRD (replace topical Minoxidil) + Finasteride topical (0.25% Grade 1-2 / 2.5% Grade 3+ alternate-day → taper). F-Biwash+ Anti-Dandruff Shampoo on wash days.",
+        "caution": ["Oral Minoxidil 1.25–2.5mg"],
+        "clinicalRationale": "Malassezia-driven sebaceous inflammation — Minoxidil alcohol vehicle strips lipid barrier, intensifying itch/flaking."
+      },
+      {
+        "branch": "MALE_18_TO_55_DRY_DANDRUFF",
+        "condition": "gender=male AND age 18–55 AND isDryDandruff (without active itching combo)",
+        "recommended": "F-Emugrow MCRD (replace topical Minoxidil) + Finasteride topical (0.25% Grade 1-2 / 2.5% alternate-day Grade 3+)",
+        "caution": ["Oral Minoxidil 1.25–2.5mg"],
+        "clinicalRationale": "Alcohol vehicle in topical Minoxidil worsens scalp dryness, dandruff, and inflammation."
+      },
+      {
+        "branch": "MALE_18_TO_55_INFLAMED",
+        "condition": "gender=male AND age 18–55 AND isInflamed (non-psoriasis)",
+        "recommended": "F-Emugrow MCRD ± Oral Minoxidil",
+        "caution": ["Oral Minoxidil 1.25mg"],
+        "note": "Replace with F-Emugrow MCRD + alternate-day Finasteride 2.5% if Grade 3+"
+      },
+      {
+        "branch": "MALE_18_TO_55_GYMMER_ADV",
+        "condition": "gender=male AND age 18–55 AND isGymmer AND isAdv",
+        "recommended": "Finasteride 2.5% topical (months 1–4 → taper to 0.25%) + Minoxidil 5%",
+        "caution": ["Oral Minoxidil 2.5mg (escalation at plateau)"],
+        "clinicalRationale": "Anabolic training amplifies DHT load — Finasteride 2.5% provides maximum 5-alpha reductase blockade during high-androgen phase."
+      },
+      {
+        "branch": "MALE_18_TO_55_ADV_STANDARD",
+        "condition": "gender=male AND age 18–55 AND isAdv (not gymmer)",
+        "recommended": "Finasteride topical 2.5% + Minoxidil 5%",
+        "caution": ["Oral Minoxidil 1.25–2.5mg (plateau escalation)"],
+        "note": "If plateau at 6 months: escalate to Oral Minoxidil 1.25 → 2.5mg"
+      },
+      {
+        "branch": "MALE_18_TO_55_GYMMER_GRADE12",
+        "condition": "gender=male AND age 18–55 AND isGymmer AND NOT isAdv",
+        "recommended": "Finasteride 2.5% topical (initial) → taper to 0.25% + Minoxidil 5%",
+        "caution": ["Minoxidil 5% topical"]
+      },
+      {
+        "branch": "MALE_18_TO_55_STANDARD",
+        "condition": "gender=male AND age 18–55 (no flags)",
+        "recommended": "age<25: Minoxidil 5% +/- Finasteride 0.25% | age 25–55: Minoxidil 5% + Finasteride 0.25%",
+        "caution": ["Minoxidil 5% topical", "Minoxidil 2% + Finasteride 0.25% Topical"],
+        "note": "If topical intolerance: switch to Oral Minoxidil 1.25–2.5mg + Finasteride gel"
+      },
+      {
+        "branch": "MALE_OVER_55",
+        "condition": "gender=male AND age > 55",
+        "isDryDandruff_true": "F-Emugrow MCRD + Finasteride 2.5% topical + Oral Minoxidil (doctor approves)",
+        "isDryDandruff_false": "Minoxidil 5% + Finasteride 2.5% topical + F-Emugrow MCRD",
+        "caution": ["Oral Minoxidil (extreme caution age >60 — mandatory cardiac evaluation)"]
+      },
+      {
+        "branch": "FEMALE_PCOS_UNDER_30",
+        "condition": "gender=female AND isPCOS AND age < 30",
+        "recommended": "Oral Minoxidil + Spironolactone | or Oral Minoxidil + Bicalutamide",
+        "facialHairAddOn": "Trichonourish EVA | or FHA-Andro+ if facial hair growth tendency detected",
+        "caution": ["Minoxidil 2% + Finasteride 0.25% topical (alternative)"],
+        "clinicalRationale": "PCOS: oral route preferred — targets androgen excess systemically. Spironolactone/Bicalutamide block androgen receptors centrally."
+      },
+      {
+        "branch": "FEMALE_PCOS_OVER_30",
+        "condition": "gender=female AND isPCOS AND age >= 30",
+        "recommended": "Oral Minoxidil + Spironolactone | or Oral Minoxidil + Bicalutamide",
+        "facialHairAddOn": "Trichonourish EVA | or FHA-Andro+ if facial hair growth tendency",
+        "caution": ["Minoxidil 2% + Finasteride 0.25% topical (alternative)"]
+      },
+      {
+        "branch": "FEMALE_PERI_MENOPAUSE",
+        "condition": "gender=female AND isPeriMeno",
+        "recommended": "F-Trichosure Pro | or F-Emugrow MCRD | or Oral Minoxidil + Spironolactone",
+        "clinicalRationale": "Oestrogen fluctuation + relative androgen rise — anti-androgen approach preferred over Finasteride at this stage. F-Emugrow MCRD preferred for dry/inflamed scalp."
+      },
+      {
+        "branch": "FEMALE_MENOPAUSE",
+        "condition": "gender=female AND isMeno (includes post-menopause)",
+        "recommended": "F-Trichosure Pro | or F-Emugrow MCRD | or Oral Minoxidil + Spironolactone",
+        "clinicalRationale": "Post-menopausal androgen dominance drives FPHL. Anti-androgen approach preferred. Avoid Finasteride unless specifically indicated."
+      },
+      {
+        "branch": "FEMALE_PSORIASIS",
+        "condition": "gender=female AND isPsoriasisScalp",
+        "recommended": "age<30: F-Emugrow MCR ± Oral Minoxidil | age>30: F-Emugrow MCRD ± Oral Minoxidil",
+        "caution": ["Oral Minoxidil 1.25mg (after remission only)", "Topical Minoxidil (avoid on active psoriasis)"],
+        "note": "F-Emugrow MCR (<30): non-irritant peptide vehicle | F-Emugrow MCRD (>30): Dutasteride 0.5% + Redensyl 3%"
+      },
+      {
+        "branch": "FEMALE_DANDRUFF_ITCHING",
+        "condition": "gender=female AND isDandruffItching",
+        "recommended": "age<30: F-Emugrow MCR | age>30: F-Emugrow MCRD. Use F-Biwash+ on wash days.",
+        "caution": ["Minoxidil 2% (once dandruff/itching are controlled)"]
+      },
+      {
+        "branch": "FEMALE_DRY_OR_INFLAMED",
+        "condition": "gender=female AND (isDryDandruff OR isInflamed) — non-psoriasis",
+        "recommended": "age<30: F-Emugrow MCR | age>30: F-Emugrow MCRD",
+        "caution": ["Minoxidil 2% (reintroduce once scalp recovers)"]
+      },
+      {
+        "branch": "FEMALE_ADV_WITH_HORMONAL",
+        "condition": "gender=female AND isAdv AND hasHormonal",
+        "recommended": "Minoxidil 2% + Finasteride gel 0.25% topical (hormonal case). Can consider F-Emugrow MCRD.",
+        "caution": ["Minoxidil 5% topical"]
+      },
+      {
+        "branch": "FEMALE_ADV_NO_HORMONAL",
+        "condition": "gender=female AND isAdv AND NOT hasHormonal",
+        "recommended": "Minoxidil 5% + Finasteride gel 0.25% topical. Can consider F-Emugrow MCRD.",
+        "caution": ["Minoxidil 5% topical"]
+      },
+      {
+        "branch": "FEMALE_GRADE12_UNDER_30",
+        "condition": "gender=female AND NOT isAdv AND age < 30",
+        "recommended": "Minoxidil 2% topical",
+        "note": "Upgrade to 5% / add Finasteride only if inadequate response at 3 months"
+      },
+      {
+        "branch": "FEMALE_GRADE12_OVER_30_WITH_HORMONAL",
+        "condition": "gender=female AND NOT isAdv AND age >= 30 AND hasHormonal",
+        "recommended": "Minoxidil 5% + Finasteride gel 0.25% | or Minoxidil 5% + Finasteride gel 0.1% (gentler)",
+        "caution": ["Minoxidil 5% topical", "Minoxidil 2% + Finasteride 0.25% Topical"]
+      },
+      {
+        "branch": "FEMALE_GRADE12_OVER_30_NO_HORMONAL",
+        "condition": "gender=female AND NOT isAdv AND age >= 30 AND NOT hasHormonal",
+        "recommended": "Minoxidil 5% + Finasteride gel 0.1% topical",
+        "caution": ["Minoxidil 5% topical", "Minoxidil 2% + Finasteride 0.25% Topical"]
+      },
+      {
+        "branch": "FALLBACK",
+        "condition": "No match — recommended[] is empty",
+        "recommended": "No direct topical required — continue prescribed kit"
+      }
+    ],
+    "autoInjectRules": [
+      {
+        "ruleId": "AUTO_01_FBIWASH",
+        "trigger": "NOT isPregnancy AND (isDandruffItching OR isPsoriasisScalp OR patient.scalp_condition has dandruff/itching/psoriasis)",
+        "inject": "F-Biwash+ Anti-Dandruff Shampoo added to recommended[] regardless of branch outcome",
+        "clinicalRationale": "Ensures medicated scalp cleansing is always prescribed when scalp microenvironment is compromised by dandruff, itching or psoriasis"
+      },
+      {
+        "ruleId": "AUTO_02_EMUGROW_PATTERN",
+        "trigger": "NOT isPregnancy AND (ansText has mphl/fphl/androgenetic/pattern/genetics/family history/thinning/widening parting OR S._conditionScores for AGA_MALE_123/AGA_MALE_45/AGA_FEMALE_123/AGA_FEMALE_45 >= 40)",
+        "inject": "F-Emugrow MCRD (Therapeutic Hair Oil) added to recommended[] regardless of branch outcome",
+        "clinicalRationale": "Dutasteride 0.5% (dual Type I+II 5-alpha reductase inhibition) + Redensyl 3% (follicle stem cell activation) always indicated in pattern/androgenetic hair loss",
+        "globalStateAccess": "Reads S._conditionScores — cross-subsystem dependency on main clinical engine state"
+      },
+      {
+        "ruleId": "AUTO_03_TRICHOSILK",
+        "trigger": "patient.scalp_condition has 'dry' OR ansText has 'frizzy'/'dry scalp'",
+        "inject": {
+          "noHeatChemical": "F-Trichosilk D&F (Without Treatment) — Leave-in Serum",
+          "hasHeatChemical": "F-Trichosilk D&F (With Treatment) — Leave-in Serum",
+          "heatChemicalDetection": "ans.treatment or ans.treatments array containing: heat / chemical / colour / keratin / straighten"
+        },
+        "clinicalRationale": "Dry or frizzy hair requires daily leave-in serum. Heat/chemical treatment history determines which variant."
+      }
+    ]
+  },
+
+  "protocolRowSelector": {
+    "function": "getProtocolRecommendedTreatment(ans)",
+    "sourceLines": "2331–2352",
+    "description": "Selects the single best-matching TOPICAL_PROTOCOL_ROW via weighted scoring. Used for the 'Recommended Treatment column' in the report.",
+    "algorithm": [
+      "Normalize patient via normalizePatientForTopicals(ans)",
+      "Build answerText via _topicalAnswerText(ans)",
+      "For each row in TOPICAL_PROTOCOL_ROWS:",
+      "  Filter: row.gender must match patient.gender (skip mismatch)",
+      "  Filter: _topicalAgeMatches(row.age, patient.age) must be true",
+      "  Filter: _topicalGradeMatches(row.grade, ans) must be true",
+      "  Score: base 40 + age<18 bonus 12 (if applicable) + scalpScore + conditionScore + female hormonal bonus +10",
+      "Select row with highest score",
+      "Return { treatment, source: 'Recommended Treatment column', matchedRow: 'gender / age / grade / scalp / key' }"
+    ],
+    "ageBrackets": {
+      "<18": "age > 0 AND age < 18",
+      "<25": "age > 0 AND age < 25",
+      "<30": "age > 0 AND age < 30",
+      ">30": "age >= 30",
+      ">60": "age >= 60",
+      "25-55": "age >= 25 AND age <= 55",
+      "any": "always matches"
+    },
+    "gradeBrackets": {
+      "Grade 1-2": "gradeNum === 1 OR gradeNum === 2",
+      "Grade >=3": "gradeNum >= 3",
+      "All Grades / any": "always matches (gradeNum fallback 0 = no match unless 'all')"
+    }
+  },
+
+  "hiddenCouplings": [
+    {
+      "id": "TC_01",
+      "description": "AUTO_02 auto-inject reads S._conditionScores from the main clinical engine (matchProtocol() global state). This creates a runtime dependency between the topical engine and the kit protocol engine — topical F-Emugrow MCRD injection for pattern loss is gated on AGA scoring from the separate subsystem.",
+      "risk": "If matchProtocol() has not been called before recommendTopicals(), S._conditionScores is undefined and the auto-inject will not fire even when pattern loss is clinically present.",
+      "sourceLines": "2766–2772"
+    },
+    {
+      "id": "TC_02",
+      "description": "F-Emugrow MCR (without D) is used for females <30 in psoriasis/dandruff branches — this is a DIFFERENT product from F-Emugrow MCRD (with D = Dutasteride). The database only contains MCRD. MCR variant is implied by age < 30 logic but not in TOPICAL_DATABASE.",
+      "risk": "Product catalog is incomplete — F-Emugrow MCR is referenced in recommendation output but has no database entry. Downstream rendering or PDF generation may fail to match ingredients/mechanism for this variant.",
+      "sourceLines": "2635, 2654, 2668"
+    },
+    {
+      "id": "TC_03",
+      "description": "recommendTopicals() reads patientInput.treatment or patientInput.treatments (both checked) to detect heat/chemical treatment history for F-Trichosilk auto-inject. These field names are not in the STEPS array — they are injected externally or via an undocumented intake pathway.",
+      "risk": "If treatment field is missing, noTreatment evaluates to !false = true → always recommends 'Without Treatment' variant even for patients with heat styling history.",
+      "sourceLines": "2788–2790"
+    },
+    {
+      "id": "TC_04",
+      "description": "Hypertension early-return branch checks ansText for 'hypertension' / 'blood pressure' — but neither word appears as an option in any STEPS question. Signal can only arrive via free-text fields (extra, medical_detail). This means a structured intake can never activate this override; it only fires from unstructured text.",
+      "risk": "Hypertension-based Minoxidil contraindication will silently miss patients who select a checkbox-based medical condition. Dangerous in clinical context.",
+      "sourceLines": "2373, 2378–2392"
+    }
+  ],
+
+  "summary": {
+    "totalProductsInDatabase": 14,
+    "totalProtocolRows": 41,
+    "totalDecisionBranches": 25,
+    "totalAutoInjectRules": 3,
+    "totalHiddenCouplings": 4,
+    "maleDecisionPaths": 9,
+    "femaleDecisionPaths": 10,
+    "globalOverrides": 2,
+    "fallbackPaths": 1,
+    "outputCap": "max 6 recommended + 4 caution",
+    "contraindications": ["pregnancy", "planning_pregnancy", "hypertension (early returns)"],
+    "productsWithNoDBEntry": ["F-Emugrow MCR (variant of MCRD for females under 30)", "Trichonourish EVA", "FHA-Andro+", "Oral Minoxidil (various doses)"],
+    "clinicalArchitectureObservations": [
+      "The topical engine is a fully separate clinical subsystem from the kit protocol engine — it runs independently on the same patient answers.",
+      "TOPICAL_PROTOCOL_ROWS represents a structured clinical lookup (sourced from spreadsheet) while recommendTopicals() is a rule-based override engine. Both run and the protocol row selector provides the single 'recommended treatment' string for the report header.",
+      "F-Emugrow MCRD appears as both a database product and an auto-inject rule (AUTO_02) — it can be added twice if the main branch also selects it. The output cap (slice(0,6)) prevents overflow but deduplication is not enforced.",
+      "The pregnancy and hypertension early-returns bypass all scoring — these are absolute contraindication gates identical in philosophy to the matchProtocol() absolute locks (ALOPECIA_AREATA at 105, TTM at 102).",
+      "The auto-inject F-Biwash+ rule is the topical engine's equivalent of the kit engine's PRO IMMUNE always-last rule — both enforce a mandatory product based on a specific condition flag regardless of other scoring outcomes."
+    ]
+  }
+}

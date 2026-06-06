@@ -1,0 +1,116 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "clinical-engine.pathway-activation.PathwayGraph@1.0.0",
+  "title": "PathwayGraph",
+  "description": "The single graph substrate downstream layers read. Nodes are Signals and Pathways; Edges are supports / inhibits / required-gate / amplifies / mediates / competes. Every conclusion the rest of the system reaches must be expressible as a walk over this graph.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["graphSnapshotId","assessmentId","evaluatedAt","registryVersions","engineVersion","nodes","edges","provenance"],
+  "properties": {
+    "graphSnapshotId":  { "type": "string", "format": "uuid" },
+    "assessmentId":     { "type": "string", "format": "uuid" },
+    "evaluatedAt":      { "type": "string", "format": "date-time" },
+
+    "registryVersions": {
+      "type": "object",
+      "required": ["signals","pathways","pathwaysConfidenceModel"],
+      "properties": {
+        "signals":                 { "type": "string", "pattern": "^\\d+\\.\\d+\\.\\d+$" },
+        "pathways":                { "type": "string", "pattern": "^\\d+\\.\\d+\\.\\d+$" },
+        "pathwaysConfidenceModel": { "type": "string", "pattern": "^\\d+\\.\\d+\\.\\d+$" }
+      }
+    },
+    "engineVersion": { "type": "string", "pattern": "^\\d+\\.\\d+\\.\\d+$" },
+
+    "nodes": {
+      "type": "array",
+      "minItems": 11,
+      "items": { "oneOf": [ { "$ref": "#/definitions/SignalNode" }, { "$ref": "#/definitions/PathwayNode" } ] }
+    },
+    "edges": {
+      "type": "array",
+      "items": { "oneOf": [
+        { "$ref": "#/definitions/SignalPathwayEdge" },
+        { "$ref": "#/definitions/PathwayPathwayEdge" }
+      ] }
+    },
+
+    "provenance": {
+      "type": "object",
+      "required": ["signalsConsumed","pathwaysEvaluated","pathwaysActivated","pathwaysSubthreshold","computeMs"],
+      "properties": {
+        "signalsConsumed":       { "type": "array", "items": { "type": "string" } },
+        "pathwaysEvaluated":     { "type": "integer", "const": 10 },
+        "pathwaysActivated":     { "type": "integer", "minimum": 0, "maximum": 10 },
+        "pathwaysSubthreshold":  { "type": "integer", "minimum": 0, "maximum": 10 },
+        "computeMs":             { "type": "number",  "minimum": 0.0 }
+      }
+    }
+  },
+  "definitions": {
+
+    "SignalNode": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind","id","signalId","present","subthreshold","confidence","evidenceTier","category"],
+      "properties": {
+        "kind":         { "const": "signal" },
+        "id":           { "type": "string", "pattern": "^node\\.signal\\.[a-z][a-z0-9-]+$" },
+        "signalId":     { "type": "string" },
+        "present":      { "type": "boolean" },
+        "subthreshold": { "type": "boolean" },
+        "confidence":   { "type": "number", "minimum": 0.0, "maximum": 1.0 },
+        "evidenceTier": { "type": "string", "enum": ["established","emerging","heuristic"] },
+        "category":     { "type": "string" }
+      }
+    },
+
+    "PathwayNode": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind","id","pathwayId","activation","activationBand","confidence","severity","severityBand","subthreshold","reversibilityClass"],
+      "properties": {
+        "kind":              { "const": "pathway" },
+        "id":                { "type": "string", "pattern": "^node\\.pathway\\.[a-z][a-z0-9-]+$" },
+        "pathwayId":         { "type": "string" },
+        "activation":        { "type": "number", "minimum": 0.0,  "maximum": 1.0 },
+        "activationBand":    { "type": "string", "enum": ["dormant","latent","active","dominant","entrenched"] },
+        "confidence":        { "type": "number", "minimum": 0.05, "maximum": 0.98 },
+        "severity":          { "type": "number", "minimum": 0.0,  "maximum": 1.0 },
+        "severityBand":      { "type": "string", "enum": ["dormant","latent","active","dominant","entrenched"] },
+        "subthreshold":      { "type": "boolean" },
+        "reversibilityClass":{ "type": "string", "enum": ["fully-reversible","partially-reversible","stabilizable","shaft-only-reversible","irreversible"] }
+      }
+    },
+
+    "SignalPathwayEdge": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind","from","to","weight","confidence"],
+      "properties": {
+        "kind":          { "type": "string", "enum": ["supports","inhibits","required-gate"] },
+        "from":          { "type": "string", "pattern": "^node\\.signal\\.[a-z][a-z0-9-]+$" },
+        "to":            { "type": "string", "pattern": "^node\\.pathway\\.[a-z][a-z0-9-]+$" },
+        "weight":        { "type": "number", "minimum": -1.0, "maximum": 1.0 },
+        "confidence":    { "type": "number", "minimum": 0.0,  "maximum": 1.0 },
+        "contribution":  { "type": "number" },
+        "evidenceTier":  { "type": "string", "enum": ["established","emerging","heuristic"] },
+        "gateSatisfied": { "type": "boolean", "description": "Only meaningful when kind == 'required-gate'." }
+      }
+    },
+
+    "PathwayPathwayEdge": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind","from","to","magnitude"],
+      "properties": {
+        "kind":      { "type": "string", "enum": ["amplifies","mediates","competes"] },
+        "from":      { "type": "string", "pattern": "^node\\.pathway\\.[a-z][a-z0-9-]+$" },
+        "to":        { "type": "string", "pattern": "^node\\.pathway\\.[a-z][a-z0-9-]+$" },
+        "magnitude": { "type": "number", "minimum": 0.0, "maximum": 0.40 },
+        "applied":   { "type": "number", "minimum": 0.0, "maximum": 0.25, "description": "Effective amplification applied (only for kind=='amplifies')." },
+        "when":      { "type": "string", "enum": ["co-active","co-dominant"], "description": "Only for kind=='amplifies'." }
+      }
+    }
+  }
+}

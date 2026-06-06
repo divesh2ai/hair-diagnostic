@@ -1,0 +1,129 @@
+{
+  "caseId": "inflam_01_seborrheic_mild_age22_male",
+  "corpusVersion": "2.0.0",
+  "description": "Inflammatory scalp dysfunction — seborrheic mild, 22y Male.",
+  "category": "INFLAMMATORY_SCALP",
+  "severity": "mild",
+  "presentationClarity": "ambiguous",
+  "demographicProfile": {
+    "sex": "Male",
+    "age": "22",
+    "region": null,
+    "dietType": "Mixed"
+  },
+  "questionnaireAnswers": {
+    "sex": "Male",
+    "age": "22",
+    "goal": [
+      "Reduce hair fall"
+    ],
+    "grade": "Grade 1",
+    "scalp": [
+      "Dandruff with itching"
+    ],
+    "cause": [
+      "Scalp infection"
+    ],
+    "lifestyle": [],
+    "thyroid": [],
+    "hormonal": [],
+    "immunity": [],
+    "deficiency": [],
+    "gut": [],
+    "diet": [],
+    "hairtype": [
+      "Diffuse shedding"
+    ],
+    "treatment": [],
+    "duration": "6–12 months",
+    "count": "100–200 hairs/day"
+  },
+  "expectedSignals": [
+    {
+      "signalId": "sex-male",
+      "minConfidence": 0.99
+    },
+    {
+      "signalId": "age-young-modifier",
+      "minConfidence": 0.99
+    },
+    {
+      "signalId": "dandruff-with-itching",
+      "minConfidence": 0.85,
+      "mustBePrimary": true
+    }
+  ],
+  "expectedPathways": [
+    {
+      "pathwayId": "scalp-inflammation",
+      "minActivation": 0.6,
+      "role": "leading"
+    }
+  ],
+  "expectedRootCauses": [
+    {
+      "causeId": "inflammatory-scalp-dysfunction",
+      "minPosterior": 0.45,
+      "surfaceAs": "lead"
+    }
+  ],
+  "expectedDiagnosis": {
+    "primary": "inflammatory-scalp-dysfunction",
+    "secondary": [],
+    "legacyDiagnosisKey": "SEBORRHEIC_DERMATITIS",
+    "legacyDiagnosisKeyAlternates": [
+      "INFLAMMATORY_SCALP"
+    ]
+  },
+  "expectedSeverity": "mild",
+  "expectedProtocolClass": "INFLAMMATORY",
+  "expectedTherapyNeeds": [
+    "INFLAMMATION_CONTROL",
+    "SCALP_DECONGESTION"
+  ],
+  "expectedMonitoringRequirements": {
+    "required": [
+      "SCALP_EXAM_3M",
+      "GLOBAL_PHOTO_3M"
+    ],
+    "recommended": [
+      "TRICHOSCOPY_6M"
+    ],
+    "forbidden": []
+  },
+  "expectedNarrativeThemes": {
+    "themes": [
+      "INFLAMMATORY_QUIESCENCE",
+      "REVERSIBILITY_REASSURANCE"
+    ],
+    "mustContainTokens": [
+      "inflammation",
+      "scalp"
+    ],
+    "mustNotContainTokens": [
+      "guaranteed"
+    ]
+  },
+  "clinicalRationale": {
+    "whyPrimary": "22-year-old male with dominant scalp-surface inflammation signals (seborrheic mild) and mild associated shedding. Scalp-inflammation pathway leads with ≥0.60 activation; pattern signal is absent, so the inflammatory cause is the named driver rather than a downstream modifier. Protocol class INFLAMMATORY focuses on scalp decongestion and topical inflammation control; once the surface dermatosis quiets, follicle cycling normalizes.",
+    "whyNotCompetitors": {
+      "androgen-driven-miniaturization": "Pattern signal absent; miniaturization not above floor.",
+      "stress-driven-telogen-effluvium": "Shedding is mild and explained by inflammatory shed; no synchronized telogen precipitant.",
+      "autoimmune-hair-loss": "No patchy/areata markers.",
+      "nutritional-hair-stress": "No deficiency signals.",
+      "multifactorial-hair-loss": "Single dominant pathway."
+    }
+  },
+  "adversarial": {
+    "isAdversarial": true,
+    "expectedPrimaryDriver": "inflammatory-scalp-dysfunction",
+    "expectedSecondaryDrivers": [],
+    "commonFailureModes": [
+      {
+        "failureMode": "INFLAMMATION_DISMISSED_AS_AGA",
+        "impactedComponent": "ROOTCAUSE",
+        "description": "Oily-scalp signal can falsely route to AGA when paired with mild shed; inflammation must lead when surface dermatosis dominates."
+      }
+    ]
+  }
+}

@@ -1,0 +1,35 @@
+{
+  "id": "metabolic_sedentary_male_01",
+  "description": "Male obesity/metabolic syndrome with AGA co-condition. Sedentary lifestyle amplifies DHT-insulin axis. AGA_MALE_123 dominates. META B already part of AGA base protocol — metabolicModifierRule generic injection does NOT fire (no duplication). Tests metabolic signal gating logic.",
+  "budget": "STANDARD",
+  "answers": {
+    "sex": "Male",
+    "age": "43",
+    "grade": "Grade 2",
+    "goal": ["Reduce hair fall"],
+    "lifestyle": ["Obesity", "Sedentary"],
+    "cause": ["Family history"],
+    "scalp": [],
+    "thyroid": [],
+    "hormonal": [],
+    "immunity": [],
+    "deficiency": [],
+    "gut": [],
+    "diet": [],
+    "hairtype": [],
+    "treatment": [],
+    "duration": "6–12 months",
+    "count": "50–100 strands"
+  },
+  "expected": {
+    "diagnoses": ["AGA_MALE_123"],
+    "scalpStates": ["NORMAL_SCALP"],
+    "rootCauses": ["GENETICS", "METABOLIC"],
+    "therapyNeeds": ["DHT_SUPPRESSION", "INFLAMMATION_CONTROL", "SHEDDING_ARREST", "METABOLIC_SUPPORT", "FOLLICLE_STIMULATION"],
+    "topKit": "HAIR FACT TE GOLD",
+    "mustIncludeKits": ["HAIR FACT TE GOLD", "PHENOTYPE INFLAMATION", "MPHL", "PRO FACT META B"],
+    "mustExcludeKits": ["RAPID WEIGHT LOSS SHIELD", "PRO FACT META B HYPOTHYROID", "LACTIHEALTH"],
+    "mustTriggerRules": ["ACTIVE_SHEDDING"],
+    "mustBlockRules": ["RULE1_HYPO_METABOLIC", "GLP1_EARLY", "GLP1_LATE"]
+  }
+}

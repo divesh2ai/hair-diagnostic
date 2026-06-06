@@ -1,0 +1,189 @@
+{
+  "caseId": "fphl_09_lud1_age54_peri_ironlow",
+  "corpusVersion": "2.0.0",
+  "description": "Female AGA Ludwig 1, 54y, perimenopausal, ferritin deficient (adversarial).",
+  "category": "FPHL",
+  "severity": "mild",
+  "presentationClarity": "clear",
+  "demographicProfile": {
+    "sex": "Female",
+    "age": "54",
+    "region": null,
+    "dietType": "Mixed"
+  },
+  "questionnaireAnswers": {
+    "sex": "Female",
+    "age": "54",
+    "goal": [
+      "Reduce hair fall",
+      "Regrow lost hair"
+    ],
+    "grade": "Grade 2",
+    "scalp": [
+      "Normal scalp"
+    ],
+    "cause": [
+      "Family history"
+    ],
+    "lifestyle": [],
+    "thyroid": [],
+    "hormonal": [
+      "Perimenopause"
+    ],
+    "immunity": [],
+    "deficiency": [
+      "Iron deficiency"
+    ],
+    "gut": [],
+    "diet": [],
+    "hairtype": [
+      "Widening parting",
+      "Thinning at crown"
+    ],
+    "treatment": [],
+    "duration": "More than 1 year",
+    "count": "thinning visible, minimal fall"
+  },
+  "expectedSignals": [
+    {
+      "signalId": "pattern-thinning-marker",
+      "minConfidence": 0.75,
+      "mustBePrimary": true
+    },
+    {
+      "signalId": "thinning-without-shedding",
+      "minConfidence": 0.55
+    },
+    {
+      "signalId": "grade123-severity-marker",
+      "minConfidence": 0.7
+    },
+    {
+      "signalId": "sex-female",
+      "minConfidence": 0.99
+    },
+    {
+      "signalId": "age-mature-modifier",
+      "minConfidence": 0.99
+    },
+    {
+      "signalId": "genetic-predisposition-reported",
+      "minConfidence": 0.7
+    },
+    {
+      "signalId": "perimenopause-state",
+      "minConfidence": 0.8
+    },
+    {
+      "signalId": "iron-deficiency-reported",
+      "minConfidence": 0.75
+    }
+  ],
+  "expectedPathways": [
+    {
+      "pathwayId": "follicular-miniaturization",
+      "minActivation": 0.55,
+      "role": "leading"
+    },
+    {
+      "pathwayId": "hormonal-dysregulation",
+      "minActivation": 0.4,
+      "role": "supporting"
+    },
+    {
+      "pathwayId": "nutritional-limitation",
+      "minActivation": 0.4,
+      "role": "supporting"
+    }
+  ],
+  "expectedRootCauses": [
+    {
+      "causeId": "androgen-driven-miniaturization",
+      "minPosterior": 0.3,
+      "surfaceAs": "co-lead"
+    },
+    {
+      "causeId": "hormonal-hair-loss",
+      "minPosterior": 0.3,
+      "surfaceAs": "co-lead"
+    },
+    {
+      "causeId": "nutritional-hair-stress",
+      "minPosterior": 0.12,
+      "surfaceAs": "candidate"
+    }
+  ],
+  "expectedDiagnosis": {
+    "primary": "androgen-driven-miniaturization",
+    "secondary": [
+      "hormonal-hair-loss",
+      "nutritional-hair-stress"
+    ],
+    "legacyDiagnosisKey": "AGA_FEMALE_123",
+    "legacyDiagnosisKeyAlternates": [
+      "PERIMENOPAUSE_HAIRLOSS"
+    ]
+  },
+  "expectedSeverity": "mild",
+  "expectedProtocolClass": "FPHL",
+  "expectedTherapyNeeds": [
+    "DHT_SUPPRESSION",
+    "ENDOCRINE_OPTIMIZATION",
+    "INFLAMMATION_CONTROL",
+    "NUTRITIONAL_REPLETION"
+  ],
+  "expectedMonitoringRequirements": {
+    "required": [
+      "GLOBAL_PHOTO_3M",
+      "TRICHOSCOPY_6M",
+      "FERRITIN_4M",
+      "VITAMIN_D_4M"
+    ],
+    "recommended": [
+      "SHED_COUNT_MONTHLY"
+    ],
+    "forbidden": [
+      "ANDROGEN_PANEL_6M"
+    ]
+  },
+  "expectedNarrativeThemes": {
+    "themes": [
+      "ANDROGENIC_PROGRESSION",
+      "ENDOCRINE_REBALANCE",
+      "EXPECTATION_SETTING_SLOW",
+      "NUTRITIONAL_RESTORATION"
+    ],
+    "mustContainTokens": [
+      "androgen",
+      "menopaus"
+    ],
+    "mustNotContainTokens": [
+      "guaranteed regrowth"
+    ]
+  },
+  "clinicalRationale": {
+    "whyPrimary": "Female, age 54, Ludwig 1 pattern with widening parting, perimenopausal endocrine state, family history positive, minimal active shedding. The crown-emphasized topology with intact frontal hairline is the female-pattern signature of androgen-driven miniaturization expressed within an endocrine context. Both miniaturization (≥0.55) and hormonal-dysregulation (≥0.40) pathways activate, producing a co-leading androgenic + hormonal cause posterior — the legacy DiagnosisKey for FPHL maps directly to this co-explanation.",
+    "whyNotCompetitors": {
+      "stress-driven-telogen-effluvium": "No acute precipitant, no synchronized diffuse shedding lagging a known stressor by 2–4 months; chronic timing without heavy shed weakens TE.",
+      "autoimmune-hair-loss": "No patchy loss or areata/scarring history.",
+      "inflammatory-scalp-dysfunction": "Scalp surface is unremarkable; inflammation signals do not fire above background.",
+      "nutritional-hair-stress": "Iron deficiency is a co-driver but does not produce pattern topology; corrected in parallel without taking leadership.",
+      "multifactorial-hair-loss": "Only two pathways exceed 0.40; compositeRule (≥3 pathways) not met."
+    }
+  },
+  "adversarial": {
+    "isAdversarial": true,
+    "expectedPrimaryDriver": "androgen-driven-miniaturization",
+    "expectedSecondaryDrivers": [
+      "hormonal-hair-loss",
+      "nutritional-hair-stress"
+    ],
+    "commonFailureModes": [
+      {
+        "failureMode": "FEMALE_AGA_MISSED_AS_NUTRITIONAL",
+        "impactedComponent": "ROOTCAUSE",
+        "description": "In women, ferritin deficiency frequently drowns out pattern signal; topology weight must dominate."
+      }
+    ]
+  }
+}

@@ -1,0 +1,146 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "clinical-engine.cause-ranker.CauseRank@1.0.0",
+  "title": "CauseRank",
+  "description": "Emitted by the Cause Ranker for every assessment. Carries the full Bayesian posterior distribution over the 10 canonical causes, dissent metrics, exclusion records, and registry-version stamping for audit reconstruction. Consumed by Recovery Engine, Objectives Engine, Doctor Report Builder, Patient Report projection, and the legacy DiagnosisKey adapter.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "causeRankId","assessmentId","graphSnapshotId","evaluatedAt",
+    "registryVersions","engineVersion",
+    "leadingCauseId","leadingPosterior","leadingConfidence","verdict","leadershipMargin",
+    "ranking","exclusions","compositePromotion","determinismStamp"
+  ],
+  "properties": {
+    "causeRankId":     { "type": "string", "format": "uuid" },
+    "assessmentId":    { "type": "string", "format": "uuid" },
+    "graphSnapshotId": { "type": "string", "format": "uuid", "description": "FK to the PathwayGraph this rank was computed from." },
+    "evaluatedAt":     { "type": "string", "format": "date-time" },
+
+    "registryVersions": {
+      "type": "object",
+      "required": ["signals","pathways","causes","causesConfidenceModel"],
+      "properties": {
+        "signals":               { "type": "string", "pattern": "^\\d+\\.\\d+\\.\\d+$" },
+        "pathways":              { "type": "string", "pattern": "^\\d+\\.\\d+\\.\\d+$" },
+        "causes":                { "type": "string", "pattern": "^\\d+\\.\\d+\\.\\d+$" },
+        "causesConfidenceModel": { "type": "string", "pattern": "^\\d+\\.\\d+\\.\\d+$" }
+      }
+    },
+    "engineVersion": { "type": "string", "pattern": "^\\d+\\.\\d+\\.\\d+$" },
+
+    "leadingCauseId":     { "$ref": "#/definitions/CauseId" },
+    "leadingPosterior":   { "type": "number", "minimum": 0.0, "maximum": 1.0 },
+    "leadingConfidence":  { "type": "number", "minimum": 0.05, "maximum": 0.97 },
+    "verdict": {
+      "type": "string",
+      "enum": ["leads","leads-with-dissent","co-leads","composite"]
+    },
+    "leadershipMargin":   { "type": "number", "minimum": 0.0, "maximum": 1.0 },
+
+    "ranking": {
+      "type": "array",
+      "minItems": 10,
+      "maxItems": 10,
+      "description": "Full posterior distribution. Sorted descending by posterior. Sum of posteriors = 1.0 (within 1e-6).",
+      "items": { "$ref": "#/definitions/CauseEntry" }
+    },
+
+    "topNEmitted": {
+      "type": "array",
+      "description": "Convenience projection of the top N entries (default N=5) for downstream consumers that only need the surfaced ranking.",
+      "items": { "$ref": "#/definitions/CauseEntry" }
+    },
+
+    "coLeadingCauseIds": {
+      "type": "array",
+      "description": "Cause IDs that are within 0.05 posterior of the leader. Emitted on verdict in {co-leads, composite}.",
+      "items": { "$ref": "#/definitions/CauseId" }
+    },
+
+    "secondaryCauseId": { "anyOf": [ { "$ref": "#/definitions/CauseId" }, { "type": "null" } ] },
+    "tertiaryCauseId":  { "anyOf": [ { "$ref": "#/definitions/CauseId" }, { "type": "null" } ] },
+
+    "exclusions": {
+      "type": "array",
+      "description": "Causes whose logScore was driven to -infinity via an exclusionary edge. Emitted for audit; these are absent from the softmax denominator.",
+      "items": {
+        "type": "object",
+        "required": ["causeId","exclusionRuleId","reason"],
+        "properties": {
+          "causeId":          { "$ref": "#/definitions/CauseId" },
+          "exclusionRuleId":  { "type": "string" },
+          "reason":           { "type": "string" },
+          "triggeringSignalId":  { "type": "string" },
+          "triggeringPathwayId": { "type": "string" }
+        }
+      }
+    },
+
+    "compositePromotion": {
+      "type": "object",
+      "required": ["fired","activePathwayCount","topTwoSingleCauseGap"],
+      "properties": {
+        "fired":                  { "type": "boolean" },
+        "activePathwayCount":     { "type": "integer", "minimum": 0, "maximum": 10 },
+        "topTwoSingleCauseGap":   { "type": "number",  "minimum": 0.0, "maximum": 1.0 },
+        "promotionBoostApplied":  { "type": "number" }
+      }
+    },
+
+    "determinismStamp": {
+      "type": "object",
+      "required": ["softmaxTemperature","conflictPenaltyMagnitude","tieBreakRule","computeMs"],
+      "properties": {
+        "softmaxTemperature":       { "type": "number" },
+        "conflictPenaltyMagnitude": { "type": "number" },
+        "tieBreakRule":             { "type": "string", "const": "lower-prior-then-lexicographic" },
+        "computeMs":                { "type": "number", "minimum": 0.0 }
+      }
+    }
+  },
+
+  "definitions": {
+
+    "CauseId": {
+      "type": "string",
+      "enum": [
+        "androgen-driven-miniaturization",
+        "stress-driven-telogen-effluvium",
+        "nutritional-hair-stress",
+        "hormonal-hair-loss",
+        "metabolic-hair-dysfunction",
+        "autoimmune-hair-loss",
+        "gut-hair-axis-dysfunction",
+        "inflammatory-scalp-dysfunction",
+        "hair-shaft-damage-syndrome",
+        "multifactorial-hair-loss"
+      ]
+    },
+
+    "CauseEntry": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "causeId","rank","posterior","confidence","logScore",
+        "priorContribution","pathwayContribution","signalContribution",
+        "conflictPenalty","tierFloorPenalty","subthreshold","excluded","band"
+      ],
+      "properties": {
+        "causeId":             { "$ref": "#/definitions/CauseId" },
+        "rank":                { "type": "integer", "minimum": 1, "maximum": 10 },
+        "posterior":           { "type": "number", "minimum": 0.0, "maximum": 1.0 },
+        "confidence":          { "type": "number", "minimum": 0.0, "maximum": 1.0 },
+        "logScore":            { "type": "number" },
+        "priorContribution":   { "type": "number", "description": "log(prior(c))" },
+        "pathwayContribution": { "type": "number", "description": "Σ activation(p) × llr(c|p) over contributing pathways above minActivation." },
+        "signalContribution":  { "type": "number", "description": "Σ confidence(s) × llr(c|s) over contributing signals above minConfidence." },
+        "conflictPenalty":     { "type": "number", "minimum": 0.0 },
+        "tierFloorPenalty":    { "type": "number", "minimum": 0.0 },
+        "subthreshold":        { "type": "boolean" },
+        "excluded":            { "type": "boolean" },
+        "band":                { "type": "string", "enum": ["leading","considered","subthreshold","excluded"] }
+      }
+    }
+  }
+}

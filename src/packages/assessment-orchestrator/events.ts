@@ -1,0 +1,40 @@
+import type { PrismaClient } from "@prisma/client";
+
+export type AssessmentEventType =
+  | "SUBMITTED"
+  | "QUEUED"
+  | "ORCHESTRATION_STARTED"
+  | "NORMALIZATION_COMPLETE"
+  | "CLINICAL_ENGINE_COMPLETE"
+  | "RECOMMENDATIONS_COMPLETE"
+  | "REPORT_GENERATED"
+  | "ARTIFACT_CREATED"
+  | "FAILED"
+  | "RETRY_STARTED"
+  | "RETRY_SUCCEEDED"
+  | "RETRY_FAILED";
+
+export interface EventOptions {
+  stage?: string;
+  message?: string;
+  metadata?: Record<string, unknown>;
+  durationMs?: number;
+}
+
+export async function logAssessmentEvent(
+  prisma: PrismaClient,
+  assessmentId: string,
+  type: AssessmentEventType,
+  opts: EventOptions = {}
+): Promise<void> {
+  await prisma.assessmentEvent.create({
+    data: {
+      assessmentId,
+      type,
+      stage: opts.stage ?? null,
+      message: opts.message ?? null,
+      metadata: (opts.metadata ?? null) as object | null,
+      durationMs: opts.durationMs ?? null,
+    },
+  });
+}

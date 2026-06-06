@@ -1,0 +1,158 @@
+{
+  "caseId": "te_chronic_20_chronic_dieter_age48_male",
+  "corpusVersion": "2.0.0",
+  "description": "Chronic telogen effluvium, chronic dieter, 48y Male.",
+  "category": "CHRONIC_TE",
+  "severity": "moderate",
+  "presentationClarity": "clear",
+  "demographicProfile": {
+    "sex": "Male",
+    "age": "48",
+    "region": null,
+    "dietType": "Mixed"
+  },
+  "questionnaireAnswers": {
+    "sex": "Male",
+    "age": "48",
+    "goal": [
+      "Reduce hair fall"
+    ],
+    "grade": "Grade 1",
+    "scalp": [
+      "Normal scalp"
+    ],
+    "cause": [],
+    "lifestyle": [],
+    "thyroid": [],
+    "hormonal": [],
+    "immunity": [],
+    "deficiency": [
+      "Iron deficiency",
+      "Vitamin D deficiency"
+    ],
+    "gut": [],
+    "diet": [
+      "Irregular meals"
+    ],
+    "hairtype": [
+      "Diffuse shedding"
+    ],
+    "treatment": [],
+    "duration": "More than 1 year",
+    "count": "100–200 hairs/day"
+  },
+  "expectedSignals": [
+    {
+      "signalId": "diffuse-shedding-marker",
+      "minConfidence": 0.8,
+      "mustBePrimary": true
+    },
+    {
+      "signalId": "chronic-duration-marker",
+      "minConfidence": 0.85
+    },
+    {
+      "signalId": "active-shedding-mild",
+      "minConfidence": 0.7
+    },
+    {
+      "signalId": "sex-male",
+      "minConfidence": 0.99
+    },
+    {
+      "signalId": "age-mature-modifier",
+      "minConfidence": 0.99
+    },
+    {
+      "signalId": "iron-deficiency-reported",
+      "minConfidence": 0.75
+    },
+    {
+      "signalId": "vitamin-d-deficiency-reported",
+      "minConfidence": 0.7
+    },
+    {
+      "signalId": "irregular-diet-pattern",
+      "minConfidence": 0.7
+    }
+  ],
+  "expectedPathways": [
+    {
+      "pathwayId": "telogen-cycle-disruption",
+      "minActivation": 0.55,
+      "role": "leading"
+    },
+    {
+      "pathwayId": "nutritional-limitation",
+      "minActivation": 0.5,
+      "role": "supporting"
+    }
+  ],
+  "expectedRootCauses": [
+    {
+      "causeId": "stress-driven-telogen-effluvium",
+      "minPosterior": 0.4,
+      "surfaceAs": "lead"
+    },
+    {
+      "causeId": "nutritional-hair-stress",
+      "minPosterior": 0.2,
+      "surfaceAs": "co-lead"
+    }
+  ],
+  "expectedDiagnosis": {
+    "primary": "stress-driven-telogen-effluvium",
+    "secondary": [
+      "nutritional-hair-stress"
+    ],
+    "legacyDiagnosisKey": "NUTRITIONAL_TE",
+    "legacyDiagnosisKeyAlternates": [
+      "CHRONIC_TE"
+    ]
+  },
+  "expectedSeverity": "moderate",
+  "expectedProtocolClass": "TE_CHRONIC",
+  "expectedTherapyNeeds": [
+    "CYCLE_RESTORATION",
+    "STRESS_DOWNREGULATION",
+    "NUTRITIONAL_REPLETION"
+  ],
+  "expectedMonitoringRequirements": {
+    "required": [
+      "SHED_COUNT_MONTHLY",
+      "GLOBAL_PHOTO_3M",
+      "FERRITIN_4M",
+      "VITAMIN_D_4M",
+      "TSH_3M"
+    ],
+    "recommended": [
+      "STRESS_PHQ_MONTHLY"
+    ],
+    "forbidden": []
+  },
+  "expectedNarrativeThemes": {
+    "themes": [
+      "CYCLE_RESET",
+      "STRESS_RECOVERY",
+      "EXPECTATION_SETTING_SLOW",
+      "NUTRITIONAL_RESTORATION"
+    ],
+    "mustContainTokens": [
+      "chronic",
+      "telogen"
+    ],
+    "mustNotContainTokens": [
+      "guaranteed"
+    ]
+  },
+  "clinicalRationale": {
+    "whyPrimary": "48-year-old male with persistent diffuse shedding > 12 months, no architectural pattern change, persistent nutritional risk pattern. Chronic-duration marker plus diffuse shedding without pattern topology produces telogen-cycle-disruption leadership at modest but sustained activation. Reversibility is partial-to-full once the chronic driver is addressed; protocol class TE_CHRONIC mandates comprehensive deficiency workup in monitoring.",
+    "whyNotCompetitors": {
+      "androgen-driven-miniaturization": "No pattern signal above background; chronic diffuse shed without thinning topology weighs against miniaturization.",
+      "autoimmune-hair-loss": "No patchy/areata markers.",
+      "inflammatory-scalp-dysfunction": "Unremarkable scalp surface.",
+      "nutritional-hair-stress": "Co-driver and co-lead.",
+      "multifactorial-hair-loss": "Only one dominant pathway (two when nutritional co-activates) — compositeRule not met."
+    }
+  }
+}

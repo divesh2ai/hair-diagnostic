@@ -1,0 +1,88 @@
+{
+  "$schema": "../../../packages/governance/version/registry.meta.schema.json",
+  "registry": "causes.categories",
+  "version": "1.0.0",
+  "frozenContract": "ClinicalIntelligence@1.0/Cause.category",
+  "description": "Explanatory taxonomy for causes. Each cause declares exactly one category. Categories drive (a) report-grouping in the doctor view, (b) co-explanation grouping heuristics, (c) default narrative tone, and (d) downstream objective bias when the cause leads.",
+  "categories": [
+    {
+      "id": "androgenic",
+      "label": "Androgenic Causes",
+      "description": "Causes whose dominant driver is androgen signalling at the follicle, irrespective of upstream origin (genetic, PCOS-mediated, post-menopausal).",
+      "leadsToObjectiveBias": ["growth-stimulation","hormonal-support","long-term-preservation"],
+      "narrativeTone": "structural-progressive"
+    },
+    {
+      "id": "neuro-endocrine-stress",
+      "label": "Stress and Cycle-Timing Causes",
+      "description": "Causes whose dominant driver is acute or chronic perturbation of the hair-follicle cycle timing (HPA-axis, post-illness, postpartum, crash-diet).",
+      "leadsToObjectiveBias": ["growth-stimulation","nutritional-support","scalp-stabilization"],
+      "narrativeTone": "reassuring-reversible"
+    },
+    {
+      "id": "nutritional",
+      "label": "Nutritional Causes",
+      "description": "Causes whose dominant driver is substrate insufficiency — micronutrient or macronutrient gaps.",
+      "leadsToObjectiveBias": ["nutritional-support","growth-stimulation"],
+      "narrativeTone": "actionable-reversible"
+    },
+    {
+      "id": "endocrine",
+      "label": "Endocrine Causes",
+      "description": "Causes whose dominant driver is a named endocrine perturbation (thyroid, PCOS, peri/postmenopause).",
+      "leadsToObjectiveBias": ["hormonal-support","growth-stimulation","long-term-preservation"],
+      "narrativeTone": "diagnostic-coordinated"
+    },
+    {
+      "id": "metabolic",
+      "label": "Metabolic Causes",
+      "description": "Causes whose dominant driver is insulin–glucose dysregulation or adiposity-related hormonal cross-talk.",
+      "leadsToObjectiveBias": ["nutritional-support","hormonal-support","growth-stimulation"],
+      "narrativeTone": "diagnostic-coordinated"
+    },
+    {
+      "id": "autoimmune",
+      "label": "Autoimmune Causes",
+      "description": "Causes whose dominant driver is immune-mediated follicular targeting.",
+      "leadsToObjectiveBias": ["inflammation-reduction","maintenance"],
+      "narrativeTone": "cautious-medical"
+    },
+    {
+      "id": "gut-axis",
+      "label": "Gut–Hair Axis Causes",
+      "description": "Causes whose dominant driver is absorption-side or microbiome-mediated insufficiency manifesting in hair.",
+      "leadsToObjectiveBias": ["nutritional-support","inflammation-reduction"],
+      "narrativeTone": "systems-thinking"
+    },
+    {
+      "id": "scalp-inflammatory",
+      "label": "Scalp-Inflammatory Causes",
+      "description": "Causes whose dominant driver is perifollicular and surface scalp inflammation.",
+      "leadsToObjectiveBias": ["inflammation-reduction","scalp-stabilization"],
+      "narrativeTone": "actionable-reversible"
+    },
+    {
+      "id": "extrinsic-mechanical",
+      "label": "Extrinsic / Structural Causes",
+      "description": "Causes whose dominant driver is shaft-level damage from environment, heat, or chemicals — not follicular dysfunction.",
+      "leadsToObjectiveBias": ["scalp-stabilization","maintenance"],
+      "narrativeTone": "behavioral-reversible"
+    },
+    {
+      "id": "composite",
+      "label": "Composite Causes",
+      "description": "Causes that are explicitly multi-driver and require a composite explanation. Reserved for multifactorial-hair-loss.",
+      "leadsToObjectiveBias": ["growth-stimulation","hormonal-support","inflammation-reduction","nutritional-support"],
+      "narrativeTone": "honest-composite"
+    }
+  ],
+  "categoryRelationships": [
+    { "from": "androgenic",            "to": "endocrine",          "type": "frequently-co-leads",       "notes": "Female AGA cases routinely co-lead with endocrine." },
+    { "from": "androgenic",            "to": "metabolic",          "type": "frequently-co-leads",       "notes": "PCOS-with-metabolic cluster." },
+    { "from": "neuro-endocrine-stress","to": "nutritional",        "type": "frequently-co-leads" },
+    { "from": "neuro-endocrine-stress","to": "endocrine",          "type": "postpartum-co-leads" },
+    { "from": "nutritional",           "to": "gut-axis",           "type": "frequently-co-leads" },
+    { "from": "scalp-inflammatory",    "to": "androgenic",         "type": "amplifies-not-leads",       "notes": "Scalp inflammation amplifies miniaturization but rarely leads when miniaturization is dominant." },
+    { "from": "autoimmune",            "to": "scalp-inflammatory", "type": "shares-evidence",           "notes": "Distinguishing patchy + AA-history from inflammatory dermatosis is a key disambiguation." }
+  ]
+}

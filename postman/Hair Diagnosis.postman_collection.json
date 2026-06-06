@@ -1,0 +1,63 @@
+{
+  "info": {
+    "name": "Hair Diagnosis API",
+    "_postman_id": "b1f7b2e6-0000-4a1b-9cde-000000000000",
+    "description": "Collection to test conversational and diagnostic flows",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "baseUrl", "value": "http://localhost:4000" },
+    { "key": "sessionId", "value": "" }
+  ],
+  "item": [
+    {
+  "name": "Clinical Engine - Debug Sandbox",
+  "request": {
+    "method": "POST",
+    "header": [
+      {
+        "key": "Content-Type",
+        "value": "application/json"
+      }
+    ],
+    "body": {
+      "mode": "raw",
+      "raw": "{\n  \"gender\": \"Female\",\n  \"age\": 29,\n  \"concerns\": [\"Hair Fall\"],\n  \"hormonal\": [\"PCOS\"],\n  \"cause\": [\"GLP-1 within 6 months\"],\n  \"diet\": [\"Crash Diet\"]\n}"
+    },
+    "url": {
+      "raw": "{{baseUrl}}/api/debug-clinical-engine",
+      "host": ["{{baseUrl}}"],
+      "path": ["api", "debug-clinical-engine"]
+    }
+  }
+      }
+    },
+    {
+      "name": "Diagnosis - Start",
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "body": { "mode": "raw", "raw": "{\n  \"sessionId\": \"{{sessionId}}\"\n}" },
+        "url": { "raw": "{{baseUrl}}/api/diagnose/start", "host": ["{{baseUrl}}"], "path": ["api","diagnose","start"] }
+      }
+    },
+    {
+      "name": "Diagnosis - Answer",
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "body": { "mode": "raw", "raw": "{\n  \"sessionId\": \"{{sessionId}}\",\n  \"key\": \"hairFallCount\",\n  \"value\": \"80\"\n}" },
+        "url": { "raw": "{{baseUrl}}/api/diagnose/answer", "host": ["{{baseUrl}}"], "path": ["api","diagnose","answer"] }
+      }
+    },
+    {
+      "name": "WhatsApp Webhook - Simulate",
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "body": { "mode": "raw", "raw": "{\n  \"messages\": [{ \"from\": \"919999999999\", \"text\": { \"body\": \"Hi\" } }],\n  \"contacts\": [{ \"wa_id\": \"919999999999\" }]\n}" },
+        "url": { "raw": "{{baseUrl}}/api/whatsapp-webhook", "host": ["{{baseUrl}}"], "path": ["api","whatsapp-webhook"] }
+      }
+    }
+  ]
+}

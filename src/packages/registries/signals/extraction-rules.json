@@ -1,0 +1,153 @@
+{
+  "$schema": "./validation-schema.json",
+  "registry": "signals.extraction-rules",
+  "version": "1.0.0",
+  "frozenContract": "ClinicalIntelligence@1.0/Phase1.3",
+  "description": "Declarative extraction rules. Each rule fires on a predicate over normalized answers and emits one signal at a confidence. Rules are pure data — no TypeScript logic. Rule firings aggregate via the confidence-model.json noisy-OR pipeline.",
+  "operators": {
+    "equals": "Exact case-insensitive match of answer.value to value",
+    "notEquals": "Negation of equals",
+    "includes": "Substring case-insensitive match (single value)",
+    "includesAny": "Any of value[] is substring-included in answer",
+    "includesAll": "All of value[] are substring-included in answer",
+    "notIncludes": "Negation of includes",
+    "gte": "Numeric >=",
+    "lte": "Numeric <=",
+    "between": "Numeric in [value[0], value[1]] inclusive",
+    "and": "Logical AND of nested predicates",
+    "or": "Logical OR of nested predicates",
+    "not": "Logical negation"
+  },
+  "ruleSchema": {
+    "id": "string (RULE-<area>-<n>)",
+    "signalId": "string — must resolve in registry.json",
+    "questionId": "string — must resolve in questionnaire.schema.json (IC-5)",
+    "operator": "one of operators above",
+    "value": "any — depends on operator",
+    "predicate": "optional nested predicate for compound rules; mutually exclusive with operator+value",
+    "confidence": "number [0.10, 0.99] — emitted confidence before tier weighting",
+    "notes": "string — rationale; reviewed during clinical sign-off"
+  },
+  "rules": [
+
+    { "id": "RULE-AGE-01", "signalId": "age-young-modifier", "questionId": "age", "operator": "lte", "value": 24, "confidence": 0.95, "notes": "Direct age band." },
+    { "id": "RULE-AGE-02", "signalId": "age-mid-modifier", "questionId": "age", "operator": "between", "value": [25,40], "confidence": 0.95, "notes": "AGA_AGE_MODIFIER legacy." },
+    { "id": "RULE-AGE-03", "signalId": "age-mature-modifier", "questionId": "age", "operator": "between", "value": [41,55], "confidence": 0.95, "notes": "" },
+    { "id": "RULE-AGE-04", "signalId": "age-senior-modifier", "questionId": "age", "operator": "gte", "value": 56, "confidence": 0.95, "notes": "" },
+
+    { "id": "RULE-SEX-01", "signalId": "sex-male", "questionId": "sex", "operator": "equals", "value": "Male", "confidence": 0.99, "notes": "MPHL prior." },
+    { "id": "RULE-SEX-02", "signalId": "sex-female", "questionId": "sex", "operator": "equals", "value": "Female", "confidence": 0.99, "notes": "FPHL prior." },
+
+    { "id": "RULE-GOAL-01", "signalId": "regrow-goal", "questionId": "goal", "operator": "includesAny", "value": ["stopped","regrow","Hair fall is stopped"], "confidence": 0.90, "notes": "REGROW_GOAL_FLAG." },
+    { "id": "RULE-GOAL-02", "signalId": "early-greying-presence", "questionId": "goal", "operator": "includesAny", "value": ["greying","Greying","Early greying"], "confidence": 0.88, "notes": "GREY_CO_CONDITION / EARLY_GREY_LOCK." },
+
+    { "id": "RULE-DUR-01", "signalId": "acute-duration-marker", "questionId": "duration", "operator": "includesAny", "value": ["1–3","1-3","3–6","3-6"], "confidence": 0.85, "notes": "Acute window." },
+    { "id": "RULE-DUR-02", "signalId": "subacute-duration-marker", "questionId": "duration", "operator": "includes", "value": "6–12", "confidence": 0.80, "notes": "Subacute window." },
+    { "id": "RULE-DUR-03", "signalId": "chronic-duration-marker", "questionId": "duration", "operator": "includes", "value": "More than 1 year", "confidence": 0.85, "notes": "AGA_DURATION_BONUS legacy." },
+
+    { "id": "RULE-CNT-01", "signalId": "active-shedding-mild", "questionId": "count", "operator": "includesAny", "value": ["50–100","50-100"], "confidence": 0.75, "notes": "ACTIVE_SHEDDING_SIGNAL mild band." },
+    { "id": "RULE-CNT-02", "signalId": "active-shedding-heavy", "questionId": "count", "operator": "includes", "value": "100+", "confidence": 0.85, "notes": "ACTIVE_SHEDDING_SIGNAL heavy band." },
+    { "id": "RULE-CNT-03", "signalId": "thinning-without-shedding", "questionId": "count", "operator": "includesAny", "value": ["thinning","no visible fall","Just thinning"], "confidence": 0.80, "notes": "TE_GOLD_SUPPRESSION_V39." },
+
+    { "id": "RULE-HTYPE-01", "signalId": "diffuse-shedding-marker", "questionId": "hairtype", "operator": "includes", "value": "white bulb", "confidence": 0.85, "notes": "Telogen-phase release morphology." },
+    { "id": "RULE-HTYPE-02", "signalId": "shaft-breakage-marker", "questionId": "hairtype", "operator": "includesAny", "value": ["Broken","short","Broken short"], "confidence": 0.85, "notes": "HAIR_BREAKAGE_SCORE." },
+    { "id": "RULE-HTYPE-03", "signalId": "patchy-loss-marker", "questionId": "hairtype", "operator": "includesAny", "value": ["circular","patches","Coin-sized","bald spots"], "confidence": 0.90, "notes": "AA_SIGNAL." },
+    { "id": "RULE-HTYPE-04", "signalId": "pattern-thinning-marker", "questionId": "hairtype", "operator": "includesAny", "value": ["Widening","widening","parting","Thinning"], "confidence": 0.85, "notes": "AGA_PATTERN_SIGNAL." },
+
+    { "id": "RULE-SCALP-01", "signalId": "dandruff-presence", "questionId": "scalp", "operator": "includesAny", "value": ["Dandruff","white flakes"], "confidence": 0.85, "notes": "" },
+    { "id": "RULE-SCALP-02", "signalId": "dandruff-with-itching", "questionId": "scalp", "operator": "includesAll", "value": ["Dandruff","Itching"], "confidence": 0.92, "notes": "PHENOTYPE_INJECTION seborrheic-dermatitis composite." },
+    { "id": "RULE-SCALP-03", "signalId": "oily-scalp", "questionId": "scalp", "operator": "includes", "value": "Oily", "confidence": 0.82, "notes": "" },
+    { "id": "RULE-SCALP-04", "signalId": "dry-scalp", "questionId": "scalp", "operator": "includes", "value": "Dry", "confidence": 0.78, "notes": "" },
+    { "id": "RULE-SCALP-05", "signalId": "scalp-redness", "questionId": "scalp", "operator": "includesAny", "value": ["Redness","irritation"], "confidence": 0.85, "notes": "" },
+    { "id": "RULE-SCALP-06", "signalId": "scalp-pustules", "questionId": "scalp", "operator": "includesAny", "value": ["Boils","pimples"], "confidence": 0.88, "notes": "" },
+    { "id": "RULE-SCALP-07", "signalId": "scalp-burning", "questionId": "scalp", "operator": "includes", "value": "Burning", "confidence": 0.72, "notes": "" },
+    { "id": "RULE-SCALP-08", "signalId": "psoriatic-scalp", "questionId": "scalp", "operator": "includesAny", "value": ["Psoriasis","Psoriatic"], "confidence": 0.85, "notes": "" },
+    { "id": "RULE-SCALP-09", "signalId": "normal-scalp", "questionId": "scalp", "operator": "includes", "value": "Normal", "confidence": 0.70, "notes": "Protective baseline." },
+
+    { "id": "RULE-CAUSE-01", "signalId": "chronic-stress-reported", "questionId": "cause", "operator": "includesAny", "value": ["Stress","Anxiety","Depression"], "confidence": 0.78, "notes": "TE_STRESS_SCORE." },
+    { "id": "RULE-CAUSE-02", "signalId": "genetic-predisposition-reported", "questionId": "cause", "operator": "includesAny", "value": ["Genetics","Family history"], "confidence": 0.85, "notes": "AGA_GENETICS." },
+    { "id": "RULE-CAUSE-03", "signalId": "nutritional-cause-self-reported", "questionId": "cause", "operator": "includes", "value": "Nutritional", "confidence": 0.65, "notes": "TE_NUTRITION_SCORE — emerging tier (self-attribution)." },
+    { "id": "RULE-CAUSE-04", "signalId": "post-illness-recovery", "questionId": "cause", "operator": "includesAny", "value": ["Medication","Illness","Surgery"], "confidence": 0.82, "notes": "TE_ILLNESS_SCORE." },
+    { "id": "RULE-CAUSE-05", "signalId": "postpartum-lactating", "questionId": "cause", "operator": "includes", "value": "Post partum — still feeding", "confidence": 0.92, "notes": "TE_POSTPREG_SCORE." },
+    { "id": "RULE-CAUSE-06", "signalId": "postpartum-not-lactating", "questionId": "cause", "operator": "includes", "value": "Post partum — not feeding", "confidence": 0.90, "notes": "TE_DELIVERY_SCORE." },
+    { "id": "RULE-CAUSE-07", "signalId": "trichotillomania-behavior", "questionId": "cause", "operator": "includesAny", "value": ["pulling","Trichotillomania","TTM","OCD"], "confidence": 0.85, "notes": "TTM_SCORE." },
+    { "id": "RULE-CAUSE-08", "signalId": "hard-water-exposure", "questionId": "cause", "operator": "includes", "value": "Hard water", "confidence": 0.78, "notes": "" },
+    { "id": "RULE-CAUSE-09", "signalId": "glp1-recent", "questionId": "cause", "operator": "includes", "value": "GLP-1 receptor agonist (hair loss within 6 months)", "confidence": 0.88, "notes": "WEIGHT_LOSS_SCORE acute." },
+    { "id": "RULE-CAUSE-10", "signalId": "glp1-late", "questionId": "cause", "operator": "includes", "value": "GLP-1 receptor agonist (hair loss after 6 months)", "confidence": 0.82, "notes": "WEIGHT_LOSS_SCORE chronic." },
+    { "id": "RULE-CAUSE-11", "signalId": "crash-diet-pattern", "questionId": "cause", "operator": "includes", "value": "Post crash diet", "confidence": 0.80, "notes": "Reinforces cross-extraction from diet question." },
+
+    { "id": "RULE-IMM-01", "signalId": "alopecia-areata-history", "questionId": "immunity", "operator": "includesAny", "value": ["Alopecia Areata","Areata","circular patches"], "confidence": 0.90, "notes": "AA_SCORE." },
+    { "id": "RULE-IMM-02", "signalId": "recurrent-infection-pattern", "questionId": "immunity", "operator": "includesAny", "value": ["Frequent infections","cold","fever"], "confidence": 0.65, "notes": "IMMUNE_INJECTION." },
+    { "id": "RULE-IMM-03", "signalId": "allergy-cluster", "questionId": "immunity", "operator": "includes", "value": "Allergies", "confidence": 0.72, "notes": "" },
+    { "id": "RULE-IMM-04", "signalId": "asthma-history", "questionId": "immunity", "operator": "includes", "value": "Asthma", "confidence": 0.85, "notes": "" },
+    { "id": "RULE-IMM-05", "signalId": "skin-rash-history", "questionId": "immunity", "operator": "includesAny", "value": ["Skin rashes","eczema"], "confidence": 0.78, "notes": "" },
+    { "id": "RULE-IMM-06", "signalId": "scarring-alopecia-history", "questionId": "immunity", "operator": "includes", "value": "Scarring alopecia", "confidence": 0.95, "notes": "Hard recovery-floor signal." },
+    { "id": "RULE-IMM-07", "signalId": "mouth-ulcers-cooccurrence", "questionId": "immunity", "operator": "includes", "value": "Mouth ulcers", "confidence": 0.72, "notes": "MOUTH_ULCERS_SCORE; reinforced by gut signals." },
+
+    { "id": "RULE-LIFE-01", "signalId": "smoking-exposure", "questionId": "lifestyle", "operator": "includesAny", "value": ["Smoking","Vaping"], "confidence": 0.85, "notes": "OXIDATIVE_SCORE." },
+    { "id": "RULE-LIFE-02", "signalId": "alcohol-exposure", "questionId": "lifestyle", "operator": "includes", "value": "Alcohol", "confidence": 0.78, "notes": "" },
+    { "id": "RULE-LIFE-03", "signalId": "bodybuilding-pattern", "questionId": "lifestyle", "operator": "includesAny", "value": ["Bodybuilding","Heavy gym"], "confidence": 0.70, "notes": "AGA_GYM_SIGNAL — heuristic tier." },
+    { "id": "RULE-LIFE-04", "signalId": "obesity-sedentary", "questionId": "lifestyle", "operator": "includesAny", "value": ["Obesity","Sedentary","gaining weight","Struggle to lose"], "confidence": 0.75, "notes": "METABOLIC_SIGNAL." },
+    { "id": "RULE-LIFE-05", "signalId": "irregular-diet-pattern", "questionId": "lifestyle", "operator": "includesAny", "value": ["Erratic","Outside eating"], "confidence": 0.65, "notes": "Reinforced via diet question rule." },
+    { "id": "RULE-LIFE-06", "signalId": "night-shift-exposure", "questionId": "lifestyle", "operator": "includes", "value": "Night shift", "confidence": 0.88, "notes": "NIGHT_SHIFT_SCORE." },
+    { "id": "RULE-LIFE-07", "signalId": "frequent-flying-exposure", "questionId": "lifestyle", "operator": "includes", "value": "Frequent flying", "confidence": 0.80, "notes": "FREQUENT_FLYING_SCORE." },
+
+    { "id": "RULE-THY-01", "signalId": "hypothyroid-diagnosis", "questionId": "thyroid", "operator": "includes", "value": "Hypothyroid", "confidence": 0.95, "notes": "THYROID_HYPO_SCORE." },
+    { "id": "RULE-THY-02", "signalId": "hyperthyroid-diagnosis", "questionId": "thyroid", "operator": "includes", "value": "Hyperthyroid", "confidence": 0.95, "notes": "THYROID_HYPER_SCORE." },
+    { "id": "RULE-THY-03", "signalId": "prediabetes-state", "questionId": "thyroid", "operator": "includes", "value": "Pre diabetes", "confidence": 0.85, "notes": "" },
+    { "id": "RULE-THY-04", "signalId": "diabetes-state", "questionId": "thyroid", "operator": "equals", "value": "Diabetes", "confidence": 0.92, "notes": "" },
+
+    { "id": "RULE-MED-01", "signalId": "chronic-medical-on-medication", "questionId": "medical", "operator": "includes", "value": "Yes", "confidence": 0.85, "notes": "CHRONIC_MEDICAL_SCORE." },
+
+    { "id": "RULE-HORM-01", "signalId": "pcos-diagnosis", "questionId": "hormonal", "operator": "equals", "value": "PCOS / PCOD only", "confidence": 0.92, "notes": "PCOS_SCORE; do not co-emit pcos-with-metabolic." },
+    { "id": "RULE-HORM-02", "signalId": "pcos-with-metabolic", "questionId": "hormonal", "operator": "equals", "value": "PCOS / PCOD + Obesity", "confidence": 0.92, "notes": "PCOS_DIABETES_UPGRADE composite." },
+    { "id": "RULE-HORM-03", "signalId": "endometriosis-diagnosis", "questionId": "hormonal", "operator": "includes", "value": "Endometriosis", "confidence": 0.92, "notes": "" },
+    { "id": "RULE-HORM-04", "signalId": "pregnancy-state", "questionId": "hormonal", "operator": "includes", "value": "Currently pregnant", "confidence": 0.99, "notes": "PREGNANCY_LOCK — also emits Eligibility rule downstream." },
+    { "id": "RULE-HORM-05", "signalId": "postpartum-not-lactating", "questionId": "hormonal", "operator": "includes", "value": "Post-delivery or breastfeeding", "confidence": 0.85, "notes": "Cross-emission with cause-question rule; noisy-OR aggregates." },
+    { "id": "RULE-HORM-06", "signalId": "perimenopause-state", "questionId": "hormonal", "operator": "includesAny", "value": ["Peri-menopause","Perimenopause","Peri menopause"], "confidence": 0.88, "notes": "" },
+    { "id": "RULE-HORM-07", "signalId": "menopause-state", "questionId": "hormonal", "operator": "predicate", "predicate": { "operator": "and", "value": [ { "questionId": "hormonal", "operator": "includes", "value": "Menopause" }, { "questionId": "hormonal", "operator": "notIncludes", "value": "Peri" }, { "questionId": "hormonal", "operator": "notIncludes", "value": "Post" } ] }, "confidence": 0.90, "notes": "MENOPAUSE_SCORE — exclusivity guarded." },
+    { "id": "RULE-HORM-08", "signalId": "postmenopause-state", "questionId": "hormonal", "operator": "includesAny", "value": ["Post-menopause","Post menopause"], "confidence": 0.92, "notes": "POST_MENOPAUSE_SCORE." },
+    { "id": "RULE-HORM-09", "signalId": "hrt-use", "questionId": "hormonal", "operator": "includes", "value": "Hormone Replacement Therapy", "confidence": 0.92, "notes": "" },
+    { "id": "RULE-HORM-10", "signalId": "hypothyroid-diagnosis", "questionId": "hormonal", "operator": "includes", "value": "Thyroid", "confidence": 0.78, "notes": "THYROID_IN_HORMONAL — cross-emission; noisy-OR aggregates with RULE-THY-01." },
+
+    { "id": "RULE-GUT-01", "signalId": "gerd-symptoms", "questionId": "gut", "operator": "includesAny", "value": ["Acid reflux","GERD","heartburn"], "confidence": 0.78, "notes": "PRO_IMMUNE_GUT." },
+    { "id": "RULE-GUT-02", "signalId": "ibs-or-constipation", "questionId": "gut", "operator": "includesAny", "value": ["IBS","Crohn","Constipation"], "confidence": 0.85, "notes": "GI_GOLD_INJECTION." },
+    { "id": "RULE-GUT-03", "signalId": "bloating-symptoms", "questionId": "gut", "operator": "includesAny", "value": ["Bloating","gas","Indigestion"], "confidence": 0.65, "notes": "" },
+    { "id": "RULE-GUT-04", "signalId": "mouth-ulcers-cooccurrence", "questionId": "gut", "operator": "predicate", "predicate": { "operator": "and", "value": [ { "questionId": "immunity", "operator": "includes", "value": "Mouth ulcers" }, { "questionId": "gut", "operator": "notIncludes", "value": "No gut" } ] }, "confidence": 0.85, "notes": "MOUTH_ULCERS_SCORE composite gut+immunity gating." },
+
+    { "id": "RULE-DEF-01", "signalId": "iron-deficiency-reported", "questionId": "deficiency", "operator": "includesAny", "value": ["Iron","Anaemia","Anemia"], "confidence": 0.92, "notes": "IRON_DEFICIENCY_SCORE." },
+    { "id": "RULE-DEF-02", "signalId": "vitamin-d-deficiency-reported", "questionId": "deficiency", "operator": "includes", "value": "Vitamin D", "confidence": 0.85, "notes": "" },
+    { "id": "RULE-DEF-03", "signalId": "vitamin-b12-deficiency-reported", "questionId": "deficiency", "operator": "includes", "value": "B12", "confidence": 0.85, "notes": "" },
+
+    { "id": "RULE-DIET-01", "signalId": "vegetarian-diet", "questionId": "diet", "operator": "includes", "value": "Vegetarian", "confidence": 0.92, "notes": "VEG_KIT_SWAP." },
+    { "id": "RULE-DIET-02", "signalId": "vegan-diet", "questionId": "diet", "operator": "includes", "value": "Vegan", "confidence": 0.92, "notes": "" },
+    { "id": "RULE-DIET-03", "signalId": "high-protein-diet", "questionId": "diet", "operator": "includes", "value": "High protein", "confidence": 0.78, "notes": "Heuristic — diet self-report." },
+    { "id": "RULE-DIET-04", "signalId": "irregular-diet-pattern", "questionId": "diet", "operator": "includesAny", "value": ["Irregular","poor diet"], "confidence": 0.70, "notes": "METABOLIC_DIET; reinforces lifestyle rule." },
+    { "id": "RULE-DIET-05", "signalId": "crash-diet-pattern", "questionId": "diet", "operator": "includesAny", "value": ["Crash","Keto","IF"], "confidence": 0.80, "notes": "WEIGHT_LOSS_DIET; reinforces cause-question rule." },
+
+    { "id": "RULE-TRT-01", "signalId": "heat-styling-exposure", "questionId": "treatment", "operator": "includesAny", "value": ["Heat styling","straightener"], "confidence": 0.80, "notes": "HBR_TREATMENT_SIGNAL." },
+    { "id": "RULE-TRT-02", "signalId": "chemical-treatment-exposure", "questionId": "treatment", "operator": "includesAny", "value": ["Chemical","colour","color","keratin"], "confidence": 0.82, "notes": "" },
+
+    { "id": "RULE-GRD-01", "signalId": "grade123-severity-marker", "questionId": "grade", "operator": "includesAny", "value": ["Grade 1","Grade 2","Grade 3"], "confidence": 0.85, "notes": "" },
+    { "id": "RULE-GRD-02", "signalId": "grade45-severity-marker", "questionId": "grade", "operator": "predicate", "predicate": { "operator": "and", "value": [ { "questionId": "grade", "operator": "includesAny", "value": ["Grade 4","Grade 5"] }, { "questionId": "age", "operator": "gte", "value": 20 } ] }, "confidence": 0.92, "notes": "AGA_GRADE45_LOCK — also registers EligibilityRule + RecoveryFloor downstream." }
+
+  ],
+  "crossEmissionNotes": [
+    "Several signals are emitted by rules on multiple questions (e.g. postpartum-not-lactating emitted from both cause and hormonal). This is intentional. The noisy-OR aggregation in confidence-model.json handles redundancy without double-counting.",
+    "Composite rules use the 'predicate' field with nested operator/value tree. Predicates may reference multiple questionIds (the rule's top-level questionId becomes the primary anchor for IC-5 validation; cross-referenced questionIds are validated separately at CI time)."
+  ],
+  "deprecatedLegacyCodesNotPromotedToSignals": [
+    "KIT_GENDER_RESOLVER — protocol routing; not a biological signal. Migrates to Protocol Composition slot resolution.",
+    "VEG_GENDER_SWAP — protocol routing.",
+    "VEG_KIT_SWAP — protocol routing (vegetarian-diet signal handles biology; product-variant swap belongs in Capability Graph).",
+    "PHENOTYPE_INJECTION — protocol routing; biology captured by dandruff-with-itching, scalp-redness, etc.",
+    "GI_GOLD_INJECTION — protocol routing; biology captured by ibs-or-constipation.",
+    "PRO_IMMUNE_GUT / PRO_IMMUNE_IRON / PCOS_IMMUNE_IRON — protocol routing.",
+    "IRON_UP_GOLD_INJECTION — protocol routing.",
+    "MPHL_FPHL_PLUS_VARIANT / AGA_PROTOCOL_GRADE45 — protocol archetype selection.",
+    "STANDALONE_OXIDATIVE / KIT_CAP_SIGNAL / KIT_CAP_GUT — protocol composition rules.",
+    "V38_OVERRIDE / SEVERITY_MODIFIER / PROGNOSIS_ADDENDUM — narrative/protocol overrides.",
+    "PCOS_THYROID_PRIORITY / PCOS_FPHL_SIGNAL / PCOS_SCALP_INFLAM — cause-priors; migrate to registries/causes/priors.",
+    "AA_SIGNAL legacy at hairtype-question — covered by RULE-HTYPE-03 (canonical patchy-loss-marker)."
+  ]
+}

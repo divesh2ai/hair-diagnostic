@@ -1,0 +1,35 @@
+{
+  "id": "alopecia_areata_01",
+  "description": "Autoimmune alopecia areata — highest scoring condition (105). HAIR FACT ALOPECIA AREATA leads the protocol. PRO IMMUNE must always appear as the final phase (proImmuneLastRule invariant). Tests AA detection, protocol ordering, and immune-last positioning.",
+  "budget": "STANDARD",
+  "answers": {
+    "sex": "Female",
+    "age": "28",
+    "grade": "Grade 2",
+    "goal": ["Reduce hair fall"],
+    "immunity": ["Alopecia Areata (patchy hair loss)"],
+    "scalp": [],
+    "cause": [],
+    "lifestyle": [],
+    "thyroid": [],
+    "hormonal": [],
+    "deficiency": [],
+    "gut": [],
+    "diet": [],
+    "hairtype": [],
+    "treatment": [],
+    "duration": "3–6 months",
+    "count": "50–100 strands"
+  },
+  "expected": {
+    "diagnoses": ["ALOPECIA_AREATA"],
+    "scalpStates": ["NORMAL_SCALP"],
+    "rootCauses": ["AUTOIMMUNE"],
+    "therapyNeeds": ["IMMUNE_MODULATION", "METABOLIC_SUPPORT", "INFLAMMATION_CONTROL", "FOLLICLE_STIMULATION"],
+    "topKit": "HAIR FACT TE GOLD",
+    "mustIncludeKits": ["HAIR FACT ALOPECIA AREATA", "PRO IMMUNE GOLD"],
+    "mustExcludeKits": ["LACTIHEALTH", "RAPID WEIGHT LOSS SHIELD", "PRO FACT META B HYPOTHYROID"],
+    "mustTriggerRules": ["ACTIVE_SHEDDING"],
+    "mustBlockRules": ["GLP1_EARLY", "GLP1_LATE", "RULE1_HYPO_METABOLIC", "NO_VISIBLE_FALL"]
+  }
+}

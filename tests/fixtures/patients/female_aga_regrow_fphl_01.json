@@ -1,0 +1,35 @@
+{
+  "id": "female_aga_regrow_fphl_01",
+  "description": "Female AGA regrow-only goal — established pattern loss, shedding has stopped. isRegrowGoal=true → REGROW_GOAL_AGA fires: protocol collapses to [FPHL, PRO IMMUNE GOLD]. TE GOLD must not be prescribed. Tests female AGA regrow protocol and distinction from male (MPHL vs FPHL).",
+  "budget": "STANDARD",
+  "answers": {
+    "sex": "Female",
+    "age": "40",
+    "grade": "Grade 3",
+    "goal": ["Shedding stopped — Regrow only"],
+    "cause": ["Family history"],
+    "hairtype": ["widening parting", "Thinning at crown"],
+    "scalp": [],
+    "lifestyle": [],
+    "thyroid": [],
+    "hormonal": [],
+    "immunity": [],
+    "deficiency": [],
+    "gut": [],
+    "diet": [],
+    "treatment": [],
+    "duration": "More than 1 year",
+    "count": "No active shedding"
+  },
+  "expected": {
+    "diagnoses": ["AGA_FEMALE_123"],
+    "scalpStates": ["NORMAL_SCALP"],
+    "rootCauses": ["GENETICS"],
+    "therapyNeeds": ["DHT_SUPPRESSION", "INFLAMMATION_CONTROL", "SHEDDING_ARREST", "METABOLIC_SUPPORT", "FOLLICLE_STIMULATION"],
+    "topKit": "FPHL",
+    "mustIncludeKits": ["FPHL", "PRO IMMUNE GOLD"],
+    "mustExcludeKits": ["HAIR FACT TE GOLD", "HAIR FACT TE GOLD VEG", "MPHL", "LACTIHEALTH"],
+    "mustTriggerRules": ["REGROW_GOAL_AGA"],
+    "mustBlockRules": ["ACTIVE_SHEDDING", "GLP1_EARLY", "GLP1_LATE", "RULE1_HYPO_METABOLIC"]
+  }
+}

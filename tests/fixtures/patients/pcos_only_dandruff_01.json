@@ -1,0 +1,35 @@
+{
+  "id": "pcos_only_dandruff_01",
+  "description": "PCOS_ONLY with dandruff-seborrhoeic scalp. F-PCOS-1 is the primary PCOS kit (no insulin resistance present). Dandruff scalp triggers PHENOTYPE from base protocol — no further PCOS stack additions needed. Confirms F-PCOS-1 is NOT replaced when diabetes is absent.",
+  "budget": "STANDARD",
+  "answers": {
+    "sex": "Female",
+    "age": "26",
+    "grade": "Grade 2",
+    "goal": ["Reduce hair fall"],
+    "hormonal": ["PCOS / PCOD only"],
+    "scalp": ["Dandruff", "Oily scalp"],
+    "cause": [],
+    "lifestyle": [],
+    "thyroid": [],
+    "immunity": [],
+    "deficiency": [],
+    "gut": [],
+    "diet": [],
+    "hairtype": [],
+    "treatment": [],
+    "duration": "3–6 months",
+    "count": "50–100 strands"
+  },
+  "expected": {
+    "diagnoses": ["PCOS_ONLY"],
+    "scalpStates": ["OILY_SCALP", "DANDRUFF"],
+    "rootCauses": ["PCOS", "DHT"],
+    "therapyNeeds": ["ANDROGENIC_CORRECTION", "INFLAMMATION_CONTROL", "SHEDDING_ARREST"],
+    "topKit": "HAIR FACT TE GOLD",
+    "mustIncludeKits": ["HAIR FACT TE GOLD", "F-PCOS -1", "PHENOTYPE INFLAMATION"],
+    "mustExcludeKits": ["PRO FACT META B PCOS", "PRO FACT META B", "PRO FACT META B HYPOTHYROID"],
+    "mustTriggerRules": ["ACTIVE_SHEDDING"],
+    "mustBlockRules": ["PCOS_DIABETES_UPGRADE", "RULE1_HYPO_METABOLIC", "PCOS_OBESITY_HYPO"]
+  }
+}

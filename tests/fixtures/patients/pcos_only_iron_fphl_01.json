@@ -1,0 +1,35 @@
+{
+  "id": "pcos_only_iron_fphl_01",
+  "description": "PCOS_ONLY with iron deficiency AND pattern loss (FPHL) signal — PCOS stack rule adds both IRON UP GOLD and FPHL. Multi-signal PCOS stacking case. Iron deficiency confirmed (strong signal). Pattern loss via family history + long duration. Tests PCOS_IRON and PCOS_FPHL stack additions.",
+  "budget": "COMPREHENSIVE",
+  "answers": {
+    "sex": "Female",
+    "age": "31",
+    "grade": "Grade 2",
+    "goal": ["Reduce hair fall"],
+    "hormonal": ["PCOS / PCOD only"],
+    "deficiency": ["Iron / Ferritin deficiency"],
+    "cause": ["Family history"],
+    "hairtype": ["Thinning at crown", "widening parting"],
+    "scalp": [],
+    "lifestyle": [],
+    "thyroid": [],
+    "immunity": [],
+    "gut": [],
+    "diet": [],
+    "treatment": [],
+    "duration": "6–12 months",
+    "count": "50–100 strands"
+  },
+  "expected": {
+    "diagnoses": ["PCOS_ONLY"],
+    "scalpStates": ["NORMAL_SCALP"],
+    "rootCauses": ["PCOS", "IRON_DEFICIENCY", "GENETICS"],
+    "therapyNeeds": ["ANDROGENIC_CORRECTION", "INFLAMMATION_CONTROL", "SHEDDING_ARREST", "IRON_REPLETION"],
+    "topKit": "HAIR FACT TE GOLD",
+    "mustIncludeKits": ["HAIR FACT TE GOLD", "F-PCOS -1", "IRON UP GOLD", "FPHL"],
+    "mustExcludeKits": ["PRO FACT META B PCOS", "PRO FACT META B HYPOTHYROID"],
+    "mustTriggerRules": ["PCOS_IRON", "PCOS_FPHL", "ACTIVE_SHEDDING"],
+    "mustBlockRules": ["PCOS_DIABETES_UPGRADE", "PCOS_OBESITY_HYPO", "GLP1_EARLY"]
+  }
+}

@@ -1,0 +1,166 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "clinical-engine.pathway-activation.PathwayExplanation@1.0.0",
+  "title": "PathwayExplanation",
+  "description": "Three-audience projection produced for each activated (non-subthreshold) pathway. Carries language-neutral concept references only — phrasing happens at the Narrative layer via PhraseBank.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "pathwayId","activationBand","confidence","severityBand","evidenceTierFloor",
+    "whyActivated","strongestEvidence","conflictingEvidence",
+    "confidenceRationale","severityRationale",
+    "doctorView","patientView","scientificView","provenance"
+  ],
+  "properties": {
+    "pathwayId":         { "type": "string" },
+    "activationBand":    { "type": "string", "enum": ["dormant","latent","active","dominant","entrenched"] },
+    "confidence":        { "type": "number", "minimum": 0.05, "maximum": 0.98 },
+    "severityBand":      { "type": "string", "enum": ["dormant","latent","active","dominant","entrenched"] },
+    "evidenceTierFloor": { "type": "string", "enum": ["established","emerging","heuristic"] },
+
+    "whyActivated": {
+      "type": "object",
+      "required": ["gateSatisfiedBy","topSupports","amplifyingInteractions"],
+      "properties": {
+        "gateSatisfiedBy": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["signalId","confidence"],
+            "properties": {
+              "signalId":   { "type": "string" },
+              "confidence": { "type": "number", "minimum": 0.0, "maximum": 1.0 }
+            }
+          }
+        },
+        "topSupports": {
+          "type": "array",
+          "minItems": 0,
+          "maxItems": 5,
+          "items": {
+            "type": "object",
+            "required": ["signalId","contribution"],
+            "properties": {
+              "signalId":     { "type": "string" },
+              "contribution": { "type": "number", "minimum": 0.0, "maximum": 1.0 }
+            }
+          }
+        },
+        "amplifyingInteractions": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["fromPathway","applied"],
+            "properties": {
+              "fromPathway": { "type": "string" },
+              "applied":     { "type": "number", "minimum": 0.0, "maximum": 0.25 }
+            }
+          }
+        }
+      }
+    },
+
+    "strongestEvidence": {
+      "type": "object",
+      "required": ["signalId","confidence","evidenceTier"],
+      "properties": {
+        "signalId":     { "type": "string" },
+        "confidence":   { "type": "number", "minimum": 0.0, "maximum": 1.0 },
+        "evidenceTier": { "type": "string", "enum": ["established","emerging","heuristic"] }
+      }
+    },
+
+    "conflictingEvidence": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["signalId","conflictsWith","confidence"],
+        "properties": {
+          "signalId":      { "type": "string" },
+          "conflictsWith": { "type": "string" },
+          "confidence":    { "type": "number", "minimum": 0.0, "maximum": 1.0 }
+        }
+      }
+    },
+
+    "confidenceRationale": {
+      "type": "object",
+      "required": ["evidenceMass","absenceMass","conflictMass","tierFloorWeight","narrative"],
+      "properties": {
+        "evidenceMass":    { "type": "number", "minimum": 0.0 },
+        "absenceMass":     { "type": "number", "minimum": 0.0 },
+        "conflictMass":    { "type": "number", "minimum": 0.0 },
+        "tierFloorWeight": { "type": "number", "minimum": 0.65, "maximum": 1.0 },
+        "narrative":       { "type": "string", "description": "language-neutral concept ID" }
+      }
+    },
+
+    "severityRationale": {
+      "type": "object",
+      "required": ["reversibilityClass","reversibilityWeight","weightedSignalSeverity","severityBeforeBanding","narrative"],
+      "properties": {
+        "reversibilityClass":     { "type": "string", "enum": ["fully-reversible","partially-reversible","stabilizable","shaft-only-reversible","irreversible"] },
+        "reversibilityWeight":    { "type": "number", "minimum": 0.5, "maximum": 1.10 },
+        "weightedSignalSeverity": { "type": "number", "minimum": 0.0 },
+        "severityBeforeBanding":  { "type": "number", "minimum": 0.0, "maximum": 1.0 },
+        "narrative":              { "type": "string" }
+      }
+    },
+
+    "doctorView": {
+      "type": "object",
+      "required": ["framing","showDissent","showEvidenceTiers","showConfidenceNumber","showAlternatives","scientificDepth","anchorPhraseConcepts"],
+      "properties": {
+        "framing":              { "type": "string" },
+        "showDissent":          { "type": "boolean" },
+        "showEvidenceTiers":    { "type": "boolean" },
+        "showConfidenceNumber": { "type": "boolean" },
+        "showAlternatives":     { "type": "boolean" },
+        "scientificDepth":      { "type": "string", "enum": ["essential","standard","comprehensive","exhaustive"] },
+        "anchorPhraseConcepts": { "type": "array",  "items": { "type": "string" }, "minItems": 1 }
+      }
+    },
+
+    "patientView": {
+      "type": "object",
+      "required": ["framing","showDissent","showEvidenceTiers","showConfidenceNumber","uncertaintyPresentation","tone","anchorPhraseConcepts"],
+      "properties": {
+        "framing":                 { "type": "string" },
+        "showDissent":             { "type": "boolean", "enum": [false], "description": "Patient view never surfaces dissent at this layer." },
+        "showEvidenceTiers":       { "type": "boolean", "enum": [false] },
+        "showConfidenceNumber":    { "type": "boolean", "enum": [false] },
+        "uncertaintyPresentation": { "type": "string", "enum": ["qualitative-banded"] },
+        "tone":                    { "type": "string", "enum": ["reassuring","informative","educational"] },
+        "anchorPhraseConcepts":    { "type": "array", "items": { "type": "string" }, "minItems": 1 }
+      }
+    },
+
+    "scientificView": {
+      "type": "object",
+      "required": ["framing","showFullDAG","showRegistryVersions","showFormulaTrace","anchorPhraseConcepts"],
+      "properties": {
+        "framing":              { "type": "string" },
+        "showFullDAG":          { "type": "boolean" },
+        "showRegistryVersions": { "type": "boolean" },
+        "showFormulaTrace":     { "type": "boolean" },
+        "anchorPhraseConcepts": { "type": "array", "items": { "type": "string" }, "minItems": 1 }
+      }
+    },
+
+    "provenance": {
+      "type": "object",
+      "required": ["graphNodeId","registryVersions"],
+      "properties": {
+        "graphNodeId":      { "type": "string", "pattern": "^node\\.pathway\\.[a-z][a-z0-9-]+$" },
+        "registryVersions": {
+          "type": "object",
+          "required": ["signals","pathways"],
+          "properties": {
+            "signals":  { "type": "string" },
+            "pathways": { "type": "string" }
+          }
+        }
+      }
+    }
+  }
+}

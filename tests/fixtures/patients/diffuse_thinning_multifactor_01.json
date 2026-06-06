@@ -1,0 +1,35 @@
+{
+  "id": "diffuse_thinning_multifactor_01",
+  "description": "Diffuse thinning — 'thinning visible, no strands falling' in count triggers both AGA signals (hasNoVisibleFall=true) and AGA_FEMALE_123 scoring (70 = 65+5 age>30), beating GUT_ISSUES (62). NO_VISIBLE_FALL strips TE GOLD. Final stack: AGA_FEMALE_123 base minus TE GOLD. Tests that count-field thinning language classifies as AGA even in a multi-driver stress/gut/nutrition case.",
+  "budget": "STANDARD",
+  "answers": {
+    "sex": "Female",
+    "age": "33",
+    "grade": "Grade 2",
+    "goal": ["Reduce hair fall"],
+    "gut": ["Bloating", "IBS"],
+    "cause": ["Stress", "Nutritional deficiency"],
+    "deficiency": ["Vitamin D", "Zinc"],
+    "scalp": [],
+    "lifestyle": [],
+    "thyroid": [],
+    "hormonal": [],
+    "immunity": [],
+    "diet": [],
+    "hairtype": [],
+    "treatment": [],
+    "duration": "3–6 months",
+    "count": "Thinning visible, no strands falling"
+  },
+  "expected": {
+    "diagnoses": ["AGA_FEMALE_123"],
+    "scalpStates": ["NORMAL_SCALP"],
+    "rootCauses": ["STRESS", "GUT_MALABSORPTION", "POOR_NUTRITION"],
+    "therapyNeeds": ["FOLLICLE_STIMULATION", "INFLAMMATION_CONTROL", "SHEDDING_ARREST"],
+    "topKit": "PHENOTYPE INFLAMATION",
+    "mustIncludeKits": ["PHENOTYPE INFLAMATION", "FPHL", "PRO FACT META B", "PRO IMMUNE GOLD"],
+    "mustExcludeKits": ["HAIR FACT TE GOLD", "HAIR FACT TE GOLD VEG", "RAPID WEIGHT LOSS SHIELD"],
+    "mustTriggerRules": ["NO_VISIBLE_FALL"],
+    "mustBlockRules": ["ACTIVE_SHEDDING", "GLP1_EARLY", "GLP1_LATE"]
+  }
+}

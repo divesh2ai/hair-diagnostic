@@ -1,0 +1,98 @@
+{
+  "$schema": "../../../packages/governance/version/registry.meta.schema.json",
+  "registry": "pathways.categories",
+  "version": "1.0.0",
+  "frozenContract": "ClinicalIntelligence@1.0/Pathway.category",
+  "description": "Mechanistic groupings of biological pathways. Each pathway declares exactly one mechanismCategory. Categories drive (a) interaction templates, (b) reversibility defaults, (c) recovery-modifier vector seed, and (d) doctor-view grouping in narrative projections.",
+  "categories": [
+    {
+      "id": "follicular-cycle",
+      "label": "Follicular Cycle Mechanisms",
+      "biologicalSystem": "integumentary",
+      "description": "Pathways acting directly on anagen/catagen/telogen kinetics and follicle architecture (size, anchorage). Drives miniaturization vs. shedding differentiation.",
+      "defaultReversibilityClass": "partially-reversible",
+      "downstreamObjectiveBias": ["growth-stimulation","long-term-preservation"]
+    },
+    {
+      "id": "inflammatory",
+      "label": "Inflammatory Mechanisms",
+      "biologicalSystem": "immune",
+      "description": "Perifollicular and scalp-surface inflammation, cytokine-driven processes, microbiome-mediated disruption.",
+      "defaultReversibilityClass": "fully-reversible",
+      "downstreamObjectiveBias": ["inflammation-reduction","scalp-stabilization"]
+    },
+    {
+      "id": "endocrine",
+      "label": "Endocrine Mechanisms",
+      "biologicalSystem": "endocrine",
+      "description": "Androgen, thyroid, estrogen, and reproductive-transition perturbations affecting follicle behavior.",
+      "defaultReversibilityClass": "partially-reversible",
+      "downstreamObjectiveBias": ["hormonal-support","growth-stimulation"]
+    },
+    {
+      "id": "immunologic",
+      "label": "Immune-Targeting Mechanisms",
+      "biologicalSystem": "immune",
+      "description": "Autoimmune or T-cell-mediated follicular targeting (areata spectrum, scarring forms).",
+      "defaultReversibilityClass": "stabilizable",
+      "downstreamObjectiveBias": ["inflammation-reduction","maintenance"]
+    },
+    {
+      "id": "metabolic",
+      "label": "Metabolic Mechanisms",
+      "biologicalSystem": "metabolic",
+      "description": "Insulin-glucose axis, adiposity-hormonal cross-talk, substrate-energy disruption.",
+      "defaultReversibilityClass": "partially-reversible",
+      "downstreamObjectiveBias": ["nutritional-support","hormonal-support"]
+    },
+    {
+      "id": "redox",
+      "label": "Redox / Oxidative Mechanisms",
+      "biologicalSystem": "vascular",
+      "description": "ROS-mediated follicular damage, vasoactive load.",
+      "defaultReversibilityClass": "fully-reversible",
+      "downstreamObjectiveBias": ["scalp-stabilization","maintenance"]
+    },
+    {
+      "id": "gastrointestinal",
+      "label": "Gut–Hair Axis Mechanisms",
+      "biologicalSystem": "digestive",
+      "description": "Absorption, microbiome, mucosal-inflammation contributions to systemic substrate availability.",
+      "defaultReversibilityClass": "partially-reversible",
+      "downstreamObjectiveBias": ["nutritional-support","inflammation-reduction"]
+    },
+    {
+      "id": "nutritional",
+      "label": "Nutritional / Substrate Mechanisms",
+      "biologicalSystem": "metabolic",
+      "description": "Micronutrient and macronutrient substrate insufficiency affecting follicle proliferation.",
+      "defaultReversibilityClass": "fully-reversible",
+      "downstreamObjectiveBias": ["nutritional-support","growth-stimulation"]
+    },
+    {
+      "id": "structural",
+      "label": "Structural / Extrinsic Mechanisms",
+      "biologicalSystem": "integumentary",
+      "description": "Cortical/cuticle compromise from extrinsic exposures and mechanical insults. Shaft-level, not follicular-level.",
+      "defaultReversibilityClass": "shaft-only-reversible",
+      "downstreamObjectiveBias": ["scalp-stabilization","maintenance"]
+    }
+  ],
+  "interactionTemplates": [
+    {
+      "id": "amplifies",
+      "description": "Activation of A elevates downstream consequence of B by interactionAmplificationCap (see confidence-model.json).",
+      "permittedAcrossCategories": true
+    },
+    {
+      "id": "mediates",
+      "description": "A is required pathway-intermediate for B's worst-case consequence.",
+      "permittedAcrossCategories": true
+    },
+    {
+      "id": "competes",
+      "description": "A and B explain mutually exclusive observations of the same signal class.",
+      "permittedAcrossCategories": true
+    }
+  ]
+}

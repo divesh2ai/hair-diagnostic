@@ -1,0 +1,35 @@
+{
+  "id": "medication_illness_te_01",
+  "description": "Medication + recent illness induced TE_ILLNESS (score 72). PRO IMMUNE leads the base protocol (post-illness inflammation must clear first). Active shedding promotes TE GOLD to Phase 1, then proImmuneLastRule repositions PRO IMMUNE to final phase. Tests proImmuneLastRule repositioning when PRO IMMUNE starts at Phase 1.",
+  "budget": "STANDARD",
+  "answers": {
+    "sex": "Female",
+    "age": "38",
+    "grade": "Grade 2",
+    "goal": ["Reduce hair fall"],
+    "cause": ["Medication", "Recent Illness"],
+    "scalp": [],
+    "lifestyle": [],
+    "thyroid": [],
+    "hormonal": [],
+    "immunity": [],
+    "deficiency": [],
+    "gut": [],
+    "diet": [],
+    "hairtype": [],
+    "treatment": [],
+    "duration": "1–3 months",
+    "count": "50–100 strands"
+  },
+  "expected": {
+    "diagnoses": ["TE_ILLNESS"],
+    "scalpStates": ["NORMAL_SCALP"],
+    "rootCauses": ["MEDICATION", "ILLNESS"],
+    "therapyNeeds": ["IMMUNE_MODULATION", "SHEDDING_ARREST", "INFLAMMATION_CONTROL"],
+    "topKit": "HAIR FACT TE GOLD",
+    "mustIncludeKits": ["HAIR FACT TE GOLD", "PHENOTYPE INFLAMATION", "PRO IMMUNE GOLD"],
+    "mustExcludeKits": ["RAPID WEIGHT LOSS SHIELD", "FPHL", "MPHL", "LACTIHEALTH"],
+    "mustTriggerRules": ["ACTIVE_SHEDDING"],
+    "mustBlockRules": ["GLP1_EARLY", "GLP1_LATE", "RULE1_HYPO_METABOLIC", "NO_VISIBLE_FALL"]
+  }
+}

@@ -1,0 +1,134 @@
+{
+  "caseId": "te_chronic_07_chronic_illness_age52_female",
+  "corpusVersion": "2.0.0",
+  "description": "Chronic telogen effluvium, chronic illness, 52y Female.",
+  "category": "CHRONIC_TE",
+  "severity": "mild",
+  "presentationClarity": "clear",
+  "demographicProfile": {
+    "sex": "Female",
+    "age": "52",
+    "region": null,
+    "dietType": "Mixed"
+  },
+  "questionnaireAnswers": {
+    "sex": "Female",
+    "age": "52",
+    "goal": [
+      "Reduce hair fall"
+    ],
+    "grade": "Grade 1",
+    "scalp": [
+      "Normal scalp"
+    ],
+    "cause": [
+      "Chronic medical condition"
+    ],
+    "lifestyle": [],
+    "thyroid": [],
+    "hormonal": [],
+    "immunity": [],
+    "deficiency": [],
+    "gut": [],
+    "diet": [],
+    "hairtype": [
+      "Diffuse shedding"
+    ],
+    "treatment": [],
+    "duration": "More than 1 year",
+    "count": "100–200 hairs/day"
+  },
+  "expectedSignals": [
+    {
+      "signalId": "diffuse-shedding-marker",
+      "minConfidence": 0.8,
+      "mustBePrimary": true
+    },
+    {
+      "signalId": "chronic-duration-marker",
+      "minConfidence": 0.85
+    },
+    {
+      "signalId": "active-shedding-mild",
+      "minConfidence": 0.7
+    },
+    {
+      "signalId": "sex-female",
+      "minConfidence": 0.99
+    },
+    {
+      "signalId": "age-mature-modifier",
+      "minConfidence": 0.99
+    },
+    {
+      "signalId": "chronic-medical-on-medication",
+      "minConfidence": 0.8
+    }
+  ],
+  "expectedPathways": [
+    {
+      "pathwayId": "telogen-cycle-disruption",
+      "minActivation": 0.55,
+      "role": "leading"
+    }
+  ],
+  "expectedRootCauses": [
+    {
+      "causeId": "stress-driven-telogen-effluvium",
+      "minPosterior": 0.4,
+      "surfaceAs": "lead"
+    }
+  ],
+  "expectedDiagnosis": {
+    "primary": "stress-driven-telogen-effluvium",
+    "secondary": [],
+    "legacyDiagnosisKey": "CHRONIC_TE",
+    "legacyDiagnosisKeyAlternates": [
+      "CHRONIC_TE"
+    ]
+  },
+  "expectedSeverity": "mild",
+  "expectedProtocolClass": "TE_CHRONIC",
+  "expectedTherapyNeeds": [
+    "CYCLE_RESTORATION",
+    "STRESS_DOWNREGULATION",
+    "NUTRITIONAL_REPLETION"
+  ],
+  "expectedMonitoringRequirements": {
+    "required": [
+      "SHED_COUNT_MONTHLY",
+      "GLOBAL_PHOTO_3M",
+      "FERRITIN_4M",
+      "VITAMIN_D_4M",
+      "TSH_3M"
+    ],
+    "recommended": [
+      "STRESS_PHQ_MONTHLY"
+    ],
+    "forbidden": []
+  },
+  "expectedNarrativeThemes": {
+    "themes": [
+      "CYCLE_RESET",
+      "STRESS_RECOVERY",
+      "EXPECTATION_SETTING_SLOW"
+    ],
+    "mustContainTokens": [
+      "chronic",
+      "telogen"
+    ],
+    "mustNotContainTokens": [
+      "guaranteed"
+    ]
+  },
+  "clinicalRationale": {
+    "whyPrimary": "52-year-old female with persistent diffuse shedding > 12 months, no architectural pattern change, no identifiable single precipitant despite thorough workup. Chronic-duration marker plus diffuse shedding without pattern topology produces telogen-cycle-disruption leadership at modest but sustained activation. Reversibility is partial-to-full once the chronic driver is addressed; protocol class TE_CHRONIC mandates comprehensive deficiency workup in monitoring.",
+    "whyNotCompetitors": {
+      "androgen-driven-miniaturization": "No pattern signal above background; chronic diffuse shed without thinning topology weighs against miniaturization.",
+      "autoimmune-hair-loss": "No patchy/areata markers.",
+      "inflammatory-scalp-dysfunction": "Unremarkable scalp surface.",
+      "nutritional-hair-stress": "No documented deficiency.",
+      "multifactorial-hair-loss": "Only one dominant pathway (two when nutritional co-activates) — compositeRule not met."
+    }
+  }
+}

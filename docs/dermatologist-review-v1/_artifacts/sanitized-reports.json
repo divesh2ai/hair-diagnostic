@@ -1,0 +1,2102 @@
+[
+  {
+    "reviewCaseId": "RC-01",
+    "presentationCategory": "Male Androgenetic Alopecia",
+    "patientQuestionnaire": {
+      "sex": "Male",
+      "ageGroup": "young adult",
+      "durationOfConcern": "3–6 months",
+      "sheddingPattern": "thinning visible, minimal fall",
+      "grade": "Grade 1",
+      "hairChanges": [
+        "Receding hairline"
+      ],
+      "scalpState": [
+        "Normal scalp"
+      ],
+      "selfReportedCauses": [],
+      "lifestyle": [
+        "Chronic stress",
+        "Poor sleep"
+      ],
+      "thyroidConditions": [],
+      "hormonalState": [],
+      "immunityConditions": [],
+      "reportedDeficiencies": [
+        "Iron deficiency"
+      ],
+      "gutSymptoms": [],
+      "dietPattern": [],
+      "currentTreatments": [],
+      "treatmentGoals": [
+        "Reduce hair fall",
+        "Regrow lost hair"
+      ]
+    },
+    "clinicalFindings": [
+      "Pattern thinning / widening parting",
+      "Thinning without active shedding",
+      "Early-grade severity (1–3)",
+      "Male",
+      "Young adult (< 25)",
+      "Iron / ferritin deficiency reported",
+      "Chronic stress / poor sleep"
+    ],
+    "detectedDrivers": [
+      {
+        "label": "Follicular miniaturization",
+        "role": "Primary driver"
+      },
+      {
+        "label": "Nutritional substrate limitation",
+        "role": "Supporting driver"
+      },
+      {
+        "label": "Telogen cycle disruption",
+        "role": "Modulator"
+      }
+    ],
+    "diagnosis": "Androgenetic / Pattern Hair Loss",
+    "severity": "Mild",
+    "coExplanations": [
+      "Nutritional Hair Loss"
+    ],
+    "rootCauseExplanation": "Male, age 19, with progressive Norwood-1 pattern thinning concentrated at crown/temporal regions, and minimal active shedding. The pattern topology (terminal-to-vellus transition without diffuse shed) is the definitional signature of androgen-driven miniaturization. Pathway activation is dominated by follicular miniaturization (≥0.60) with the telogen pathway only modestly activated, which the cause registry's log-likelihood weights resolve into a dominant posterior for androgen-driven miniaturization. The case therefore leads on the androgenic cause with the standard MPHL protocol class and Norwood-grade-locked kit gating.",
+    "biologicalMechanismExplanation": "DHT-driven dermal-papilla signalling shortens anagen and reduces follicle volume across successive cycles. Each cycle produces a progressively finer, shorter, and lighter hair until terminal-to-vellus transformation. Follicular architecture is preserved early and degrades with sustained exposure; partial reversibility is possible with timely intervention.",
+    "protocolRecommendation": {
+      "therapyAxes": [
+        "DHT suppression",
+        "Scalp inflammation control",
+        "Nutritional repletion"
+      ],
+      "narrative": "Male AGA pattern protocol focused on DHT suppression and scalp inflammation control, with a maintenance horizon. Initiated at standard intensity with 12-week reassessment. Therapy axes engaged: DHT suppression, Scalp inflammation control, Nutritional repletion."
+    },
+    "monitoringPlan": {
+      "required": [
+        "Global photography — every 3 months",
+        "Trichoscopy — every 6 months",
+        "Ferritin — repeat at 4 months"
+      ],
+      "recommended": [
+        "Shed count — monthly diary"
+      ]
+    },
+    "expectedOutcomes": "Shedding stabilises within 8–12 weeks. Caliber improvement visible from 16–24 weeks. Density change visible from 6–9 months. Maintenance is lifelong; discontinuation typically reverts progress within 6–12 months.",
+    "patientNarrative": "Your hair is getting finer over time because of how your follicles respond to hormones — this is a hereditary, pattern-based form of hair loss. Treatment slows the pattern and supports density; results build over months, not weeks, and improvement requires staying on the protocol. We are also addressing the contributing role of Nutritional Hair Loss.",
+    "doctorNarrative": "Pattern thinning topology with intact follicular architecture; androgen-driven miniaturization is the dominant explanation. Protocol focuses on DHT suppression and scalp inflammation control, with a maintenance horizon. Co-explanations: Nutritional Hair Loss. Presentation is ambiguous — recommend reassessment at 12 weeks before therapy intensification.",
+    "themes": [
+      "Androgenic progression",
+      "Expectation setting slow",
+      "Nutritional restoration"
+    ]
+  },
+  {
+    "reviewCaseId": "RC-02",
+    "presentationCategory": "Male Androgenetic Alopecia",
+    "patientQuestionnaire": {
+      "sex": "Male",
+      "ageGroup": "adult",
+      "durationOfConcern": "6–12 months",
+      "sheddingPattern": "thinning visible, minimal fall",
+      "grade": "Grade 3",
+      "hairChanges": [
+        "Receding hairline"
+      ],
+      "scalpState": [
+        "Normal scalp"
+      ],
+      "selfReportedCauses": [
+        "Family history"
+      ],
+      "lifestyle": [],
+      "thyroidConditions": [],
+      "hormonalState": [],
+      "immunityConditions": [],
+      "reportedDeficiencies": [],
+      "gutSymptoms": [],
+      "dietPattern": [],
+      "currentTreatments": [],
+      "treatmentGoals": [
+        "Reduce hair fall",
+        "Regrow lost hair"
+      ]
+    },
+    "clinicalFindings": [
+      "Pattern thinning / widening parting",
+      "Thinning without active shedding",
+      "Early-grade severity (1–3)",
+      "Male",
+      "Adult (25–39)",
+      "Family history of hair loss"
+    ],
+    "detectedDrivers": [
+      {
+        "label": "Follicular miniaturization",
+        "role": "Primary driver"
+      }
+    ],
+    "diagnosis": "Androgenetic / Pattern Hair Loss",
+    "severity": "Moderate",
+    "coExplanations": [],
+    "rootCauseExplanation": "Male, age 27, with progressive Norwood-3 pattern thinning concentrated at crown/temporal regions, family history positive, and minimal active shedding. The pattern topology (terminal-to-vellus transition without diffuse shed) is the definitional signature of androgen-driven miniaturization. Pathway activation is dominated by follicular miniaturization (≥0.60) with the telogen pathway only modestly activated, which the cause registry's log-likelihood weights resolve into a dominant posterior for androgen-driven miniaturization. The case therefore leads on the androgenic cause with the standard MPHL protocol class and Norwood-grade-locked kit gating.",
+    "biologicalMechanismExplanation": "DHT-driven dermal-papilla signalling shortens anagen and reduces follicle volume across successive cycles. Each cycle produces a progressively finer, shorter, and lighter hair until terminal-to-vellus transformation. Follicular architecture is preserved early and degrades with sustained exposure; partial reversibility is possible with timely intervention.",
+    "protocolRecommendation": {
+      "therapyAxes": [
+        "DHT suppression",
+        "Scalp inflammation control"
+      ],
+      "narrative": "Male AGA pattern protocol focused on DHT suppression and scalp inflammation control, with a maintenance horizon. Initiated at standard intensity with 12-week reassessment. Therapy axes engaged: DHT suppression, Scalp inflammation control."
+    },
+    "monitoringPlan": {
+      "required": [
+        "Global photography — every 3 months",
+        "Trichoscopy — every 6 months"
+      ],
+      "recommended": [
+        "Shed count — monthly diary"
+      ]
+    },
+    "expectedOutcomes": "Shedding stabilises within 8–12 weeks. Caliber improvement visible from 16–24 weeks. Density change visible from 6–9 months. Maintenance is lifelong; discontinuation typically reverts progress within 6–12 months.",
+    "patientNarrative": "Your hair is getting finer over time because of how your follicles respond to hormones — this is a hereditary, pattern-based form of hair loss. Treatment slows the pattern and supports density; results build over months, not weeks, and improvement requires staying on the protocol.",
+    "doctorNarrative": "Pattern thinning topology with intact follicular architecture; androgen-driven miniaturization is the dominant explanation. Protocol focuses on DHT suppression and scalp inflammation control, with a maintenance horizon.",
+    "themes": [
+      "Androgenic progression",
+      "Expectation setting slow"
+    ]
+  },
+  {
+    "reviewCaseId": "RC-03",
+    "presentationCategory": "Male Androgenetic Alopecia",
+    "patientQuestionnaire": {
+      "sex": "Male",
+      "ageGroup": "adult",
+      "durationOfConcern": "More than 1 year",
+      "sheddingPattern": "thinning visible, minimal fall",
+      "grade": "Grade 5",
+      "hairChanges": [
+        "Thinning at crown",
+        "Receding hairline"
+      ],
+      "scalpState": [
+        "Oily scalp"
+      ],
+      "selfReportedCauses": [
+        "Family history"
+      ],
+      "lifestyle": [
+        "Chronic stress",
+        "Poor sleep"
+      ],
+      "thyroidConditions": [],
+      "hormonalState": [],
+      "immunityConditions": [],
+      "reportedDeficiencies": [],
+      "gutSymptoms": [],
+      "dietPattern": [],
+      "currentTreatments": [],
+      "treatmentGoals": [
+        "Reduce hair fall"
+      ]
+    },
+    "clinicalFindings": [
+      "Pattern thinning / widening parting",
+      "Thinning without active shedding",
+      "Advanced-grade severity (4–5)",
+      "Male",
+      "Adult (25–39)",
+      "Family history of hair loss",
+      "Oily scalp",
+      "Chronic stress / poor sleep"
+    ],
+    "detectedDrivers": [
+      {
+        "label": "Follicular miniaturization",
+        "role": "Primary driver"
+      },
+      {
+        "label": "Telogen cycle disruption",
+        "role": "Modulator"
+      }
+    ],
+    "diagnosis": "Androgenetic / Pattern Hair Loss",
+    "severity": "Severe",
+    "coExplanations": [],
+    "rootCauseExplanation": "Male, age 35, with progressive Norwood-5 pattern thinning concentrated at crown/temporal regions, family history positive, seborrheic scalp tendency, and minimal active shedding. The pattern topology (terminal-to-vellus transition without diffuse shed) is the definitional signature of androgen-driven miniaturization. Pathway activation is dominated by follicular miniaturization (≥0.60) with the telogen pathway only modestly activated, which the cause registry's log-likelihood weights resolve into a dominant posterior for androgen-driven miniaturization. The case therefore leads on the androgenic cause with the standard MPHL protocol class and Norwood-grade-locked kit gating.",
+    "biologicalMechanismExplanation": "DHT-driven dermal-papilla signalling shortens anagen and reduces follicle volume across successive cycles. Each cycle produces a progressively finer, shorter, and lighter hair until terminal-to-vellus transformation. Follicular architecture is preserved early and degrades with sustained exposure; partial reversibility is possible with timely intervention.",
+    "protocolRecommendation": {
+      "therapyAxes": [
+        "DHT suppression",
+        "Scalp inflammation control"
+      ],
+      "narrative": "Male AGA pattern protocol focused on DHT suppression and scalp inflammation control, with a maintenance horizon. Severity warrants combination therapy and an early dermatologist follow-up at 12 weeks. Therapy axes engaged: DHT suppression, Scalp inflammation control."
+    },
+    "monitoringPlan": {
+      "required": [
+        "Global photography — every 3 months",
+        "Trichoscopy — every 6 months"
+      ],
+      "recommended": [
+        "Shed count — monthly diary"
+      ]
+    },
+    "expectedOutcomes": "Shedding stabilises within 8–12 weeks. Caliber improvement visible from 16–24 weeks. Density change visible from 6–9 months. Maintenance is lifelong; discontinuation typically reverts progress within 6–12 months.",
+    "patientNarrative": "Your hair is getting finer over time because of how your follicles respond to hormones — this is a hereditary, pattern-based form of hair loss. Treatment slows the pattern and supports density; results build over months, not weeks, and improvement requires staying on the protocol.",
+    "doctorNarrative": "Pattern thinning topology with intact follicular architecture; androgen-driven miniaturization is the dominant explanation. Protocol focuses on DHT suppression and scalp inflammation control, with a maintenance horizon.",
+    "themes": [
+      "Androgenic progression",
+      "Expectation setting slow"
+    ]
+  },
+  {
+    "reviewCaseId": "RC-04",
+    "presentationCategory": "Male Androgenetic Alopecia",
+    "patientQuestionnaire": {
+      "sex": "Male",
+      "ageGroup": "mature adult",
+      "durationOfConcern": "More than 1 year",
+      "sheddingPattern": "thinning visible, minimal fall",
+      "grade": "Grade 6",
+      "hairChanges": [
+        "Thinning at crown",
+        "Receding hairline"
+      ],
+      "scalpState": [
+        "Oily scalp"
+      ],
+      "selfReportedCauses": [
+        "Family history"
+      ],
+      "lifestyle": [],
+      "thyroidConditions": [],
+      "hormonalState": [],
+      "immunityConditions": [],
+      "reportedDeficiencies": [
+        "Iron deficiency"
+      ],
+      "gutSymptoms": [],
+      "dietPattern": [],
+      "currentTreatments": [],
+      "treatmentGoals": [
+        "Reduce hair fall"
+      ]
+    },
+    "clinicalFindings": [
+      "Pattern thinning / widening parting",
+      "Thinning without active shedding",
+      "Advanced-grade severity (4–5)",
+      "Male",
+      "Mature adult (40–54)",
+      "Family history of hair loss",
+      "Oily scalp",
+      "Iron / ferritin deficiency reported"
+    ],
+    "detectedDrivers": [
+      {
+        "label": "Follicular miniaturization",
+        "role": "Primary driver"
+      },
+      {
+        "label": "Nutritional substrate limitation",
+        "role": "Supporting driver"
+      }
+    ],
+    "diagnosis": "Androgenetic / Pattern Hair Loss",
+    "severity": "Severe",
+    "coExplanations": [
+      "Nutritional Hair Loss"
+    ],
+    "rootCauseExplanation": "Male, age 42, with progressive Norwood-6 pattern thinning concentrated at crown/temporal regions, family history positive, seborrheic scalp tendency, and minimal active shedding. The pattern topology (terminal-to-vellus transition without diffuse shed) is the definitional signature of androgen-driven miniaturization. Pathway activation is dominated by follicular miniaturization (≥0.60) with the telogen pathway only modestly activated, which the cause registry's log-likelihood weights resolve into a dominant posterior for androgen-driven miniaturization. The case therefore leads on the androgenic cause with the standard MPHL protocol class and Norwood-grade-locked kit gating.",
+    "biologicalMechanismExplanation": "DHT-driven dermal-papilla signalling shortens anagen and reduces follicle volume across successive cycles. Each cycle produces a progressively finer, shorter, and lighter hair until terminal-to-vellus transformation. Follicular architecture is preserved early and degrades with sustained exposure; partial reversibility is possible with timely intervention.",
+    "protocolRecommendation": {
+      "therapyAxes": [
+        "DHT suppression",
+        "Scalp inflammation control",
+        "Nutritional repletion"
+      ],
+      "narrative": "Male AGA pattern protocol focused on DHT suppression and scalp inflammation control, with a maintenance horizon. Severity warrants combination therapy and an early dermatologist follow-up at 12 weeks. Therapy axes engaged: DHT suppression, Scalp inflammation control, Nutritional repletion."
+    },
+    "monitoringPlan": {
+      "required": [
+        "Global photography — every 3 months",
+        "Trichoscopy — every 6 months",
+        "Ferritin — repeat at 4 months"
+      ],
+      "recommended": [
+        "Shed count — monthly diary"
+      ]
+    },
+    "expectedOutcomes": "Shedding stabilises within 8–12 weeks. Caliber improvement visible from 16–24 weeks. Density change visible from 6–9 months. Maintenance is lifelong; discontinuation typically reverts progress within 6–12 months.",
+    "patientNarrative": "Your hair is getting finer over time because of how your follicles respond to hormones — this is a hereditary, pattern-based form of hair loss. Treatment slows the pattern and supports density; results build over months, not weeks, and improvement requires staying on the protocol. We are also addressing the contributing role of Nutritional Hair Loss.",
+    "doctorNarrative": "Pattern thinning topology with intact follicular architecture; androgen-driven miniaturization is the dominant explanation. Protocol focuses on DHT suppression and scalp inflammation control, with a maintenance horizon. Co-explanations: Nutritional Hair Loss. Presentation is ambiguous — recommend reassessment at 12 weeks before therapy intensification.",
+    "themes": [
+      "Androgenic progression",
+      "Expectation setting slow",
+      "Nutritional restoration"
+    ]
+  },
+  {
+    "reviewCaseId": "RC-05",
+    "presentationCategory": "Male Androgenetic Alopecia",
+    "patientQuestionnaire": {
+      "sex": "Male",
+      "ageGroup": "mature adult",
+      "durationOfConcern": "6–12 months",
+      "sheddingPattern": "thinning visible, minimal fall",
+      "grade": "Grade 2",
+      "hairChanges": [
+        "Receding hairline"
+      ],
+      "scalpState": [
+        "Oily scalp"
+      ],
+      "selfReportedCauses": [
+        "Family history"
+      ],
+      "lifestyle": [],
+      "thyroidConditions": [],
+      "hormonalState": [],
+      "immunityConditions": [],
+      "reportedDeficiencies": [],
+      "gutSymptoms": [],
+      "dietPattern": [],
+      "currentTreatments": [],
+      "treatmentGoals": [
+        "Reduce hair fall",
+        "Regrow lost hair"
+      ]
+    },
+    "clinicalFindings": [
+      "Pattern thinning / widening parting",
+      "Thinning without active shedding",
+      "Early-grade severity (1–3)",
+      "Male",
+      "Mature adult (40–54)",
+      "Family history of hair loss",
+      "Oily scalp"
+    ],
+    "detectedDrivers": [
+      {
+        "label": "Follicular miniaturization",
+        "role": "Primary driver"
+      }
+    ],
+    "diagnosis": "Androgenetic / Pattern Hair Loss",
+    "severity": "Mild",
+    "coExplanations": [],
+    "rootCauseExplanation": "Male, age 51, with progressive Norwood-2 pattern thinning concentrated at crown/temporal regions, family history positive, seborrheic scalp tendency, and minimal active shedding. The pattern topology (terminal-to-vellus transition without diffuse shed) is the definitional signature of androgen-driven miniaturization. Pathway activation is dominated by follicular miniaturization (≥0.60) with the telogen pathway only modestly activated, which the cause registry's log-likelihood weights resolve into a dominant posterior for androgen-driven miniaturization. The case therefore leads on the androgenic cause with the standard MPHL protocol class and Norwood-grade-locked kit gating.",
+    "biologicalMechanismExplanation": "DHT-driven dermal-papilla signalling shortens anagen and reduces follicle volume across successive cycles. Each cycle produces a progressively finer, shorter, and lighter hair until terminal-to-vellus transformation. Follicular architecture is preserved early and degrades with sustained exposure; partial reversibility is possible with timely intervention.",
+    "protocolRecommendation": {
+      "therapyAxes": [
+        "DHT suppression",
+        "Scalp inflammation control"
+      ],
+      "narrative": "Male AGA pattern protocol focused on DHT suppression and scalp inflammation control, with a maintenance horizon. Initiated at standard intensity with 12-week reassessment. Therapy axes engaged: DHT suppression, Scalp inflammation control."
+    },
+    "monitoringPlan": {
+      "required": [
+        "Global photography — every 3 months",
+        "Trichoscopy — every 6 months"
+      ],
+      "recommended": [
+        "Shed count — monthly diary"
+      ]
+    },
+    "expectedOutcomes": "Shedding stabilises within 8–12 weeks. Caliber improvement visible from 16–24 weeks. Density change visible from 6–9 months. Maintenance is lifelong; discontinuation typically reverts progress within 6–12 months.",
+    "patientNarrative": "Your hair is getting finer over time because of how your follicles respond to hormones — this is a hereditary, pattern-based form of hair loss. Treatment slows the pattern and supports density; results build over months, not weeks, and improvement requires staying on the protocol.",
+    "doctorNarrative": "Pattern thinning topology with intact follicular architecture; androgen-driven miniaturization is the dominant explanation. Protocol focuses on DHT suppression and scalp inflammation control, with a maintenance horizon. Conflicting signals present — multifactorial framing preferred.",
+    "themes": [
+      "Androgenic progression",
+      "Expectation setting slow"
+    ]
+  },
+  {
+    "reviewCaseId": "RC-06",
+    "presentationCategory": "Female Pattern Hair Loss",
+    "patientQuestionnaire": {
+      "sex": "Female",
+      "ageGroup": "adult",
+      "durationOfConcern": "More than 1 year",
+      "sheddingPattern": "thinning visible, minimal fall",
+      "grade": "Grade 2",
+      "hairChanges": [
+        "Widening parting",
+        "Thinning at crown"
+      ],
+      "scalpState": [
+        "Normal scalp"
+      ],
+      "selfReportedCauses": [
+        "Family history"
+      ],
+      "lifestyle": [],
+      "thyroidConditions": [],
+      "hormonalState": [],
+      "immunityConditions": [],
+      "reportedDeficiencies": [
+        "Iron deficiency"
+      ],
+      "gutSymptoms": [],
+      "dietPattern": [],
+      "currentTreatments": [],
+      "treatmentGoals": [
+        "Reduce hair fall",
+        "Regrow lost hair"
+      ]
+    },
+    "clinicalFindings": [
+      "Pattern thinning / widening parting",
+      "Thinning without active shedding",
+      "Early-grade severity (1–3)",
+      "Female",
+      "Adult (25–39)",
+      "Family history of hair loss",
+      "Iron / ferritin deficiency reported"
+    ],
+    "detectedDrivers": [
+      {
+        "label": "Follicular miniaturization",
+        "role": "Primary driver"
+      },
+      {
+        "label": "Endocrine dysregulation",
+        "role": "Supporting driver"
+      },
+      {
+        "label": "Nutritional substrate limitation",
+        "role": "Supporting driver"
+      }
+    ],
+    "diagnosis": "Androgenetic / Pattern Hair Loss",
+    "severity": "Mild",
+    "coExplanations": [
+      "Endocrine-Driven Hair Loss",
+      "Nutritional Hair Loss"
+    ],
+    "rootCauseExplanation": "Female, age 28, Ludwig 1 pattern with widening parting, family history positive, minimal active shedding. The crown-emphasized topology with intact frontal hairline is the female-pattern signature of androgen-driven miniaturization expressed within an endocrine context. Both miniaturization (≥0.55) and hormonal-dysregulation (≥0.40) pathways activate, producing a co-leading androgenic + hormonal cause posterior — the legacy DiagnosisKey for FPHL maps directly to this co-explanation.",
+    "biologicalMechanismExplanation": "DHT-driven dermal-papilla signalling shortens anagen and reduces follicle volume across successive cycles. Each cycle produces a progressively finer, shorter, and lighter hair until terminal-to-vellus transformation. Follicular architecture is preserved early and degrades with sustained exposure; partial reversibility is possible with timely intervention.",
+    "protocolRecommendation": {
+      "therapyAxes": [
+        "DHT suppression",
+        "Endocrine optimisation",
+        "Scalp inflammation control",
+        "Nutritional repletion"
+      ],
+      "narrative": "FPHL pattern protocol focused on DHT suppression and scalp inflammation control, with a maintenance horizon. Initiated at standard intensity with 12-week reassessment. Therapy axes engaged: DHT suppression, Endocrine optimisation, Scalp inflammation control, Nutritional repletion."
+    },
+    "monitoringPlan": {
+      "required": [
+        "Global photography — every 3 months",
+        "Trichoscopy — every 6 months",
+        "Ferritin — repeat at 4 months",
+        "Vitamin D (25-OH) — repeat at 4 months"
+      ],
+      "recommended": [
+        "Shed count — monthly diary"
+      ]
+    },
+    "expectedOutcomes": "Shedding stabilises within 8–12 weeks. Caliber improvement visible from 16–24 weeks. Density change visible from 6–9 months. Maintenance is lifelong; discontinuation typically reverts progress within 6–12 months.",
+    "patientNarrative": "Your hair is getting finer over time because of how your follicles respond to hormones — this is a hereditary, pattern-based form of hair loss. Treatment slows the pattern and supports density; results build over months, not weeks, and improvement requires staying on the protocol. We are also addressing the contributing role of Endocrine-Driven Hair Loss and Nutritional Hair Loss.",
+    "doctorNarrative": "Pattern thinning topology with intact follicular architecture; androgen-driven miniaturization is the dominant explanation. Protocol focuses on DHT suppression and scalp inflammation control, with a maintenance horizon. Co-explanations: Endocrine-Driven Hair Loss, Nutritional Hair Loss. Presentation is ambiguous — recommend reassessment at 12 weeks before therapy intensification.",
+    "themes": [
+      "Androgenic progression",
+      "Endocrine rebalance",
+      "Expectation setting slow",
+      "Nutritional restoration"
+    ]
+  },
+  {
+    "reviewCaseId": "RC-07",
+    "presentationCategory": "Female Pattern Hair Loss",
+    "patientQuestionnaire": {
+      "sex": "Female",
+      "ageGroup": "adult",
+      "durationOfConcern": "More than 1 year",
+      "sheddingPattern": "thinning visible, minimal fall",
+      "grade": "Grade 3",
+      "hairChanges": [
+        "Widening parting",
+        "Thinning at crown"
+      ],
+      "scalpState": [
+        "Normal scalp"
+      ],
+      "selfReportedCauses": [
+        "Family history"
+      ],
+      "lifestyle": [],
+      "thyroidConditions": [],
+      "hormonalState": [],
+      "immunityConditions": [],
+      "reportedDeficiencies": [],
+      "gutSymptoms": [],
+      "dietPattern": [],
+      "currentTreatments": [],
+      "treatmentGoals": [
+        "Reduce hair fall",
+        "Regrow lost hair"
+      ]
+    },
+    "clinicalFindings": [
+      "Pattern thinning / widening parting",
+      "Thinning without active shedding",
+      "Early-grade severity (1–3)",
+      "Female",
+      "Adult (25–39)",
+      "Family history of hair loss"
+    ],
+    "detectedDrivers": [
+      {
+        "label": "Follicular miniaturization",
+        "role": "Primary driver"
+      },
+      {
+        "label": "Endocrine dysregulation",
+        "role": "Supporting driver"
+      }
+    ],
+    "diagnosis": "Androgenetic / Pattern Hair Loss",
+    "severity": "Moderate",
+    "coExplanations": [
+      "Endocrine-Driven Hair Loss"
+    ],
+    "rootCauseExplanation": "Female, age 36, Ludwig 2 pattern with widening parting, family history positive, minimal active shedding. The crown-emphasized topology with intact frontal hairline is the female-pattern signature of androgen-driven miniaturization expressed within an endocrine context. Both miniaturization (≥0.55) and hormonal-dysregulation (≥0.40) pathways activate, producing a co-leading androgenic + hormonal cause posterior — the legacy DiagnosisKey for FPHL maps directly to this co-explanation.",
+    "biologicalMechanismExplanation": "DHT-driven dermal-papilla signalling shortens anagen and reduces follicle volume across successive cycles. Each cycle produces a progressively finer, shorter, and lighter hair until terminal-to-vellus transformation. Follicular architecture is preserved early and degrades with sustained exposure; partial reversibility is possible with timely intervention.",
+    "protocolRecommendation": {
+      "therapyAxes": [
+        "DHT suppression",
+        "Endocrine optimisation",
+        "Scalp inflammation control"
+      ],
+      "narrative": "FPHL pattern protocol focused on DHT suppression and scalp inflammation control, with a maintenance horizon. Initiated at standard intensity with 12-week reassessment. Therapy axes engaged: DHT suppression, Endocrine optimisation, Scalp inflammation control."
+    },
+    "monitoringPlan": {
+      "required": [
+        "Global photography — every 3 months",
+        "Trichoscopy — every 6 months"
+      ],
+      "recommended": [
+        "Shed count — monthly diary"
+      ]
+    },
+    "expectedOutcomes": "Shedding stabilises within 8–12 weeks. Caliber improvement visible from 16–24 weeks. Density change visible from 6–9 months. Maintenance is lifelong; discontinuation typically reverts progress within 6–12 months.",
+    "patientNarrative": "Your hair is getting finer over time because of how your follicles respond to hormones — this is a hereditary, pattern-based form of hair loss. Treatment slows the pattern and supports density; results build over months, not weeks, and improvement requires staying on the protocol. We are also addressing the contributing role of Endocrine-Driven Hair Loss.",
+    "doctorNarrative": "Pattern thinning topology with intact follicular architecture; androgen-driven miniaturization is the dominant explanation. Protocol focuses on DHT suppression and scalp inflammation control, with a maintenance horizon. Co-explanations: Endocrine-Driven Hair Loss.",
+    "themes": [
+      "Androgenic progression",
+      "Endocrine rebalance",
+      "Expectation setting slow"
+    ]
+  },
+  {
+    "reviewCaseId": "RC-08",
+    "presentationCategory": "Female Pattern Hair Loss",
+    "patientQuestionnaire": {
+      "sex": "Female",
+      "ageGroup": "mature adult",
+      "durationOfConcern": "More than 1 year",
+      "sheddingPattern": "thinning visible, minimal fall",
+      "grade": "Grade 2",
+      "hairChanges": [
+        "Widening parting",
+        "Thinning at crown"
+      ],
+      "scalpState": [
+        "Normal scalp"
+      ],
+      "selfReportedCauses": [
+        "Family history"
+      ],
+      "lifestyle": [],
+      "thyroidConditions": [],
+      "hormonalState": [
+        "Perimenopause"
+      ],
+      "immunityConditions": [],
+      "reportedDeficiencies": [],
+      "gutSymptoms": [],
+      "dietPattern": [],
+      "currentTreatments": [],
+      "treatmentGoals": [
+        "Reduce hair fall",
+        "Regrow lost hair"
+      ]
+    },
+    "clinicalFindings": [
+      "Pattern thinning / widening parting",
+      "Thinning without active shedding",
+      "Early-grade severity (1–3)",
+      "Female",
+      "Mature adult (40–54)",
+      "Family history of hair loss",
+      "Perimenopausal"
+    ],
+    "detectedDrivers": [
+      {
+        "label": "Follicular miniaturization",
+        "role": "Primary driver"
+      },
+      {
+        "label": "Endocrine dysregulation",
+        "role": "Supporting driver"
+      }
+    ],
+    "diagnosis": "Androgenetic / Pattern Hair Loss",
+    "severity": "Mild",
+    "coExplanations": [
+      "Endocrine-Driven Hair Loss"
+    ],
+    "rootCauseExplanation": "Female, age 52, Ludwig 1 pattern with widening parting, perimenopausal endocrine state, family history positive, minimal active shedding. The crown-emphasized topology with intact frontal hairline is the female-pattern signature of androgen-driven miniaturization expressed within an endocrine context. Both miniaturization (≥0.55) and hormonal-dysregulation (≥0.40) pathways activate, producing a co-leading androgenic + hormonal cause posterior — the legacy DiagnosisKey for FPHL maps directly to this co-explanation.",
+    "biologicalMechanismExplanation": "DHT-driven dermal-papilla signalling shortens anagen and reduces follicle volume across successive cycles. Each cycle produces a progressively finer, shorter, and lighter hair until terminal-to-vellus transformation. Follicular architecture is preserved early and degrades with sustained exposure; partial reversibility is possible with timely intervention.",
+    "protocolRecommendation": {
+      "therapyAxes": [
+        "DHT suppression",
+        "Endocrine optimisation",
+        "Scalp inflammation control"
+      ],
+      "narrative": "FPHL pattern protocol focused on DHT suppression and scalp inflammation control, with a maintenance horizon. Initiated at standard intensity with 12-week reassessment. Therapy axes engaged: DHT suppression, Endocrine optimisation, Scalp inflammation control."
+    },
+    "monitoringPlan": {
+      "required": [
+        "Global photography — every 3 months",
+        "Trichoscopy — every 6 months"
+      ],
+      "recommended": [
+        "Shed count — monthly diary"
+      ]
+    },
+    "expectedOutcomes": "Shedding stabilises within 8–12 weeks. Caliber improvement visible from 16–24 weeks. Density change visible from 6–9 months. Maintenance is lifelong; discontinuation typically reverts progress within 6–12 months.",
+    "patientNarrative": "Your hair is getting finer over time because of how your follicles respond to hormones — this is a hereditary, pattern-based form of hair loss. Treatment slows the pattern and supports density; results build over months, not weeks, and improvement requires staying on the protocol. We are also addressing the contributing role of Endocrine-Driven Hair Loss.",
+    "doctorNarrative": "Pattern thinning topology with intact follicular architecture; androgen-driven miniaturization is the dominant explanation. Protocol focuses on DHT suppression and scalp inflammation control, with a maintenance horizon. Co-explanations: Endocrine-Driven Hair Loss. Presentation is ambiguous — recommend reassessment at 12 weeks before therapy intensification.",
+    "themes": [
+      "Androgenic progression",
+      "Endocrine rebalance",
+      "Expectation setting slow"
+    ]
+  },
+  {
+    "reviewCaseId": "RC-09",
+    "presentationCategory": "Female Pattern Hair Loss",
+    "patientQuestionnaire": {
+      "sex": "Female",
+      "ageGroup": "adult",
+      "durationOfConcern": "More than 1 year",
+      "sheddingPattern": "thinning visible, minimal fall",
+      "grade": "Grade 2",
+      "hairChanges": [
+        "Widening parting",
+        "Thinning at crown"
+      ],
+      "scalpState": [
+        "Normal scalp"
+      ],
+      "selfReportedCauses": [
+        "Family history"
+      ],
+      "lifestyle": [],
+      "thyroidConditions": [],
+      "hormonalState": [],
+      "immunityConditions": [],
+      "reportedDeficiencies": [],
+      "gutSymptoms": [],
+      "dietPattern": [],
+      "currentTreatments": [],
+      "treatmentGoals": [
+        "Reduce hair fall",
+        "Regrow lost hair"
+      ]
+    },
+    "clinicalFindings": [
+      "Pattern thinning / widening parting",
+      "Thinning without active shedding",
+      "Early-grade severity (1–3)",
+      "Female",
+      "Adult (25–39)",
+      "Family history of hair loss"
+    ],
+    "detectedDrivers": [
+      {
+        "label": "Follicular miniaturization",
+        "role": "Primary driver"
+      },
+      {
+        "label": "Endocrine dysregulation",
+        "role": "Supporting driver"
+      }
+    ],
+    "diagnosis": "Androgenetic / Pattern Hair Loss",
+    "severity": "Mild",
+    "coExplanations": [
+      "Endocrine-Driven Hair Loss"
+    ],
+    "rootCauseExplanation": "Female, age 32, Ludwig 1 pattern with widening parting, family history positive, minimal active shedding. The crown-emphasized topology with intact frontal hairline is the female-pattern signature of androgen-driven miniaturization expressed within an endocrine context. Both miniaturization (≥0.55) and hormonal-dysregulation (≥0.40) pathways activate, producing a co-leading androgenic + hormonal cause posterior — the legacy DiagnosisKey for FPHL maps directly to this co-explanation.",
+    "biologicalMechanismExplanation": "DHT-driven dermal-papilla signalling shortens anagen and reduces follicle volume across successive cycles. Each cycle produces a progressively finer, shorter, and lighter hair until terminal-to-vellus transformation. Follicular architecture is preserved early and degrades with sustained exposure; partial reversibility is possible with timely intervention.",
+    "protocolRecommendation": {
+      "therapyAxes": [
+        "DHT suppression",
+        "Endocrine optimisation",
+        "Scalp inflammation control"
+      ],
+      "narrative": "FPHL pattern protocol focused on DHT suppression and scalp inflammation control, with a maintenance horizon. Initiated at standard intensity with 12-week reassessment. Therapy axes engaged: DHT suppression, Endocrine optimisation, Scalp inflammation control."
+    },
+    "monitoringPlan": {
+      "required": [
+        "Global photography — every 3 months",
+        "Trichoscopy — every 6 months"
+      ],
+      "recommended": [
+        "Shed count — monthly diary"
+      ]
+    },
+    "expectedOutcomes": "Shedding stabilises within 8–12 weeks. Caliber improvement visible from 16–24 weeks. Density change visible from 6–9 months. Maintenance is lifelong; discontinuation typically reverts progress within 6–12 months.",
+    "patientNarrative": "Your hair is getting finer over time because of how your follicles respond to hormones — this is a hereditary, pattern-based form of hair loss. Treatment slows the pattern and supports density; results build over months, not weeks, and improvement requires staying on the protocol. We are also addressing the contributing role of Endocrine-Driven Hair Loss.",
+    "doctorNarrative": "Pattern thinning topology with intact follicular architecture; androgen-driven miniaturization is the dominant explanation. Protocol focuses on DHT suppression and scalp inflammation control, with a maintenance horizon. Co-explanations: Endocrine-Driven Hair Loss.",
+    "themes": [
+      "Androgenic progression",
+      "Endocrine rebalance",
+      "Expectation setting slow"
+    ]
+  },
+  {
+    "reviewCaseId": "RC-10",
+    "presentationCategory": "PCOS-Associated Hair Loss",
+    "patientQuestionnaire": {
+      "sex": "Female",
+      "ageGroup": "adult",
+      "durationOfConcern": "More than 1 year",
+      "sheddingPattern": "thinning visible with moderate fall",
+      "grade": "Grade 2",
+      "hairChanges": [
+        "Widening parting",
+        "Thinning at crown"
+      ],
+      "scalpState": [
+        "Oily scalp"
+      ],
+      "selfReportedCauses": [
+        "Family history"
+      ],
+      "lifestyle": [],
+      "thyroidConditions": [],
+      "hormonalState": [
+        "PCOS",
+        "Irregular periods"
+      ],
+      "immunityConditions": [],
+      "reportedDeficiencies": [],
+      "gutSymptoms": [],
+      "dietPattern": [],
+      "currentTreatments": [],
+      "treatmentGoals": [
+        "Reduce hair fall",
+        "Regrow lost hair"
+      ]
+    },
+    "clinicalFindings": [
+      "Pattern thinning / widening parting",
+      "PCOS",
+      "Female",
+      "Adult (25–39)",
+      "Oily scalp",
+      "Early-grade severity (1–3)",
+      "PCOS with metabolic features"
+    ],
+    "detectedDrivers": [
+      {
+        "label": "Endocrine dysregulation",
+        "role": "Primary driver"
+      },
+      {
+        "label": "Follicular miniaturization",
+        "role": "Supporting driver"
+      },
+      {
+        "label": "Metabolic dysfunction",
+        "role": "Supporting driver"
+      }
+    ],
+    "diagnosis": "Endocrine-Driven Hair Loss",
+    "severity": "Mild",
+    "coExplanations": [
+      "Androgenetic / Pattern Hair Loss",
+      "Metabolic-Driven Hair Loss"
+    ],
+    "rootCauseExplanation": "26-year-old woman with PCOS diagnosis and metabolic features, oily scalp, pattern thinning at crown, Grade 2 severity, family history positive. The endocrine driver (PCOS) carries the strongest log-likelihood weight in the cause registry for this signal mix; miniaturization activates as a downstream mechanism but the named driver is hormonal because endocrine signals dominate. Metabolic-dysfunction pathway co-activates via insulin–androgen cross-talk. Protocol class is PCOS with mandatory metabolic and endocrine monitoring.",
+    "biologicalMechanismExplanation": "Perturbation of the thyroid, androgen, or estrogen axes modulates follicle cycling. Hypothyroid states prolong telogen; androgen excess (PCOS) drives miniaturization via follicular sensitivity to DHT; declining estrogen at peri/menopause withdraws an anagen-protective signal. Phenotype tracks the dominant axis.",
+    "protocolRecommendation": {
+      "therapyAxes": [
+        "Endocrine optimisation",
+        "DHT suppression",
+        "Scalp inflammation control",
+        "Metabolic optimisation"
+      ],
+      "narrative": "Endocrine optimisation upstream of hair therapy; hair-directed components run in parallel but the named lever is endocrine. Therapy axes engaged: Endocrine optimisation, DHT suppression, Scalp inflammation control, Metabolic optimisation."
+    },
+    "monitoringPlan": {
+      "required": [
+        "Global photography — every 3 months",
+        "Androgen panel — repeat at 6 months",
+        "Menstrual cycle diary",
+        "HbA1c — repeat at 3 months",
+        "Weight tracking — monthly"
+      ],
+      "recommended": [
+        "Shed count — monthly diary"
+      ]
+    },
+    "expectedOutcomes": "Hair response lags endocrine correction by 8–12 weeks. Full expected response window is 6–9 months from endocrine stabilisation.",
+    "patientNarrative": "A hormonal shift is the leading explanation for what you're seeing. Addressing the underlying endocrine state, alongside targeted hair therapy, gives the best chance of improvement over the next 6–9 months. We are also addressing the contributing role of Androgenetic / Pattern Hair Loss and Metabolic-Driven Hair Loss.",
+    "doctorNarrative": "Identifiable endocrine perturbation is the named driver. Correcting the upstream endocrine state typically improves the hair phenotype on standard cycles; hair-directed therapy runs in parallel. Co-explanations: Androgenetic / Pattern Hair Loss, Metabolic-Driven Hair Loss.",
+    "themes": [
+      "Endocrine rebalance",
+      "Androgenic progression",
+      "Multifactorial coordination"
+    ]
+  },
+  {
+    "reviewCaseId": "RC-11",
+    "presentationCategory": "PCOS-Associated Hair Loss",
+    "patientQuestionnaire": {
+      "sex": "Female",
+      "ageGroup": "young adult",
+      "durationOfConcern": "More than 1 year",
+      "sheddingPattern": "thinning visible with moderate fall",
+      "grade": "Grade 3",
+      "hairChanges": [
+        "Widening parting",
+        "Thinning at crown"
+      ],
+      "scalpState": [
+        "Oily scalp"
+      ],
+      "selfReportedCauses": [
+        "Family history"
+      ],
+      "lifestyle": [],
+      "thyroidConditions": [],
+      "hormonalState": [
+        "PCOS"
+      ],
+      "immunityConditions": [],
+      "reportedDeficiencies": [
+        "Iron deficiency",
+        "Vitamin B12 deficiency"
+      ],
+      "gutSymptoms": [
+        "Bloating"
+      ],
+      "dietPattern": [
+        "Post-bariatric"
+      ],
+      "currentTreatments": [],
+      "treatmentGoals": [
+        "Reduce hair fall",
+        "Regrow lost hair"
+      ]
+    },
+    "clinicalFindings": [
+      "Pattern thinning / widening parting",
+      "PCOS",
+      "Female",
+      "Young adult (< 25)",
+      "Oily scalp",
+      "Early-grade severity (1–3)",
+      "Iron / ferritin deficiency reported",
+      "Vitamin B12 deficiency reported",
+      "Persistent bloating"
+    ],
+    "detectedDrivers": [
+      {
+        "label": "Endocrine dysregulation",
+        "role": "Primary driver"
+      },
+      {
+        "label": "Nutritional substrate limitation",
+        "role": "Supporting driver"
+      },
+      {
+        "label": "Follicular miniaturization",
+        "role": "Supporting driver"
+      }
+    ],
+    "diagnosis": "Endocrine-Driven Hair Loss",
+    "severity": "Moderate",
+    "coExplanations": [
+      "Androgenetic / Pattern Hair Loss",
+      "Nutritional Hair Loss"
+    ],
+    "rootCauseExplanation": "19-year-old woman with PCOS diagnosis, oily scalp, pattern thinning at crown, Grade 3 severity, family history positive. The endocrine driver (PCOS) carries the strongest log-likelihood weight in the cause registry for this signal mix; miniaturization activates as a downstream mechanism but the named driver is hormonal because endocrine signals dominate. Post-bariatric nutritional state co-activates nutritional-limitation pathway requiring parallel repletion. Protocol class is PCOS with mandatory metabolic and endocrine monitoring.",
+    "biologicalMechanismExplanation": "Perturbation of the thyroid, androgen, or estrogen axes modulates follicle cycling. Hypothyroid states prolong telogen; androgen excess (PCOS) drives miniaturization via follicular sensitivity to DHT; declining estrogen at peri/menopause withdraws an anagen-protective signal. Phenotype tracks the dominant axis.",
+    "protocolRecommendation": {
+      "therapyAxes": [
+        "Endocrine optimisation",
+        "DHT suppression",
+        "Scalp inflammation control",
+        "Nutritional repletion",
+        "Gut repair / absorption support"
+      ],
+      "narrative": "Endocrine optimisation upstream of hair therapy; hair-directed components run in parallel but the named lever is endocrine. Therapy axes engaged: Endocrine optimisation, DHT suppression, Scalp inflammation control, Nutritional repletion, Gut repair / absorption support."
+    },
+    "monitoringPlan": {
+      "required": [
+        "Global photography — every 3 months",
+        "Androgen panel — repeat at 6 months",
+        "Menstrual cycle diary",
+        "Ferritin — repeat at 4 months",
+        "Vitamin B12 — repeat at 4 months",
+        "Vitamin D (25-OH) — repeat at 4 months"
+      ],
+      "recommended": [
+        "Shed count — monthly diary"
+      ]
+    },
+    "expectedOutcomes": "Hair response lags endocrine correction by 8–12 weeks. Full expected response window is 6–9 months from endocrine stabilisation.",
+    "patientNarrative": "A hormonal shift is the leading explanation for what you're seeing. Addressing the underlying endocrine state, alongside targeted hair therapy, gives the best chance of improvement over the next 6–9 months. We are also addressing the contributing role of Androgenetic / Pattern Hair Loss and Nutritional Hair Loss.",
+    "doctorNarrative": "Identifiable endocrine perturbation is the named driver. Correcting the upstream endocrine state typically improves the hair phenotype on standard cycles; hair-directed therapy runs in parallel. Co-explanations: Androgenetic / Pattern Hair Loss, Nutritional Hair Loss. Presentation is ambiguous — recommend reassessment at 12 weeks before therapy intensification.",
+    "themes": [
+      "Endocrine rebalance",
+      "Androgenic progression",
+      "Nutritional restoration"
+    ]
+  },
+  {
+    "reviewCaseId": "RC-12",
+    "presentationCategory": "PCOS-Associated Hair Loss",
+    "patientQuestionnaire": {
+      "sex": "Female",
+      "ageGroup": "young adult",
+      "durationOfConcern": "More than 1 year",
+      "sheddingPattern": "thinning visible with moderate fall",
+      "grade": "Grade 4",
+      "hairChanges": [
+        "Widening parting",
+        "Thinning at crown"
+      ],
+      "scalpState": [
+        "Oily scalp"
+      ],
+      "selfReportedCauses": [
+        "Family history"
+      ],
+      "lifestyle": [],
+      "thyroidConditions": [],
+      "hormonalState": [
+        "PCOS",
+        "Irregular periods"
+      ],
+      "immunityConditions": [],
+      "reportedDeficiencies": [],
+      "gutSymptoms": [],
+      "dietPattern": [],
+      "currentTreatments": [],
+      "treatmentGoals": [
+        "Reduce hair fall",
+        "Regrow lost hair"
+      ]
+    },
+    "clinicalFindings": [
+      "Pattern thinning / widening parting",
+      "PCOS",
+      "Female",
+      "Young adult (< 25)",
+      "Oily scalp",
+      "Advanced-grade severity (4–5)",
+      "PCOS with metabolic features"
+    ],
+    "detectedDrivers": [
+      {
+        "label": "Endocrine dysregulation",
+        "role": "Primary driver"
+      },
+      {
+        "label": "Follicular miniaturization",
+        "role": "Supporting driver"
+      },
+      {
+        "label": "Metabolic dysfunction",
+        "role": "Supporting driver"
+      }
+    ],
+    "diagnosis": "Endocrine-Driven Hair Loss",
+    "severity": "Severe",
+    "coExplanations": [
+      "Androgenetic / Pattern Hair Loss",
+      "Metabolic-Driven Hair Loss"
+    ],
+    "rootCauseExplanation": "24-year-old woman with PCOS diagnosis and metabolic features, oily scalp, pattern thinning at crown, Grade 4-5 severity, family history positive. The endocrine driver (PCOS) carries the strongest log-likelihood weight in the cause registry for this signal mix; miniaturization activates as a downstream mechanism but the named driver is hormonal because endocrine signals dominate. Metabolic-dysfunction pathway co-activates via insulin–androgen cross-talk. Protocol class is PCOS with mandatory metabolic and endocrine monitoring.",
+    "biologicalMechanismExplanation": "Perturbation of the thyroid, androgen, or estrogen axes modulates follicle cycling. Hypothyroid states prolong telogen; androgen excess (PCOS) drives miniaturization via follicular sensitivity to DHT; declining estrogen at peri/menopause withdraws an anagen-protective signal. Phenotype tracks the dominant axis.",
+    "protocolRecommendation": {
+      "therapyAxes": [
+        "Endocrine optimisation",
+        "DHT suppression",
+        "Scalp inflammation control",
+        "Metabolic optimisation"
+      ],
+      "narrative": "Endocrine optimisation upstream of hair therapy; hair-directed components run in parallel but the named lever is endocrine. Therapy axes engaged: Endocrine optimisation, DHT suppression, Scalp inflammation control, Metabolic optimisation."
+    },
+    "monitoringPlan": {
+      "required": [
+        "Global photography — every 3 months",
+        "Androgen panel — repeat at 6 months",
+        "Menstrual cycle diary",
+        "HbA1c — repeat at 3 months",
+        "Weight tracking — monthly"
+      ],
+      "recommended": [
+        "Shed count — monthly diary"
+      ]
+    },
+    "expectedOutcomes": "Hair response lags endocrine correction by 8–12 weeks. Full expected response window is 6–9 months from endocrine stabilisation.",
+    "patientNarrative": "A hormonal shift is the leading explanation for what you're seeing. Addressing the underlying endocrine state, alongside targeted hair therapy, gives the best chance of improvement over the next 6–9 months. We are also addressing the contributing role of Androgenetic / Pattern Hair Loss and Metabolic-Driven Hair Loss.",
+    "doctorNarrative": "Identifiable endocrine perturbation is the named driver. Correcting the upstream endocrine state typically improves the hair phenotype on standard cycles; hair-directed therapy runs in parallel. Co-explanations: Androgenetic / Pattern Hair Loss, Metabolic-Driven Hair Loss.",
+    "themes": [
+      "Endocrine rebalance",
+      "Androgenic progression",
+      "Multifactorial coordination"
+    ]
+  },
+  {
+    "reviewCaseId": "RC-13",
+    "presentationCategory": "PCOS-Associated Hair Loss",
+    "patientQuestionnaire": {
+      "sex": "Female",
+      "ageGroup": "adult",
+      "durationOfConcern": "More than 1 year",
+      "sheddingPattern": "thinning visible with moderate fall",
+      "grade": "Grade 3",
+      "hairChanges": [
+        "Widening parting",
+        "Thinning at crown"
+      ],
+      "scalpState": [
+        "Oily scalp"
+      ],
+      "selfReportedCauses": [
+        "Family history"
+      ],
+      "lifestyle": [],
+      "thyroidConditions": [],
+      "hormonalState": [
+        "PCOS"
+      ],
+      "immunityConditions": [],
+      "reportedDeficiencies": [],
+      "gutSymptoms": [],
+      "dietPattern": [],
+      "currentTreatments": [],
+      "treatmentGoals": [
+        "Reduce hair fall",
+        "Regrow lost hair"
+      ]
+    },
+    "clinicalFindings": [
+      "Pattern thinning / widening parting",
+      "PCOS",
+      "Female",
+      "Adult (25–39)",
+      "Oily scalp",
+      "Early-grade severity (1–3)"
+    ],
+    "detectedDrivers": [
+      {
+        "label": "Endocrine dysregulation",
+        "role": "Primary driver"
+      },
+      {
+        "label": "Follicular miniaturization",
+        "role": "Supporting driver"
+      }
+    ],
+    "diagnosis": "Endocrine-Driven Hair Loss",
+    "severity": "Moderate",
+    "coExplanations": [
+      "Androgenetic / Pattern Hair Loss"
+    ],
+    "rootCauseExplanation": "30-year-old woman with PCOS diagnosis, oily scalp, pattern thinning at crown, Grade 3 severity, family history positive. The endocrine driver (PCOS) carries the strongest log-likelihood weight in the cause registry for this signal mix; miniaturization activates as a downstream mechanism but the named driver is hormonal because endocrine signals dominate. Protocol class is PCOS with mandatory metabolic and endocrine monitoring.",
+    "biologicalMechanismExplanation": "Perturbation of the thyroid, androgen, or estrogen axes modulates follicle cycling. Hypothyroid states prolong telogen; androgen excess (PCOS) drives miniaturization via follicular sensitivity to DHT; declining estrogen at peri/menopause withdraws an anagen-protective signal. Phenotype tracks the dominant axis.",
+    "protocolRecommendation": {
+      "therapyAxes": [
+        "Endocrine optimisation",
+        "DHT suppression",
+        "Scalp inflammation control"
+      ],
+      "narrative": "Endocrine optimisation upstream of hair therapy; hair-directed components run in parallel but the named lever is endocrine. Therapy axes engaged: Endocrine optimisation, DHT suppression, Scalp inflammation control."
+    },
+    "monitoringPlan": {
+      "required": [
+        "Global photography — every 3 months",
+        "Androgen panel — repeat at 6 months",
+        "Menstrual cycle diary"
+      ],
+      "recommended": [
+        "Shed count — monthly diary"
+      ]
+    },
+    "expectedOutcomes": "Hair response lags endocrine correction by 8–12 weeks. Full expected response window is 6–9 months from endocrine stabilisation.",
+    "patientNarrative": "A hormonal shift is the leading explanation for what you're seeing. Addressing the underlying endocrine state, alongside targeted hair therapy, gives the best chance of improvement over the next 6–9 months. We are also addressing the contributing role of Androgenetic / Pattern Hair Loss.",
+    "doctorNarrative": "Identifiable endocrine perturbation is the named driver. Correcting the upstream endocrine state typically improves the hair phenotype on standard cycles; hair-directed therapy runs in parallel. Co-explanations: Androgenetic / Pattern Hair Loss. Presentation is ambiguous — recommend reassessment at 12 weeks before therapy intensification.",
+    "themes": [
+      "Endocrine rebalance",
+      "Androgenic progression"
+    ]
+  },
+  {
+    "reviewCaseId": "RC-14",
+    "presentationCategory": "Acute Telogen Effluvium",
+    "patientQuestionnaire": {
+      "sex": "Female",
+      "ageGroup": "young adult",
+      "durationOfConcern": "Less than 3 months",
+      "sheddingPattern": "100–200 hairs/day",
+      "grade": "Grade 1",
+      "hairChanges": [
+        "Diffuse shedding"
+      ],
+      "scalpState": [
+        "Normal scalp"
+      ],
+      "selfReportedCauses": [
+        "Recent illness"
+      ],
+      "lifestyle": [],
+      "thyroidConditions": [],
+      "hormonalState": [],
+      "immunityConditions": [],
+      "reportedDeficiencies": [],
+      "gutSymptoms": [],
+      "dietPattern": [],
+      "currentTreatments": [],
+      "treatmentGoals": [
+        "Reduce hair fall"
+      ]
+    },
+    "clinicalFindings": [
+      "Diffuse telogen-phase shedding",
+      "Mild active shedding",
+      "Acute timeline (< 6 months)",
+      "Female",
+      "Young adult (< 25)",
+      "Recent illness (post-illness phase)"
+    ],
+    "detectedDrivers": [
+      {
+        "label": "Telogen cycle disruption",
+        "role": "Primary driver"
+      }
+    ],
+    "diagnosis": "Telogen Effluvium",
+    "severity": "Mild",
+    "coExplanations": [],
+    "rootCauseExplanation": "22-year-old female presenting with diffuse synchronized shedding lagging a clear precipitant (post-fever) by the expected 2–4 month telogen cycle. Shedding intensity (100–200 hairs/day), acute duration, and absence of pattern topology produce a dominant telogen-cycle-disruption activation. Architectural follicle integrity is preserved — this is cycle-timing pathology, fully reversible, and protocol class TE_ACUTE applies with cycle-restoration and stress-downregulation therapy needs. ",
+    "biologicalMechanismExplanation": "Stress-axis activation accelerates anagen-to-telogen transition. A wave of synchronized follicles enters telogen simultaneously, shedding the dormant club hairs approximately 2–4 months after the precipitant. The follicle bulb is intact; growth resumes spontaneously once the precipitant resolves.",
+    "protocolRecommendation": {
+      "therapyAxes": [
+        "Hair-cycle restoration",
+        "Stress-axis downregulation",
+        "Nutritional repletion"
+      ],
+      "narrative": "Cycle-restoration protocol with stress-axis downregulation and pre-emptive substrate repletion to support the rebound anagen wave. Reversibility is the dominant message; no permanent loss is expected from the current episode. Therapy axes engaged: Hair-cycle restoration, Stress-axis downregulation, Nutritional repletion."
+    },
+    "monitoringPlan": {
+      "required": [
+        "Shed count — monthly diary",
+        "Global photography — every 3 months"
+      ],
+      "recommended": [
+        "Stress / PHQ-9 — monthly"
+      ]
+    },
+    "expectedOutcomes": "Active shedding subsides within 8–16 weeks. New growth visible from 12–16 weeks. Full visual recovery generally at 6–9 months, longer for chronic phenotypes.",
+    "patientNarrative": "A stress event 2–4 months ago pushed many hairs into a resting phase, which now shows up as visible shedding. This is fully reversible. Most regrowth happens over the next 4–6 months as the cycle resets.",
+    "doctorNarrative": "Diffuse synchronized telogen release with an identifiable precipitant. Follicular architecture preserved; the process is fully reversible. Protocol favours cycle restoration with stress-axis downregulation. Presentation is ambiguous — recommend reassessment at 12 weeks before therapy intensification.",
+    "themes": [
+      "Cycle reset",
+      "Reversibility reassurance",
+      "Stress recovery"
+    ]
+  },
+  {
+    "reviewCaseId": "RC-15",
+    "presentationCategory": "Acute Telogen Effluvium",
+    "patientQuestionnaire": {
+      "sex": "Female",
+      "ageGroup": "adult",
+      "durationOfConcern": "3–6 months",
+      "sheddingPattern": "100–200 hairs/day",
+      "grade": "Grade 1",
+      "hairChanges": [
+        "Diffuse shedding"
+      ],
+      "scalpState": [
+        "Normal scalp"
+      ],
+      "selfReportedCauses": [
+        "Postpartum"
+      ],
+      "lifestyle": [],
+      "thyroidConditions": [],
+      "hormonalState": [
+        "Postpartum"
+      ],
+      "immunityConditions": [],
+      "reportedDeficiencies": [],
+      "gutSymptoms": [],
+      "dietPattern": [],
+      "currentTreatments": [],
+      "treatmentGoals": [
+        "Reduce hair fall"
+      ]
+    },
+    "clinicalFindings": [
+      "Diffuse telogen-phase shedding",
+      "Heavy active shedding",
+      "Acute timeline (< 6 months)",
+      "Female",
+      "Adult (25–39)",
+      "Postpartum, lactating"
+    ],
+    "detectedDrivers": [
+      {
+        "label": "Telogen cycle disruption",
+        "role": "Primary driver"
+      },
+      {
+        "label": "Endocrine dysregulation",
+        "role": "Supporting driver"
+      }
+    ],
+    "diagnosis": "Telogen Effluvium",
+    "severity": "Moderate",
+    "coExplanations": [
+      "Endocrine-Driven Hair Loss"
+    ],
+    "rootCauseExplanation": "26-year-old female presenting with diffuse synchronized shedding lagging a clear precipitant (postpartum-lactating) by the expected 2–4 month telogen cycle. Shedding intensity (100–200 hairs/day), acute duration, and absence of pattern topology produce a dominant telogen-cycle-disruption activation. Architectural follicle integrity is preserved — this is cycle-timing pathology, fully reversible, and protocol class TE_ACUTE applies with cycle-restoration and stress-downregulation therapy needs. Postpartum hormonal shift co-explains and is acknowledged in the narrative.",
+    "biologicalMechanismExplanation": "Stress-axis activation accelerates anagen-to-telogen transition. A wave of synchronized follicles enters telogen simultaneously, shedding the dormant club hairs approximately 2–4 months after the precipitant. The follicle bulb is intact; growth resumes spontaneously once the precipitant resolves.",
+    "protocolRecommendation": {
+      "therapyAxes": [
+        "Hair-cycle restoration",
+        "Stress-axis downregulation",
+        "Nutritional repletion"
+      ],
+      "narrative": "Cycle-restoration protocol with stress-axis downregulation and pre-emptive substrate repletion to support the rebound anagen wave. Reversibility is the dominant message; no permanent loss is expected from the current episode. Therapy axes engaged: Hair-cycle restoration, Stress-axis downregulation, Nutritional repletion."
+    },
+    "monitoringPlan": {
+      "required": [
+        "Shed count — monthly diary",
+        "Global photography — every 3 months",
+        "TSH — repeat at 3 months"
+      ],
+      "recommended": [
+        "Stress / PHQ-9 — monthly"
+      ]
+    },
+    "expectedOutcomes": "Active shedding subsides within 8–16 weeks. New growth visible from 12–16 weeks. Full visual recovery generally at 6–9 months, longer for chronic phenotypes.",
+    "patientNarrative": "A stress event 2–4 months ago pushed many hairs into a resting phase, which now shows up as visible shedding. This is fully reversible. Most regrowth happens over the next 4–6 months as the cycle resets. We are also addressing the contributing role of Endocrine-Driven Hair Loss.",
+    "doctorNarrative": "Diffuse synchronized telogen release with an identifiable precipitant. Follicular architecture preserved; the process is fully reversible. Protocol favours cycle restoration with stress-axis downregulation. Co-explanations: Endocrine-Driven Hair Loss.",
+    "themes": [
+      "Cycle reset",
+      "Reversibility reassurance",
+      "Stress recovery"
+    ]
+  },
+  {
+    "reviewCaseId": "RC-16",
+    "presentationCategory": "Acute Telogen Effluvium",
+    "patientQuestionnaire": {
+      "sex": "Male",
+      "ageGroup": "adult",
+      "durationOfConcern": "3–6 months",
+      "sheddingPattern": "more than 200 hairs/day",
+      "grade": "Grade 1",
+      "hairChanges": [
+        "Diffuse shedding"
+      ],
+      "scalpState": [
+        "Normal scalp"
+      ],
+      "selfReportedCauses": [
+        "Crash diet"
+      ],
+      "lifestyle": [],
+      "thyroidConditions": [],
+      "hormonalState": [],
+      "immunityConditions": [],
+      "reportedDeficiencies": [
+        "Iron deficiency"
+      ],
+      "gutSymptoms": [],
+      "dietPattern": [
+        "Crash dieting"
+      ],
+      "currentTreatments": [],
+      "treatmentGoals": [
+        "Reduce hair fall"
+      ]
+    },
+    "clinicalFindings": [
+      "Diffuse telogen-phase shedding",
+      "Heavy active shedding",
+      "Acute timeline (< 6 months)",
+      "Male",
+      "Adult (25–39)",
+      "Crash dieting / rapid weight loss",
+      "Iron / ferritin deficiency reported"
+    ],
+    "detectedDrivers": [
+      {
+        "label": "Telogen cycle disruption",
+        "role": "Primary driver"
+      },
+      {
+        "label": "Nutritional substrate limitation",
+        "role": "Supporting driver"
+      }
+    ],
+    "diagnosis": "Telogen Effluvium",
+    "severity": "Severe",
+    "coExplanations": [
+      "Nutritional Hair Loss"
+    ],
+    "rootCauseExplanation": "36-year-old male presenting with diffuse synchronized shedding lagging a clear precipitant (crash-diet) by the expected 2–4 month telogen cycle. Shedding intensity (more than 200 hairs/day), acute duration, and absence of pattern topology produce a dominant telogen-cycle-disruption activation. Architectural follicle integrity is preserved — this is cycle-timing pathology, fully reversible, and protocol class TE_ACUTE applies with cycle-restoration and stress-downregulation therapy needs. Nutritional-limitation co-activates and is repleted in parallel as co-explanation.",
+    "biologicalMechanismExplanation": "Stress-axis activation accelerates anagen-to-telogen transition. A wave of synchronized follicles enters telogen simultaneously, shedding the dormant club hairs approximately 2–4 months after the precipitant. The follicle bulb is intact; growth resumes spontaneously once the precipitant resolves.",
+    "protocolRecommendation": {
+      "therapyAxes": [
+        "Hair-cycle restoration",
+        "Stress-axis downregulation",
+        "Nutritional repletion"
+      ],
+      "narrative": "Cycle-restoration protocol with stress-axis downregulation and pre-emptive substrate repletion to support the rebound anagen wave. Reversibility is the dominant message; no permanent loss is expected from the current episode. Therapy axes engaged: Hair-cycle restoration, Stress-axis downregulation, Nutritional repletion."
+    },
+    "monitoringPlan": {
+      "required": [
+        "Shed count — monthly diary",
+        "Global photography — every 3 months",
+        "Ferritin — repeat at 4 months",
+        "Vitamin D (25-OH) — repeat at 4 months"
+      ],
+      "recommended": [
+        "Stress / PHQ-9 — monthly"
+      ]
+    },
+    "expectedOutcomes": "Active shedding subsides within 8–16 weeks. New growth visible from 12–16 weeks. Full visual recovery generally at 6–9 months, longer for chronic phenotypes.",
+    "patientNarrative": "A stress event 2–4 months ago pushed many hairs into a resting phase, which now shows up as visible shedding. This is fully reversible. Most regrowth happens over the next 4–6 months as the cycle resets. We are also addressing the contributing role of Nutritional Hair Loss.",
+    "doctorNarrative": "Diffuse synchronized telogen release with an identifiable precipitant. Follicular architecture preserved; the process is fully reversible. Protocol favours cycle restoration with stress-axis downregulation. Co-explanations: Nutritional Hair Loss.",
+    "themes": [
+      "Cycle reset",
+      "Reversibility reassurance",
+      "Stress recovery",
+      "Nutritional restoration"
+    ]
+  },
+  {
+    "reviewCaseId": "RC-17",
+    "presentationCategory": "Chronic Telogen Effluvium",
+    "patientQuestionnaire": {
+      "sex": "Female",
+      "ageGroup": "adult",
+      "durationOfConcern": "More than 1 year",
+      "sheddingPattern": "100–200 hairs/day",
+      "grade": "Grade 1",
+      "hairChanges": [
+        "Diffuse shedding"
+      ],
+      "scalpState": [
+        "Normal scalp"
+      ],
+      "selfReportedCauses": [
+        "Stress"
+      ],
+      "lifestyle": [
+        "Chronic stress",
+        "Poor sleep"
+      ],
+      "thyroidConditions": [],
+      "hormonalState": [],
+      "immunityConditions": [],
+      "reportedDeficiencies": [],
+      "gutSymptoms": [],
+      "dietPattern": [],
+      "currentTreatments": [],
+      "treatmentGoals": [
+        "Reduce hair fall"
+      ]
+    },
+    "clinicalFindings": [
+      "Diffuse telogen-phase shedding",
+      "Chronic timeline (> 12 months)",
+      "Mild active shedding",
+      "Female",
+      "Adult (25–39)",
+      "Chronic stress / poor sleep"
+    ],
+    "detectedDrivers": [
+      {
+        "label": "Telogen cycle disruption",
+        "role": "Primary driver"
+      }
+    ],
+    "diagnosis": "Telogen Effluvium",
+    "severity": "Mild",
+    "coExplanations": [],
+    "rootCauseExplanation": "28-year-old female with persistent diffuse shedding > 12 months, no architectural pattern change, documented chronic stress load. Chronic-duration marker plus diffuse shedding without pattern topology produces telogen-cycle-disruption leadership at modest but sustained activation. Reversibility is partial-to-full once the chronic driver is addressed; protocol class TE_CHRONIC mandates comprehensive deficiency workup in monitoring.",
+    "biologicalMechanismExplanation": "Stress-axis activation accelerates anagen-to-telogen transition. A wave of synchronized follicles enters telogen simultaneously, shedding the dormant club hairs approximately 2–4 months after the precipitant. The follicle bulb is intact; growth resumes spontaneously once the precipitant resolves.",
+    "protocolRecommendation": {
+      "therapyAxes": [
+        "Hair-cycle restoration",
+        "Stress-axis downregulation",
+        "Nutritional repletion"
+      ],
+      "narrative": "Cycle-restoration protocol with stress-axis downregulation and pre-emptive substrate repletion to support the rebound anagen wave. Reversibility is the dominant message; no permanent loss is expected from the current episode. Therapy axes engaged: Hair-cycle restoration, Stress-axis downregulation, Nutritional repletion."
+    },
+    "monitoringPlan": {
+      "required": [
+        "Shed count — monthly diary",
+        "Global photography — every 3 months",
+        "Ferritin — repeat at 4 months",
+        "Vitamin D (25-OH) — repeat at 4 months",
+        "TSH — repeat at 3 months"
+      ],
+      "recommended": [
+        "Stress / PHQ-9 — monthly"
+      ]
+    },
+    "expectedOutcomes": "Active shedding subsides within 8–16 weeks. New growth visible from 12–16 weeks. Full visual recovery generally at 6–9 months, longer for chronic phenotypes.",
+    "patientNarrative": "A stress event 2–4 months ago pushed many hairs into a resting phase, which now shows up as visible shedding. This is fully reversible. Most regrowth happens over the next 4–6 months as the cycle resets.",
+    "doctorNarrative": "Diffuse synchronized telogen release with an identifiable precipitant. Follicular architecture preserved; the process is fully reversible. Protocol favours cycle restoration with stress-axis downregulation. Presentation is ambiguous — recommend reassessment at 12 weeks before therapy intensification.",
+    "themes": [
+      "Cycle reset",
+      "Stress recovery",
+      "Expectation setting slow"
+    ]
+  },
+  {
+    "reviewCaseId": "RC-18",
+    "presentationCategory": "Chronic Telogen Effluvium",
+    "patientQuestionnaire": {
+      "sex": "Male",
+      "ageGroup": "adult",
+      "durationOfConcern": "More than 1 year",
+      "sheddingPattern": "100–200 hairs/day",
+      "grade": "Grade 1",
+      "hairChanges": [
+        "Diffuse shedding"
+      ],
+      "scalpState": [
+        "Normal scalp"
+      ],
+      "selfReportedCauses": [
+        "Chronic medical condition"
+      ],
+      "lifestyle": [],
+      "thyroidConditions": [],
+      "hormonalState": [],
+      "immunityConditions": [],
+      "reportedDeficiencies": [],
+      "gutSymptoms": [],
+      "dietPattern": [],
+      "currentTreatments": [],
+      "treatmentGoals": [
+        "Reduce hair fall"
+      ]
+    },
+    "clinicalFindings": [
+      "Diffuse telogen-phase shedding",
+      "Chronic timeline (> 12 months)",
+      "Mild active shedding",
+      "Male",
+      "Adult (25–39)",
+      "Chronic medical condition on medication"
+    ],
+    "detectedDrivers": [
+      {
+        "label": "Telogen cycle disruption",
+        "role": "Primary driver"
+      }
+    ],
+    "diagnosis": "Telogen Effluvium",
+    "severity": "Moderate",
+    "coExplanations": [],
+    "rootCauseExplanation": "32-year-old male with persistent diffuse shedding > 12 months, no architectural pattern change, no identifiable single precipitant despite thorough workup. Chronic-duration marker plus diffuse shedding without pattern topology produces telogen-cycle-disruption leadership at modest but sustained activation. Reversibility is partial-to-full once the chronic driver is addressed; protocol class TE_CHRONIC mandates comprehensive deficiency workup in monitoring.",
+    "biologicalMechanismExplanation": "Stress-axis activation accelerates anagen-to-telogen transition. A wave of synchronized follicles enters telogen simultaneously, shedding the dormant club hairs approximately 2–4 months after the precipitant. The follicle bulb is intact; growth resumes spontaneously once the precipitant resolves.",
+    "protocolRecommendation": {
+      "therapyAxes": [
+        "Hair-cycle restoration",
+        "Stress-axis downregulation",
+        "Nutritional repletion"
+      ],
+      "narrative": "Cycle-restoration protocol with stress-axis downregulation and pre-emptive substrate repletion to support the rebound anagen wave. Reversibility is the dominant message; no permanent loss is expected from the current episode. Therapy axes engaged: Hair-cycle restoration, Stress-axis downregulation, Nutritional repletion."
+    },
+    "monitoringPlan": {
+      "required": [
+        "Shed count — monthly diary",
+        "Global photography — every 3 months",
+        "Ferritin — repeat at 4 months",
+        "Vitamin D (25-OH) — repeat at 4 months",
+        "TSH — repeat at 3 months"
+      ],
+      "recommended": [
+        "Stress / PHQ-9 — monthly"
+      ]
+    },
+    "expectedOutcomes": "Active shedding subsides within 8–16 weeks. New growth visible from 12–16 weeks. Full visual recovery generally at 6–9 months, longer for chronic phenotypes.",
+    "patientNarrative": "A stress event 2–4 months ago pushed many hairs into a resting phase, which now shows up as visible shedding. This is fully reversible. Most regrowth happens over the next 4–6 months as the cycle resets.",
+    "doctorNarrative": "Diffuse synchronized telogen release with an identifiable precipitant. Follicular architecture preserved; the process is fully reversible. Protocol favours cycle restoration with stress-axis downregulation.",
+    "themes": [
+      "Cycle reset",
+      "Stress recovery",
+      "Expectation setting slow"
+    ]
+  },
+  {
+    "reviewCaseId": "RC-19",
+    "presentationCategory": "Alopecia Areata Spectrum",
+    "patientQuestionnaire": {
+      "sex": "Female",
+      "ageGroup": "young adult",
+      "durationOfConcern": "Less than 3 months",
+      "sheddingPattern": "patches without diffuse fall",
+      "grade": "Grade 1",
+      "hairChanges": [
+        "Patchy bald spots"
+      ],
+      "scalpState": [
+        "Normal scalp"
+      ],
+      "selfReportedCauses": [
+        "Autoimmune"
+      ],
+      "lifestyle": [],
+      "thyroidConditions": [],
+      "hormonalState": [],
+      "immunityConditions": [
+        "Alopecia areata history"
+      ],
+      "reportedDeficiencies": [],
+      "gutSymptoms": [],
+      "dietPattern": [],
+      "currentTreatments": [],
+      "treatmentGoals": [
+        "Reduce hair fall"
+      ]
+    },
+    "clinicalFindings": [
+      "Patchy, well-demarcated loss",
+      "Alopecia areata history",
+      "Female",
+      "Young adult (< 25)"
+    ],
+    "detectedDrivers": [
+      {
+        "label": "Immune dysregulation",
+        "role": "Primary driver"
+      }
+    ],
+    "diagnosis": "Autoimmune Alopecia (Alopecia Areata spectrum)",
+    "severity": "Mild",
+    "coExplanations": [],
+    "rootCauseExplanation": "12-year-old female with well-demarcated patchy loss and confirmed alopecia areata history. The patchy-loss-marker and alopecia-areata-history signals together carry the strongest LLRs in the autoimmune cause definition; immune-dysregulation pathway leads at ≥0.60 activation. Protocol class is AUTOIMMUNE_AA — treatment focuses on immune quiescence and expectation setting for relapse/remission rather than miniaturization-style intervention.",
+    "biologicalMechanismExplanation": "Loss of immune privilege at the follicle bulge permits CD8+ T-cell infiltration, producing the alopecia areata phenotype with well-demarcated loss. Scarring forms reflect irreversible perifollicular fibrosis. Treatment targets immune quiescence; the course is relapsing-remitting in many patients.",
+    "protocolRecommendation": {
+      "therapyAxes": [
+        "Autoimmune quiescence",
+        "Immune modulation",
+        "Scalp inflammation control"
+      ],
+      "narrative": "Autoimmune quiescence protocol with realistic expectation setting; treatment goals are stabilisation and regrowth windows rather than guaranteed restoration. Therapy axes engaged: Autoimmune quiescence, Immune modulation, Scalp inflammation control."
+    },
+    "monitoringPlan": {
+      "required": [
+        "Global photography — every 3 months",
+        "Scalp clinical exam — every 3 months"
+      ],
+      "recommended": [
+        "Trichoscopy — every 6 months"
+      ]
+    },
+    "expectedOutcomes": "Stabilisation is the primary near-term goal. Regrowth windows are variable and patient-specific; relapse cycles are expected and do not constitute treatment failure.",
+    "patientNarrative": "Your immune system is reacting against the follicles. Treatment focuses on calming that response. Outcomes vary; we plan for relapse cycles and treat stabilisation as a success outcome.",
+    "doctorNarrative": "Immune-mediated follicular targeting. Set relapse-remission expectations explicitly with the patient; outcome metrics track stabilisation rather than guaranteed restoration. Presentation is ambiguous — recommend reassessment at 12 weeks before therapy intensification.",
+    "themes": [
+      "Autoimmune control",
+      "Expectation setting slow"
+    ]
+  },
+  {
+    "reviewCaseId": "RC-20",
+    "presentationCategory": "Alopecia Areata Spectrum",
+    "patientQuestionnaire": {
+      "sex": "Male",
+      "ageGroup": "young adult",
+      "durationOfConcern": "Less than 3 months",
+      "sheddingPattern": "patches without diffuse fall",
+      "grade": "Grade 1",
+      "hairChanges": [
+        "Patchy bald spots"
+      ],
+      "scalpState": [
+        "Normal scalp"
+      ],
+      "selfReportedCauses": [
+        "Autoimmune"
+      ],
+      "lifestyle": [],
+      "thyroidConditions": [],
+      "hormonalState": [],
+      "immunityConditions": [
+        "Alopecia areata history"
+      ],
+      "reportedDeficiencies": [],
+      "gutSymptoms": [],
+      "dietPattern": [],
+      "currentTreatments": [],
+      "treatmentGoals": [
+        "Reduce hair fall"
+      ]
+    },
+    "clinicalFindings": [
+      "Patchy, well-demarcated loss",
+      "Alopecia areata history",
+      "Male",
+      "Young adult (< 25)"
+    ],
+    "detectedDrivers": [
+      {
+        "label": "Immune dysregulation",
+        "role": "Primary driver"
+      }
+    ],
+    "diagnosis": "Autoimmune Alopecia (Alopecia Areata spectrum)",
+    "severity": "Moderate",
+    "coExplanations": [],
+    "rootCauseExplanation": "18-year-old male with well-demarcated patchy loss and confirmed alopecia areata history. The patchy-loss-marker and alopecia-areata-history signals together carry the strongest LLRs in the autoimmune cause definition; immune-dysregulation pathway leads at ≥0.60 activation. Protocol class is AUTOIMMUNE_AA — treatment focuses on immune quiescence and expectation setting for relapse/remission rather than miniaturization-style intervention.",
+    "biologicalMechanismExplanation": "Loss of immune privilege at the follicle bulge permits CD8+ T-cell infiltration, producing the alopecia areata phenotype with well-demarcated loss. Scarring forms reflect irreversible perifollicular fibrosis. Treatment targets immune quiescence; the course is relapsing-remitting in many patients.",
+    "protocolRecommendation": {
+      "therapyAxes": [
+        "Autoimmune quiescence",
+        "Immune modulation",
+        "Scalp inflammation control"
+      ],
+      "narrative": "Autoimmune quiescence protocol with realistic expectation setting; treatment goals are stabilisation and regrowth windows rather than guaranteed restoration. Therapy axes engaged: Autoimmune quiescence, Immune modulation, Scalp inflammation control."
+    },
+    "monitoringPlan": {
+      "required": [
+        "Global photography — every 3 months",
+        "Scalp clinical exam — every 3 months"
+      ],
+      "recommended": [
+        "Trichoscopy — every 6 months"
+      ]
+    },
+    "expectedOutcomes": "Stabilisation is the primary near-term goal. Regrowth windows are variable and patient-specific; relapse cycles are expected and do not constitute treatment failure.",
+    "patientNarrative": "Your immune system is reacting against the follicles. Treatment focuses on calming that response. Outcomes vary; we plan for relapse cycles and treat stabilisation as a success outcome.",
+    "doctorNarrative": "Immune-mediated follicular targeting. Set relapse-remission expectations explicitly with the patient; outcome metrics track stabilisation rather than guaranteed restoration.",
+    "themes": [
+      "Autoimmune control",
+      "Expectation setting slow"
+    ]
+  },
+  {
+    "reviewCaseId": "RC-21",
+    "presentationCategory": "Alopecia Areata Spectrum",
+    "patientQuestionnaire": {
+      "sex": "Female",
+      "ageGroup": "young adult",
+      "durationOfConcern": "Less than 3 months",
+      "sheddingPattern": "patches without diffuse fall",
+      "grade": "Grade 1",
+      "hairChanges": [
+        "Patchy bald spots"
+      ],
+      "scalpState": [
+        "Normal scalp"
+      ],
+      "selfReportedCauses": [
+        "Autoimmune"
+      ],
+      "lifestyle": [],
+      "thyroidConditions": [],
+      "hormonalState": [],
+      "immunityConditions": [
+        "Alopecia areata history"
+      ],
+      "reportedDeficiencies": [],
+      "gutSymptoms": [],
+      "dietPattern": [],
+      "currentTreatments": [],
+      "treatmentGoals": [
+        "Reduce hair fall"
+      ]
+    },
+    "clinicalFindings": [
+      "Patchy, well-demarcated loss",
+      "Alopecia areata history",
+      "Female",
+      "Young adult (< 25)"
+    ],
+    "detectedDrivers": [
+      {
+        "label": "Immune dysregulation",
+        "role": "Primary driver"
+      }
+    ],
+    "diagnosis": "Autoimmune Alopecia (Alopecia Areata spectrum)",
+    "severity": "Severe",
+    "coExplanations": [],
+    "rootCauseExplanation": "22-year-old female with well-demarcated patchy loss and confirmed alopecia areata history. The patchy-loss-marker and alopecia-areata-history signals together carry the strongest LLRs in the autoimmune cause definition; immune-dysregulation pathway leads at ≥0.60 activation. Protocol class is AUTOIMMUNE_AA — treatment focuses on immune quiescence and expectation setting for relapse/remission rather than miniaturization-style intervention.",
+    "biologicalMechanismExplanation": "Loss of immune privilege at the follicle bulge permits CD8+ T-cell infiltration, producing the alopecia areata phenotype with well-demarcated loss. Scarring forms reflect irreversible perifollicular fibrosis. Treatment targets immune quiescence; the course is relapsing-remitting in many patients.",
+    "protocolRecommendation": {
+      "therapyAxes": [
+        "Autoimmune quiescence",
+        "Immune modulation",
+        "Scalp inflammation control"
+      ],
+      "narrative": "Autoimmune quiescence protocol with realistic expectation setting; treatment goals are stabilisation and regrowth windows rather than guaranteed restoration. Therapy axes engaged: Autoimmune quiescence, Immune modulation, Scalp inflammation control."
+    },
+    "monitoringPlan": {
+      "required": [
+        "Global photography — every 3 months",
+        "Scalp clinical exam — every 3 months"
+      ],
+      "recommended": [
+        "Trichoscopy — every 6 months"
+      ]
+    },
+    "expectedOutcomes": "Stabilisation is the primary near-term goal. Regrowth windows are variable and patient-specific; relapse cycles are expected and do not constitute treatment failure.",
+    "patientNarrative": "Your immune system is reacting against the follicles. Treatment focuses on calming that response. Outcomes vary; we plan for relapse cycles and treat stabilisation as a success outcome.",
+    "doctorNarrative": "Immune-mediated follicular targeting. Set relapse-remission expectations explicitly with the patient; outcome metrics track stabilisation rather than guaranteed restoration.",
+    "themes": [
+      "Autoimmune control",
+      "Expectation setting slow"
+    ]
+  },
+  {
+    "reviewCaseId": "RC-22",
+    "presentationCategory": "Inflammatory Scalp Disorder",
+    "patientQuestionnaire": {
+      "sex": "Male",
+      "ageGroup": "young adult",
+      "durationOfConcern": "6–12 months",
+      "sheddingPattern": "100–200 hairs/day",
+      "grade": "Grade 1",
+      "hairChanges": [
+        "Diffuse shedding"
+      ],
+      "scalpState": [
+        "Dandruff with itching"
+      ],
+      "selfReportedCauses": [
+        "Scalp infection"
+      ],
+      "lifestyle": [],
+      "thyroidConditions": [],
+      "hormonalState": [],
+      "immunityConditions": [],
+      "reportedDeficiencies": [],
+      "gutSymptoms": [],
+      "dietPattern": [],
+      "currentTreatments": [],
+      "treatmentGoals": [
+        "Reduce hair fall"
+      ]
+    },
+    "clinicalFindings": [
+      "Male",
+      "Young adult (< 25)",
+      "Dandruff with itching"
+    ],
+    "detectedDrivers": [
+      {
+        "label": "Scalp inflammation",
+        "role": "Primary driver"
+      }
+    ],
+    "diagnosis": "Inflammatory Scalp Disorder",
+    "severity": "Mild",
+    "coExplanations": [],
+    "rootCauseExplanation": "22-year-old male with dominant scalp-surface inflammation signals (seborrheic mild) and mild associated shedding. Scalp-inflammation pathway leads with ≥0.60 activation; pattern signal is absent, so the inflammatory cause is the named driver rather than a downstream modifier. Protocol class INFLAMMATORY focuses on scalp decongestion and topical inflammation control; once the surface dermatosis quiets, follicle cycling normalizes.",
+    "biologicalMechanismExplanation": "Malassezia-driven seborrhoeic inflammation, psoriatic plaques, or perifollicular pustulation disrupt anagen maintenance and produce a pro-shedding micro-environment around the follicle. Calming the scalp surface restores cycling in most cases.",
+    "protocolRecommendation": {
+      "therapyAxes": [
+        "Scalp inflammation control",
+        "Scalp decongestion / sebum control"
+      ],
+      "narrative": "Scalp decongestion and inflammation control; hair density typically follows within 8–12 weeks once the surface dermatosis quiets. Therapy axes engaged: Scalp inflammation control, Scalp decongestion / sebum control."
+    },
+    "monitoringPlan": {
+      "required": [
+        "Scalp clinical exam — every 3 months",
+        "Global photography — every 3 months"
+      ],
+      "recommended": [
+        "Trichoscopy — every 6 months"
+      ]
+    },
+    "expectedOutcomes": "Surface dermatosis typically improves within 2–6 weeks. Shedding tied to inflammation subsides over the same window. Density change at 12–16 weeks.",
+    "patientNarrative": "The scalp environment around the follicle is inflamed. Calming the scalp is the primary lever. Improvement is generally fast once inflammation settles.",
+    "doctorNarrative": "Perifollicular and surface inflammation is the named driver; resolving the scalp-surface dermatosis restores cycling. Re-examine scalp at 6–8 weeks. Presentation is ambiguous — recommend reassessment at 12 weeks before therapy intensification.",
+    "themes": [
+      "Inflammatory quiescence",
+      "Reversibility reassurance"
+    ]
+  },
+  {
+    "reviewCaseId": "RC-23",
+    "presentationCategory": "Inflammatory Scalp Disorder",
+    "patientQuestionnaire": {
+      "sex": "Female",
+      "ageGroup": "adult",
+      "durationOfConcern": "6–12 months",
+      "sheddingPattern": "100–200 hairs/day",
+      "grade": "Grade 1",
+      "hairChanges": [
+        "Diffuse shedding"
+      ],
+      "scalpState": [
+        "Oily scalp",
+        "Dandruff with itching",
+        "Scalp redness"
+      ],
+      "selfReportedCauses": [
+        "Scalp infection"
+      ],
+      "lifestyle": [],
+      "thyroidConditions": [],
+      "hormonalState": [],
+      "immunityConditions": [],
+      "reportedDeficiencies": [],
+      "gutSymptoms": [],
+      "dietPattern": [],
+      "currentTreatments": [],
+      "treatmentGoals": [
+        "Reduce hair fall"
+      ]
+    },
+    "clinicalFindings": [
+      "Female",
+      "Adult (25–39)",
+      "Dandruff with itching",
+      "Scalp redness",
+      "Oily scalp"
+    ],
+    "detectedDrivers": [
+      {
+        "label": "Scalp inflammation",
+        "role": "Primary driver"
+      }
+    ],
+    "diagnosis": "Inflammatory Scalp Disorder",
+    "severity": "Moderate",
+    "coExplanations": [],
+    "rootCauseExplanation": "28-year-old female with dominant scalp-surface inflammation signals (seborrheic severe) and mild associated shedding. Scalp-inflammation pathway leads with ≥0.60 activation; pattern signal is absent, so the inflammatory cause is the named driver rather than a downstream modifier. Protocol class INFLAMMATORY focuses on scalp decongestion and topical inflammation control; once the surface dermatosis quiets, follicle cycling normalizes.",
+    "biologicalMechanismExplanation": "Malassezia-driven seborrhoeic inflammation, psoriatic plaques, or perifollicular pustulation disrupt anagen maintenance and produce a pro-shedding micro-environment around the follicle. Calming the scalp surface restores cycling in most cases.",
+    "protocolRecommendation": {
+      "therapyAxes": [
+        "Scalp inflammation control",
+        "Scalp decongestion / sebum control"
+      ],
+      "narrative": "Scalp decongestion and inflammation control; hair density typically follows within 8–12 weeks once the surface dermatosis quiets. Therapy axes engaged: Scalp inflammation control, Scalp decongestion / sebum control."
+    },
+    "monitoringPlan": {
+      "required": [
+        "Scalp clinical exam — every 3 months",
+        "Global photography — every 3 months"
+      ],
+      "recommended": [
+        "Trichoscopy — every 6 months"
+      ]
+    },
+    "expectedOutcomes": "Surface dermatosis typically improves within 2–6 weeks. Shedding tied to inflammation subsides over the same window. Density change at 12–16 weeks.",
+    "patientNarrative": "The scalp environment around the follicle is inflamed. Calming the scalp is the primary lever. Improvement is generally fast once inflammation settles.",
+    "doctorNarrative": "Perifollicular and surface inflammation is the named driver; resolving the scalp-surface dermatosis restores cycling. Re-examine scalp at 6–8 weeks.",
+    "themes": [
+      "Inflammatory quiescence",
+      "Reversibility reassurance"
+    ]
+  },
+  {
+    "reviewCaseId": "RC-24",
+    "presentationCategory": "Multifactorial Hair Loss",
+    "patientQuestionnaire": {
+      "sex": "Male",
+      "ageGroup": "adult",
+      "durationOfConcern": "More than 1 year",
+      "sheddingPattern": "100–200 hairs/day",
+      "grade": "Grade 3",
+      "hairChanges": [
+        "Thinning at crown",
+        "Diffuse shedding"
+      ],
+      "scalpState": [
+        "Normal scalp"
+      ],
+      "selfReportedCauses": [
+        "Family history"
+      ],
+      "lifestyle": [],
+      "thyroidConditions": [],
+      "hormonalState": [],
+      "immunityConditions": [],
+      "reportedDeficiencies": [],
+      "gutSymptoms": [],
+      "dietPattern": [],
+      "currentTreatments": [],
+      "treatmentGoals": [
+        "Reduce hair fall",
+        "Regrow lost hair"
+      ]
+    },
+    "clinicalFindings": [
+      "Pattern thinning / widening parting",
+      "Diffuse telogen-phase shedding",
+      "Early-grade severity (1–3)",
+      "Chronic timeline (> 12 months)",
+      "Male",
+      "Adult (25–39)",
+      "Family history of hair loss"
+    ],
+    "detectedDrivers": [
+      {
+        "label": "Follicular miniaturization",
+        "role": "Supporting driver"
+      },
+      {
+        "label": "Telogen cycle disruption",
+        "role": "Supporting driver"
+      }
+    ],
+    "diagnosis": "Multifactorial Hair Loss",
+    "severity": "Moderate",
+    "coExplanations": [
+      "Androgenetic / Pattern Hair Loss",
+      "Telogen Effluvium"
+    ],
+    "rootCauseExplanation": "28-year-old male with simultaneously activated miniaturization, telogen-cycle-disruption, and a third driver pathway (aga te overlap). The compositeRule in the cause registry (≥3 pathways above 0.40 AND single-cause dissent gap < 0.06) is the only path by which multifactorial-hair-loss promotes to lead — naive Bayes would surface AGA or TE alone, missing the composite reality. Protocol class MULTIFACTORIAL coordinates therapy combinatorics across DHT suppression, cycle restoration, inflammation control, and substrate repletion.",
+    "biologicalMechanismExplanation": "Multiple converging mechanisms — typically miniaturization, telogen-cycle disruption, and an endocrine/inflammatory/nutritional axis — are simultaneously active above clinical threshold. No single mechanism dominates; treatment must address the top contributors in parallel for meaningful improvement.",
+    "protocolRecommendation": {
+      "therapyAxes": [
+        "DHT suppression",
+        "Hair-cycle restoration",
+        "Scalp inflammation control",
+        "Nutritional repletion",
+        "Endocrine optimisation"
+      ],
+      "narrative": "Multifactorial coordination protocol — DHT suppression, cycle restoration, scalp control, and substrate repletion run concurrently with staged reassessment. Therapy axes engaged: DHT suppression, Hair-cycle restoration, Scalp inflammation control, Nutritional repletion, Endocrine optimisation."
+    },
+    "monitoringPlan": {
+      "required": [
+        "Global photography — every 3 months",
+        "Trichoscopy — every 6 months",
+        "Ferritin — repeat at 4 months",
+        "Vitamin D (25-OH) — repeat at 4 months",
+        "TSH — repeat at 3 months"
+      ],
+      "recommended": [
+        "Shed count — monthly diary",
+        "Stress / PHQ-9 — monthly"
+      ]
+    },
+    "expectedOutcomes": "Recovery trajectory is composite and slower than any single-cause case. Realistic milestones at 4, 6, and 9 months across the engaged axes.",
+    "patientNarrative": "Multiple causes are working together here. We need to address more than one driver to see meaningful improvement — single-lever fixes will under-deliver. We are also addressing the contributing role of Androgenetic / Pattern Hair Loss and Telogen Effluvium.",
+    "doctorNarrative": "No single driver dominates; the case requires a composite explanation. Treatment addresses the top co-leading causes in parallel with staged reassessment. Co-explanations: Androgenetic / Pattern Hair Loss, Telogen Effluvium. Conflicting signals present — multifactorial framing preferred.",
+    "themes": [
+      "Multifactorial coordination",
+      "Expectation setting slow"
+    ]
+  },
+  {
+    "reviewCaseId": "RC-25",
+    "presentationCategory": "Multifactorial Hair Loss",
+    "patientQuestionnaire": {
+      "sex": "Male",
+      "ageGroup": "adult",
+      "durationOfConcern": "More than 1 year",
+      "sheddingPattern": "100–200 hairs/day",
+      "grade": "Grade 4",
+      "hairChanges": [
+        "Thinning at crown",
+        "Diffuse shedding"
+      ],
+      "scalpState": [
+        "Oily scalp",
+        "Dandruff with itching"
+      ],
+      "selfReportedCauses": [
+        "Family history"
+      ],
+      "lifestyle": [],
+      "thyroidConditions": [],
+      "hormonalState": [],
+      "immunityConditions": [],
+      "reportedDeficiencies": [],
+      "gutSymptoms": [],
+      "dietPattern": [],
+      "currentTreatments": [],
+      "treatmentGoals": [
+        "Reduce hair fall",
+        "Regrow lost hair"
+      ]
+    },
+    "clinicalFindings": [
+      "Pattern thinning / widening parting",
+      "Diffuse telogen-phase shedding",
+      "Advanced-grade severity (4–5)",
+      "Chronic timeline (> 12 months)",
+      "Male",
+      "Adult (25–39)",
+      "Family history of hair loss",
+      "Dandruff with itching",
+      "Oily scalp"
+    ],
+    "detectedDrivers": [
+      {
+        "label": "Follicular miniaturization",
+        "role": "Supporting driver"
+      },
+      {
+        "label": "Telogen cycle disruption",
+        "role": "Supporting driver"
+      },
+      {
+        "label": "Scalp inflammation",
+        "role": "Supporting driver"
+      }
+    ],
+    "diagnosis": "Multifactorial Hair Loss",
+    "severity": "Severe",
+    "coExplanations": [
+      "Androgenetic / Pattern Hair Loss",
+      "Telogen Effluvium"
+    ],
+    "rootCauseExplanation": "32-year-old male with simultaneously activated miniaturization, telogen-cycle-disruption, and a third driver pathway (aga inflam overlap). The compositeRule in the cause registry (≥3 pathways above 0.40 AND single-cause dissent gap < 0.06) is the only path by which multifactorial-hair-loss promotes to lead — naive Bayes would surface AGA or TE alone, missing the composite reality. Protocol class MULTIFACTORIAL coordinates therapy combinatorics across DHT suppression, cycle restoration, inflammation control, and substrate repletion.",
+    "biologicalMechanismExplanation": "Multiple converging mechanisms — typically miniaturization, telogen-cycle disruption, and an endocrine/inflammatory/nutritional axis — are simultaneously active above clinical threshold. No single mechanism dominates; treatment must address the top contributors in parallel for meaningful improvement.",
+    "protocolRecommendation": {
+      "therapyAxes": [
+        "DHT suppression",
+        "Hair-cycle restoration",
+        "Scalp inflammation control",
+        "Nutritional repletion",
+        "Endocrine optimisation"
+      ],
+      "narrative": "Multifactorial coordination protocol — DHT suppression, cycle restoration, scalp control, and substrate repletion run concurrently with staged reassessment. Therapy axes engaged: DHT suppression, Hair-cycle restoration, Scalp inflammation control, Nutritional repletion, Endocrine optimisation."
+    },
+    "monitoringPlan": {
+      "required": [
+        "Global photography — every 3 months",
+        "Trichoscopy — every 6 months",
+        "Ferritin — repeat at 4 months",
+        "Vitamin D (25-OH) — repeat at 4 months",
+        "TSH — repeat at 3 months"
+      ],
+      "recommended": [
+        "Shed count — monthly diary",
+        "Stress / PHQ-9 — monthly"
+      ]
+    },
+    "expectedOutcomes": "Recovery trajectory is composite and slower than any single-cause case. Realistic milestones at 4, 6, and 9 months across the engaged axes.",
+    "patientNarrative": "Multiple causes are working together here. We need to address more than one driver to see meaningful improvement — single-lever fixes will under-deliver. We are also addressing the contributing role of Androgenetic / Pattern Hair Loss and Telogen Effluvium.",
+    "doctorNarrative": "No single driver dominates; the case requires a composite explanation. Treatment addresses the top co-leading causes in parallel with staged reassessment. Co-explanations: Androgenetic / Pattern Hair Loss, Telogen Effluvium. Conflicting signals present — multifactorial framing preferred.",
+    "themes": [
+      "Multifactorial coordination",
+      "Expectation setting slow"
+    ]
+  }
+]

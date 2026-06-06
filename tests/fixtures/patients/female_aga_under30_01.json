@@ -1,0 +1,35 @@
+{
+  "id": "female_aga_under30_01",
+  "description": "Female AGA under 30 — special case: follicle not yet miniaturised. AGA_FEMALE_UNDER30 protocol fires (age < 30 + AGA_FEMALE_123). Protocol reduces to [TE GOLD, PRO IMMUNE GOLD] — FPHL and META B withheld (follicle has not reached miniaturisation threshold). Tests age-gated AGA_FEMALE protocol branch.",
+  "budget": "STANDARD",
+  "answers": {
+    "sex": "Female",
+    "age": "24",
+    "grade": "Grade 2",
+    "goal": ["Reduce hair fall"],
+    "cause": ["Family history"],
+    "hairtype": ["Thinning at crown"],
+    "scalp": ["Oily scalp", "Dandruff"],
+    "lifestyle": [],
+    "thyroid": [],
+    "hormonal": [],
+    "immunity": [],
+    "deficiency": [],
+    "gut": [],
+    "diet": [],
+    "treatment": [],
+    "duration": "6–12 months",
+    "count": "50–100 strands"
+  },
+  "expected": {
+    "diagnoses": ["AGA_FEMALE_123"],
+    "scalpStates": ["OILY_SCALP", "DANDRUFF"],
+    "rootCauses": ["GENETICS", "DHT"],
+    "therapyNeeds": ["DHT_SUPPRESSION", "INFLAMMATION_CONTROL", "SHEDDING_ARREST", "METABOLIC_SUPPORT", "FOLLICLE_STIMULATION"],
+    "topKit": "HAIR FACT TE GOLD",
+    "mustIncludeKits": ["HAIR FACT TE GOLD", "PRO IMMUNE GOLD"],
+    "mustExcludeKits": ["MPHL", "LACTIHEALTH", "RAPID WEIGHT LOSS SHIELD"],
+    "mustTriggerRules": ["ACTIVE_SHEDDING"],
+    "mustBlockRules": ["GLP1_EARLY", "GLP1_LATE", "RULE1_HYPO_METABOLIC", "NO_VISIBLE_FALL"]
+  }
+}

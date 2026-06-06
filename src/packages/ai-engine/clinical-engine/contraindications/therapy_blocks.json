@@ -1,0 +1,741 @@
+{
+  "schemaVersion": "1.0",
+  "sourceFiles": [
+    "topical-engine.schema.json",
+    "clinical-engine.schema.json",
+    "questionnaire.schema.json"
+  ],
+  "description": "Complete contraindication and therapy blocking rules extracted from all three engine schemas. Preserves all clinical safety behavior exactly as authored.",
+
+  "absoluteContraindications": [
+    {
+      "id": "AC_001",
+      "name": "PREGNANCY_ABSOLUTE_LOCK",
+      "source": "clinical-engine.schema.json → conditionScoringEngine.absoluteLocks; questionnaire.schema.json → hormonal.options[Currently pregnant]",
+      "trigger": {
+        "field": "hormonal",
+        "matchAny": ["pregnant", "Pregnancy", "Currently pregnant"],
+        "orField": "cause",
+        "orMatchAny": ["Currently pregnant"]
+      },
+      "effect": "ABSOLUTE_LOCK",
+      "protocolKey": "PREGNANCY",
+      "allowedKits": ["HEALTHY - 9"],
+      "blockedKits": "ALL_OTHERS",
+      "clinicalRationale": "HEALTHY-9 is PREGNANCY ONLY — single kit, no other kits during pregnancy. Period.",
+      "severity": "HARD_STOP",
+      "sourceCodeReference": "matchProtocol line 4182; protocolSequencer PREGNANCY entry"
+    },
+    {
+      "id": "AC_002",
+      "name": "PREGNANCY_TOPICAL_BLOCK",
+      "source": "topical-engine.schema.json → recommendationEngine.decisionTree[PREGNANCY_OVERRIDE]",
+      "trigger": {
+        "flags": ["isPregnancy", "planning_pregnancy"],
+        "derivedFrom": ["is_pregnant", "planning_pregnancy", "hormonal_issues includes pregnancy"]
+      },
+      "effect": "EARLY_RETURN",
+      "blockedTopicals": [
+        "Minoxidil 5%",
+        "Minoxidil 2% + Finasteride 0.25% Topical",
+        "Minoxidil + Spironolactone Topical",
+        "F-Emugrow MCRD",
+        "Trichonourish EVA / FHA-Andro+"
+      ],
+      "allowedTopicals": [],
+      "output": "Doctor consultation required — no standard topical safe in pregnancy",
+      "clinicalRationale": "All Minoxidil, Finasteride, Dutasteride, and anti-androgen topicals are contraindicated — systemic absorption risk to foetus.",
+      "severity": "HARD_STOP",
+      "autoInjectBlock": ["AUTO_01_FBIWASH", "AUTO_02_EMUGROW_PATTERN"],
+      "sourceCodeReference": "topical-engine.schema.json lines 2378–2392"
+    }
+  ],
+
+  "topicalContraindications": [
+    {
+      "id": "TC_001",
+      "productName": "Minoxidil 5%",
+      "contraindicatedWhen": [
+        {
+          "condition": "PREGNANCY_OR_PLANNING",
+          "trigger": "is_pregnant === true OR planning_pregnancy === true OR hormonal_issues includes 'pregnancy'",
+          "severity": "ABSOLUTE",
+          "note": "Systemic absorption risk to foetus"
+        },
+        {
+          "condition": "HYPERTENSION",
+          "trigger": "ansText includes 'hypertension' OR 'blood pressure'",
+          "severity": "ABSOLUTE",
+          "note": "Systemic absorption causes BP fluctuation — Minoxidil vasodilator effect compounds hypertension medication"
+        },
+        {
+          "condition": "PSORIASIS_ACTIVE",
+          "trigger": "patient.hasPsoriasis === true OR isPsoriasisScalp === true",
+          "severity": "AVOID",
+          "note": "Alcohol vehicle strips epidermal barrier, exacerbates immune-mediated psoriatic flares"
+        },
+        {
+          "condition": "DRY_DANDRUFF_SCALP",
+          "trigger": "scalp_condition includes 'dry' OR 'dandruff' OR 'itching' OR 'fungal'",
+          "severity": "PREFER_ALTERNATIVE",
+          "alternativeProduct": "F-Emugrow MCRD",
+          "note": "Alcohol vehicle worsens scalp dryness, dandruff, and inflammation"
+        }
+      ],
+      "sourceCodeReference": "topical-engine.schema.json products[Minoxidil 5%] + decisionTree[HYPERTENSION_OVERRIDE, PREGNANCY_OVERRIDE]"
+    },
+    {
+      "id": "TC_002",
+      "productName": "Minoxidil 2% + Finasteride 0.25% Topical",
+      "contraindicatedWhen": [
+        {
+          "condition": "PREGNANCY_OR_PLANNING",
+          "trigger": "is_pregnant === true OR planning_pregnancy === true",
+          "severity": "ABSOLUTE",
+          "note": "Both Minoxidil and Finasteride contraindicated in pregnancy"
+        },
+        {
+          "condition": "HYPERTENSION",
+          "trigger": "ansText includes 'hypertension' OR 'blood pressure'",
+          "severity": "ABSOLUTE",
+          "note": "Minoxidil systemic absorption causes BP fluctuation"
+        }
+      ],
+      "sourceCodeReference": "topical-engine.schema.json products[Minoxidil 2% + Finasteride 0.25%]"
+    },
+    {
+      "id": "TC_003",
+      "productName": "Minoxidil + Spironolactone Topical",
+      "contraindicatedWhen": [
+        {
+          "condition": "PREGNANCY_OR_PLANNING",
+          "trigger": "is_pregnant === true OR planning_pregnancy === true",
+          "severity": "ABSOLUTE",
+          "note": "Spironolactone and Minoxidil both contraindicated in pregnancy"
+        },
+        {
+          "condition": "HYPERTENSION",
+          "trigger": "ansText includes 'hypertension' OR 'blood pressure'",
+          "severity": "ABSOLUTE"
+        }
+      ],
+      "sourceCodeReference": "topical-engine.schema.json products[Minoxidil + Spironolactone Topical]"
+    },
+    {
+      "id": "TC_004",
+      "productName": "F-Emugrow MCRD",
+      "contraindicatedWhen": [
+        {
+          "condition": "PREGNANCY_OR_PLANNING",
+          "trigger": "is_pregnant === true OR planning_pregnancy === true",
+          "severity": "ABSOLUTE",
+          "note": "Contains Dutasteride 0.5% (5-alpha reductase inhibitor) — teratogenic, absolutely contraindicated in pregnancy and conception planning"
+        }
+      ],
+      "preferredVariantRule": {
+        "id": "PVR_001",
+        "description": "F-Emugrow MCR (without Dutasteride) preferred over MCRD for females under 30",
+        "condition": "gender === 'female' AND age < 30",
+        "useVariant": "F-Emugrow MCR",
+        "blockVariant": "F-Emugrow MCRD",
+        "clinicalRationale": "Dutasteride (D) not indicated for females under 30 — follicle not yet miniaturised enough; MCR provides Redensyl/peptide support without the 5-alpha reductase blockade",
+        "sourceCodeReference": "topical-engine.schema.json decisionTree[FEMALE_PSORIASIS, FEMALE_DANDRUFF_ITCHING, FEMALE_DRY_OR_INFLAMED] — F-Emugrow MCR for age < 30"
+      },
+      "sourceCodeReference": "topical-engine.schema.json products[F-Emugrow MCRD]; hiddenCouplings[TC_02]"
+    },
+    {
+      "id": "TC_005",
+      "productName": "Trichonourish EVA / FHA-Andro+",
+      "contraindicatedWhen": [
+        {
+          "condition": "PREGNANCY_OR_PLANNING",
+          "trigger": "is_pregnant === true OR planning_pregnancy === true",
+          "severity": "ABSOLUTE",
+          "note": "Anti-androgen topical — contraindicated in pregnancy and conception planning"
+        }
+      ],
+      "restrictedTo": {
+        "gender": ["female"],
+        "indication": ["pcos", "facial hair growth", "hirsutism"],
+        "note": "PCOS facial hair add-on only — not for general hair fall"
+      },
+      "sourceCodeReference": "topical-engine.schema.json products[Trichonourish EVA / FHA-Andro+]"
+    },
+    {
+      "id": "TC_006",
+      "productName": "F-Trichosure Pro",
+      "restrictedTo": {
+        "gender": ["female"],
+        "indication": ["peri-menopause", "menopause", "post-menopause", "hormonal thinning"],
+        "note": "Female hormonal thinning only — not for general hair fall or male patients"
+      },
+      "sourceCodeReference": "topical-engine.schema.json products[F-Trichosure Pro]"
+    },
+    {
+      "id": "TC_007",
+      "productName": "Oral Minoxidil (all doses)",
+      "contraindicatedWhen": [
+        {
+          "condition": "PREGNANCY_OR_PLANNING",
+          "trigger": "is_pregnant === true OR planning_pregnancy === true",
+          "severity": "ABSOLUTE"
+        },
+        {
+          "condition": "HYPERTENSION",
+          "trigger": "ansText includes 'hypertension' OR 'blood pressure'",
+          "severity": "CAUTION_ONLY",
+          "note": "Oral Minoxidil 1.25mg may be used if BP is controlled — doctor decision. Systemic vasodilation compounds antihypertensive medication."
+        }
+      ],
+      "ageRestriction": {
+        "condition": "age > 60",
+        "severity": "EXTREME_CAUTION",
+        "note": "Mandatory cardiac evaluation required before prescribing oral Minoxidil for patients over 60 — increased systemic vasodilation risk, orthostatic hypotension"
+      },
+      "sourceCodeReference": "topical-engine.schema.json decisionTree[HYPERTENSION_OVERRIDE, MALE_OVER_55]"
+    }
+  ],
+
+  "finasterideRestrictions": [
+    {
+      "id": "FR_001",
+      "name": "FINASTERIDE_PREGNANCY_BLOCK",
+      "trigger": "is_pregnant === true OR planning_pregnancy === true",
+      "severity": "ABSOLUTE",
+      "blockedForms": ["Finasteride 0.25% topical", "Finasteride 0.1% topical", "Finasteride 2.5% topical"],
+      "clinicalRationale": "Finasteride (5-alpha reductase inhibitor) is teratogenic — causes feminisation of male foetus. Absolutely contraindicated in pregnancy.",
+      "sourceCodeReference": "topical-engine.schema.json products[Minoxidil 2% + Finasteride 0.25%] contraindications"
+    },
+    {
+      "id": "FR_002",
+      "name": "FINASTERIDE_MALE_UNDER_18_BLOCK",
+      "trigger": "gender === 'male' AND age < 18",
+      "severity": "ABSOLUTE",
+      "blockedForms": "ALL_FINASTERIDE",
+      "output": "Avoid Finasteride entirely — cautious Minoxidil only under specialist supervision",
+      "allowedTopicals": ["F-Emugrow MCRD", "Trichogain Serum"],
+      "clinicalRationale": "Finasteride not indicated for males under 18 — androgenic axis not fully developed; potential for irreversible hormonal effects.",
+      "sourceCodeReference": "topical-engine.schema.json decisionTree[MALE_UNDER_18]; topicalProtocolRows[male, <18]"
+    }
+  ],
+
+  "kitForbiddenCombinations": [
+    {
+      "id": "KF_001",
+      "name": "PCOS_INGREDIENT_OVERLAP_FORBIDDEN",
+      "source": "clinical-engine.schema.json → kitSignals[PCOS_INGREDIENT_OVERLAP_FORBIDDEN]",
+      "kit_A": "F-PCOS -1",
+      "kit_B": "PRO FACT META B PCOS",
+      "rule": "NEVER prescribe both in the same protocol",
+      "overlappingIngredients": ["Inositol", "D-Chiro-Inositol", "Spearmint", "NAC", "Chromium", "Zinc"],
+      "triggers": [
+        {
+          "scenario": "PCOS_OBESITY",
+          "resolution": "Use PRO FACT META B PCOS only — drop F-PCOS -1"
+        },
+        {
+          "scenario": "PCOS_ONLY + pre-diabetes/diabetes",
+          "resolution": "Upgrade F-PCOS -1 to PRO FACT META B PCOS at runtime (DT_011)"
+        }
+      ],
+      "clinicalRationale": "Duplication of Inositol/D-Chiro/Spearmint/NAC/Chromium/Zinc creates ingredient over-dose risk.",
+      "sourceCodeReference": "clinical-engine.schema.json kitSignals line; getFunnelKits lines 3619-3628"
+    },
+    {
+      "id": "KF_002",
+      "name": "META_B_HYPOTHYROID_FORBIDDEN_WITH_META_B",
+      "source": "clinical-engine.schema.json → kitSignals[META_B_HYPOTHYROID_FORBIDDEN_WITH_META_B]",
+      "kit_A": "PRO FACT META B HYPOTHYROID",
+      "kit_B": "PRO FACT META B",
+      "rule": "NEVER prescribe both in the same protocol",
+      "trigger": "THYROID_HYPO + obesity/sedentary → swap to PRO FACT META B (DT_009); drops META B HYPOTHYROID",
+      "clinicalRationale": "PRO FACT META B is a superset of PRO FACT META B HYPOTHYROID covering the dual metabolic+thyroid axis — co-prescribing creates redundant dosing.",
+      "sourceCodeReference": "clinical-engine.schema.json dynamicTransitions[DT_009]; getFunnelKits lines 3529-3535"
+    },
+    {
+      "id": "KF_003",
+      "name": "META_B_PCOS_FORBIDDEN_WITH_META_B_HYPOTHYROID",
+      "source": "clinical-engine.schema.json → kitSignals[META_B_PCOS_FORBIDDEN_WITH_META_B_HYPOTHYROID]",
+      "kit_A": "PRO FACT META B PCOS",
+      "kit_B": "PRO FACT META B HYPOTHYROID",
+      "rule": "NEVER prescribe both in the same protocol",
+      "trigger": "PCOS_OBESITY + Hypothyroid → merge to single PRO FACT META B (DT_010)",
+      "resolution": "Remove PRO FACT META B PCOS and PRO FACT META B HYPOTHYROID; insert PRO FACT META B at position 0",
+      "clinicalRationale": "Overlapping AMPK/insulin correction pathways. Single PRO FACT META B covers all three axes: androgen suppression, insulin correction, and T3 metabolic support.",
+      "sourceCodeReference": "clinical-engine.schema.json dynamicTransitions[DT_010]; getFunnelKits lines 3640-3649"
+    },
+    {
+      "id": "KF_004",
+      "name": "WEIGHT_LOSS_SHIELD_FULL_TE_GOLD_FORBIDDEN",
+      "source": "clinical-engine.schema.json → protocolSequencer[WEIGHT_LOSS].rationale; therapySignals[RAPID WEIGHT LOSS SHIELD]",
+      "kit_A": "RAPID WEIGHT LOSS SHIELD",
+      "kit_B": "HAIR FACT TE GOLD (Full Scope)",
+      "rule": "When RAPID WEIGHT LOSS SHIELD is in Phase 1, TE GOLD must be used in REDUCED SCOPE only",
+      "overlappingIngredients": ["Iron", "B12 / Folic Acid", "Zinc", "Biotin", "Selenium", "Amino Complex"],
+      "reducedScopeInstruction": "TE GOLD in REDUCED SCOPE — iron/ferritin repletion + residual stress-TE explanation only. Exclude Iron/B12/Zinc/Biotin/Selenium/Amino explanation (already covered by Shield).",
+      "clinicalRationale": "Full ingredient overlap between RAPID WEIGHT LOSS SHIELD and standard TE GOLD scope — co-dosing creates over-supplementation risk for micronutrients with narrow therapeutic windows (especially iron and selenium).",
+      "sourceCodeReference": "clinical-engine.schema.json kitSignals[TE_GOLD_REDUCED_SCOPE]; protocolSequencer[WEIGHT_LOSS]; getFunnelKits lines 3895-4010"
+    }
+  ],
+
+  "suppressionRules": [
+    {
+      "id": "SR_001",
+      "name": "TE_GOLD_SUPPRESSION_REGROW_GOAL",
+      "source": "clinical-engine.schema.json → dynamicTransitions[DT_007]; hiddenRules[HR_004]",
+      "trigger": {
+        "signal": "isRegrowGoal",
+        "derivedFrom": "goal",
+        "matchAny": ["stopped", "regrow"],
+        "andNotIncludes": ["Reduce hair fall"]
+      },
+      "effect": "REMOVE_FROM_PROTOCOL",
+      "kitsRemoved": ["HAIR FACT TE GOLD", "HAIR FACT TE GOLD VEG"],
+      "compensation": "Inject PRO IMMUNE GOLD if not already present",
+      "scope": "ALL_PROTOCOLS — no exception",
+      "clinicalRationale": "TE GOLD stops active shedding. If shedding has already stopped (regrow goal), TE GOLD has no clinical purpose and adds unnecessary cost.",
+      "hiddenRule": "HR_004: This suppression applies even to protocols that normally include TE GOLD (THYROID_HYPO, PERI_MENOPAUSE, THYROID_HYPER). Hormonal protocols detected under regrow path are still routed, but TE GOLD is stripped from them.",
+      "sourceCodeReference": "getFunnelKits lines 3492-3508; matchProtocol lines 4198-4221"
+    },
+    {
+      "id": "SR_002",
+      "name": "TE_GOLD_SUPPRESSION_THINNING_ONLY",
+      "source": "clinical-engine.schema.json → dynamicTransitions[DT_006]; questionnaire.schema.json → count.options[Just thinning]",
+      "trigger": {
+        "signal": "hasNoVisibleFall",
+        "derivedFrom": "count",
+        "matchAny": ["thinning", "no visible fall", "Just thinning"]
+      },
+      "effect": "REMOVE_FROM_PROTOCOL",
+      "kitsRemoved": ["HAIR FACT TE GOLD", "HAIR FACT TE GOLD VEG"],
+      "scope": "ENTIRE_PROTOCOL_REGARDLESS_OF_DOMINANT_CONDITION",
+      "clinicalRationale": "v39 rule: No active shedding (thinning only = miniaturisation pattern) → TE GOLD mechanism targets active shedding cascade. Miniaturisation requires DHT-blockade and follicle activation, not cortisol/mTOR/ferritin correction.",
+      "sourceCodeReference": "getFunnelKits lines 4012-4019; questionnaire count step STEPS[5]"
+    },
+    {
+      "id": "SR_003",
+      "name": "TE_GOLD_SUPPRESSION_RULE_1A",
+      "source": "clinical-engine.schema.json → conditionScoringEngine.rule1AOverride",
+      "trigger": {
+        "combinedConditions": {
+          "operator": "AND",
+          "conditions": [
+            "scores['AGA_FEMALE_123'] >= threshold OR scores['AGA_FEMALE_45'] >= threshold",
+            "scores['PCOS_ONLY'] >= threshold OR scores['PCOS_OBESITY'] >= threshold",
+            "scores['WEIGHT_LOSS'] >= threshold"
+          ]
+        }
+      },
+      "effect": "SUPPRESSED",
+      "kitsRemoved": ["HAIR FACT TE GOLD"],
+      "protocolOverride": ["RAPID WEIGHT LOSS SHIELD", "F-PCOS -1 (or VEG)", "PHENOTYPE INFLAMATION", "FPHL / FPHL PLUS"],
+      "clinicalRationale": "Triple-condition: AGA female + PCOS + rapid weight loss. Shield covers the GLP-1/crash-diet precipitating event; PCOS kit corrects androgen axis; FPHL corrects pattern loss. TE GOLD ingredient overlaps with Shield.",
+      "sourceCodeReference": "matchProtocol lines 4401-4405; getFunnelKits lines 4708-4730"
+    },
+    {
+      "id": "SR_004",
+      "name": "FPHL_AGE_GATE_UNDER_30",
+      "source": "clinical-engine.schema.json → dynamicTransitions[DT_012]; questionnaire.schema.json → age scoringSignals[FPHL_AGE_GATE]",
+      "trigger": {
+        "signal": "FEMALE_UNDER_30_AGA",
+        "conditions": {
+          "operator": "AND",
+          "conditions": [
+            "gender === 'female' (isMale === false)",
+            "dominantKey === 'AGA_FEMALE_123'",
+            "age < 30"
+          ]
+        }
+      },
+      "effect": "PROTOCOL_OVERRIDE",
+      "kitsBlocked": ["FPHL", "FPHL PLUS"],
+      "overrideTo": ["HAIR FACT TE GOLD", "PRO IMMUNE GOLD"],
+      "clinicalRationale": "Female under 30 with AGA signals: follicle miniaturisation has not progressed enough for FPHL kit to be effective. TE GOLD + PRO IMMUNE GOLD for shedding arrest and follicle activation instead.",
+      "sourceCodeReference": "getFunnelKits lines 3696-3699; questionnaire age clinicalMappings"
+    },
+    {
+      "id": "SR_005",
+      "name": "HBR_KIT_SIGNAL_GATE",
+      "source": "clinical-engine.schema.json → hiddenRules[HR_007]",
+      "trigger": {
+        "required": {
+          "operator": "OR",
+          "conditions": [
+            "hairtype includes 'Broken' OR 'short'",
+            "cause includes 'Hard water'",
+            { "operator": "AND", "conditions": ["treatment includes Heat OR Chemical", "hairtype includes 'Broken' OR 'short'"] }
+          ]
+        },
+        "insufficient_alone": [
+          "treatment includes Heat styling (straightener etc.)",
+          "treatment includes Chemical treatment (colour / keratin)"
+        ]
+      },
+      "effect": "GATE",
+      "kitGated": "HAIR FACT HAIR BREAKAGE REPAIR (HBR)",
+      "clinicalRationale": "Heat/chemical treatment damages the hair shaft but does not by itself cause the specific type of breakage HBR targets. Broken/short hairs in hairtype OR hard water in cause are required clinical corroboration.",
+      "variables": {
+        "confirmedBreakage": "hairtype includes 'Broken' OR 'short hairs'",
+        "hasHBRHardWater": "cause includes 'Hard water'",
+        "hasHBRTreatment": "treatment includes 'Heat' OR 'Chemical'",
+        "heatWithBreakage": "hasHBRTreatment AND confirmedBreakage",
+        "realShaftDamage": "confirmedBreakage OR hasHBRHardWater"
+      },
+      "sourceCodeReference": "getFunnelKits lines 4817-4830; matchProtocol lines 4360-4367"
+    },
+    {
+      "id": "SR_006",
+      "name": "HBR_KIT_PROTOCOL_CAP_REMOVAL",
+      "source": "clinical-engine.schema.json → dynamicTransitions[DT_018]",
+      "trigger": {
+        "conditions": {
+          "operator": "AND",
+          "conditions": [
+            "phases.length > 5",
+            "HBR in phases"
+          ]
+        }
+      },
+      "effect": "REMOVE_FROM_PROTOCOL",
+      "kitsRemoved": ["HAIR FACT HAIR BREAKAGE REPAIR (HBR)"],
+      "clinicalRationale": "HBR is a lower clinical priority than core condition kits. When protocol complexity exceeds 5 kits, HBR is removed to avoid over-prescription.",
+      "sourceCodeReference": "getFunnelKits lines 3969-3971"
+    },
+    {
+      "id": "SR_007",
+      "name": "OXIDATIVE_STRESS_TWO_SIGNAL_THRESHOLD",
+      "source": "clinical-engine.schema.json → hiddenRules[HR_006]",
+      "trigger": {
+        "signal": "oxidativeCount",
+        "formula": "(lifestyle includes 'Smoking/Vaping' ? 1 : 0) + (lifestyle includes 'Alcohol' ? 1 : 0) + (immunity includes 'Asthma' ? 1 : 0)",
+        "threshold": "< 2"
+      },
+      "effect": "GATE",
+      "kitGated": "OXIDATIVE STRESS",
+      "rule": "OXIDATIVE STRESS kit injected as standalone phase ONLY when oxidativeCount >= 2 AND PHENOTYPE INFLAMATION not already in protocol. Single smoking/vaping selection → PHENOTYPE only.",
+      "clinicalRationale": "Single oxidative signal is adequately addressed by PHENOTYPE INFLAMATION (NF-kB/TNF-alpha suppression + glutathione restoration). Two+ signals indicate systemic mitochondrial ROS load requiring dedicated OXIDATIVE STRESS kit (Astaxanthin 6000x singlet oxygen quenching + CoQ10 + ALA).",
+      "sourceCodeReference": "getFunnelKits lines 4771-4779"
+    },
+    {
+      "id": "SR_008",
+      "name": "PRO_FACT_GI_GOLD_STRONG_SIGNAL_GATE",
+      "source": "clinical-engine.schema.json → therapySignals[PRO FACT GI GOLD]",
+      "trigger": {
+        "required": {
+          "operator": "OR",
+          "conditions": [
+            "gut includes 'IBS / Crohn's'",
+            "gut includes 'Acid reflux / GERD'",
+            "gut includes 'Constipation'"
+          ]
+        },
+        "insufficient_alone": ["gut includes 'Bloating / gas'", "gut includes 'Indigestion'"]
+      },
+      "effect": "GATE",
+      "kitGated": "PRO FACT GI GOLD",
+      "clinicalRationale": "Mild bloating alone does not indicate the intestinal dysbiosis requiring L-Glutamine mucosal repair or Digestive Enzyme supplementation. Strong signals (IBS/GERD/Crohn/Constipation) confirm structural gut-hair axis compromise requiring GI GOLD intervention.",
+      "sourceCodeReference": "clinical-engine.schema.json therapySignals[PRO FACT GI GOLD] trigger note"
+    },
+    {
+      "id": "SR_009",
+      "name": "EARLY_GREY_AGE_GATE",
+      "source": "questionnaire.schema.json → goal.dynamicFilterRule",
+      "trigger": {
+        "signal": "age >= 30"
+      },
+      "effect": "HIDE_OPTION",
+      "optionHidden": "Early greying of hair",
+      "questionId": "goal",
+      "clinicalRationale": "Early/premature greying is a condition of younger patients. At 30+, greying is within normal physiological range and the clinical protocol differs — greying co-condition still injectable via S._hasGreyGoal if reported, but the dedicated EARLY_GREY absolute lock is not available.",
+      "sourceCodeReference": "questionnaire.schema.json STEPS[2]._filterOpts lines 3015-3019"
+    },
+    {
+      "id": "SR_010",
+      "name": "GRADE_QUESTION_AA_SKIP",
+      "source": "clinical-engine.schema.json → dynamicTransitions[DT_016]; questionnaire.schema.json → grade.skipLogic",
+      "trigger": {
+        "field": "immunity",
+        "matchAny": ["Alopecia Areata", "Alopecia Areata (circular patches)"]
+      },
+      "effect": "SKIP_QUESTION",
+      "questionSkipped": "grade",
+      "clinicalRationale": "Alopecia Areata is an autoimmune condition, not a graded pattern loss. Grade scoring is irrelevant and potentially misleading for AA. The AA protocol (score 105, near-absolute) bypasses grade-based routing.",
+      "sourceCodeReference": "STEPS[19]._skipIf line 3149; chat loop line 8233"
+    },
+    {
+      "id": "SR_011",
+      "name": "HEALTHY9_SINGLE_KIT_ENFORCEMENT",
+      "source": "clinical-engine.schema.json → protocolSequencer[PREGNANCY]",
+      "trigger": {
+        "protocolKey": "PREGNANCY"
+      },
+      "effect": "SINGLE_KIT_ABSOLUTE",
+      "allowedKits": ["HEALTHY - 9"],
+      "blockedKits": "ALL_OTHERS",
+      "absoluteRule": "NO other kits. Period.",
+      "clinicalRationale": "Any non-pregnancy kit during pregnancy introduces ingredients with unknown foetal risk profiles. HEALTHY-9 is specifically formulated for pregnancy nutritional support.",
+      "sourceCodeReference": "clinical-engine.schema.json protocolSequencer[PREGNANCY] absoluteRule field"
+    }
+  ],
+
+  "hormoneRestrictions": [
+    {
+      "id": "HR_001",
+      "name": "HORMONAL_QUESTION_FEMALE_ONLY",
+      "source": "questionnaire.schema.json → hormonal.skipLogic",
+      "trigger": {
+        "field": "sex",
+        "operator": "notEquals",
+        "value": "Female"
+      },
+      "effect": "SKIP_ENTIRE_QUESTION",
+      "questionId": "hormonal",
+      "kitsGated": ["HAIR FACT PERI MENOPAUSE", "PRO FACT META B MENOPAUSE", "PRO FACT META B POSTMENOPAUSE", "F-PCOS -1", "F-PCOS VEG -1", "PRO FACT META B PCOS", "FH WELL 3"],
+      "clinicalRationale": "Hormonal conditions (PCOS, menopause, endometriosis, pregnancy) are female-only clinical pathways. Male patients route directly to gut question.",
+      "sourceCodeReference": "STEPS[14] skipLogic; chat loop line 8237"
+    },
+    {
+      "id": "HR_002",
+      "name": "POSTPARTUM_OPTIONS_FEMALE_ONLY",
+      "source": "questionnaire.schema.json → cause.dynamicFilterRule",
+      "trigger": {
+        "field": "sex",
+        "operator": "notEquals",
+        "value": "Female"
+      },
+      "effect": "HIDE_OPTIONS",
+      "optionsHidden": [
+        "Post partum — still feeding",
+        "Post partum — not feeding"
+      ],
+      "questionId": "cause",
+      "sourceCodeReference": "STEPS[8]._filterOpts lines 3067-3073"
+    },
+    {
+      "id": "HR_003",
+      "name": "THYROID_OPTION_RUNTIME_REMOVED_FROM_HORMONAL",
+      "source": "clinical-engine.schema.json → hiddenRules[HR_003]; questionnaire.schema.json → hormonal.runtimeModification",
+      "effect": "RUNTIME_OPTION_REMOVAL",
+      "optionRemoved": "Thyroid disorder",
+      "questionId": "hormonal",
+      "reason": "Thyroid is captured in the dedicated thyroid/metabolic question (STEPS[11]). Inclusion in hormonal would create duplicate scoring.",
+      "crossFieldNote": "Downstream code checks BOTH thyroid field AND hormonal field for 'Thyroid' — the cross-dependency still functions correctly via thyroid step, even with this option removed.",
+      "sourceCodeReference": "IIFE lines 3156-3167; matchProtocol line 4278"
+    },
+    {
+      "id": "HR_004",
+      "name": "FPHL_MPHL_KIT_GENDER_LOCK",
+      "source": "clinical-engine.schema.json → dynamicTransitions[DT_002]",
+      "trigger": "kitName === 'AGA_GENDER' placeholder in protocol",
+      "effect": "RUNTIME_RESOLUTION",
+      "resolution": {
+        "isMale_true": "MPHL",
+        "isMale_false": "FPHL"
+      },
+      "upgradeRule": {
+        "condition": "isGrade45 === true",
+        "male": "MPHL PLUS",
+        "female": "FPHL PLUS"
+      },
+      "clinicalRationale": "MPHL and FPHL have different active compounds targeting male vs female androgen pathways. Cross-gender prescription would be clinically inappropriate.",
+      "sourceCodeReference": "resolveKit() lines 3420-3438; dynamicTransitions DT_002 and DT_003"
+    }
+  ],
+
+  "ageGates": [
+    {
+      "id": "AG_001",
+      "name": "AGA_ABSOLUTE_LOCK_AGE_THRESHOLD",
+      "source": "clinical-engine.schema.json → conditionScoringEngine.absoluteLocks[AGA_MALE_45 / AGA_FEMALE_45]",
+      "trigger": {
+        "operator": "AND",
+        "conditions": [
+          "age >= 20",
+          "grade includes 'Grade 4' OR grade includes 'Grade 5'"
+        ]
+      },
+      "effect": "ABSOLUTE_PROTOCOL_LOCK",
+      "protocolKey": { "male": "AGA_MALE_45", "female": "AGA_FEMALE_45" },
+      "clinicalRationale": "Grade 4/5 pattern loss at age 20+ is definitively androgenetic — weighted scoring cannot improve on this diagnosis. Absolute lock prevents scoring noise from co-conditions from routing away from the correct AGA protocol.",
+      "sourceCodeReference": "matchProtocol lines 4246-4253"
+    },
+    {
+      "id": "AG_002",
+      "name": "FPHL_UNDER_30_PROTOCOL_OVERRIDE",
+      "source": "clinical-engine.schema.json → dynamicTransitions[DT_012]",
+      "trigger": {
+        "operator": "AND",
+        "conditions": [
+          "gender === 'female'",
+          "age < 30",
+          "dominantKey === 'AGA_FEMALE_123'"
+        ]
+      },
+      "effect": "PROTOCOL_OVERRIDE",
+      "kitsBlocked": ["FPHL", "FPHL PLUS"],
+      "overrideTo": ["HAIR FACT TE GOLD", "PRO IMMUNE GOLD"],
+      "clinicalRationale": "Female under 30 with genetics-driven AGA signals: follicle miniaturisation not yet progressed enough for the 5-alpha reductase blockade and dermal papilla compounds in FPHL to be effective. TE GOLD + PRO IMMUNE for shedding arrest and anagen re-entry.",
+      "sourceCodeReference": "getFunnelKits lines 3696-3699"
+    },
+    {
+      "id": "AG_003",
+      "name": "ORAL_MINOXIDIL_OVER_60_CARDIAC_CAUTION",
+      "source": "topical-engine.schema.json → decisionTree[MALE_OVER_55]",
+      "trigger": "age > 60",
+      "effect": "EXTREME_CAUTION_FLAG",
+      "product": "Oral Minoxidil (all doses)",
+      "clinicalNote": "Mandatory cardiac evaluation required before prescribing oral Minoxidil for patients over 60",
+      "sourceCodeReference": "topical-engine.schema.json decisionTree[MALE_OVER_55] caution"
+    },
+    {
+      "id": "AG_004",
+      "name": "MALE_UNDER_18_FINASTERIDE_ABSOLUTE_BLOCK",
+      "source": "topical-engine.schema.json → decisionTree[MALE_UNDER_18]; topicalProtocolRows[male, <18]",
+      "trigger": {
+        "operator": "AND",
+        "conditions": ["gender === 'male'", "age < 18"]
+      },
+      "effect": "ABSOLUTE_BLOCK",
+      "blockedProducts": ["Finasteride topical (all concentrations)", "Oral Finasteride"],
+      "allowedProducts": ["F-Emugrow MCRD", "Trichogain Serum"],
+      "gradeModifier": {
+        "grade123": "Mild non-hormonal topicals: F-Emugrow MCRD / Trichogain",
+        "grade45": "Strict doctor supervision required — cautious Minoxidil only"
+      },
+      "clinicalRationale": "Androgenic axis not fully developed in males under 18. Finasteride-mediated 5-alpha reductase inhibition can cause irreversible hormonal effects during development.",
+      "sourceCodeReference": "topical-engine.schema.json decisionTree[MALE_UNDER_18]"
+    },
+    {
+      "id": "AG_005",
+      "name": "EARLY_GREY_OPTION_AGE_CUTOFF",
+      "source": "questionnaire.schema.json → goal.dynamicFilterRule",
+      "trigger": "parseInt(age) >= 30",
+      "effect": "HIDE_OPTION",
+      "optionHidden": "Early greying of hair",
+      "questionId": "goal",
+      "clinicalRationale": "Greying at 30+ is within physiological range — not classified as premature. EARLY_GREY absolute lock protocol is not clinically indicated.",
+      "sourceCodeReference": "STEPS[2]._filterOpts lines 3014-3020"
+    }
+  ],
+
+  "hypertensionRules": [
+    {
+      "id": "HT_001",
+      "name": "HYPERTENSION_TOPICAL_EARLY_RETURN",
+      "source": "topical-engine.schema.json → recommendationEngine.decisionTree[HYPERTENSION_OVERRIDE]; hiddenCouplings[TC_04]",
+      "trigger": {
+        "field": "free_text",
+        "matchAny": ["hypertension", "blood pressure"],
+        "sourceFields": ["extra", "medical_detail"],
+        "structuralGap": "NO structured checkbox triggers this — detection depends entirely on free-text fields. Known gap: TC_04."
+      },
+      "effect": "EARLY_RETURN",
+      "recommended": ["F-Emugrow MCRD", "Trichogain Serum"],
+      "caution": ["Oral Minoxidil 1.25mg (only if BP is controlled — doctor decision)"],
+      "blocked": ["Topical Minoxidil 5%", "Topical Minoxidil 2%", "All standard Minoxidil formulations"],
+      "contraindictionNote": "Minoxidil is contraindicated due to systemic vasodilation — oral absorption compounds antihypertensive medication effects and can cause dangerous BP fluctuation.",
+      "clinicalRisk": "TC_04 — hypertension detected via free text only: a structured intake that never mentions 'hypertension' or 'blood pressure' in free text fields will SILENTLY MISS this contraindication, allowing Minoxidil prescription to a hypertensive patient.",
+      "sourceCodeReference": "topical-engine.schema.json lines 2373, 2378–2392"
+    }
+  ],
+
+  "kitCapRules": [
+    {
+      "id": "KC_001",
+      "name": "DYNAMIC_KIT_CAP_CALCULATION",
+      "source": "clinical-engine.schema.json → dynamicTransitions[DT_020]",
+      "trigger": "After injection pool is built",
+      "calculation": {
+        "activeSignalCount": "[smokingVaping, hasMetabolicSignal, hasGut, isRegrowGoal].filter(Boolean).length",
+        "caps": [
+          { "condition": "activeSignalCount >= 3", "injectionTarget": 7 },
+          { "condition": "activeSignalCount >= 2 OR isRegrowGoal", "injectionTarget": 6 },
+          { "condition": "strongSecondaryCount >= 2 OR smokingVaping", "injectionTarget": 5 },
+          { "condition": "secondaryCount >= 1", "injectionTarget": 4 },
+          { "condition": "else", "injectionTarget": "current phases.length" }
+        ]
+      },
+      "pcosException": {
+        "id": "HR_005",
+        "cap": 7,
+        "note": "PCOS protocols use dedicated cap of 7 kits (vs standard 4-5) — allows PCOS+Obesity+FPHL+Inflammation+Immune+HBR co-prescription when clinical signals support it",
+        "sourceCodeReference": "getFunnelKits lines 3651-3653"
+      },
+      "sourceCodeReference": "getFunnelKits lines 3848-3860"
+    }
+  ],
+
+  "hiddenSafetyRules": [
+    {
+      "id": "HS_001",
+      "name": "PCOS_PRIORITY_BOOST_THYROID_DOMINANCE",
+      "source": "clinical-engine.schema.json → hiddenRules[HR_002]",
+      "trigger": {
+        "operator": "AND",
+        "conditions": [
+          "hormonal includes 'PCOS' OR 'PCOD'",
+          "thyroid includes 'Hypothyroidism' OR hormonal includes 'Thyroid'"
+        ]
+      },
+      "effect": "PCOS_SCORE_BOOST",
+      "detail": "PCOS score raised from 92 to 101 — makes PCOS dominant over THYROID_HYPO at 100",
+      "clinicalRisk": "If thyroid is the TRUE primary driver and PCOS is mild/co-incidental, the system still routes to PCOS protocol. Thyroid may be under-treated.",
+      "sourceCodeReference": "matchProtocol line 4301"
+    },
+    {
+      "id": "HS_002",
+      "name": "THYROID_CROSS_FIELD_DETECTION",
+      "source": "clinical-engine.schema.json → hiddenRules[HR_001]",
+      "trigger": {
+        "operator": "OR",
+        "conditions": [
+          "thyroid field includes 'Hypothyroidism'",
+          "hormonal field includes 'Thyroid'"
+        ]
+      },
+      "effect": "THYROID_HYPO_SCORE_100",
+      "clinicalNote": "THYROID_HYPO score is triggered by EITHER thyroid field OR hormonal field 'Thyroid' option — cross-field dependency. The hormonal 'Thyroid' option is removed at runtime by IIFE (HR_003) but the cross-check still functions via the thyroid step.",
+      "sourceCodeReference": "matchProtocol line 4278"
+    },
+    {
+      "id": "HS_003",
+      "name": "ACTIVE_SHEDDING_PROTOCOL_OVERRIDE",
+      "source": "clinical-engine.schema.json → hiddenRules[HR_008]; dynamicTransitions[DT_008]",
+      "trigger": {
+        "signal": "hasActiveShedding",
+        "conditions": "NOT isRegrowGoal AND NOT hasNoVisibleFall AND (dominantKey starts with 'TE_' OR count includes 50/100/Noticeable OR duration 1-3/3-6 months OR cause includes Stress/Nutritional/Medication/Illness/Surgery)"
+      },
+      "effect": "TE_GOLD_UNSHIFTED_TO_POSITION_0",
+      "clinicalRisk": "Fires AFTER protocol sequencer lookup — silently overrides the clinically-intended Phase 1 kit. For AGA_MALE_45 and THYROID_HYPER protocols where PRO IMMUNE GOLD is intended as Phase 1, active shedding will displace it to position 1.",
+      "sourceCodeReference": "getFunnelKits lines 3925-3942"
+    },
+    {
+      "id": "HS_004",
+      "name": "PCOS_STACK_HANDLED_FLAG_STATE_RISK",
+      "source": "clinical-engine.schema.json → hiddenRules[HR_012]",
+      "flag": "S._pcosStackHandled",
+      "effect": "PREVENTS_DOUBLE_PRO_IMMUNE_INJECTION",
+      "clinicalRisk": "This flag is set on global state object S. If getFunnelKits() is called multiple times without resetting S, the flag persists and incorrectly blocks PRO IMMUNE for non-PCOS subsequent calls.",
+      "sourceCodeReference": "getFunnelKits lines 3668-3670, 3686"
+    },
+    {
+      "id": "HS_005",
+      "name": "GLP1_DOUBLE_ENFORCEMENT_RACE_CONDITION",
+      "source": "clinical-engine.schema.json → dangerousHiddenCouplings[COUPLING_004]",
+      "effect": "GLP1_SHIELD_POSITIONED_TWICE",
+      "detail": "GLP-1 early shield positioning re-enforced at lines 3895-3901 AND again at lines 3991-3998 after liftPhase reordering. If liftPhase is modified to include RAPID WEIGHT LOSS SHIELD, the double-enforcement creates unexpected ordering.",
+      "sourceCodeReference": "getFunnelKits lines 3895-3901, 3991-3998"
+    },
+    {
+      "id": "HS_006",
+      "name": "HYPERTENSION_DETECTION_FREE_TEXT_ONLY",
+      "source": "topical-engine.schema.json → hiddenCouplings[TC_04]",
+      "structuralGap": true,
+      "effect": "SILENT_MISS_RISK",
+      "detail": "Hypertension contraindication gate checks ansText for 'hypertension' / 'blood pressure'. Neither word appears as a structured checkbox option in any questionnaire step. The gate can ONLY fire if the patient mentions it in free-text (extra, medical_detail).",
+      "clinicalRisk": "A patient with hypertension who does not use these exact words in free text will receive standard Minoxidil recommendation — a dangerous prescription for a hypertensive patient.",
+      "recommendedFix": "Add hasHypertension: boolean to PatientAnswers, wire it to a structured chronic conditions checkbox in Q4 (medical step)",
+      "sourceCodeReference": "topical-engine.schema.json lines 2373, 2378-2392"
+    }
+  ]
+}

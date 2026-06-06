@@ -1,0 +1,141 @@
+{
+  "$schema": "../../../packages/governance/version/registry.meta.schema.json",
+  "registry": "causes.confidence-model",
+  "version": "1.0.0",
+  "frozenContract": "ClinicalIntelligence@1.0/Phase2.6 (Causal Inference)",
+  "description": "Single source of truth for cause ranking arithmetic, confidence propagation, dissent measurement, and conflict handling. The Cause Ranker engine MUST NOT reimplement these formulas — it reads them from this file and applies them.",
+
+  "rankingModel": {
+    "method": "BAYESIAN_LOG_POSTERIOR_WITH_DISSENT",
+    "formula": "posterior(c) = softmax_temp( logScore(c) ) where logScore(c) = log(prior(c)) + sum_p activation(p) * llr(c|p) + sum_s confidence(s) * llr(c|s) - conflictPenalty(c) - dissentDampener(c)",
+    "rationale": "Causes are MUTUALLY-COMPETITIVE EXPLANATIONS — a softmax over Bayesian log-scores is correct because (a) probability mass is conserved across the 10 causes, (b) log-additive combination of independent evidence streams (pathways + signals) is the well-formed Naive-Bayes update, and (c) softmax provides a continuous, differentiable surface for downstream confidence reasoning rather than the discontinuous step-functions of a rule-based selector.",
+    "softmaxTemperature": 1.00,
+    "temperatureRationale": "Temperature 1.00 keeps posteriors interpretable as probabilities. Lower temperatures over-sharpen (one cause dominates regardless of evidence quality); higher temperatures flatten the distribution and obscure leadership. Locked at 1.0 for v1.",
+
+    "steps": [
+
+      { "step": 1, "name": "Inherit Pathway Graph",
+        "operation": "Load PathwayGraph emitted by Pathway Activation Engine. Read each pathway's activation, confidence, severity, severityBand, subthreshold flag. Subthreshold pathways (activation < 0.20) do not contribute to cause scoring." },
+
+      { "step": 2, "name": "Inherit Direct Signals",
+        "operation": "Load present signals (from Signal Registry post-extraction) with their confidence and evidenceTier. Subthreshold signals (confidence < 0.20) do not contribute to cause scoring." },
+
+      { "step": 3, "name": "Compute Per-Cause Log Score",
+        "operation": "For each cause c: logScore(c) = log(priorProbability(c)) + sum over contributingPathways[p] of activation(p) * llr(c|p) + sum over contributingSignals[s] of confidence(s) * llr(c|s). Pathways and signals below their minActivation/minConfidence threshold contribute zero." },
+
+      { "step": 4, "name": "Apply Conflict Penalty",
+        "operation": "For each cause c, count present signals with role=='conflicting' AND confidence >= conflictThreshold AND pathways with role=='exclusionary' with activation >= conflictThreshold. logScore(c) -= conflictCount * conflictPenaltyMagnitude. This penalises causes whose presence is contradicted by present evidence — distinct from absence of supporting evidence." },
+
+      { "step": 5, "name": "Apply Evidence-Tier Floor",
+        "operation": "If the dominant supporting evidence for cause c is heuristic-tier only, logScore(c) -= heuristicFloorPenalty. If emerging-tier only, logScore(c) -= emergingFloorPenalty. Established-tier evidence applies no penalty." },
+
+      { "step": 6, "name": "Compute Composite Promotion (multifactorial-hair-loss only)",
+        "operation": "Count pathways with activation >= compositeRule.minimumPathwayActivation. If count >= compositeRule.minimumActivePathways AND the gap between the top-two single-cause posteriors (computed without composite) is < compositeRule.minimumDissentBetweenTopTwoCauses, add compositePromotionBoost to multifactorial logScore." },
+
+      { "step": 7, "name": "Normalise via Softmax",
+        "operation": "posterior(c) = exp(logScore(c) / temperature) / sum_k exp(logScore(k) / temperature). For numerical stability subtract maxLog before exponentiation." },
+
+      { "step": 8, "name": "Compute Dissent",
+        "operation": "Sort causes by posterior descending. dissent(c_top) = posterior(c_2nd). leadershipMargin = posterior(c_top) - posterior(c_2nd). If leadershipMargin < dissentRules[c_top].maxDissentForLead, the cause is flagged as co-leading rather than leading." },
+
+      { "step": 9, "name": "Compute Per-Cause Confidence (separate from posterior)",
+        "operation": "confidence(c) = posteriorMass(c) * evidenceTierFloor(c) * conflictMassDampener(c) * propagatedPathwayConfidence(c). Bounded by [minCauseConfidence, maxCauseConfidence]. See confidencePropagation section." },
+
+      { "step": 10, "name": "Emit Top-N",
+        "operation": "Return top topNDefault causes ordered by posterior descending. Always include co-leads (within maxDissentForLead). Always include multifactorial-hair-loss if its compositeRule fired." }
+    ],
+
+    "constants": {
+      "conflictThreshold": 0.40,
+      "conflictPenaltyMagnitude": 0.45,
+      "heuristicFloorPenalty": 0.35,
+      "emergingFloorPenalty": 0.15,
+      "compositePromotionBoost": 1.10,
+      "topNDefault": 5,
+      "minCauseConfidence": 0.05,
+      "maxCauseConfidence": 0.97
+    },
+
+    "determinism": "Steps must execute in the order above. Two evaluations of the same PathwayGraph + same signal set against the same registry versions must yield byte-identical CauseRank output. Floating-point arithmetic is performed at IEEE 754 double precision; rounding for emission happens once at serialisation using bankers'-rounding to four decimal places. Ties in posterior are broken first by lower priorProbability (less-favoured prior wins to reward evidence), then by lexicographic cause id, ensuring deterministic ordering."
+  },
+
+  "confidencePropagation": {
+    "description": "Cause confidence is DISTINCT from cause posterior. Posterior = 'how probable this cause is given evidence'. Confidence = 'how trustworthy that posterior is given the evidence base'. A cause can be probable yet low-confidence if its evidence is heuristic-tier or sparse.",
+    "formula": "confidence(c) = clip( posterior(c) * tierFloor(c) * (1 - conflictMass(c)) * pathwayConfidenceAvg(c), [minCauseConfidence, maxCauseConfidence] )",
+    "components": {
+      "tierFloor": {
+        "established": 1.00,
+        "emerging": 0.85,
+        "heuristic": 0.65,
+        "rule": "tierFloor(c) = worst tier among the cause's PRIMARY-role evidence references (pathways + signals)."
+      },
+      "conflictMass": {
+        "description": "Fraction of total contributing weight that is currently being subtracted by conflicting evidence.",
+        "formula": "conflictMass(c) = sum_conflicting weight * conf / (sum_supporting weight * conf + sum_conflicting weight * conf)",
+        "bound": [0.0, 0.6]
+      },
+      "pathwayConfidenceAvg": {
+        "description": "Weighted average of contributing pathway confidences (Pathway Registry confidence(p), not activation(p)).",
+        "formula": "pathwayConfidenceAvg(c) = sum_p activation(p) * confidence(p) / sum_p activation(p)  (over pathways with activation >= 0.20)"
+      }
+    }
+  },
+
+  "dissentModel": {
+    "description": "Dissent measures how much the second-best cause challenges the first. High dissent prevents single-cause framing.",
+    "formula": "dissent(top) = posterior(2nd)",
+    "leadershipMargin": "posterior(top) - posterior(2nd)",
+    "decisionTable": [
+      { "condition": "leadershipMargin >= top.dissentRules.maxDissentForLead", "verdict": "leads",         "uiHandling": "Single-cause framing." },
+      { "condition": "leadershipMargin <  top.dissentRules.maxDissentForLead && leadershipMargin >= 0.05", "verdict": "leads-with-dissent", "uiHandling": "Single-cause framing + 'also considered:' chip." },
+      { "condition": "leadershipMargin <  0.05",                                                          "verdict": "co-leads",      "uiHandling": "Co-explanation framing surfacing both causes." },
+      { "condition": "multifactorial.compositeRule fired",                                                "verdict": "composite",     "uiHandling": "Multifactorial framing surfacing top-3 contributing causes." }
+    ]
+  },
+
+  "conflictHandling": {
+    "description": "Conflicting evidence is treated SUBTRACTIVELY (penalty) rather than EXCLUSIONARILY (zeroing), except for evidence with role=='exclusionary' which sets logScore(c) to -infinity when its threshold is crossed.",
+    "exclusionaryEdges": [
+      { "fromCause": "androgen-driven-miniaturization",   "ifPathway": "immune-dysregulation", "activation": ">= 0.55", "andSignal": "patchy-loss-marker",  "confidence": ">= 0.50", "effect": "force-zero" },
+      { "fromCause": "stress-driven-telogen-effluvium",   "ifSignal":  "patchy-loss-marker",   "confidence": ">= 0.60", "effect": "force-zero" },
+      { "fromCause": "hair-shaft-damage-syndrome",         "ifSignal":  "patchy-loss-marker",   "confidence": ">= 0.60", "effect": "force-zero" }
+    ],
+    "rationale": "True exclusions reflect anatomical incompatibility, not weak counter-evidence. We never zero out a cause for a single low-confidence conflicting signal — we penalise it. Only patterns clinically incompatible with the cause are exclusionary."
+  },
+
+  "dissentTracking": {
+    "description": "Every CauseRank must carry the full dissent vector for audit reconstruction and explainability narration. Dissent is not summary — it is structural.",
+    "emittedFields": [
+      "leadershipMargin",
+      "dissentRank2",
+      "dissentRank3",
+      "secondaryCauseId",
+      "tertiaryCauseId",
+      "coLeadingCauseIds",
+      "compositePromotionFired"
+    ]
+  },
+
+  "subthresholdHandling": {
+    "description": "Causes with posterior below subthresholdPosterior are emitted as 'considered' but not ranked in the top-N. They appear in the CauseGraph for transparency but do not drive downstream recommendations.",
+    "subthresholdPosterior": 0.04,
+    "label": "considered"
+  },
+
+  "governanceConstraints": [
+    "All log-likelihood ratios (llr) in registry.json must be in [-3.0, 3.0]. Positive => evidence supports the cause; negative => evidence opposes.",
+    "Sum of |llr| for primary-role evidence per cause must be in [3.0, 18.0]. Below 3.0 the cause has no decisive evidence; above 18.0 the cause is over-fitted to its evidence set and risks dominance regardless of pathway state.",
+    "Every cause must declare at least one role=='primary' pathway AND at least one role=='primary' signal — except multifactorial-hair-loss, which is composite by definition.",
+    "Any change to the ranking formula, softmax temperature, conflict penalty, or compositePromotionBoost requires major version bump + full parity fixture regeneration + clinical-reviewer sign-off.",
+    "priorProbabilities across the 10 causes must sum to a value in [0.85, 1.05]. (Not strictly normalised because priors are clinical base-rate estimates, not over the 10-cause partition; gentle bound protects against authoring errors.)",
+    "evidenceTier on the cause itself MUST be the WORST tier among its declared primary-role evidence (pathways + signals)."
+  ],
+
+  "productionScaleTargets": {
+    "p50LatencyMs": 1.5,
+    "p99LatencyMs": 4.0,
+    "throughputAssessmentsPerDay": 1000000,
+    "memoryFootprintKB": 32,
+    "notes": "10 causes × ≤20 pathway/signal references each + softmax over 10 values + dissent computation. Bounded compute, no I/O after registry load. Stateless and trivially horizontally scalable."
+  }
+}

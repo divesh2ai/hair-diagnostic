@@ -1,0 +1,199 @@
+{
+  "caseId": "multi_02_aga_inflam_overlap_age32_male",
+  "corpusVersion": "2.0.0",
+  "description": "Multifactorial — aga inflam overlap, 32y Male.",
+  "category": "MULTIFACTORIAL",
+  "severity": "severe",
+  "presentationClarity": "conflicting",
+  "demographicProfile": {
+    "sex": "Male",
+    "age": "32",
+    "region": null,
+    "dietType": "Mixed"
+  },
+  "questionnaireAnswers": {
+    "sex": "Male",
+    "age": "32",
+    "goal": [
+      "Reduce hair fall",
+      "Regrow lost hair"
+    ],
+    "grade": "Grade 4",
+    "scalp": [
+      "Oily scalp",
+      "Dandruff with itching"
+    ],
+    "cause": [
+      "Family history"
+    ],
+    "lifestyle": [],
+    "thyroid": [],
+    "hormonal": [],
+    "immunity": [],
+    "deficiency": [],
+    "gut": [],
+    "diet": [],
+    "hairtype": [
+      "Thinning at crown",
+      "Diffuse shedding"
+    ],
+    "treatment": [],
+    "duration": "More than 1 year",
+    "count": "100–200 hairs/day"
+  },
+  "expectedSignals": [
+    {
+      "signalId": "pattern-thinning-marker",
+      "minConfidence": 0.65
+    },
+    {
+      "signalId": "diffuse-shedding-marker",
+      "minConfidence": 0.65
+    },
+    {
+      "signalId": "grade45-severity-marker",
+      "minConfidence": 0.65
+    },
+    {
+      "signalId": "chronic-duration-marker",
+      "minConfidence": 0.75
+    },
+    {
+      "signalId": "sex-male",
+      "minConfidence": 0.99
+    },
+    {
+      "signalId": "age-mid-modifier",
+      "minConfidence": 0.99
+    },
+    {
+      "signalId": "genetic-predisposition-reported",
+      "minConfidence": 0.6
+    },
+    {
+      "signalId": "dandruff-with-itching",
+      "minConfidence": 0.75
+    },
+    {
+      "signalId": "oily-scalp",
+      "minConfidence": 0.7
+    }
+  ],
+  "expectedPathways": [
+    {
+      "pathwayId": "follicular-miniaturization",
+      "minActivation": 0.45,
+      "role": "supporting"
+    },
+    {
+      "pathwayId": "telogen-cycle-disruption",
+      "minActivation": 0.45,
+      "role": "supporting"
+    },
+    {
+      "pathwayId": "scalp-inflammation",
+      "minActivation": 0.45,
+      "role": "supporting"
+    }
+  ],
+  "expectedRootCauses": [
+    {
+      "causeId": "multifactorial-hair-loss",
+      "minPosterior": 0.25,
+      "surfaceAs": "lead"
+    },
+    {
+      "causeId": "androgen-driven-miniaturization",
+      "minPosterior": 0.18,
+      "surfaceAs": "co-lead"
+    },
+    {
+      "causeId": "stress-driven-telogen-effluvium",
+      "minPosterior": 0.15,
+      "surfaceAs": "co-lead"
+    }
+  ],
+  "expectedDiagnosis": {
+    "primary": "multifactorial-hair-loss",
+    "secondary": [
+      "androgen-driven-miniaturization",
+      "stress-driven-telogen-effluvium"
+    ],
+    "legacyDiagnosisKey": "MULTI",
+    "legacyDiagnosisKeyAlternates": [
+      "MULTIFACTORIAL_HAIR"
+    ]
+  },
+  "expectedSeverity": "severe",
+  "expectedProtocolClass": "MULTIFACTORIAL",
+  "expectedTherapyNeeds": [
+    "DHT_SUPPRESSION",
+    "CYCLE_RESTORATION",
+    "INFLAMMATION_CONTROL",
+    "NUTRITIONAL_REPLETION",
+    "ENDOCRINE_OPTIMIZATION"
+  ],
+  "expectedMonitoringRequirements": {
+    "required": [
+      "GLOBAL_PHOTO_3M",
+      "TRICHOSCOPY_6M",
+      "FERRITIN_4M",
+      "VITAMIN_D_4M",
+      "TSH_3M"
+    ],
+    "recommended": [
+      "SHED_COUNT_MONTHLY",
+      "STRESS_PHQ_MONTHLY"
+    ],
+    "forbidden": []
+  },
+  "expectedNarrativeThemes": {
+    "themes": [
+      "MULTIFACTORIAL_COORDINATION",
+      "EXPECTATION_SETTING_SLOW"
+    ],
+    "mustContainTokens": [
+      "multiple",
+      "address"
+    ],
+    "mustNotContainTokens": [
+      "single cause",
+      "guaranteed"
+    ]
+  },
+  "clinicalRationale": {
+    "whyPrimary": "32-year-old male with simultaneously activated miniaturization, telogen-cycle-disruption, and a third driver pathway (aga inflam overlap). The compositeRule in the cause registry (≥3 pathways above 0.40 AND single-cause dissent gap < 0.06) is the only path by which multifactorial-hair-loss promotes to lead — naive Bayes would surface AGA or TE alone, missing the composite reality. Protocol class MULTIFACTORIAL coordinates therapy combinatorics across DHT suppression, cycle restoration, inflammation control, and substrate repletion.",
+    "whyNotCompetitors": {
+      "androgen-driven-miniaturization": "Pathway is active but does not dominate; pure androgenic explanation undercounts the telogen and ${f.includes('nutritional') ? 'nutritional' : 'hormonal'} drivers.",
+      "stress-driven-telogen-effluvium": "Same — active but not dominant.",
+      "autoimmune-hair-loss": "No patchy/areata markers; immune pathway absent.",
+      "inflammatory-scalp-dysfunction": "Active and contributory but not primary by topology weighting.",
+      "nutritional-hair-stress": "Below floor."
+    }
+  },
+  "adversarial": {
+    "isAdversarial": true,
+    "expectedPrimaryDriver": "multifactorial-hair-loss",
+    "expectedSecondaryDrivers": [
+      "androgen-driven-miniaturization",
+      "stress-driven-telogen-effluvium"
+    ],
+    "commonFailureModes": [
+      {
+        "failureMode": "COMPOSITE_RULE_NOT_EVALUATED",
+        "impactedComponent": "ROOTCAUSE",
+        "description": "Ranker may emit a single dominant cause without checking compositeRule, missing the multifactorial verdict."
+      },
+      {
+        "failureMode": "SINGLE_CAUSE_OVERCONFIDENCE",
+        "impactedComponent": "ROOTCAUSE",
+        "description": "Top-1 cause posterior can artificially inflate when conflicting pathways' competing LLRs are not subtracted."
+      },
+      {
+        "failureMode": "MONO_PROTOCOL_SHIPPED",
+        "impactedComponent": "PROTOCOL",
+        "description": "Protocol can default to MPHL/TE_ACUTE instead of the MULTIFACTORIAL coordination class."
+      }
+    ]
+  }
+}

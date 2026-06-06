@@ -1,0 +1,35 @@
+{
+  "id": "scalp_inflammatory_young_female_01",
+  "description": "Young female (24) with inflammatory scalp + oily scalp — 'Oily scalp' in scalp field triggers s.scalp('Oily') AGA signal. AGA_FEMALE_123 scores 65 (no age bonus, age<30), beating SCALP_INFLAM (62). AGA_FEMALE_UNDER30 fires: protocol collapses to [TE GOLD, PRO IMMUNE GOLD]. PHENOTYPE injected for INFLAMED_SCALP secondary signal. Tests that oily-scalp AGA classification overrides SCALP_INFLAM primary in young female with inflammation.",
+  "budget": "STANDARD",
+  "answers": {
+    "sex": "Female",
+    "age": "24",
+    "grade": "Grade 2",
+    "goal": ["Reduce hair fall"],
+    "scalp": ["Redness", "Burning", "Oily scalp"],
+    "cause": ["Stress"],
+    "lifestyle": [],
+    "thyroid": [],
+    "hormonal": [],
+    "immunity": [],
+    "deficiency": [],
+    "gut": [],
+    "diet": [],
+    "hairtype": [],
+    "treatment": [],
+    "duration": "3–6 months",
+    "count": "50–100 strands"
+  },
+  "expected": {
+    "diagnoses": ["AGA_FEMALE_123"],
+    "scalpStates": ["OILY_SCALP", "INFLAMED_SCALP"],
+    "rootCauses": ["DHT", "STRESS"],
+    "therapyNeeds": ["DHT_SUPPRESSION", "INFLAMMATION_CONTROL", "SHEDDING_ARREST"],
+    "topKit": "HAIR FACT TE GOLD",
+    "mustIncludeKits": ["HAIR FACT TE GOLD", "PHENOTYPE INFLAMATION", "PRO IMMUNE GOLD"],
+    "mustExcludeKits": ["MPHL", "FPHL", "PRO FACT META B HYPOTHYROID", "RAPID WEIGHT LOSS SHIELD"],
+    "mustTriggerRules": ["ACTIVE_SHEDDING"],
+    "mustBlockRules": ["GLP1_EARLY", "GLP1_LATE", "RULE1_HYPO_METABOLIC", "NO_VISIBLE_FALL"]
+  }
+}

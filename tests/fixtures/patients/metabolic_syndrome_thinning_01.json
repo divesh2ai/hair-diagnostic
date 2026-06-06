@@ -1,0 +1,35 @@
+{
+  "id": "metabolic_syndrome_thinning_01",
+  "description": "Metabolic syndrome thinning — mirrors metabolic_sedentary_male_01.",
+  "budget": "STANDARD",
+  "answers": {
+    "sex": "Male",
+    "age": "48",
+    "grade": "Grade 3",
+    "goal": ["Reduce hair fall"],
+    "lifestyle": ["Obesity", "Sedentary"],
+    "cause": ["Family history"],
+    "scalp": ["Oily scalp"],
+    "thyroid": [],
+    "hormonal": [],
+    "immunity": [],
+    "deficiency": [],
+    "gut": [],
+    "diet": [],
+    "hairtype": [],
+    "treatment": [],
+    "duration": "6–12 months",
+    "count": "50–100 strands"
+  },
+  "expected": {
+    "diagnoses": ["AGA_MALE_123"],
+    "scalpStates": ["OILY_SCALP"],
+    "rootCauses": ["GENETICS", "METABOLIC", "DHT"],
+    "therapyNeeds": ["DHT_SUPPRESSION", "INFLAMMATION_CONTROL", "SHEDDING_ARREST", "METABOLIC_SUPPORT"],
+    "topKit": "HAIR FACT TE GOLD",
+    "mustIncludeKits": ["HAIR FACT TE GOLD", "PHENOTYPE INFLAMATION", "MPHL", "PRO FACT META B"],
+    "mustExcludeKits": ["RAPID WEIGHT LOSS SHIELD"],
+    "mustTriggerRules": ["ACTIVE_SHEDDING"],
+    "mustBlockRules": ["RULE1_HYPO_METABOLIC", "GLP1_EARLY", "GLP1_LATE"]
+  }
+}

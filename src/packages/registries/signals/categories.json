@@ -1,0 +1,111 @@
+{
+  "$schema": "../../../packages/governance/version/registry.meta.schema.json",
+  "registry": "signals.categories",
+  "version": "1.0.0",
+  "frozenContract": "ClinicalIntelligence@1.0/Signal.category",
+  "description": "Biological category taxonomy for V2 Signal Registry. Each signal must declare exactly one category. Categories are the orthogonal grouping used by Pathway Activation, Cause Ranker, and Recovery Modifier engines.",
+  "categories": [
+    {
+      "id": "hair-loss-pattern",
+      "label": "Hair Loss Pattern",
+      "biologicalSystem": "integumentary",
+      "purpose": "Observable shedding morphology and progression descriptors. Drives pattern-vs-diffuse differentiation."
+    },
+    {
+      "id": "scalp-state",
+      "label": "Scalp State",
+      "biologicalSystem": "integumentary",
+      "purpose": "Raw scalp condition observations (oil, dryness, flaking, lesions). Precursor to inflammation derivations."
+    },
+    {
+      "id": "inflammation",
+      "label": "Inflammation",
+      "biologicalSystem": "immune",
+      "purpose": "Derived inflammatory state signals — composites of scalp observations and immune history."
+    },
+    {
+      "id": "sebum-regulation",
+      "label": "Sebum Regulation",
+      "biologicalSystem": "integumentary",
+      "purpose": "Sebaceous activity dysregulation relevant to follicular microenvironment and androgen response."
+    },
+    {
+      "id": "hormonal-indicators",
+      "label": "Hormonal Indicators",
+      "biologicalSystem": "endocrine",
+      "purpose": "Endocrine state observations: thyroid, reproductive axis, life-stage transitions."
+    },
+    {
+      "id": "metabolic-indicators",
+      "label": "Metabolic Indicators",
+      "biologicalSystem": "metabolic",
+      "purpose": "Insulin/glucose axis, adiposity, and substrate-availability observations."
+    },
+    {
+      "id": "nutritional-indicators",
+      "label": "Nutritional Indicators",
+      "biologicalSystem": "metabolic",
+      "purpose": "Substrate-deficit observations: deficiencies, dietary patterns affecting micronutrient availability."
+    },
+    {
+      "id": "stress-indicators",
+      "label": "Stress Indicators",
+      "biologicalSystem": "nervous",
+      "purpose": "HPA-axis and psychogenic observations relevant to telogen disruption."
+    },
+    {
+      "id": "lifestyle-indicators",
+      "label": "Lifestyle Indicators",
+      "biologicalSystem": "vascular",
+      "purpose": "Exposures and behaviors that act as recovery modifiers (smoking, alcohol, shift, travel)."
+    },
+    {
+      "id": "immune-indicators",
+      "label": "Immune Indicators",
+      "biologicalSystem": "immune",
+      "purpose": "Autoimmune, allergic, and inflammatory comorbidity observations."
+    },
+    {
+      "id": "gut-indicators",
+      "label": "Gut-Hair Axis Indicators",
+      "biologicalSystem": "digestive",
+      "purpose": "GI symptoms relevant to absorption, microbiome, and systemic inflammation contribution."
+    },
+    {
+      "id": "treatment-history",
+      "label": "Treatment History",
+      "biologicalSystem": "integumentary",
+      "purpose": "Extrinsic exposures (heat, chemical, hard water) relevant to shaft integrity."
+    },
+    {
+      "id": "etiology-markers",
+      "label": "Etiology Markers",
+      "biologicalSystem": "genetic",
+      "purpose": "Self-reported cause attributions: genetics, illness, GLP-1, post-partum etc."
+    },
+    {
+      "id": "demographic-modifiers",
+      "label": "Demographic Modifiers",
+      "biologicalSystem": "genetic",
+      "purpose": "Age band, sex, goal — modifiers used by priors and recovery calibration."
+    },
+    {
+      "id": "recovery-modifiers",
+      "label": "Recovery Modifiers",
+      "biologicalSystem": "integumentary",
+      "purpose": "Signals that directly modulate recovery ceiling, responsiveness, or progression risk."
+    },
+    {
+      "id": "adherence-risks",
+      "label": "Adherence Risks",
+      "biologicalSystem": "nervous",
+      "purpose": "Observations predictive of protocol-adherence difficulty: irregular routine, complex comorbidity, behavioral patterns."
+    },
+    {
+      "id": "progression-risks",
+      "label": "Progression Risks",
+      "biologicalSystem": "integumentary",
+      "purpose": "Observations elevating risk of continued deterioration absent intervention (grade severity, chronic duration, family history)."
+    }
+  ]
+}

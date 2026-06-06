@@ -1,0 +1,35 @@
+{
+  "id": "frontal_recession_male_01",
+  "description": "Male frontal recession with active shedding — Grade 3 AGA, long-standing (>1 year). Receding hairline + thinning temples drive AGA_MALE_123 diagnosis. Concurrent stress-induced TE adds shedding signal. Full standard AGA stack prescribed.",
+  "budget": "STANDARD",
+  "answers": {
+    "sex": "Male",
+    "age": "38",
+    "grade": "Grade 3",
+    "goal": ["Reduce hair fall"],
+    "cause": ["Family history", "Stress"],
+    "hairtype": ["Receding hairline", "Thinning temples"],
+    "scalp": [],
+    "lifestyle": [],
+    "thyroid": [],
+    "hormonal": [],
+    "immunity": [],
+    "deficiency": [],
+    "gut": [],
+    "diet": [],
+    "treatment": [],
+    "duration": "More than 1 year",
+    "count": "50–100 strands"
+  },
+  "expected": {
+    "diagnoses": ["AGA_MALE_123"],
+    "scalpStates": ["NORMAL_SCALP"],
+    "rootCauses": ["STRESS", "GENETICS"],
+    "therapyNeeds": ["DHT_SUPPRESSION", "INFLAMMATION_CONTROL", "SHEDDING_ARREST", "METABOLIC_SUPPORT", "FOLLICLE_STIMULATION"],
+    "topKit": "HAIR FACT TE GOLD",
+    "mustIncludeKits": ["HAIR FACT TE GOLD", "PHENOTYPE INFLAMATION", "MPHL", "PRO FACT META B", "PRO IMMUNE GOLD"],
+    "mustExcludeKits": ["FPHL", "LACTIHEALTH", "RAPID WEIGHT LOSS SHIELD"],
+    "mustTriggerRules": ["ACTIVE_SHEDDING"],
+    "mustBlockRules": ["NO_VISIBLE_FALL", "GLP1_EARLY", "GLP1_LATE", "RULE1_HYPO_METABOLIC"]
+  }
+}

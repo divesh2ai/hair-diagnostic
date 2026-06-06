@@ -1,0 +1,35 @@
+{
+  "id": "regrow_only_male_aga_01",
+  "description": "Regrow-only goal with established AGA pattern. isRegrowGoal=true → buildRegrowProfile. AGA signals present → AGA_MALE_123 (score 92). REGROW_GOAL_AGA rule fires: TE GOLD stripped, protocol collapses to [MPHL, PRO IMMUNE GOLD]. Validates TE GOLD is NEVER prescribed when shedding has stopped.",
+  "budget": "STANDARD",
+  "answers": {
+    "sex": "Male",
+    "age": "42",
+    "grade": "Grade 3",
+    "goal": ["Hair fall has stopped — Regrow only"],
+    "cause": ["Family history"],
+    "hairtype": ["Thinning at temples"],
+    "scalp": [],
+    "lifestyle": [],
+    "thyroid": [],
+    "hormonal": [],
+    "immunity": [],
+    "deficiency": [],
+    "gut": [],
+    "diet": [],
+    "treatment": [],
+    "duration": "More than 1 year",
+    "count": "No active shedding"
+  },
+  "expected": {
+    "diagnoses": ["AGA_MALE_123"],
+    "scalpStates": ["NORMAL_SCALP"],
+    "rootCauses": ["GENETICS"],
+    "therapyNeeds": ["DHT_SUPPRESSION", "INFLAMMATION_CONTROL", "SHEDDING_ARREST", "METABOLIC_SUPPORT", "FOLLICLE_STIMULATION"],
+    "topKit": "MPHL",
+    "mustIncludeKits": ["MPHL", "PRO IMMUNE GOLD"],
+    "mustExcludeKits": ["HAIR FACT TE GOLD", "HAIR FACT TE GOLD VEG", "LACTIHEALTH", "RAPID WEIGHT LOSS SHIELD"],
+    "mustTriggerRules": ["REGROW_GOAL_AGA"],
+    "mustBlockRules": ["ACTIVE_SHEDDING", "GLP1_EARLY", "GLP1_LATE", "RULE1_HYPO_METABOLIC"]
+  }
+}

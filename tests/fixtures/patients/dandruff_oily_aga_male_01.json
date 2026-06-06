@@ -1,0 +1,35 @@
+{
+  "id": "dandruff_oily_aga_male_01",
+  "description": "Male AGA with dandruff/seborrhoeic scalp — classic androgenetic presentation. AGA_MALE_123 dominates (score 70) with SCALP_INFLAM secondary (42). DHT amplifies sebaceous gland secretion. Long-standing case (6–12 months). Tests AGA + scalp co-condition detection.",
+  "budget": "STANDARD",
+  "answers": {
+    "sex": "Male",
+    "age": "36",
+    "grade": "Grade 2",
+    "goal": ["Reduce hair fall"],
+    "scalp": ["Oily scalp", "Dandruff", "Itching"],
+    "cause": ["Family history"],
+    "lifestyle": [],
+    "thyroid": [],
+    "hormonal": [],
+    "immunity": [],
+    "deficiency": [],
+    "gut": [],
+    "diet": [],
+    "hairtype": [],
+    "treatment": [],
+    "duration": "6–12 months",
+    "count": "50–100 strands"
+  },
+  "expected": {
+    "diagnoses": ["AGA_MALE_123"],
+    "scalpStates": ["OILY_SCALP", "DANDRUFF"],
+    "rootCauses": ["GENETICS", "DHT"],
+    "therapyNeeds": ["DHT_SUPPRESSION", "INFLAMMATION_CONTROL", "SHEDDING_ARREST", "METABOLIC_SUPPORT", "FOLLICLE_STIMULATION"],
+    "topKit": "HAIR FACT TE GOLD",
+    "mustIncludeKits": ["HAIR FACT TE GOLD", "PHENOTYPE INFLAMATION", "MPHL"],
+    "mustExcludeKits": ["FPHL", "LACTIHEALTH", "RAPID WEIGHT LOSS SHIELD"],
+    "mustTriggerRules": ["ACTIVE_SHEDDING"],
+    "mustBlockRules": ["GLP1_EARLY", "GLP1_LATE", "RULE1_HYPO_METABOLIC"]
+  }
+}

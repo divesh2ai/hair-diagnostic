@@ -1,0 +1,111 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>Hair Diagnosis - Test Client</title>
+    <style>
+      body { font-family: Arial, sans-serif; margin: 20px; }
+      input, select, button, textarea { margin: 6px 0; width: 100%; max-width: 600px; }
+      .row { margin-bottom: 12px; }
+      pre { background:#f6f8fa; padding:12px; border-radius:6px; max-width:900px; }
+    </style>
+  </head>
+  <body>
+    <h2>Hair Diagnosis — Quick Test Client</h2>
+
+    <div class="row">
+      <label>Base URL</label>
+      <input id="baseUrl" value="http://localhost:4000" />
+    </div>
+
+    <h3>Conversational</h3>
+    <div class="row">
+      <label>Message</label>
+      <input id="convMsg" placeholder="Hair fall kyun hota hai?" />
+    </div>
+    <div class="row">
+      <label>Language</label>
+      <select id="convLang"><option value="hinglish">Hinglish</option><option value="hi">Hindi</option><option value="en">English</option></select>
+    </div>
+    <div class="row">
+      <button id="sendChat">Send Chat</button>
+    </div>
+
+    <h3>Diagnosis</h3>
+    <div class="row">
+      <label>Session ID (required for diagnosis endpoints)</label>
+      <input id="sessionId" placeholder="paste sessionId here (or use WhatsApp webhook to create)" />
+    </div>
+    <div class="row">
+      <button id="startDiag">Start Diagnosis</button>
+    </div>
+    <div class="row">
+      <label>Answer Key</label>
+      <input id="answerKey" placeholder="hairFallCount" />
+      <label>Answer Value</label>
+      <input id="answerValue" placeholder="80" />
+      <button id="sendAnswer">Send Answer</button>
+    </div>
+
+    <h3>WhatsApp Webhook (simulate)</h3>
+    <div class="row">
+      <label>WhatsApp Number (E.164)</label>
+      <input id="waId" value="919999999999" />
+      <label>Message Text</label>
+      <input id="waText" value="Hi" />
+      <button id="sendWa">Send Webhook</button>
+    </div>
+
+    <h3>Response</h3>
+    <pre id="output">Responses will appear here...</pre>
+
+    <script>
+      function out(obj){
+        document.getElementById('output').textContent = JSON.stringify(obj, null, 2);
+      }
+
+      document.getElementById('sendChat').addEventListener('click', async ()=>{
+        const base = document.getElementById('baseUrl').value;
+        const message = document.getElementById('convMsg').value;
+        const language = document.getElementById('convLang').value;
+        try{
+          const r = await fetch(base + '/api/chat', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ message, language }) });
+          const j = await r.json(); out(j);
+        }catch(e){ out({ error: e.message }); }
+      });
+
+      document.getElementById('startDiag').addEventListener('click', async ()=>{
+        const base = document.getElementById('baseUrl').value;
+        const sessionId = document.getElementById('sessionId').value;
+        if(!sessionId){ out({ error: 'sessionId required for /api/diagnose/start. Create session via DB or simulate WhatsApp webhook.'}); return; }
+        try{
+          const r = await fetch(base + '/api/diagnose/start', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ sessionId }) });
+          const j = await r.json(); out(j);
+        }catch(e){ out({ error: e.message }); }
+      });
+
+      document.getElementById('sendAnswer').addEventListener('click', async ()=>{
+        const base = document.getElementById('baseUrl').value;
+        const sessionId = document.getElementById('sessionId').value;
+        const key = document.getElementById('answerKey').value;
+        const value = document.getElementById('answerValue').value;
+        if(!sessionId){ out({ error: 'sessionId required' }); return; }
+        try{
+          const r = await fetch(base + '/api/diagnose/answer', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ sessionId, key, value }) });
+          const j = await r.json(); out(j);
+        }catch(e){ out({ error: e.message }); }
+      });
+
+      document.getElementById('sendWa').addEventListener('click', async ()=>{
+        const base = document.getElementById('baseUrl').value;
+        const waId = document.getElementById('waId').value;
+        const waText = document.getElementById('waText').value;
+        const payload = { messages:[{ from: waId, text: { body: waText } }], contacts:[{ wa_id: waId }] };
+        try{
+          const r = await fetch(base + '/api/whatsapp-webhook', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(payload) });
+          const j = await r.json(); out(j);
+        }catch(e){ out({ error: e.message }); }
+      });
+    </script>
+  </body>
+</html>

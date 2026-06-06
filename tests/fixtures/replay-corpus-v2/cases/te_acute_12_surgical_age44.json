@@ -1,0 +1,133 @@
+{
+  "caseId": "te_acute_12_surgical_age44",
+  "corpusVersion": "2.0.0",
+  "description": "Acute telogen effluvium, post-surgical, 44y Male.",
+  "category": "ACUTE_TE",
+  "severity": "severe",
+  "presentationClarity": "clear",
+  "demographicProfile": {
+    "sex": "Male",
+    "age": "44",
+    "region": null,
+    "dietType": "Mixed"
+  },
+  "questionnaireAnswers": {
+    "sex": "Male",
+    "age": "44",
+    "goal": [
+      "Reduce hair fall"
+    ],
+    "grade": "Grade 1",
+    "scalp": [
+      "Normal scalp"
+    ],
+    "cause": [
+      "Recent illness"
+    ],
+    "lifestyle": [],
+    "thyroid": [],
+    "hormonal": [],
+    "immunity": [],
+    "deficiency": [],
+    "gut": [],
+    "diet": [],
+    "hairtype": [
+      "Diffuse shedding"
+    ],
+    "treatment": [],
+    "duration": "3–6 months",
+    "count": "more than 200 hairs/day"
+  },
+  "expectedSignals": [
+    {
+      "signalId": "diffuse-shedding-marker",
+      "minConfidence": 0.85,
+      "mustBePrimary": true
+    },
+    {
+      "signalId": "active-shedding-heavy",
+      "minConfidence": 0.75
+    },
+    {
+      "signalId": "acute-duration-marker",
+      "minConfidence": 0.8
+    },
+    {
+      "signalId": "sex-male",
+      "minConfidence": 0.99
+    },
+    {
+      "signalId": "age-mature-modifier",
+      "minConfidence": 0.99
+    },
+    {
+      "signalId": "post-illness-recovery",
+      "minConfidence": 0.75
+    }
+  ],
+  "expectedPathways": [
+    {
+      "pathwayId": "telogen-cycle-disruption",
+      "minActivation": 0.6,
+      "role": "leading"
+    }
+  ],
+  "expectedRootCauses": [
+    {
+      "causeId": "stress-driven-telogen-effluvium",
+      "minPosterior": 0.45,
+      "surfaceAs": "lead"
+    }
+  ],
+  "expectedDiagnosis": {
+    "primary": "stress-driven-telogen-effluvium",
+    "secondary": [],
+    "legacyDiagnosisKey": "POST_ILLNESS_TE",
+    "legacyDiagnosisKeyAlternates": [
+      "ACUTE_TE"
+    ]
+  },
+  "expectedSeverity": "severe",
+  "expectedProtocolClass": "TE_ACUTE",
+  "expectedTherapyNeeds": [
+    "CYCLE_RESTORATION",
+    "STRESS_DOWNREGULATION",
+    "NUTRITIONAL_REPLETION"
+  ],
+  "expectedMonitoringRequirements": {
+    "required": [
+      "SHED_COUNT_MONTHLY",
+      "GLOBAL_PHOTO_3M"
+    ],
+    "recommended": [
+      "STRESS_PHQ_MONTHLY"
+    ],
+    "forbidden": [
+      "ANDROGEN_PANEL_6M"
+    ]
+  },
+  "expectedNarrativeThemes": {
+    "themes": [
+      "CYCLE_RESET",
+      "REVERSIBILITY_REASSURANCE",
+      "STRESS_RECOVERY"
+    ],
+    "mustContainTokens": [
+      "telogen",
+      "reversible"
+    ],
+    "mustNotContainTokens": [
+      "permanent loss"
+    ]
+  },
+  "clinicalRationale": {
+    "whyPrimary": "44-year-old male presenting with diffuse synchronized shedding lagging a clear precipitant (post-surgical) by the expected 2–4 month telogen cycle. Shedding intensity (more than 200 hairs/day), acute duration, and absence of pattern topology produce a dominant telogen-cycle-disruption activation. Architectural follicle integrity is preserved — this is cycle-timing pathology, fully reversible, and protocol class TE_ACUTE applies with cycle-restoration and stress-downregulation therapy needs. ",
+    "whyNotCompetitors": {
+      "androgen-driven-miniaturization": "No pattern thinning topology, no Norwood/Ludwig progression, and active heavy shedding without architectural change weighs against miniaturization.",
+      "autoimmune-hair-loss": "No patchy loss, no areata history.",
+      "inflammatory-scalp-dysfunction": "Scalp surface is unremarkable.",
+      "nutritional-hair-stress": "No deficiency markers.",
+      "multifactorial-hair-loss": "A single clear precipitant + single dominant pathway means compositeRule is not met."
+    }
+  }
+}

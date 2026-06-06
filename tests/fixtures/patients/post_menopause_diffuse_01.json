@@ -1,0 +1,35 @@
+{
+  "id": "post_menopause_diffuse_01",
+  "description": "Post-menopausal diffuse hair loss. POST_MENOPAUSE scores 98 — highest hormonal score. PRO FACT META B POSTMENOPAUSE corrects sustained post-oestrogen metabolic shift. FPHL corrects androgenetic pattern accelerated by oestrogen withdrawal. PRO IMMUNE last. Tests post-menopause detection and protocol sequencing.",
+  "budget": "STANDARD",
+  "answers": {
+    "sex": "Female",
+    "age": "58",
+    "grade": "Grade 2",
+    "goal": ["Reduce hair fall"],
+    "hormonal": ["Post-menopause"],
+    "scalp": [],
+    "cause": [],
+    "lifestyle": [],
+    "thyroid": [],
+    "immunity": [],
+    "deficiency": [],
+    "gut": [],
+    "diet": [],
+    "hairtype": [],
+    "treatment": [],
+    "duration": "3–6 months",
+    "count": "50–100 strands"
+  },
+  "expected": {
+    "diagnoses": ["POST_MENOPAUSE"],
+    "scalpStates": ["NORMAL_SCALP"],
+    "rootCauses": ["HORMONAL_SHIFT"],
+    "therapyNeeds": ["HORMONAL_REBALANCING", "DHT_SUPPRESSION", "SHEDDING_ARREST", "IMMUNE_MODULATION"],
+    "topKit": "HAIR FACT TE GOLD",
+    "mustIncludeKits": ["HAIR FACT TE GOLD", "PRO FACT META B POSTMENOPAUSE", "FPHL", "PRO IMMUNE GOLD"],
+    "mustExcludeKits": ["PRO FACT META B MENOPAUSE", "PRO FACT META B HYPOTHYROID", "LACTIHEALTH", "MPHL"],
+    "mustTriggerRules": ["ACTIVE_SHEDDING"],
+    "mustBlockRules": ["GLP1_EARLY", "GLP1_LATE", "RULE1_HYPO_METABOLIC", "PCOS_DIABETES_UPGRADE"]
+  }
+}

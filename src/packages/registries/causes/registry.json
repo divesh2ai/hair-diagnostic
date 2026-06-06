@@ -1,0 +1,503 @@
+{
+  "$schema": "./validation-schema.json",
+  "registry": "causes",
+  "version": "1.0.0",
+  "frozenContract": "ClinicalIntelligence@1.0/Cause",
+  "authoredFrom": [
+    "src/packages/registries/signals/registry.json@1.0.0",
+    "src/packages/registries/pathways/registry.json@1.0.0",
+    "src/packages/clinical-engine/pathway-activation/contracts/PathwayGraph.schema.json",
+    "DrFACT_Condition_Mapping_Latest Final.xlsx (legacy DiagnosisKey corpus, 33 values)",
+    "ClinicalIntelligence@1.0 Phase 2 specification (Phase 2.6 — Causal Inference)"
+  ],
+
+  "designNotes": "Causes are EXPLANATORY HYPOTHESES — not signals, not pathways. A cause is the answer to the question 'why is this person losing hair', stated at a granularity a clinician would dictate. Signals are observations. Pathways are mechanisms. Causes are competing explanations that consume the active pathway graph (and a small set of direct signal cues) and emit a ranked posterior distribution. Ranking is Bayesian: each cause carries a clinical prior, every cause→pathway link is a log-likelihood-ratio (LLR) weighted by pathway activation, every cause→signal link is an LLR weighted by signal confidence, and conflicting/inhibitory evidence subtracts from the log-score. Final posterior is the softmax over log-scores. Dissent is the second-best cause's posterior; high dissent prevents a single-cause framing and routes toward 'multifactorial-hair-loss' as the leading explanation. Confidence is propagated from underlying pathway confidence and signal evidence-tier — a cause cannot be more confident than the evidence base it stands on.",
+
+  "causes": [
+
+    {
+      "id": "androgen-driven-miniaturization",
+      "name": "Androgen-Driven Miniaturization",
+      "explanationClass": "follicular-architectural",
+      "category": "androgenic",
+      "description": "DHT-mediated follicle downsizing produces the dominant fraction of progressive thinning. The explanation answers 'why are the hairs becoming finer'. It does not say 'AGA grade' — that is a severity property — it says 'androgen signalling is the prime mover'.",
+      "priorProbability": 0.32,
+      "priorRationale": "AGA is the most prevalent hair-loss etiology across adult populations of both sexes (~30% lifetime prevalence over the assessment age band). Prior is the base rate before any evidence is inspected.",
+      "evidenceTier": "established",
+      "contributingPathways": [
+        { "pathwayId": "follicular-miniaturization", "logLikelihoodRatio":  2.20, "role": "primary",     "minActivation": 0.30, "notes": "This is the definitional pathway. Without measurable miniaturization activation the cause cannot lead." },
+        { "pathwayId": "hormonal-dysregulation",     "logLikelihoodRatio":  0.85, "role": "supporting",  "minActivation": 0.30, "notes": "Female-pattern AGA frequently co-activates endocrine pathway (PCOS, peri/postmeno)." },
+        { "pathwayId": "metabolic-dysfunction",      "logLikelihoodRatio":  0.40, "role": "modulator",   "minActivation": 0.30, "notes": "Insulin-androgen cross-talk amplifies miniaturization risk." },
+        { "pathwayId": "telogen-cycle-disruption",   "logLikelihoodRatio": -0.50, "role": "competing",   "minActivation": 0.40, "notes": "Heavy active shedding without thinning weakens the miniaturization hypothesis." },
+        { "pathwayId": "immune-dysregulation",       "logLikelihoodRatio": -1.30, "role": "exclusionary","minActivation": 0.40, "notes": "Patchy autoimmune loss is a structurally different etiology." }
+      ],
+      "contributingSignals": [
+        { "signalId": "pattern-thinning-marker",        "logLikelihoodRatio":  1.40, "role": "primary" },
+        { "signalId": "thinning-without-shedding",      "logLikelihoodRatio":  0.90, "role": "supporting" },
+        { "signalId": "genetic-predisposition-reported","logLikelihoodRatio":  1.10, "role": "supporting" },
+        { "signalId": "grade45-severity-marker",        "logLikelihoodRatio":  0.80, "role": "supporting" },
+        { "signalId": "grade123-severity-marker",       "logLikelihoodRatio":  0.45, "role": "supporting" },
+        { "signalId": "sex-male",                       "logLikelihoodRatio":  0.60, "role": "supporting" },
+        { "signalId": "age-mature-modifier",            "logLikelihoodRatio":  0.40, "role": "supporting" },
+        { "signalId": "age-senior-modifier",            "logLikelihoodRatio":  0.50, "role": "supporting" },
+        { "signalId": "pcos-diagnosis",                 "logLikelihoodRatio":  0.60, "role": "supporting" },
+        { "signalId": "postmenopause-state",            "logLikelihoodRatio":  0.55, "role": "supporting" },
+        { "signalId": "active-shedding-heavy",          "logLikelihoodRatio": -0.40, "role": "conflicting" },
+        { "signalId": "patchy-loss-marker",             "logLikelihoodRatio": -1.20, "role": "conflicting" },
+        { "signalId": "postpartum-lactating",           "logLikelihoodRatio": -0.50, "role": "conflicting" },
+        { "signalId": "age-young-modifier",             "logLikelihoodRatio": -0.40, "role": "conflicting" }
+      ],
+      "dissentRules": {
+        "competingCauses": ["multifactorial-hair-loss","hormonal-hair-loss","stress-driven-telogen-effluvium"],
+        "maxDissentForLead": 0.25,
+        "notes": "If hormonal-hair-loss posterior exceeds this cause by more than 0.05, leadership flips. Co-leading (within 0.05) is permitted and surfaced as 'co-explanation'."
+      },
+      "severityAlignment": "drives-progression",
+      "reversibilityClass": "partially-reversible",
+      "explainabilityMetadata": {
+        "clinicalConcept": "concept.androgenetic_alopecia",
+        "analogyClass": "analogy.gradual_thinning",
+        "doctorFraming": "Androgen-mediated terminal-to-vellus conversion is the dominant explanation for the observed thinning topology.",
+        "patientFraming": "Your hair is getting finer because of how your body is responding to hormones over time — a hereditary pattern.",
+        "scientificFraming": "DHT-driven dermal-papilla signaling shortens anagen and reduces follicle volume across successive cycles."
+      },
+      "legacyMappings": [
+        { "legacyDiagnosisKey": "AGA_MALE_123",   "parityStrategy": "direct" },
+        { "legacyDiagnosisKey": "AGA_MALE_45",    "parityStrategy": "direct" },
+        { "legacyDiagnosisKey": "AGA_FEMALE_123", "parityStrategy": "co-explanation", "coWith": "hormonal-hair-loss" },
+        { "legacyDiagnosisKey": "AGA_FEMALE_45",  "parityStrategy": "co-explanation", "coWith": "hormonal-hair-loss" },
+        { "legacyDiagnosisKey": "AGA_GRADE45_LOCK","parityStrategy": "downstream-eligibility", "notes": "Severity-driven hard floor; not a separate cause." }
+      ]
+    },
+
+    {
+      "id": "stress-driven-telogen-effluvium",
+      "name": "Stress-Driven Telogen Effluvium",
+      "explanationClass": "cycle-timing",
+      "category": "neuro-endocrine-stress",
+      "description": "Premature anagen→telogen transition triggered by physical or psychological stressors. Explains diffuse shedding 2–4 months after the precipitant. Distinct from miniaturization: follicle architecture is intact.",
+      "priorProbability": 0.18,
+      "priorRationale": "Telogen effluvium is the second-most prevalent presentation in adult clinics; postpartum, post-illness, and chronic-stress phenotypes dominate.",
+      "evidenceTier": "established",
+      "contributingPathways": [
+        { "pathwayId": "telogen-cycle-disruption",   "logLikelihoodRatio":  2.40, "role": "primary",    "minActivation": 0.30, "notes": "Definitional pathway." },
+        { "pathwayId": "hormonal-dysregulation",     "logLikelihoodRatio":  0.50, "role": "supporting", "minActivation": 0.30, "notes": "Postpartum and peri/menopause precipitate TE." },
+        { "pathwayId": "nutritional-limitation",     "logLikelihoodRatio":  0.55, "role": "supporting", "minActivation": 0.30 },
+        { "pathwayId": "oxidative-stress",           "logLikelihoodRatio":  0.40, "role": "modulator",  "minActivation": 0.30 },
+        { "pathwayId": "follicular-miniaturization", "logLikelihoodRatio": -0.30, "role": "competing",  "minActivation": 0.50, "notes": "Coexistence is possible but dominant miniaturization shifts leadership to androgenic cause." }
+      ],
+      "contributingSignals": [
+        { "signalId": "diffuse-shedding-marker",        "logLikelihoodRatio":  1.50, "role": "primary" },
+        { "signalId": "active-shedding-heavy",          "logLikelihoodRatio":  1.10, "role": "supporting" },
+        { "signalId": "active-shedding-mild",           "logLikelihoodRatio":  0.50, "role": "supporting" },
+        { "signalId": "acute-duration-marker",          "logLikelihoodRatio":  0.80, "role": "supporting" },
+        { "signalId": "subacute-duration-marker",       "logLikelihoodRatio":  0.50, "role": "supporting" },
+        { "signalId": "chronic-stress-reported",        "logLikelihoodRatio":  1.20, "role": "supporting" },
+        { "signalId": "post-illness-recovery",          "logLikelihoodRatio":  1.30, "role": "supporting" },
+        { "signalId": "postpartum-lactating",           "logLikelihoodRatio":  1.40, "role": "supporting" },
+        { "signalId": "postpartum-not-lactating",       "logLikelihoodRatio":  1.10, "role": "supporting" },
+        { "signalId": "night-shift-exposure",           "logLikelihoodRatio":  0.40, "role": "supporting" },
+        { "signalId": "crash-diet-pattern",             "logLikelihoodRatio":  0.80, "role": "supporting" },
+        { "signalId": "thinning-without-shedding",      "logLikelihoodRatio": -0.80, "role": "conflicting" },
+        { "signalId": "pattern-thinning-marker",        "logLikelihoodRatio": -0.60, "role": "conflicting" },
+        { "signalId": "patchy-loss-marker",             "logLikelihoodRatio": -1.20, "role": "conflicting" }
+      ],
+      "dissentRules": {
+        "competingCauses": ["nutritional-hair-stress","hormonal-hair-loss","androgen-driven-miniaturization","multifactorial-hair-loss"],
+        "maxDissentForLead": 0.30,
+        "notes": "Postpartum cases often co-lead with hormonal-hair-loss; permit co-explanation under 0.05 spread."
+      },
+      "severityAlignment": "self-limiting",
+      "reversibilityClass": "fully-reversible",
+      "explainabilityMetadata": {
+        "clinicalConcept": "concept.telogen_effluvium",
+        "analogyClass": "analogy.sudden_shed",
+        "doctorFraming": "Diffuse synchronized telogen release triggered by an identifiable precipitant; architectural follicle integrity preserved.",
+        "patientFraming": "A stress event 2–4 months ago pushed many hairs into a resting phase, which now show up as visible shedding.",
+        "scientificFraming": "Stress-axis activation accelerates anagen-to-telogen transition; shedding lags the precipitant by one telogen cycle."
+      },
+      "legacyMappings": [
+        { "legacyDiagnosisKey": "ACUTE_TE",          "parityStrategy": "direct" },
+        { "legacyDiagnosisKey": "CHRONIC_TE",        "parityStrategy": "direct" },
+        { "legacyDiagnosisKey": "STRESS_TE",         "parityStrategy": "direct" },
+        { "legacyDiagnosisKey": "POSTPARTUM_TE",     "parityStrategy": "co-explanation", "coWith": "hormonal-hair-loss" },
+        { "legacyDiagnosisKey": "POST_ILLNESS_TE",   "parityStrategy": "direct" },
+        { "legacyDiagnosisKey": "PREGNANCY",         "parityStrategy": "downstream-eligibility", "notes": "Pregnancy locks treatments; cause modeling treats as TE precipitant." }
+      ]
+    },
+
+    {
+      "id": "nutritional-hair-stress",
+      "name": "Nutritional Hair Stress",
+      "explanationClass": "substrate-insufficiency",
+      "category": "nutritional",
+      "description": "Hair phenotype attributable to micronutrient or substrate insufficiency — iron, vitamin D, protein, B-complex — manifesting as diffuse thinning, brittle hair, or telogen-spectrum shedding. Distinct from gut-axis cause (absorption-side) and from generic TE (substrate is the named driver).",
+      "priorProbability": 0.10,
+      "priorRationale": "Documented deficiency or strong dietary risk pattern is present in ~10–12% of the assessment population at first encounter.",
+      "evidenceTier": "established",
+      "contributingPathways": [
+        { "pathwayId": "nutritional-limitation",     "logLikelihoodRatio":  2.30, "role": "primary",    "minActivation": 0.30 },
+        { "pathwayId": "telogen-cycle-disruption",   "logLikelihoodRatio":  0.70, "role": "supporting", "minActivation": 0.30, "notes": "Nutritional deficits commonly precipitate TE; the cause is named for the driver, not the mechanism." },
+        { "pathwayId": "gut-hair-axis-dysfunction",  "logLikelihoodRatio":  0.55, "role": "supporting", "minActivation": 0.30 },
+        { "pathwayId": "follicular-miniaturization", "logLikelihoodRatio": -0.30, "role": "competing",  "minActivation": 0.50 }
+      ],
+      "contributingSignals": [
+        { "signalId": "iron-deficiency-reported",       "logLikelihoodRatio":  1.60, "role": "primary" },
+        { "signalId": "vitamin-d-deficiency-reported",  "logLikelihoodRatio":  1.20, "role": "supporting" },
+        { "signalId": "nutritional-cause-self-reported","logLikelihoodRatio":  0.90, "role": "supporting" },
+        { "signalId": "crash-diet-pattern",             "logLikelihoodRatio":  1.10, "role": "supporting" },
+        { "signalId": "irregular-diet-pattern",         "logLikelihoodRatio":  0.60, "role": "supporting" },
+        { "signalId": "vegan-diet",                     "logLikelihoodRatio":  0.55, "role": "supporting" },
+        { "signalId": "vegetarian-diet",                "logLikelihoodRatio":  0.30, "role": "supporting" },
+        { "signalId": "mouth-ulcers-cooccurrence",      "logLikelihoodRatio":  0.35, "role": "supporting" },
+        { "signalId": "pattern-thinning-marker",        "logLikelihoodRatio": -0.40, "role": "conflicting" }
+      ],
+      "dissentRules": {
+        "competingCauses": ["stress-driven-telogen-effluvium","gut-hair-axis-dysfunction","multifactorial-hair-loss"],
+        "maxDissentForLead": 0.30,
+        "notes": "Frequently co-leads with TE; permit co-explanation."
+      },
+      "severityAlignment": "self-limiting",
+      "reversibilityClass": "fully-reversible",
+      "explainabilityMetadata": {
+        "clinicalConcept": "concept.nutritional_hair_loss",
+        "analogyClass": "analogy.substrate_starvation",
+        "doctorFraming": "Substrate insufficiency for follicular proliferation — iron, D, B-complex, or protein — is the dominant explanation.",
+        "patientFraming": "Your hair is reflecting a nutrient gap; restoring substrate restores cycling.",
+        "scientificFraming": "Reduced ferritin and 25-OH-vitamin-D constrain matrix proliferation; correction reverses the phenotype within a telogen cycle."
+      },
+      "legacyMappings": [
+        { "legacyDiagnosisKey": "NUTRITIONAL_TE", "parityStrategy": "direct" },
+        { "legacyDiagnosisKey": "IRON_DEFICIENCY","parityStrategy": "direct" },
+        { "legacyDiagnosisKey": "VEGAN_NUTRITIONAL","parityStrategy": "direct" }
+      ]
+    },
+
+    {
+      "id": "hormonal-hair-loss",
+      "name": "Hormonal Hair Loss",
+      "explanationClass": "endocrine",
+      "category": "endocrine",
+      "description": "Hair loss whose dominant driver is an endocrine perturbation — thyroid (hypo/hyper), PCOS, peri/menopause, postpartum hormonal shift. The named driver is the endocrine state, even when downstream mechanism is telogen or miniaturization.",
+      "priorProbability": 0.14,
+      "priorRationale": "Endocrine-attributable hair loss is present in ~14% of the female assessment population; lower among males where it routes to androgenic.",
+      "evidenceTier": "established",
+      "contributingPathways": [
+        { "pathwayId": "hormonal-dysregulation",     "logLikelihoodRatio":  2.30, "role": "primary",    "minActivation": 0.30 },
+        { "pathwayId": "telogen-cycle-disruption",   "logLikelihoodRatio":  0.70, "role": "supporting", "minActivation": 0.30 },
+        { "pathwayId": "follicular-miniaturization", "logLikelihoodRatio":  0.60, "role": "supporting", "minActivation": 0.30, "notes": "Endocrine-driven miniaturization (e.g. PCOS-AGA) is captured here rather than under androgenic cause when endocrine signals dominate." },
+        { "pathwayId": "metabolic-dysfunction",      "logLikelihoodRatio":  0.40, "role": "modulator",  "minActivation": 0.30 }
+      ],
+      "contributingSignals": [
+        { "signalId": "hypothyroid-diagnosis",          "logLikelihoodRatio":  1.50, "role": "primary" },
+        { "signalId": "hyperthyroid-diagnosis",         "logLikelihoodRatio":  1.50, "role": "primary" },
+        { "signalId": "pcos-diagnosis",                 "logLikelihoodRatio":  1.30, "role": "primary" },
+        { "signalId": "pcos-with-metabolic",            "logLikelihoodRatio":  1.50, "role": "primary" },
+        { "signalId": "perimenopause-state",            "logLikelihoodRatio":  0.90, "role": "supporting" },
+        { "signalId": "menopause-state",                "logLikelihoodRatio":  1.00, "role": "supporting" },
+        { "signalId": "postmenopause-state",            "logLikelihoodRatio":  1.10, "role": "supporting" },
+        { "signalId": "postpartum-lactating",           "logLikelihoodRatio":  0.80, "role": "supporting" },
+        { "signalId": "postpartum-not-lactating",       "logLikelihoodRatio":  0.70, "role": "supporting" },
+        { "signalId": "endometriosis-diagnosis",        "logLikelihoodRatio":  0.40, "role": "supporting" },
+        { "signalId": "hrt-use",                        "logLikelihoodRatio":  0.30, "role": "supporting" },
+        { "signalId": "sex-female",                     "logLikelihoodRatio":  0.45, "role": "supporting" },
+        { "signalId": "patchy-loss-marker",             "logLikelihoodRatio": -1.20, "role": "conflicting" }
+      ],
+      "dissentRules": {
+        "competingCauses": ["androgen-driven-miniaturization","stress-driven-telogen-effluvium","metabolic-hair-dysfunction","multifactorial-hair-loss"],
+        "maxDissentForLead": 0.30
+      },
+      "severityAlignment": "drives-progression",
+      "reversibilityClass": "partially-reversible",
+      "explainabilityMetadata": {
+        "clinicalConcept": "concept.endocrine_hair_loss",
+        "analogyClass": "analogy.hormonal_imbalance",
+        "doctorFraming": "Identifiable endocrine perturbation (thyroid, PCOS, peri/menopause) is the named driver of the observed loss.",
+        "patientFraming": "A hormonal shift is the leading explanation; correcting the underlying endocrine state typically improves the hair phenotype.",
+        "scientificFraming": "Thyroid, androgen, and estrogen axes modulate follicle cycling; perturbation produces phenotype-specific loss patterns."
+      },
+      "legacyMappings": [
+        { "legacyDiagnosisKey": "HYPOTHYROID_HAIRLOSS",   "parityStrategy": "direct" },
+        { "legacyDiagnosisKey": "HYPERTHYROID_HAIRLOSS",  "parityStrategy": "direct" },
+        { "legacyDiagnosisKey": "PCOS_HAIRLOSS",          "parityStrategy": "direct" },
+        { "legacyDiagnosisKey": "MENOPAUSAL_HAIRLOSS",    "parityStrategy": "direct" },
+        { "legacyDiagnosisKey": "PERIMENOPAUSE_HAIRLOSS", "parityStrategy": "direct" },
+        { "legacyDiagnosisKey": "POSTPARTUM_TE",          "parityStrategy": "co-explanation", "coWith": "stress-driven-telogen-effluvium" }
+      ]
+    },
+
+    {
+      "id": "metabolic-hair-dysfunction",
+      "name": "Metabolic Hair Dysfunction",
+      "explanationClass": "metabolic",
+      "category": "metabolic",
+      "description": "Hair loss driven primarily by insulin-glucose dysregulation, adiposity, or PCOS-with-metabolic phenotype. Frequently co-leads with hormonal cause; named separately when metabolic markers dominate the evidence base.",
+      "priorProbability": 0.06,
+      "priorRationale": "Standalone metabolic-driven hair loss is uncommon as a sole explanation; usually appears as a co-explanation with hormonal or androgenic.",
+      "evidenceTier": "emerging",
+      "contributingPathways": [
+        { "pathwayId": "metabolic-dysfunction",      "logLikelihoodRatio":  2.20, "role": "primary",    "minActivation": 0.30 },
+        { "pathwayId": "hormonal-dysregulation",     "logLikelihoodRatio":  0.80, "role": "supporting", "minActivation": 0.30 },
+        { "pathwayId": "follicular-miniaturization", "logLikelihoodRatio":  0.50, "role": "supporting", "minActivation": 0.30 },
+        { "pathwayId": "oxidative-stress",           "logLikelihoodRatio":  0.45, "role": "modulator",  "minActivation": 0.30 }
+      ],
+      "contributingSignals": [
+        { "signalId": "prediabetes-state",              "logLikelihoodRatio":  1.30, "role": "primary" },
+        { "signalId": "diabetes-state",                 "logLikelihoodRatio":  1.40, "role": "primary" },
+        { "signalId": "pcos-with-metabolic",            "logLikelihoodRatio":  1.30, "role": "primary" },
+        { "signalId": "obesity-sedentary",              "logLikelihoodRatio":  0.70, "role": "supporting" },
+        { "signalId": "pcos-diagnosis",                 "logLikelihoodRatio":  0.50, "role": "supporting" },
+        { "signalId": "smoking-exposure",               "logLikelihoodRatio":  0.20, "role": "supporting" },
+        { "signalId": "patchy-loss-marker",             "logLikelihoodRatio": -1.20, "role": "conflicting" }
+      ],
+      "dissentRules": {
+        "competingCauses": ["hormonal-hair-loss","androgen-driven-miniaturization","multifactorial-hair-loss"],
+        "maxDissentForLead": 0.35,
+        "notes": "Rarely the sole leader; expected to co-explain in most positive cases."
+      },
+      "severityAlignment": "drives-progression",
+      "reversibilityClass": "partially-reversible",
+      "explainabilityMetadata": {
+        "clinicalConcept": "concept.metabolic_hair_loss",
+        "analogyClass": "analogy.insulin_androgen_loop",
+        "doctorFraming": "Insulin–androgen axis cross-talk is the named driver of the follicular phenotype.",
+        "patientFraming": "Metabolic factors — sugar regulation, weight, related hormonal patterns — are the primary explanation here.",
+        "scientificFraming": "Hyperinsulinaemia raises bioavailable androgens via SHBG suppression, amplifying miniaturization risk."
+      },
+      "legacyMappings": [
+        { "legacyDiagnosisKey": "METABOLIC_HAIRLOSS", "parityStrategy": "direct" },
+        { "legacyDiagnosisKey": "PCOS_METABOLIC",     "parityStrategy": "direct" }
+      ]
+    },
+
+    {
+      "id": "autoimmune-hair-loss",
+      "name": "Autoimmune Hair Loss",
+      "explanationClass": "immunologic",
+      "category": "autoimmune",
+      "description": "T-cell-mediated targeting of the follicle — alopecia areata spectrum and scarring forms. Distinguished by patchy or well-demarcated loss, history of areata, scarring, and immune co-morbidities.",
+      "priorProbability": 0.04,
+      "priorRationale": "Low base rate (~2–5%) but very high signal specificity when its primary markers fire.",
+      "evidenceTier": "established",
+      "contributingPathways": [
+        { "pathwayId": "immune-dysregulation",       "logLikelihoodRatio":  2.80, "role": "primary",    "minActivation": 0.30 },
+        { "pathwayId": "scalp-inflammation",         "logLikelihoodRatio":  0.55, "role": "supporting", "minActivation": 0.30 },
+        { "pathwayId": "oxidative-stress",           "logLikelihoodRatio":  0.30, "role": "modulator",  "minActivation": 0.30 },
+        { "pathwayId": "follicular-miniaturization", "logLikelihoodRatio": -0.70, "role": "competing",  "minActivation": 0.50 }
+      ],
+      "contributingSignals": [
+        { "signalId": "patchy-loss-marker",             "logLikelihoodRatio":  2.20, "role": "primary" },
+        { "signalId": "alopecia-areata-history",        "logLikelihoodRatio":  2.30, "role": "primary" },
+        { "signalId": "scarring-alopecia-history",      "logLikelihoodRatio":  2.40, "role": "primary" },
+        { "signalId": "recurrent-infection-pattern",    "logLikelihoodRatio":  0.40, "role": "supporting" },
+        { "signalId": "allergy-cluster",                "logLikelihoodRatio":  0.30, "role": "supporting" },
+        { "signalId": "asthma-history",                 "logLikelihoodRatio":  0.25, "role": "supporting" },
+        { "signalId": "skin-rash-history",              "logLikelihoodRatio":  0.30, "role": "supporting" },
+        { "signalId": "pattern-thinning-marker",        "logLikelihoodRatio": -0.80, "role": "conflicting" },
+        { "signalId": "thinning-without-shedding",      "logLikelihoodRatio": -0.50, "role": "conflicting" }
+      ],
+      "dissentRules": {
+        "competingCauses": ["multifactorial-hair-loss"],
+        "maxDissentForLead": 0.20,
+        "notes": "When primary markers (patchy/AA-history/scarring) fire, this cause should lead with low dissent."
+      },
+      "severityAlignment": "stabilizable",
+      "reversibilityClass": "stabilizable",
+      "explainabilityMetadata": {
+        "clinicalConcept": "concept.autoimmune_alopecia",
+        "analogyClass": "analogy.immune_attack",
+        "doctorFraming": "Immune-mediated follicular targeting is the named driver, supported by patchy topology and/or areata/scarring history.",
+        "patientFraming": "Your immune system is reacting against the follicles; treatment focuses on calming that response.",
+        "scientificFraming": "Loss of immune privilege at the follicle bulge with CD8+ T-cell infiltration produces the areata phenotype; scarring forms reflect irreversible perifollicular fibrosis."
+      },
+      "legacyMappings": [
+        { "legacyDiagnosisKey": "ALOPECIA_AREATA",    "parityStrategy": "direct" },
+        { "legacyDiagnosisKey": "SCARRING_ALOPECIA",  "parityStrategy": "direct" },
+        { "legacyDiagnosisKey": "AUTOIMMUNE_HAIR",    "parityStrategy": "direct" }
+      ]
+    },
+
+    {
+      "id": "gut-hair-axis-dysfunction",
+      "name": "Gut–Hair Axis Dysfunction",
+      "explanationClass": "absorption-microbiome",
+      "category": "gut-axis",
+      "description": "Hair loss whose dominant explanation is absorption-side gut dysfunction — IBS, chronic constipation, GERD, microbiome-driven inflammation — producing functional substrate insufficiency and systemic low-grade inflammation.",
+      "priorProbability": 0.05,
+      "priorRationale": "Reported gut-driven phenotype prevalence in the assessment population. Frequently co-leads with nutritional-hair-stress.",
+      "evidenceTier": "emerging",
+      "contributingPathways": [
+        { "pathwayId": "gut-hair-axis-dysfunction",  "logLikelihoodRatio":  2.50, "role": "primary",    "minActivation": 0.30 },
+        { "pathwayId": "nutritional-limitation",     "logLikelihoodRatio":  0.90, "role": "supporting", "minActivation": 0.30 },
+        { "pathwayId": "scalp-inflammation",         "logLikelihoodRatio":  0.30, "role": "supporting", "minActivation": 0.30 }
+      ],
+      "contributingSignals": [
+        { "signalId": "ibs-or-constipation",            "logLikelihoodRatio":  1.50, "role": "primary" },
+        { "signalId": "gerd-symptoms",                  "logLikelihoodRatio":  1.20, "role": "primary" },
+        { "signalId": "bloating-symptoms",              "logLikelihoodRatio":  0.70, "role": "supporting" },
+        { "signalId": "mouth-ulcers-cooccurrence",     "logLikelihoodRatio":  0.40, "role": "supporting" },
+        { "signalId": "iron-deficiency-reported",      "logLikelihoodRatio":  0.55, "role": "supporting" },
+        { "signalId": "vitamin-d-deficiency-reported", "logLikelihoodRatio":  0.40, "role": "supporting" }
+      ],
+      "dissentRules": {
+        "competingCauses": ["nutritional-hair-stress","multifactorial-hair-loss"],
+        "maxDissentForLead": 0.30
+      },
+      "severityAlignment": "self-limiting",
+      "reversibilityClass": "partially-reversible",
+      "explainabilityMetadata": {
+        "clinicalConcept": "concept.gut_hair_axis",
+        "analogyClass": "analogy.absorption_bottleneck",
+        "doctorFraming": "Functional malabsorption and gut inflammation are the named upstream drivers of the substrate insufficiency manifesting in hair.",
+        "patientFraming": "Your gut and hair are connected — chronic gut symptoms are reducing how much your follicles can build with.",
+        "scientificFraming": "Chronic mucosal inflammation reduces iron and B-complex bioavailability while systemic cytokine load suppresses anagen."
+      },
+      "legacyMappings": [
+        { "legacyDiagnosisKey": "GUT_AXIS_HAIRLOSS", "parityStrategy": "direct" }
+      ]
+    },
+
+    {
+      "id": "inflammatory-scalp-dysfunction",
+      "name": "Inflammatory Scalp Dysfunction",
+      "explanationClass": "perifollicular-inflammatory",
+      "category": "scalp-inflammatory",
+      "description": "Scalp-surface and perifollicular inflammation as the named driver — seborrheic dermatitis, dandruff-with-itching, pustular folliculitis, psoriatic scalp. Amplifies miniaturization downstream but stands as its own cause when inflammation signals dominate.",
+      "priorProbability": 0.06,
+      "priorRationale": "Inflammatory scalp dermatoses are common but typically modify rather than lead. Leads when miniaturization signals are absent or weak.",
+      "evidenceTier": "established",
+      "contributingPathways": [
+        { "pathwayId": "scalp-inflammation",         "logLikelihoodRatio":  2.30, "role": "primary",    "minActivation": 0.30 },
+        { "pathwayId": "immune-dysregulation",       "logLikelihoodRatio":  0.60, "role": "supporting", "minActivation": 0.30 },
+        { "pathwayId": "oxidative-stress",           "logLikelihoodRatio":  0.40, "role": "modulator",  "minActivation": 0.30 },
+        { "pathwayId": "follicular-miniaturization", "logLikelihoodRatio": -0.20, "role": "competing",  "minActivation": 0.60, "notes": "When miniaturization is dominant, scalp inflammation is downgraded to amplifier rather than primary cause." }
+      ],
+      "contributingSignals": [
+        { "signalId": "dandruff-with-itching",          "logLikelihoodRatio":  1.40, "role": "primary" },
+        { "signalId": "scalp-redness",                  "logLikelihoodRatio":  1.20, "role": "primary" },
+        { "signalId": "scalp-pustules",                 "logLikelihoodRatio":  1.40, "role": "primary" },
+        { "signalId": "psoriatic-scalp",                "logLikelihoodRatio":  1.50, "role": "primary" },
+        { "signalId": "scalp-burning",                  "logLikelihoodRatio":  0.80, "role": "supporting" },
+        { "signalId": "dandruff-presence",              "logLikelihoodRatio":  0.50, "role": "supporting" },
+        { "signalId": "oily-scalp",                     "logLikelihoodRatio":  0.30, "role": "supporting" },
+        { "signalId": "normal-scalp",                   "logLikelihoodRatio": -1.20, "role": "conflicting" }
+      ],
+      "dissentRules": {
+        "competingCauses": ["autoimmune-hair-loss","multifactorial-hair-loss","androgen-driven-miniaturization"],
+        "maxDissentForLead": 0.30
+      },
+      "severityAlignment": "self-limiting",
+      "reversibilityClass": "fully-reversible",
+      "explainabilityMetadata": {
+        "clinicalConcept": "concept.scalp_inflammation",
+        "analogyClass": "analogy.soil_irritation",
+        "doctorFraming": "Perifollicular and surface inflammation is the named driver; resolving the scalp-surface dermatosis restores cycling.",
+        "patientFraming": "The scalp environment around the follicle is inflamed; calming it is the primary lever here.",
+        "scientificFraming": "Malassezia-driven seborrhoeic inflammation and cytokine load disrupt anagen maintenance and pigmentation."
+      },
+      "legacyMappings": [
+        { "legacyDiagnosisKey": "SEBORRHEIC_DERMATITIS","parityStrategy": "direct" },
+        { "legacyDiagnosisKey": "INFLAMMATORY_SCALP",   "parityStrategy": "direct" },
+        { "legacyDiagnosisKey": "PSORIATIC_SCALP",      "parityStrategy": "direct" }
+      ]
+    },
+
+    {
+      "id": "hair-shaft-damage-syndrome",
+      "name": "Hair Shaft Damage Syndrome",
+      "explanationClass": "structural-extrinsic",
+      "category": "extrinsic-mechanical",
+      "description": "Loss explained by shaft-level mechanical, chemical, thermal, or environmental damage — not follicular dysfunction. Hair appears to be 'falling out' but the loss is breakage at the shaft, with intact follicles.",
+      "priorProbability": 0.04,
+      "priorRationale": "Mid-shaft breakage as the sole explanation is relatively uncommon; commonly co-presents with other causes.",
+      "evidenceTier": "established",
+      "contributingPathways": [
+        { "pathwayId": "hair-shaft-damage",          "logLikelihoodRatio":  2.60, "role": "primary",    "minActivation": 0.30 }
+      ],
+      "contributingSignals": [
+        { "signalId": "shaft-breakage-marker",          "logLikelihoodRatio":  2.20, "role": "primary" },
+        { "signalId": "heat-styling-exposure",          "logLikelihoodRatio":  1.20, "role": "supporting" },
+        { "signalId": "chemical-treatment-exposure",    "logLikelihoodRatio":  1.30, "role": "supporting" },
+        { "signalId": "hard-water-exposure",            "logLikelihoodRatio":  0.50, "role": "supporting" },
+        { "signalId": "diffuse-shedding-marker",        "logLikelihoodRatio": -0.40, "role": "conflicting" },
+        { "signalId": "pattern-thinning-marker",        "logLikelihoodRatio": -0.50, "role": "conflicting" }
+      ],
+      "dissentRules": {
+        "competingCauses": ["multifactorial-hair-loss"],
+        "maxDissentForLead": 0.25
+      },
+      "severityAlignment": "self-limiting",
+      "reversibilityClass": "shaft-only-reversible",
+      "explainabilityMetadata": {
+        "clinicalConcept": "concept.shaft_damage",
+        "analogyClass": "analogy.fabric_wear",
+        "doctorFraming": "Cuticle/cortex compromise from extrinsic exposures is the named driver; follicular architecture is intact.",
+        "patientFraming": "Your hair is breaking, not falling — the strands are damaged by heat, chemicals, or environment, not the roots.",
+        "scientificFraming": "Repeated thermal and oxidative insults degrade cuticular integrity, producing mid-shaft fracture under normal mechanical load."
+      },
+      "legacyMappings": [
+        { "legacyDiagnosisKey": "SHAFT_DAMAGE",        "parityStrategy": "direct" },
+        { "legacyDiagnosisKey": "CHEMICAL_DAMAGE",     "parityStrategy": "direct" },
+        { "legacyDiagnosisKey": "HEAT_DAMAGE",         "parityStrategy": "direct" }
+      ]
+    },
+
+    {
+      "id": "multifactorial-hair-loss",
+      "name": "Multifactorial Hair Loss",
+      "explanationClass": "composite",
+      "category": "composite",
+      "description": "Composite explanation reserved for cases where three or more pathways are simultaneously above the activation threshold AND no single cause dominates by more than the dissent ceiling. NOT a default — it is a structural verdict that the case cannot be honestly explained by one driver. Surfaces the top contributing causes as co-leads.",
+      "priorProbability": 0.01,
+      "priorRationale": "Deliberately low prior. Multifactorial is not a fallback; it must EARN its leadership through the multi-pathway compositeness rule.",
+      "evidenceTier": "established",
+      "compositeRule": {
+        "minimumActivePathways": 3,
+        "minimumPathwayActivation": 0.40,
+        "minimumDissentBetweenTopTwoCauses": 0.06,
+        "notes": "If ≥3 pathways exceed 0.40 activation AND the gap between the top two single-cause posteriors is <0.06, multifactorial-hair-loss promotes to lead. Otherwise it remains a candidate but not the lead."
+      },
+      "contributingPathways": [
+        { "pathwayId": "follicular-miniaturization", "logLikelihoodRatio": 0.80, "role": "supporting", "minActivation": 0.40 },
+        { "pathwayId": "telogen-cycle-disruption",   "logLikelihoodRatio": 0.80, "role": "supporting", "minActivation": 0.40 },
+        { "pathwayId": "hormonal-dysregulation",     "logLikelihoodRatio": 0.80, "role": "supporting", "minActivation": 0.40 },
+        { "pathwayId": "metabolic-dysfunction",      "logLikelihoodRatio": 0.70, "role": "supporting", "minActivation": 0.40 },
+        { "pathwayId": "scalp-inflammation",         "logLikelihoodRatio": 0.60, "role": "supporting", "minActivation": 0.40 },
+        { "pathwayId": "nutritional-limitation",     "logLikelihoodRatio": 0.60, "role": "supporting", "minActivation": 0.40 },
+        { "pathwayId": "gut-hair-axis-dysfunction",  "logLikelihoodRatio": 0.50, "role": "supporting", "minActivation": 0.40 },
+        { "pathwayId": "oxidative-stress",           "logLikelihoodRatio": 0.40, "role": "modulator",  "minActivation": 0.40 }
+      ],
+      "contributingSignals": [
+        { "signalId": "chronic-duration-marker",        "logLikelihoodRatio":  0.40, "role": "supporting" },
+        { "signalId": "age-mature-modifier",            "logLikelihoodRatio":  0.20, "role": "supporting" },
+        { "signalId": "age-senior-modifier",            "logLikelihoodRatio":  0.25, "role": "supporting" }
+      ],
+      "dissentRules": {
+        "competingCauses": ["androgen-driven-miniaturization","stress-driven-telogen-effluvium","hormonal-hair-loss"],
+        "maxDissentForLead": 0.50,
+        "notes": "Multifactorial leadership is granted ONLY via compositeRule. Outside that gate it remains a candidate. High dissent is expected — that is the point of this cause."
+      },
+      "severityAlignment": "drives-progression",
+      "reversibilityClass": "partially-reversible",
+      "explainabilityMetadata": {
+        "clinicalConcept": "concept.multifactorial",
+        "analogyClass": "analogy.multiple_drivers",
+        "doctorFraming": "No single driver dominates; the case requires a composite explanation across at least three pathways. Treatment must address the top co-leading causes in parallel.",
+        "patientFraming": "Several causes are working together here. We need to address more than one to see meaningful improvement.",
+        "scientificFraming": "Multiple converging mechanisms exceed activation threshold without a single dominant posterior; treatment combinatorics required."
+      },
+      "legacyMappings": [
+        { "legacyDiagnosisKey": "MULTI",                "parityStrategy": "direct" },
+        { "legacyDiagnosisKey": "MULTIFACTORIAL_HAIR",  "parityStrategy": "direct" }
+      ]
+    }
+
+  ],
+
+  "legacyDiagnosisKeysNotMappedToCauses": [
+    { "legacyDiagnosisKey": "CHRONIC_MEDICAL", "rationale": "Not a cause; surfaced via eligibility + objective routing." },
+    { "legacyDiagnosisKey": "EARLY_GREY",      "rationale": "Pigmentation phenotype, not a hair-loss cause." },
+    { "legacyDiagnosisKey": "REGROW_ONLY",     "rationale": "Goal-state, not a cause." },
+    { "legacyDiagnosisKey": "TRICHOTILLOMANIA","rationale": "Behavioral; routed to a non-cause behavioral pathway." }
+  ]
+}

@@ -1,0 +1,681 @@
+{
+  "$schema": "./validation-schema.json",
+  "registry": "pathways",
+  "version": "1.0.0",
+  "frozenContract": "ClinicalIntelligence@1.0/Pathway",
+  "authoredFrom": [
+    "src/packages/registries/signals/registry.json@1.0.0 (canonical inversion of pathwayRelevance[])",
+    "src/packages/ai-engine/clinical-engine/rules/{agaRules,teRules,hormonalRules,metabolicRules,lifestyleRules,absoluteLocks}.ts (decomposed)",
+    "DrFACT_Condition_Mapping_Latest Final.xlsx (clinical seed)",
+    "ClinicalIntelligence@1.0 Phase 2 specification"
+  ],
+  "designNotes": "Pathways are mechanistic groupings. Each is ACTIVATED (graded), not assigned. Signal references mirror the Signal Registry — any divergence is rejected by IC-P-8 (cross-registry symmetry). Required-gate signals must satisfy at least one of gateMinConfidence or gateMinAggregate as defined in confidence-model.json. Modulator pathways (oxidative-stress) declare empty requiredSignals[] and modulator-no-gate mode. Multiple required-gate entries are permitted: the pathway activates if ANY required-gate signal meets gateMinConfidence (required-any) OR if the AGGREGATE of present required-gate signal confidences meets gateMinAggregate (required-aggregate).",
+
+  "pathways": [
+
+    {
+      "id": "follicular-miniaturization",
+      "name": "Follicular Miniaturization",
+      "biologicalSystem": "integumentary",
+      "mechanismCategory": "follicular-cycle",
+      "description": "Progressive shortening of the anagen phase with corresponding follicle downsizing — the mechanistic core of androgenetic and pattern hair loss. Follicles produce progressively finer, shorter, and lighter hairs until terminal-to-vellus transformation. Distinct from telogen shedding: this is a STRUCTURAL change to follicle architecture, not a cycle-timing perturbation.",
+      "purpose": "concept.follicular_miniaturization",
+      "evidenceTier": "established",
+      "activationRules": {
+        "gateMode": "required-any",
+        "minActivation": 0.20,
+        "amplifiedBy": [
+          { "pathwayId": "scalp-inflammation",      "magnitude": 0.20, "when": "co-active" },
+          { "pathwayId": "hormonal-dysregulation",  "magnitude": 0.25, "when": "co-active" },
+          { "pathwayId": "oxidative-stress",        "magnitude": 0.15, "when": "co-dominant" },
+          { "pathwayId": "metabolic-dysfunction",   "magnitude": 0.15, "when": "co-active" }
+        ]
+      },
+      "requiredSignals": [
+        { "signalId": "pattern-thinning-marker", "weight": 0.75, "minConfidence": 0.40 }
+      ],
+      "supportingSignals": [
+        { "signalId": "thinning-without-shedding",        "weight": 0.65 },
+        { "signalId": "chronic-duration-marker",          "weight": 0.50 },
+        { "signalId": "subacute-duration-marker",         "weight": 0.25 },
+        { "signalId": "grade123-severity-marker",         "weight": 0.30 },
+        { "signalId": "grade45-severity-marker",          "weight": 0.85 },
+        { "signalId": "genetic-predisposition-reported",  "weight": 0.55 },
+        { "signalId": "oily-scalp",                       "weight": 0.20 },
+        { "signalId": "bodybuilding-pattern",             "weight": 0.30 },
+        { "signalId": "high-protein-diet",                "weight": 0.15 },
+        { "signalId": "pcos-diagnosis",                   "weight": 0.45 },
+        { "signalId": "menopause-state",                  "weight": 0.35 },
+        { "signalId": "postmenopause-state",              "weight": 0.45 },
+        { "signalId": "age-mid-modifier",                 "weight": 0.15 },
+        { "signalId": "age-mature-modifier",              "weight": 0.25 },
+        { "signalId": "age-senior-modifier",              "weight": 0.30 },
+        { "signalId": "sex-male",                         "weight": 0.30 },
+        { "signalId": "regrow-goal",                      "weight": 0.10 }
+      ],
+      "inhibitorySignals": [
+        { "signalId": "age-young-modifier", "weight": -0.30 }
+      ],
+      "severityContribution": 0.70,
+      "reversibilityClass": "partially-reversible",
+      "chronicityProfile": {
+        "onsetSpeed": "chronic",
+        "persistenceWithoutTx": "progressive",
+        "recurrenceRisk": "high"
+      },
+      "recoveryImpact": {
+        "recoveryCeilingDelta": -0.25,
+        "responsivenessDelta": -0.10,
+        "progressionRiskDelta": 0.30
+      },
+      "interactions": [
+        { "pathwayId": "scalp-inflammation",     "type": "amplifies", "magnitude": 0.20 },
+        { "pathwayId": "hormonal-dysregulation", "type": "amplifies", "magnitude": 0.25 },
+        { "pathwayId": "metabolic-dysfunction",  "type": "amplifies", "magnitude": 0.15 },
+        { "pathwayId": "telogen-cycle-disruption","type": "competes", "magnitude": 0.10 }
+      ],
+      "treatmentImplications": ["growth-stimulation","hormonal-support","long-term-preservation","maintenance"],
+      "explainabilityMetadata": {
+        "clinicalConcept": "concept.miniaturization",
+        "analogyClass": "analogy.gradual_thinning",
+        "visualMotif": "motif.miniaturization",
+        "doctorFraming": "Progressive anagen shortening with terminal-to-vellus conversion. Genetic susceptibility expresses through DHT-mediated follicle downsizing.",
+        "patientFraming": "Hair strands are becoming finer and shorter over time rather than falling out all at once.",
+        "scientificFraming": "DHT-driven dermal-papilla signaling shifts shorten anagen and reduce follicle volume across successive cycles."
+      },
+      "legacyMappings": [
+        { "legacyDiagnosisKey": "AGA_MALE_123",  "parityStrategy": "direct", "notes": "Activated; severity band latent–active." },
+        { "legacyDiagnosisKey": "AGA_MALE_45",   "parityStrategy": "direct", "notes": "Activated dominant/entrenched; grade45-severity-marker drives severity." },
+        { "legacyDiagnosisKey": "AGA_FEMALE_123","parityStrategy": "co-activation", "notes": "Co-active with hormonal-dysregulation when sex=female." },
+        { "legacyDiagnosisKey": "AGA_FEMALE_45", "parityStrategy": "co-activation", "notes": "Co-active with hormonal-dysregulation; dominant severity band." }
+      ]
+    },
+
+    {
+      "id": "telogen-cycle-disruption",
+      "name": "Telogen Cycle Disruption",
+      "biologicalSystem": "integumentary",
+      "mechanismCategory": "follicular-cycle",
+      "description": "Premature anagen-to-telogen transition causing synchronized shedding 2–4 months after the precipitant. Full-length hairs are released with intact white bulbs. The follicle architecture is intact — this is a CYCLE-TIMING perturbation, not a structural change. Most cases are fully reversible once the precipitant resolves.",
+      "purpose": "concept.telogen_effluvium",
+      "evidenceTier": "established",
+      "activationRules": {
+        "gateMode": "required-any",
+        "minActivation": 0.20,
+        "amplifiedBy": [
+          { "pathwayId": "hormonal-dysregulation", "magnitude": 0.20, "when": "co-active" },
+          { "pathwayId": "nutritional-limitation", "magnitude": 0.20, "when": "co-active" },
+          { "pathwayId": "oxidative-stress",       "magnitude": 0.10, "when": "co-active" }
+        ]
+      },
+      "requiredSignals": [
+        { "signalId": "diffuse-shedding-marker", "weight": 0.80, "minConfidence": 0.40 },
+        { "signalId": "active-shedding-heavy",   "weight": 0.75, "minConfidence": 0.40 }
+      ],
+      "supportingSignals": [
+        { "signalId": "active-shedding-mild",            "weight": 0.55 },
+        { "signalId": "acute-duration-marker",           "weight": 0.45 },
+        { "signalId": "subacute-duration-marker",        "weight": 0.35 },
+        { "signalId": "chronic-stress-reported",         "weight": 0.65 },
+        { "signalId": "nutritional-cause-self-reported", "weight": 0.30 },
+        { "signalId": "post-illness-recovery",           "weight": 0.70 },
+        { "signalId": "postpartum-lactating",            "weight": 0.75 },
+        { "signalId": "postpartum-not-lactating",        "weight": 0.65 },
+        { "signalId": "glp1-recent",                     "weight": 0.80 },
+        { "signalId": "crash-diet-pattern",              "weight": 0.40 },
+        { "signalId": "iron-deficiency-reported",        "weight": 0.45 },
+        { "signalId": "vitamin-b12-deficiency-reported", "weight": 0.30 },
+        { "signalId": "hypothyroid-diagnosis",           "weight": 0.55 },
+        { "signalId": "hyperthyroid-diagnosis",          "weight": 0.55 },
+        { "signalId": "perimenopause-state",             "weight": 0.40 },
+        { "signalId": "night-shift-exposure",            "weight": 0.45 },
+        { "signalId": "frequent-flying-exposure",        "weight": 0.35 },
+        { "signalId": "chronic-medical-on-medication",   "weight": 0.30 }
+      ],
+      "inhibitorySignals": [
+        { "signalId": "thinning-without-shedding", "weight": -0.40 }
+      ],
+      "severityContribution": 0.45,
+      "reversibilityClass": "fully-reversible",
+      "chronicityProfile": {
+        "onsetSpeed": "acute",
+        "persistenceWithoutTx": "self-limiting",
+        "recurrenceRisk": "moderate"
+      },
+      "recoveryImpact": {
+        "recoveryCeilingDelta": -0.05,
+        "responsivenessDelta": 0.15,
+        "progressionRiskDelta": 0.10
+      },
+      "interactions": [
+        { "pathwayId": "hormonal-dysregulation",  "type": "amplifies", "magnitude": 0.20 },
+        { "pathwayId": "nutritional-limitation",  "type": "amplifies", "magnitude": 0.20 },
+        { "pathwayId": "oxidative-stress",        "type": "amplifies", "magnitude": 0.10 },
+        { "pathwayId": "follicular-miniaturization","type": "competes","magnitude": 0.10 }
+      ],
+      "treatmentImplications": ["nutritional-support","scalp-stabilization","growth-stimulation","maintenance"],
+      "explainabilityMetadata": {
+        "clinicalConcept": "concept.telogen_effluvium",
+        "analogyClass": "analogy.cycle_disruption",
+        "visualMotif": "motif.shedding",
+        "doctorFraming": "Synchronized telogen release secondary to precipitating insult. Anagen architecture intact; expected reversal 3–6 months post-resolution.",
+        "patientFraming": "Hair follicles have entered a resting phase together. Once the underlying cause is addressed, the cycle typically normalizes.",
+        "scientificFraming": "Premature catagen entry mediated by HPA-axis, thyroid, or substrate-availability disruption — anagen pool depletion expressed 60–120 days later."
+      },
+      "legacyMappings": [
+        { "legacyDiagnosisKey": "TE_STRESS",   "parityStrategy": "direct" },
+        { "legacyDiagnosisKey": "TE_NUTRITION","parityStrategy": "co-activation", "notes": "Co-active with nutritional-limitation." },
+        { "legacyDiagnosisKey": "TE_POSTPREG", "parityStrategy": "direct" },
+        { "legacyDiagnosisKey": "TE_DELIVERY", "parityStrategy": "direct" },
+        { "legacyDiagnosisKey": "TE_ILLNESS",  "parityStrategy": "direct" },
+        { "legacyDiagnosisKey": "WEIGHT_LOSS", "parityStrategy": "co-activation", "notes": "Co-active with nutritional-limitation and metabolic-dysfunction." },
+        { "legacyDiagnosisKey": "NIGHT_SHIFT", "parityStrategy": "co-activation", "notes": "Co-active with oxidative-stress." },
+        { "legacyDiagnosisKey": "FREQUENT_FLYING","parityStrategy": "co-activation", "notes": "Co-active with oxidative-stress." }
+      ]
+    },
+
+    {
+      "id": "scalp-inflammation",
+      "name": "Scalp Inflammation",
+      "biologicalSystem": "immune",
+      "mechanismCategory": "inflammatory",
+      "description": "Active perifollicular and surface inflammation driven by microbiome imbalance, sebum dysregulation, barrier compromise, or cytokine cascade. Manifests as redness, flaking with pruritus, pustules, burning. Untreated chronic inflammation amplifies miniaturization and increases progression risk.",
+      "purpose": "concept.scalp_inflammation",
+      "evidenceTier": "established",
+      "activationRules": {
+        "gateMode": "required-aggregate",
+        "minActivation": 0.20,
+        "amplifiedBy": [
+          { "pathwayId": "immune-dysregulation",    "magnitude": 0.20, "when": "co-active" },
+          { "pathwayId": "oxidative-stress",        "magnitude": 0.10, "when": "co-active" }
+        ]
+      },
+      "requiredSignals": [
+        { "signalId": "dandruff-with-itching", "weight": 0.85, "minConfidence": 0.40 },
+        { "signalId": "scalp-redness",         "weight": 0.65, "minConfidence": 0.40 },
+        { "signalId": "scalp-pustules",        "weight": 0.75, "minConfidence": 0.40 },
+        { "signalId": "psoriatic-scalp",       "weight": 0.80, "minConfidence": 0.40 }
+      ],
+      "supportingSignals": [
+        { "signalId": "dandruff-presence",              "weight": 0.50 },
+        { "signalId": "oily-scalp",                     "weight": 0.35 },
+        { "signalId": "dry-scalp",                      "weight": 0.20 },
+        { "signalId": "scalp-burning",                  "weight": 0.50 },
+        { "signalId": "skin-rash-history",              "weight": 0.25 },
+        { "signalId": "scarring-alopecia-history",      "weight": 0.60 },
+        { "signalId": "mouth-ulcers-cooccurrence",      "weight": 0.20 },
+        { "signalId": "endometriosis-diagnosis",        "weight": 0.25 },
+        { "signalId": "chronic-duration-marker",        "weight": 0.30 },
+        { "signalId": "smoking-exposure",               "weight": 0.30 },
+        { "signalId": "trichotillomania-behavior",      "weight": 0.30 },
+        { "signalId": "hard-water-exposure",            "weight": 0.20 }
+      ],
+      "inhibitorySignals": [
+        { "signalId": "normal-scalp", "weight": -0.30 }
+      ],
+      "severityContribution": 0.55,
+      "reversibilityClass": "fully-reversible",
+      "chronicityProfile": {
+        "onsetSpeed": "subacute",
+        "persistenceWithoutTx": "persistent",
+        "recurrenceRisk": "high"
+      },
+      "recoveryImpact": {
+        "recoveryCeilingDelta": -0.05,
+        "responsivenessDelta": 0.10,
+        "progressionRiskDelta": 0.15
+      },
+      "interactions": [
+        { "pathwayId": "follicular-miniaturization","type": "amplifies","magnitude": 0.20 },
+        { "pathwayId": "immune-dysregulation",     "type": "amplifies","magnitude": 0.20 },
+        { "pathwayId": "oxidative-stress",         "type": "amplifies","magnitude": 0.10 }
+      ],
+      "treatmentImplications": ["inflammation-reduction","scalp-stabilization","maintenance"],
+      "explainabilityMetadata": {
+        "clinicalConcept": "concept.scalp_inflammation",
+        "analogyClass": "analogy.barrier_breakdown",
+        "visualMotif": "motif.scalp_inflammation",
+        "doctorFraming": "Active perifollicular inflammation with cytokine-driven follicular microenvironment disruption.",
+        "patientFraming": "The skin around your hair follicles is irritated, which can interrupt healthy hair growth.",
+        "scientificFraming": "Th17/Treg imbalance with Malassezia overgrowth and barrier dysfunction drives IL-17/IL-23 axis activation at the perifollicular dermis."
+      },
+      "legacyMappings": [
+        { "legacyDiagnosisKey": "SCALP_INFLAM", "parityStrategy": "direct" }
+      ]
+    },
+
+    {
+      "id": "hormonal-dysregulation",
+      "name": "Hormonal Dysregulation",
+      "biologicalSystem": "endocrine",
+      "mechanismCategory": "endocrine",
+      "description": "Perturbation of thyroid, androgen, estrogen, or reproductive-transition hormones affecting follicle behavior. Mechanisms vary: thyroid alters cycle timing; androgen excess drives miniaturization; estrogen withdrawal lengthens telogen. Often co-active with miniaturization and TE pathways.",
+      "purpose": "concept.hormonal_dysregulation",
+      "evidenceTier": "established",
+      "activationRules": {
+        "gateMode": "required-any",
+        "minActivation": 0.20,
+        "amplifiedBy": [
+          { "pathwayId": "metabolic-dysfunction", "magnitude": 0.20, "when": "co-active" }
+        ]
+      },
+      "requiredSignals": [
+        { "signalId": "hypothyroid-diagnosis",  "weight": 0.90, "minConfidence": 0.40 },
+        { "signalId": "hyperthyroid-diagnosis", "weight": 0.90, "minConfidence": 0.40 },
+        { "signalId": "pcos-diagnosis",         "weight": 0.85, "minConfidence": 0.40 },
+        { "signalId": "perimenopause-state",    "weight": 0.70, "minConfidence": 0.40 },
+        { "signalId": "menopause-state",        "weight": 0.75, "minConfidence": 0.40 },
+        { "signalId": "postmenopause-state",    "weight": 0.75, "minConfidence": 0.40 }
+      ],
+      "supportingSignals": [
+        { "signalId": "pcos-with-metabolic",        "weight": 0.80 },
+        { "signalId": "endometriosis-diagnosis",    "weight": 0.65 },
+        { "signalId": "pregnancy-state",            "weight": 0.30 },
+        { "signalId": "hrt-use",                    "weight": 0.30 },
+        { "signalId": "obesity-sedentary",          "weight": 0.30 },
+        { "signalId": "postpartum-lactating",       "weight": 0.55 },
+        { "signalId": "postpartum-not-lactating",   "weight": 0.40 },
+        { "signalId": "sex-female",                 "weight": 0.20 },
+        { "signalId": "age-mature-modifier",        "weight": 0.20 }
+      ],
+      "inhibitorySignals": [],
+      "severityContribution": 0.55,
+      "reversibilityClass": "partially-reversible",
+      "chronicityProfile": {
+        "onsetSpeed": "chronic",
+        "persistenceWithoutTx": "persistent",
+        "recurrenceRisk": "moderate"
+      },
+      "recoveryImpact": {
+        "recoveryCeilingDelta": -0.15,
+        "responsivenessDelta": -0.05,
+        "progressionRiskDelta": 0.20
+      },
+      "interactions": [
+        { "pathwayId": "follicular-miniaturization","type": "amplifies","magnitude": 0.25 },
+        { "pathwayId": "telogen-cycle-disruption", "type": "amplifies","magnitude": 0.20 },
+        { "pathwayId": "metabolic-dysfunction",    "type": "amplifies","magnitude": 0.20 }
+      ],
+      "treatmentImplications": ["hormonal-support","growth-stimulation","nutritional-support","maintenance"],
+      "explainabilityMetadata": {
+        "clinicalConcept": "concept.hormonal_dysregulation",
+        "analogyClass": "analogy.endocrine_imbalance",
+        "visualMotif": "motif.hormonal",
+        "doctorFraming": "Endocrine perturbation affecting follicular cycling and/or DHT-axis activity. Specific axis depends on activated required signals.",
+        "patientFraming": "Hormones that influence your hair are out of balance, which is contributing to what you're experiencing.",
+        "scientificFraming": "Thyroid-receptor signaling, 5α-reductase activity, and estrogen-androgen ratios shape follicle proliferation, anagen length, and sebaceous tone."
+      },
+      "legacyMappings": [
+        { "legacyDiagnosisKey": "THYROID_HYPO",    "parityStrategy": "direct" },
+        { "legacyDiagnosisKey": "THYROID_HYPER",   "parityStrategy": "direct" },
+        { "legacyDiagnosisKey": "PCOS_ONLY",       "parityStrategy": "direct" },
+        { "legacyDiagnosisKey": "PCOS_OBESITY",    "parityStrategy": "co-activation", "notes": "Co-active with metabolic-dysfunction." },
+        { "legacyDiagnosisKey": "PERI_MENOPAUSE",  "parityStrategy": "direct" },
+        { "legacyDiagnosisKey": "MENOPAUSE",       "parityStrategy": "direct" },
+        { "legacyDiagnosisKey": "POST_MENOPAUSE",  "parityStrategy": "direct" },
+        { "legacyDiagnosisKey": "ENDOMETRIOSIS",   "parityStrategy": "direct" },
+        { "legacyDiagnosisKey": "PREGNANCY",       "parityStrategy": "downstream-routing", "notes": "Pathway activates softly; hard eligibility lock lives in registries/eligibility/, not here." }
+      ]
+    },
+
+    {
+      "id": "immune-dysregulation",
+      "name": "Immune Dysregulation",
+      "biologicalSystem": "immune",
+      "mechanismCategory": "immunologic",
+      "description": "T-cell-mediated targeting of follicular antigens (areata spectrum) or scarring autoimmune processes. Distinct from scalp-inflammation: this pathway targets the follicle itself, not the surrounding scalp environment. Reversibility is conditional and ceiling-limited; scarring forms cap recovery hard.",
+      "purpose": "concept.immune_dysregulation",
+      "evidenceTier": "established",
+      "activationRules": {
+        "gateMode": "required-any",
+        "minActivation": 0.20,
+        "amplifiedBy": [
+          { "pathwayId": "scalp-inflammation", "magnitude": 0.15, "when": "co-active" }
+        ]
+      },
+      "requiredSignals": [
+        { "signalId": "patchy-loss-marker",         "weight": 0.90, "minConfidence": 0.40 },
+        { "signalId": "alopecia-areata-history",    "weight": 0.85, "minConfidence": 0.40 },
+        { "signalId": "scarring-alopecia-history",  "weight": 0.70, "minConfidence": 0.40 }
+      ],
+      "supportingSignals": [
+        { "signalId": "recurrent-infection-pattern",      "weight": 0.35 },
+        { "signalId": "allergy-cluster",                  "weight": 0.30 },
+        { "signalId": "asthma-history",                   "weight": 0.30 },
+        { "signalId": "skin-rash-history",                "weight": 0.30 },
+        { "signalId": "psoriatic-scalp",                  "weight": 0.50 },
+        { "signalId": "vitamin-d-deficiency-reported",    "weight": 0.20 },
+        { "signalId": "post-illness-recovery",            "weight": 0.30 },
+        { "signalId": "chronic-medical-on-medication",    "weight": 0.20 }
+      ],
+      "inhibitorySignals": [],
+      "severityContribution": 0.75,
+      "reversibilityClass": "stabilizable",
+      "chronicityProfile": {
+        "onsetSpeed": "subacute",
+        "persistenceWithoutTx": "progressive",
+        "recurrenceRisk": "high"
+      },
+      "recoveryImpact": {
+        "recoveryCeilingDelta": -0.30,
+        "responsivenessDelta": -0.15,
+        "progressionRiskDelta": 0.25
+      },
+      "interactions": [
+        { "pathwayId": "scalp-inflammation", "type": "amplifies", "magnitude": 0.15 }
+      ],
+      "treatmentImplications": ["inflammation-reduction","maintenance","scalp-stabilization"],
+      "explainabilityMetadata": {
+        "clinicalConcept": "concept.immune_dysregulation",
+        "analogyClass": "analogy.immune_targeting",
+        "visualMotif": "motif.autoimmune",
+        "doctorFraming": "Autoimmune follicular targeting — areata-spectrum or cicatricial. Differentiate scarring vs. non-scarring on patchy-loss morphology.",
+        "patientFraming": "Your immune system is mistakenly affecting hair follicles in specific areas. This often responds to focused care.",
+        "scientificFraming": "CD8+/NKG2D+ T-cell infiltration with collapse of follicular immune privilege; IFN-γ-driven anagen arrest."
+      },
+      "legacyMappings": [
+        { "legacyDiagnosisKey": "ALOPECIA_AREATA", "parityStrategy": "direct" }
+      ]
+    },
+
+    {
+      "id": "metabolic-dysfunction",
+      "name": "Metabolic Dysfunction",
+      "biologicalSystem": "metabolic",
+      "mechanismCategory": "metabolic",
+      "description": "Insulin-resistance, adiposity, and substrate-energy disruption affecting follicular bioenergetics and indirectly hormonal axes. Often co-active with hormonal-dysregulation (PCOS+obesity) and oxidative-stress.",
+      "purpose": "concept.metabolic_dysfunction",
+      "evidenceTier": "established",
+      "activationRules": {
+        "gateMode": "required-any",
+        "minActivation": 0.20,
+        "amplifiedBy": [
+          { "pathwayId": "oxidative-stress",       "magnitude": 0.15, "when": "co-active" },
+          { "pathwayId": "hormonal-dysregulation", "magnitude": 0.20, "when": "co-active" }
+        ]
+      },
+      "requiredSignals": [
+        { "signalId": "prediabetes-state",  "weight": 0.75, "minConfidence": 0.40 },
+        { "signalId": "diabetes-state",     "weight": 0.85, "minConfidence": 0.40 },
+        { "signalId": "pcos-with-metabolic","weight": 0.75, "minConfidence": 0.40 }
+      ],
+      "supportingSignals": [
+        { "signalId": "obesity-sedentary",      "weight": 0.60 },
+        { "signalId": "hypothyroid-diagnosis",  "weight": 0.40 },
+        { "signalId": "crash-diet-pattern",     "weight": 0.25 },
+        { "signalId": "glp1-recent",            "weight": 0.30 },
+        { "signalId": "glp1-late",              "weight": 0.35 },
+        { "signalId": "irregular-diet-pattern", "weight": 0.20 }
+      ],
+      "inhibitorySignals": [],
+      "severityContribution": 0.50,
+      "reversibilityClass": "partially-reversible",
+      "chronicityProfile": {
+        "onsetSpeed": "chronic",
+        "persistenceWithoutTx": "progressive",
+        "recurrenceRisk": "moderate"
+      },
+      "recoveryImpact": {
+        "recoveryCeilingDelta": -0.15,
+        "responsivenessDelta": -0.10,
+        "progressionRiskDelta": 0.20
+      },
+      "interactions": [
+        { "pathwayId": "oxidative-stress",          "type": "amplifies", "magnitude": 0.15 },
+        { "pathwayId": "hormonal-dysregulation",    "type": "amplifies", "magnitude": 0.20 },
+        { "pathwayId": "follicular-miniaturization","type": "amplifies", "magnitude": 0.15 }
+      ],
+      "treatmentImplications": ["nutritional-support","hormonal-support","growth-stimulation","maintenance"],
+      "explainabilityMetadata": {
+        "clinicalConcept": "concept.metabolic_dysfunction",
+        "analogyClass": "analogy.metabolic_imbalance",
+        "visualMotif": "motif.metabolic",
+        "doctorFraming": "Insulin-resistance axis with downstream effects on androgen activity, oxidative load, and follicular bioenergetics.",
+        "patientFraming": "Your body's energy and insulin balance is affecting your hair cycle — addressing this also supports overall health.",
+        "scientificFraming": "Hyperinsulinemia elevates free androgens via SHBG suppression and drives perifollicular ROS; mitochondrial substrate limitation impairs matrix-cell proliferation."
+      },
+      "legacyMappings": [
+        { "legacyDiagnosisKey": "DIABETES",     "parityStrategy": "direct" },
+        { "legacyDiagnosisKey": "PCOS_OBESITY", "parityStrategy": "co-activation", "notes": "Primary pathway shared with hormonal-dysregulation." }
+      ]
+    },
+
+    {
+      "id": "oxidative-stress",
+      "name": "Oxidative Stress",
+      "biologicalSystem": "vascular",
+      "mechanismCategory": "redox",
+      "description": "Reactive-oxygen-species mediated follicular and vascular load. Acts as a MODULATOR pathway — rarely the dominant cause but commonly an amplifier of miniaturization, telogen disruption, and inflammation. No required-gate signal: activates from cumulative supporting evidence.",
+      "purpose": "concept.oxidative_stress",
+      "evidenceTier": "established",
+      "activationRules": {
+        "gateMode": "modulator-no-gate",
+        "minActivation": 0.20,
+        "amplifiedBy": []
+      },
+      "requiredSignals": [],
+      "supportingSignals": [
+        { "signalId": "smoking-exposure",         "weight": 0.75 },
+        { "signalId": "alcohol-exposure",         "weight": 0.55 },
+        { "signalId": "prediabetes-state",        "weight": 0.30 },
+        { "signalId": "diabetes-state",           "weight": 0.45 },
+        { "signalId": "chronic-stress-reported",  "weight": 0.30 },
+        { "signalId": "night-shift-exposure",     "weight": 0.35 },
+        { "signalId": "frequent-flying-exposure", "weight": 0.30 },
+        { "signalId": "asthma-history",           "weight": 0.20 },
+        { "signalId": "early-greying-presence",   "weight": 0.35 },
+        { "signalId": "subacute-duration-marker", "weight": 0.30 }
+      ],
+      "inhibitorySignals": [],
+      "severityContribution": 0.30,
+      "reversibilityClass": "fully-reversible",
+      "chronicityProfile": {
+        "onsetSpeed": "chronic",
+        "persistenceWithoutTx": "persistent",
+        "recurrenceRisk": "moderate"
+      },
+      "recoveryImpact": {
+        "recoveryCeilingDelta": -0.05,
+        "responsivenessDelta": 0.05,
+        "progressionRiskDelta": 0.10
+      },
+      "interactions": [
+        { "pathwayId": "follicular-miniaturization","type": "mediates", "magnitude": 0.15 },
+        { "pathwayId": "scalp-inflammation",       "type": "amplifies","magnitude": 0.10 },
+        { "pathwayId": "telogen-cycle-disruption", "type": "amplifies","magnitude": 0.10 },
+        { "pathwayId": "metabolic-dysfunction",    "type": "amplifies","magnitude": 0.15 }
+      ],
+      "treatmentImplications": ["scalp-stabilization","maintenance","long-term-preservation"],
+      "explainabilityMetadata": {
+        "clinicalConcept": "concept.oxidative_stress",
+        "analogyClass": "analogy.oxidative_load",
+        "visualMotif": "motif.oxidative",
+        "doctorFraming": "Cumulative ROS load amplifying primary pathology. Modulator — rarely diagnostic in isolation.",
+        "patientFraming": "Lifestyle factors are putting extra strain on your follicles, which can slow recovery from other issues.",
+        "scientificFraming": "NADPH-oxidase activation, mitochondrial dysfunction, glutathione depletion in the dermal papilla milieu."
+      },
+      "legacyMappings": [
+        { "legacyDiagnosisKey": "OXIDATIVE",  "parityStrategy": "direct" },
+        { "legacyDiagnosisKey": "EARLY_GREY", "parityStrategy": "co-activation", "notes": "Co-active with cause-ranker contributor; greying is a marker, not a pathway itself." }
+      ]
+    },
+
+    {
+      "id": "gut-hair-axis-dysfunction",
+      "name": "Gut–Hair Axis Dysfunction",
+      "biologicalSystem": "digestive",
+      "mechanismCategory": "gastrointestinal",
+      "description": "Disruption of absorption, microbiome, and mucosal-immune function affecting systemic substrate availability and inflammatory tone. Acts upstream of nutritional-limitation and contributes to scalp-inflammation through the gut-immune axis.",
+      "purpose": "concept.gut_hair_axis",
+      "evidenceTier": "emerging",
+      "activationRules": {
+        "gateMode": "required-any",
+        "minActivation": 0.20,
+        "amplifiedBy": [
+          { "pathwayId": "nutritional-limitation", "magnitude": 0.20, "when": "co-active" }
+        ]
+      },
+      "requiredSignals": [
+        { "signalId": "ibs-or-constipation", "weight": 0.80, "minConfidence": 0.40 },
+        { "signalId": "gerd-symptoms",       "weight": 0.60, "minConfidence": 0.40 }
+      ],
+      "supportingSignals": [
+        { "signalId": "bloating-symptoms",         "weight": 0.40 },
+        { "signalId": "mouth-ulcers-cooccurrence", "weight": 0.55 }
+      ],
+      "inhibitorySignals": [],
+      "severityContribution": 0.40,
+      "reversibilityClass": "partially-reversible",
+      "chronicityProfile": {
+        "onsetSpeed": "chronic",
+        "persistenceWithoutTx": "persistent",
+        "recurrenceRisk": "high"
+      },
+      "recoveryImpact": {
+        "recoveryCeilingDelta": -0.10,
+        "responsivenessDelta": -0.05,
+        "progressionRiskDelta": 0.10
+      },
+      "interactions": [
+        { "pathwayId": "nutritional-limitation", "type": "amplifies", "magnitude": 0.20 },
+        { "pathwayId": "scalp-inflammation",     "type": "amplifies", "magnitude": 0.10 }
+      ],
+      "treatmentImplications": ["nutritional-support","inflammation-reduction","scalp-stabilization"],
+      "explainabilityMetadata": {
+        "clinicalConcept": "concept.gut_hair_axis",
+        "analogyClass": "analogy.absorption_compromise",
+        "visualMotif": "motif.gut",
+        "doctorFraming": "Absorption and microbiome disruption with downstream substrate insufficiency and systemic inflammatory contribution.",
+        "patientFraming": "Your digestion affects which nutrients reach your hair. Improving gut health often improves what your follicles receive.",
+        "scientificFraming": "Dysbiosis with intestinal permeability elevates LPS-driven systemic inflammation and impairs iron, B12, zinc, and biotin absorption."
+      },
+      "legacyMappings": [
+        { "legacyDiagnosisKey": "GUT_ISSUES",   "parityStrategy": "direct" },
+        { "legacyDiagnosisKey": "MOUTH_ULCERS", "parityStrategy": "co-activation", "notes": "Co-active with scalp-inflammation when mouth-ulcers+gut composite signal present." }
+      ]
+    },
+
+    {
+      "id": "nutritional-limitation",
+      "name": "Nutritional Limitation",
+      "biologicalSystem": "metabolic",
+      "mechanismCategory": "nutritional",
+      "description": "Substrate insufficiency at the follicle level — iron, ferritin, B12, vitamin D, protein, zinc. Direct constraint on matrix-cell proliferation and anagen entry. Often fully reversible with repletion when uncomplicated.",
+      "purpose": "concept.nutritional_limitation",
+      "evidenceTier": "established",
+      "activationRules": {
+        "gateMode": "required-any",
+        "minActivation": 0.20,
+        "amplifiedBy": [
+          { "pathwayId": "gut-hair-axis-dysfunction", "magnitude": 0.20, "when": "co-active" }
+        ]
+      },
+      "requiredSignals": [
+        { "signalId": "iron-deficiency-reported", "weight": 0.85, "minConfidence": 0.40 }
+      ],
+      "supportingSignals": [
+        { "signalId": "vitamin-d-deficiency-reported",    "weight": 0.50 },
+        { "signalId": "vitamin-b12-deficiency-reported",  "weight": 0.55 },
+        { "signalId": "nutritional-cause-self-reported",  "weight": 0.55 },
+        { "signalId": "crash-diet-pattern",               "weight": 0.60 },
+        { "signalId": "irregular-diet-pattern",           "weight": 0.45 },
+        { "signalId": "vegetarian-diet",                  "weight": 0.25 },
+        { "signalId": "vegan-diet",                       "weight": 0.35 },
+        { "signalId": "glp1-recent",                      "weight": 0.55 },
+        { "signalId": "glp1-late",                        "weight": 0.55 },
+        { "signalId": "gerd-symptoms",                    "weight": 0.30 },
+        { "signalId": "ibs-or-constipation",              "weight": 0.40 },
+        { "signalId": "alcohol-exposure",                 "weight": 0.20 }
+      ],
+      "inhibitorySignals": [],
+      "severityContribution": 0.50,
+      "reversibilityClass": "fully-reversible",
+      "chronicityProfile": {
+        "onsetSpeed": "subacute",
+        "persistenceWithoutTx": "persistent",
+        "recurrenceRisk": "moderate"
+      },
+      "recoveryImpact": {
+        "recoveryCeilingDelta": -0.05,
+        "responsivenessDelta": 0.20,
+        "progressionRiskDelta": 0.10
+      },
+      "interactions": [
+        { "pathwayId": "telogen-cycle-disruption",  "type": "amplifies", "magnitude": 0.20 },
+        { "pathwayId": "gut-hair-axis-dysfunction", "type": "amplifies", "magnitude": 0.20 }
+      ],
+      "treatmentImplications": ["nutritional-support","growth-stimulation","maintenance"],
+      "explainabilityMetadata": {
+        "clinicalConcept": "concept.nutritional_limitation",
+        "analogyClass": "analogy.substrate_deficit",
+        "visualMotif": "motif.nutrition",
+        "doctorFraming": "Substrate-level deficiency constraining follicular matrix proliferation. Repletion-responsive when uncomplicated by absorption pathology.",
+        "patientFraming": "Follicles need specific building blocks to grow well. Right now some of those are running low.",
+        "scientificFraming": "Ferritin <40 ng/mL, 25-OH-D <30 ng/mL, B12 <300 pg/mL — each independently impairs follicle matrix-cell mitosis and anagen re-entry."
+      },
+      "legacyMappings": [
+        { "legacyDiagnosisKey": "IRON_DEFICIENCY", "parityStrategy": "direct" },
+        { "legacyDiagnosisKey": "TE_NUTRITION",    "parityStrategy": "co-activation", "notes": "Co-active with telogen-cycle-disruption." }
+      ]
+    },
+
+    {
+      "id": "hair-shaft-damage",
+      "name": "Hair Shaft Damage",
+      "biologicalSystem": "integumentary",
+      "mechanismCategory": "structural",
+      "description": "Cortical and cuticle compromise from extrinsic exposures (heat, chemical, hard water) and mechanical insult (TTM). Distinct from follicular pathology — the follicle is intact; the shaft is structurally compromised. Reversible at the shaft level only via regrowth; existing shaft cannot be 'repaired' structurally.",
+      "purpose": "concept.hair_shaft_damage",
+      "evidenceTier": "established",
+      "activationRules": {
+        "gateMode": "required-any",
+        "minActivation": 0.20,
+        "amplifiedBy": []
+      },
+      "requiredSignals": [
+        { "signalId": "shaft-breakage-marker", "weight": 0.85, "minConfidence": 0.40 }
+      ],
+      "supportingSignals": [
+        { "signalId": "heat-styling-exposure",      "weight": 0.55 },
+        { "signalId": "chemical-treatment-exposure","weight": 0.60 },
+        { "signalId": "hard-water-exposure",        "weight": 0.50 },
+        { "signalId": "trichotillomania-behavior",  "weight": 0.50 }
+      ],
+      "inhibitorySignals": [],
+      "severityContribution": 0.30,
+      "reversibilityClass": "shaft-only-reversible",
+      "chronicityProfile": {
+        "onsetSpeed": "chronic",
+        "persistenceWithoutTx": "persistent",
+        "recurrenceRisk": "high"
+      },
+      "recoveryImpact": {
+        "recoveryCeilingDelta": -0.05,
+        "responsivenessDelta": 0.10,
+        "progressionRiskDelta": 0.05
+      },
+      "interactions": [],
+      "treatmentImplications": ["scalp-stabilization","maintenance"],
+      "explainabilityMetadata": {
+        "clinicalConcept": "concept.hair_shaft_damage",
+        "analogyClass": "analogy.structural_wear",
+        "visualMotif": "motif.shaft_damage",
+        "doctorFraming": "Extrinsic cortical/cuticle compromise. Follicle viability unaffected; shaft-level remediation via regrowth only.",
+        "patientFraming": "The follicles are healthy — it's the hair strands themselves that have been weakened. New growth will be stronger as conditions improve.",
+        "scientificFraming": "Cysteine bond disruption, cuticle delamination, and cortical fiber fragmentation from oxidative chemical exposure, thermal denaturation, or mechanical strain."
+      },
+      "legacyMappings": [
+        { "legacyDiagnosisKey": "HAIR_BREAKAGE", "parityStrategy": "direct" },
+        { "legacyDiagnosisKey": "TTM",           "parityStrategy": "co-activation", "notes": "Trichotillomania contributes here AND to scalp-inflammation via repeated mechanical insult." }
+      ]
+    }
+
+  ],
+
+  "legacyDiagnosisKeysNotMappedToPathways": [
+    { "legacyDiagnosisKey": "CHRONIC_MEDICAL", "destination": "Modifier — emitted as chronic-medical-on-medication signal; contributes to telogen-cycle-disruption and immune-dysregulation. Not itself a pathway." },
+    { "legacyDiagnosisKey": "EARLY_GREY",       "destination": "Marker — emitted as early-greying-presence signal contributing to oxidative-stress and Cause Ranker. Not a pathway." },
+    { "legacyDiagnosisKey": "REGROW_ONLY",      "destination": "Goal flag — emitted as regrow-goal signal modifying activation and downstream protocol. Not a pathway." },
+    { "legacyDiagnosisKey": "MULTI",            "destination": "Composite cause — handled by Cause Ranker as multifactorial-hair-loss when ≥3 pathways co-active. Not a pathway." }
+  ]
+}

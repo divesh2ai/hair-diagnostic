@@ -1,0 +1,192 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "signals.validation-schema@1.0.0",
+  "title": "Signal Registry v1 Validation Schema",
+  "description": "JSON Schema + integrity constraints enforced by registry CI before any registry write is accepted. Implements the validation requirements stated in Sprint 1 Week 1 brief AND the Clinical Architecture v1.0 Phase 1.6 governance rules.",
+  "type": "object",
+  "required": ["registry", "version", "signals"],
+  "properties": {
+    "registry": { "type": "string", "const": "signals" },
+    "version": { "type": "string", "pattern": "^\\d+\\.\\d+\\.\\d+$" },
+    "signals": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "#/definitions/Signal" }
+    }
+  },
+  "definitions": {
+    "Signal": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "name",
+        "category",
+        "biologicalSystem",
+        "description",
+        "signalType",
+        "polarity",
+        "temporality",
+        "confidenceBase",
+        "evidenceTier",
+        "pathwayRelevance",
+        "causeRelevance",
+        "severityContribution",
+        "narrativeMeaning"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9-]{2,63}$",
+          "description": "Stable kebab-case slug per Clinical Architecture v1.0 Phase 1.2."
+        },
+        "name": { "type": "string", "minLength": 3 },
+        "category": {
+          "type": "string",
+          "enum": [
+            "hair-loss-pattern", "scalp-state", "inflammation", "sebum-regulation",
+            "hormonal-indicators", "metabolic-indicators", "nutritional-indicators",
+            "stress-indicators", "lifestyle-indicators", "immune-indicators",
+            "gut-indicators", "treatment-history", "etiology-markers",
+            "demographic-modifiers", "recovery-modifiers", "adherence-risks",
+            "progression-risks"
+          ]
+        },
+        "biologicalSystem": {
+          "type": "string",
+          "enum": ["integumentary","endocrine","immune","metabolic","nervous","digestive","vascular","genetic"]
+        },
+        "description": { "type": "string", "minLength": 10 },
+        "signalType": {
+          "type": "string",
+          "enum": ["DIRECT","DERIVED","BEHAVIORAL","CLINICAL","SELF_REPORTED"]
+        },
+        "polarity": { "type": "string", "enum": ["pathological","protective","modifier"] },
+        "temporality": { "type": "string", "enum": ["acute","chronic","episodic","progressive","unknown"] },
+        "confidenceBase": { "type": "number", "minimum": 0.10, "maximum": 0.99 },
+        "evidenceTier": { "type": "string", "enum": ["established","emerging","heuristic"] },
+        "severityContribution": { "type": "number", "minimum": 0.0, "maximum": 1.0 },
+        "pathwayRelevance": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "required": ["pathwayId","weight","modulation"],
+            "properties": {
+              "pathwayId": { "type": "string", "enum": [
+                "follicular-miniaturization","telogen-cycle-disruption","scalp-inflammation",
+                "hormonal-dysregulation","immune-dysregulation","metabolic-dysfunction",
+                "oxidative-stress","gut-hair-axis-dysfunction","nutritional-limitation",
+                "hair-shaft-damage"
+              ]},
+              "weight": { "type": "number", "minimum": -1.0, "maximum": 1.0 },
+              "modulation": { "type": "string", "enum": ["supports","inhibits","required-gate"] }
+            }
+          }
+        },
+        "causeRelevance": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "required": ["causeId","contribution"],
+            "properties": {
+              "causeId": { "type": "string", "enum": [
+                "androgen-driven-miniaturization","stress-driven-telogen-effluvium",
+                "hormonal-hair-loss","inflammatory-scalp-dysfunction",
+                "autoimmune-hair-loss","nutritional-hair-stress",
+                "metabolic-hair-dysfunction","gut-hair-axis-dysfunction",
+                "hair-shaft-damage-syndrome","multifactorial-hair-loss"
+              ]},
+              "contribution": { "type": "number", "minimum": -1.0, "maximum": 1.0 }
+            }
+          }
+        },
+        "corroboratingSignals": { "type": "array", "items": { "type": "string" } },
+        "conflictingSignals": { "type": "array", "items": { "type": "string" } },
+        "narrativeMeaning": {
+          "type": "object",
+          "required": ["clinicalConcept","patientFacingTone","doctorFacingFraming","visualMotif","analogyClass"],
+          "properties": {
+            "clinicalConcept": { "type": "string" },
+            "patientFacingTone": { "type": "string", "enum": ["reassuring","informative","urgent","educational"] },
+            "doctorFacingFraming": { "type": "string", "enum": ["diagnostic","differential","corroborative"] },
+            "visualMotif": { "type": "string" },
+            "analogyClass": { "type": "string" }
+          }
+        },
+        "legacySignalCodes": {
+          "type": "array",
+          "items": { "type": "string", "pattern": "^[A-Z][A-Z0-9_]*$" },
+          "description": "Traceability back to scoringSignals[] codes in questionnaire.schema.json. Audit-only; not used at runtime."
+        }
+      }
+    }
+  },
+  "integrityConstraints": [
+    {
+      "id": "IC-1-no-duplicate-ids",
+      "rule": "signals[].id values must be globally unique.",
+      "enforcement": "registry-ci"
+    },
+    {
+      "id": "IC-2-no-orphan-signals",
+      "rule": "Every signal must be referenced by at least one extraction rule in extraction-rules.json.",
+      "enforcement": "registry-ci",
+      "rationale": "An unreferenced signal cannot be emitted, therefore cannot inform reasoning. Either delete it or author the rule."
+    },
+    {
+      "id": "IC-3-pathway-coverage",
+      "rule": "Every signal must declare pathwayRelevance with at least one entry.",
+      "enforcement": "schema + registry-ci"
+    },
+    {
+      "id": "IC-4-cause-coverage",
+      "rule": "Every signal must declare causeRelevance with at least one entry.",
+      "enforcement": "schema + registry-ci"
+    },
+    {
+      "id": "IC-5-extraction-questionId-resolves",
+      "rule": "Every extraction-rules.json rule's questionId must resolve to an existing question.id in questionnaire.schema.json.",
+      "enforcement": "registry-ci",
+      "questionIdAllowlist": ["age","goal","sex","duration","count","hairtype","scalp","cause","immunity","lifestyle","thyroid","medical","medical_detail","hormonal","gut","deficiency","diet","treatment","grade","extra"]
+    },
+    {
+      "id": "IC-6-extraction-signalId-resolves",
+      "rule": "Every extraction-rules.json rule's signalId must resolve to an existing signals[].id.",
+      "enforcement": "registry-ci"
+    },
+    {
+      "id": "IC-7-evidence-tier-vs-confidence",
+      "rule": "If evidenceTier == 'heuristic' then confidenceBase must be <= 0.85.",
+      "enforcement": "registry-ci",
+      "rationale": "Prevents overstating confidence on heuristic-tier signals; honors Clinical Phase 1.6 evidenceTier discipline."
+    },
+    {
+      "id": "IC-8-required-gate-uniqueness",
+      "rule": "A signal acting as 'required-gate' for a pathway must have evidenceTier of 'established'.",
+      "enforcement": "registry-ci",
+      "rationale": "Pathway activation must not be gated by heuristic-tier signals."
+    },
+    {
+      "id": "IC-9-corroborator-symmetry",
+      "rule": "If signal A lists B as corroboratingSignal AND B exists, no enforcement of symmetry — corroboration may be one-directional. Registry CI emits an INFO note if not symmetric.",
+      "enforcement": "advisory"
+    },
+    {
+      "id": "IC-10-conflict-symmetry",
+      "rule": "If signal A lists B as conflictingSignal, B must list A as conflictingSignal (symmetry required for determinism).",
+      "enforcement": "registry-ci"
+    },
+    {
+      "id": "IC-11-pathway-weight-direction",
+      "rule": "pathwayRelevance.weight must be > 0 when modulation == 'supports', < 0 when 'inhibits', and > 0 when 'required-gate'.",
+      "enforcement": "registry-ci"
+    },
+    {
+      "id": "IC-12-determinism-version-stamp",
+      "rule": "Every emitted Signal carries the signalRegistry version + extractionRules version that produced it.",
+      "enforcement": "runtime (orchestrator) — verified in audit"
+    }
+  ]
+}

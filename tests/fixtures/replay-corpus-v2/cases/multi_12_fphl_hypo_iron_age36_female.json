@@ -1,0 +1,214 @@
+{
+  "caseId": "multi_12_fphl_hypo_iron_age36_female",
+  "corpusVersion": "2.0.0",
+  "description": "Multifactorial — fphl hypo iron, 36y Female.",
+  "category": "MULTIFACTORIAL",
+  "severity": "moderate",
+  "presentationClarity": "conflicting",
+  "demographicProfile": {
+    "sex": "Female",
+    "age": "36",
+    "region": null,
+    "dietType": "Mixed"
+  },
+  "questionnaireAnswers": {
+    "sex": "Female",
+    "age": "36",
+    "goal": [
+      "Reduce hair fall",
+      "Regrow lost hair"
+    ],
+    "grade": "Grade 3",
+    "scalp": [
+      "Normal scalp"
+    ],
+    "cause": [
+      "Family history"
+    ],
+    "lifestyle": [],
+    "thyroid": [
+      "Hypothyroidism"
+    ],
+    "hormonal": [],
+    "immunity": [],
+    "deficiency": [
+      "Iron deficiency",
+      "Vitamin D deficiency"
+    ],
+    "gut": [],
+    "diet": [],
+    "hairtype": [
+      "Thinning at crown",
+      "Diffuse shedding"
+    ],
+    "treatment": [],
+    "duration": "More than 1 year",
+    "count": "100–200 hairs/day"
+  },
+  "expectedSignals": [
+    {
+      "signalId": "pattern-thinning-marker",
+      "minConfidence": 0.65
+    },
+    {
+      "signalId": "diffuse-shedding-marker",
+      "minConfidence": 0.65
+    },
+    {
+      "signalId": "grade123-severity-marker",
+      "minConfidence": 0.65
+    },
+    {
+      "signalId": "chronic-duration-marker",
+      "minConfidence": 0.75
+    },
+    {
+      "signalId": "sex-female",
+      "minConfidence": 0.99
+    },
+    {
+      "signalId": "age-mid-modifier",
+      "minConfidence": 0.99
+    },
+    {
+      "signalId": "genetic-predisposition-reported",
+      "minConfidence": 0.6
+    },
+    {
+      "signalId": "hypothyroid-diagnosis",
+      "minConfidence": 0.85
+    },
+    {
+      "signalId": "iron-deficiency-reported",
+      "minConfidence": 0.8
+    },
+    {
+      "signalId": "vitamin-d-deficiency-reported",
+      "minConfidence": 0.7
+    }
+  ],
+  "expectedPathways": [
+    {
+      "pathwayId": "follicular-miniaturization",
+      "minActivation": 0.45,
+      "role": "supporting"
+    },
+    {
+      "pathwayId": "telogen-cycle-disruption",
+      "minActivation": 0.45,
+      "role": "supporting"
+    },
+    {
+      "pathwayId": "hormonal-dysregulation",
+      "minActivation": 0.45,
+      "role": "supporting"
+    },
+    {
+      "pathwayId": "nutritional-limitation",
+      "minActivation": 0.45,
+      "role": "supporting"
+    }
+  ],
+  "expectedRootCauses": [
+    {
+      "causeId": "multifactorial-hair-loss",
+      "minPosterior": 0.25,
+      "surfaceAs": "lead"
+    },
+    {
+      "causeId": "androgen-driven-miniaturization",
+      "minPosterior": 0.18,
+      "surfaceAs": "co-lead"
+    },
+    {
+      "causeId": "stress-driven-telogen-effluvium",
+      "minPosterior": 0.15,
+      "surfaceAs": "co-lead"
+    }
+  ],
+  "expectedDiagnosis": {
+    "primary": "multifactorial-hair-loss",
+    "secondary": [
+      "androgen-driven-miniaturization",
+      "stress-driven-telogen-effluvium",
+      "hormonal-hair-loss",
+      "nutritional-hair-stress"
+    ],
+    "legacyDiagnosisKey": "MULTI",
+    "legacyDiagnosisKeyAlternates": [
+      "MULTIFACTORIAL_HAIR"
+    ]
+  },
+  "expectedSeverity": "moderate",
+  "expectedProtocolClass": "MULTIFACTORIAL",
+  "expectedTherapyNeeds": [
+    "DHT_SUPPRESSION",
+    "CYCLE_RESTORATION",
+    "INFLAMMATION_CONTROL",
+    "NUTRITIONAL_REPLETION",
+    "ENDOCRINE_OPTIMIZATION"
+  ],
+  "expectedMonitoringRequirements": {
+    "required": [
+      "GLOBAL_PHOTO_3M",
+      "TRICHOSCOPY_6M",
+      "FERRITIN_4M",
+      "VITAMIN_D_4M",
+      "TSH_3M"
+    ],
+    "recommended": [
+      "SHED_COUNT_MONTHLY",
+      "STRESS_PHQ_MONTHLY"
+    ],
+    "forbidden": []
+  },
+  "expectedNarrativeThemes": {
+    "themes": [
+      "MULTIFACTORIAL_COORDINATION",
+      "EXPECTATION_SETTING_SLOW"
+    ],
+    "mustContainTokens": [
+      "multiple",
+      "address"
+    ],
+    "mustNotContainTokens": [
+      "single cause",
+      "guaranteed"
+    ]
+  },
+  "clinicalRationale": {
+    "whyPrimary": "36-year-old female with simultaneously activated miniaturization, telogen-cycle-disruption, and a third driver pathway (fphl hypo iron). The compositeRule in the cause registry (≥3 pathways above 0.40 AND single-cause dissent gap < 0.06) is the only path by which multifactorial-hair-loss promotes to lead — naive Bayes would surface AGA or TE alone, missing the composite reality. Protocol class MULTIFACTORIAL coordinates therapy combinatorics across DHT suppression, cycle restoration, inflammation control, and substrate repletion.",
+    "whyNotCompetitors": {
+      "androgen-driven-miniaturization": "Pathway is active but does not dominate; pure androgenic explanation undercounts the telogen and ${f.includes('nutritional') ? 'nutritional' : 'hormonal'} drivers.",
+      "stress-driven-telogen-effluvium": "Same — active but not dominant.",
+      "autoimmune-hair-loss": "No patchy/areata markers; immune pathway absent.",
+      "inflammatory-scalp-dysfunction": "Below activation floor.",
+      "nutritional-hair-stress": "Co-active driver; surfaced as secondary in diagnosis."
+    }
+  },
+  "adversarial": {
+    "isAdversarial": true,
+    "expectedPrimaryDriver": "multifactorial-hair-loss",
+    "expectedSecondaryDrivers": [
+      "androgen-driven-miniaturization",
+      "stress-driven-telogen-effluvium"
+    ],
+    "commonFailureModes": [
+      {
+        "failureMode": "COMPOSITE_RULE_NOT_EVALUATED",
+        "impactedComponent": "ROOTCAUSE",
+        "description": "Ranker may emit a single dominant cause without checking compositeRule, missing the multifactorial verdict."
+      },
+      {
+        "failureMode": "SINGLE_CAUSE_OVERCONFIDENCE",
+        "impactedComponent": "ROOTCAUSE",
+        "description": "Top-1 cause posterior can artificially inflate when conflicting pathways' competing LLRs are not subtracted."
+      },
+      {
+        "failureMode": "MONO_PROTOCOL_SHIPPED",
+        "impactedComponent": "PROTOCOL",
+        "description": "Protocol can default to MPHL/TE_ACUTE instead of the MULTIFACTORIAL coordination class."
+      }
+    ]
+  }
+}

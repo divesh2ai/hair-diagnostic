@@ -1,0 +1,35 @@
+{
+  "id": "postpartum_breastfeeding_01",
+  "description": "Post-partum TE actively breastfeeding → TE_POSTPREG (score 92). LACTIHEALTH addresses lactation nutritional demand. Active shedding promotes TE GOLD to Phase 1, pushing LACTIHEALTH to Phase 2. PRO IMMUNE rebuilds post-partum immunity last.",
+  "budget": "STANDARD",
+  "answers": {
+    "sex": "Female",
+    "age": "28",
+    "grade": "Grade 2",
+    "goal": ["Reduce hair fall"],
+    "cause": ["Post partum", "breastfeeding"],
+    "hormonal": ["breastfeeding"],
+    "scalp": [],
+    "lifestyle": [],
+    "duration": "1–3 months",
+    "count": "50–100 strands",
+    "thyroid": [],
+    "immunity": [],
+    "deficiency": [],
+    "gut": [],
+    "diet": [],
+    "hairtype": [],
+    "treatment": []
+  },
+  "expected": {
+    "diagnoses": ["TE_POSTPREG"],
+    "scalpStates": ["NORMAL_SCALP"],
+    "rootCauses": ["POST_PARTUM"],
+    "therapyNeeds": ["LACTATION_SUPPORT", "SHEDDING_ARREST", "IMMUNE_MODULATION"],
+    "topKit": "HAIR FACT TE GOLD",
+    "mustIncludeKits": ["HAIR FACT TE GOLD", "LACTIHEALTH", "PRO IMMUNE GOLD"],
+    "mustExcludeKits": ["MPHL", "FPHL", "RAPID WEIGHT LOSS SHIELD", "PRO FACT META B HYPOTHYROID"],
+    "mustTriggerRules": ["ACTIVE_SHEDDING"],
+    "mustBlockRules": ["GLP1_EARLY", "GLP1_LATE", "RULE1_HYPO_METABOLIC", "REGROW_GOAL_AGA"]
+  }
+}

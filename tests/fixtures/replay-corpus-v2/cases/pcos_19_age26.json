@@ -1,0 +1,169 @@
+{
+  "caseId": "pcos_19_age26",
+  "corpusVersion": "2.0.0",
+  "description": "PCOS-associated hair loss, 26y.",
+  "category": "PCOS",
+  "severity": "mild",
+  "presentationClarity": "clear",
+  "demographicProfile": {
+    "sex": "Female",
+    "age": "26",
+    "region": null,
+    "dietType": "Mixed",
+    "bmiBand": "overweight"
+  },
+  "questionnaireAnswers": {
+    "sex": "Female",
+    "age": "26",
+    "goal": [
+      "Reduce hair fall",
+      "Regrow lost hair"
+    ],
+    "grade": "Grade 2",
+    "scalp": [
+      "Oily scalp"
+    ],
+    "cause": [
+      "Family history"
+    ],
+    "lifestyle": [],
+    "thyroid": [],
+    "hormonal": [
+      "PCOS",
+      "Irregular periods"
+    ],
+    "immunity": [],
+    "deficiency": [],
+    "gut": [],
+    "diet": [],
+    "hairtype": [
+      "Widening parting",
+      "Thinning at crown"
+    ],
+    "treatment": [],
+    "duration": "More than 1 year",
+    "count": "thinning visible with moderate fall"
+  },
+  "expectedSignals": [
+    {
+      "signalId": "pattern-thinning-marker",
+      "minConfidence": 0.65
+    },
+    {
+      "signalId": "pcos-diagnosis",
+      "minConfidence": 0.95,
+      "mustBePrimary": true
+    },
+    {
+      "signalId": "sex-female",
+      "minConfidence": 0.99
+    },
+    {
+      "signalId": "age-mid-modifier",
+      "minConfidence": 0.99
+    },
+    {
+      "signalId": "oily-scalp",
+      "minConfidence": 0.7
+    },
+    {
+      "signalId": "grade123-severity-marker",
+      "minConfidence": 0.65
+    },
+    {
+      "signalId": "pcos-with-metabolic",
+      "minConfidence": 0.65
+    }
+  ],
+  "expectedPathways": [
+    {
+      "pathwayId": "hormonal-dysregulation",
+      "minActivation": 0.6,
+      "role": "leading"
+    },
+    {
+      "pathwayId": "follicular-miniaturization",
+      "minActivation": 0.45,
+      "role": "supporting"
+    },
+    {
+      "pathwayId": "metabolic-dysfunction",
+      "minActivation": 0.45,
+      "role": "supporting"
+    }
+  ],
+  "expectedRootCauses": [
+    {
+      "causeId": "hormonal-hair-loss",
+      "minPosterior": 0.4,
+      "surfaceAs": "lead"
+    },
+    {
+      "causeId": "androgen-driven-miniaturization",
+      "minPosterior": 0.18,
+      "surfaceAs": "co-lead"
+    },
+    {
+      "causeId": "metabolic-hair-dysfunction",
+      "minPosterior": 0.12,
+      "surfaceAs": "candidate"
+    }
+  ],
+  "expectedDiagnosis": {
+    "primary": "hormonal-hair-loss",
+    "secondary": [
+      "androgen-driven-miniaturization",
+      "metabolic-hair-dysfunction"
+    ],
+    "legacyDiagnosisKey": "PCOS_METABOLIC",
+    "legacyDiagnosisKeyAlternates": [
+      "PCOS_HAIRLOSS"
+    ]
+  },
+  "expectedSeverity": "mild",
+  "expectedProtocolClass": "PCOS",
+  "expectedTherapyNeeds": [
+    "ENDOCRINE_OPTIMIZATION",
+    "DHT_SUPPRESSION",
+    "INFLAMMATION_CONTROL",
+    "METABOLIC_OPTIMIZATION"
+  ],
+  "expectedMonitoringRequirements": {
+    "required": [
+      "GLOBAL_PHOTO_3M",
+      "ANDROGEN_PANEL_6M",
+      "MENSTRUAL_DIARY",
+      "HBA1C_3M",
+      "WEIGHT_MONTHLY"
+    ],
+    "recommended": [
+      "SHED_COUNT_MONTHLY"
+    ],
+    "forbidden": []
+  },
+  "expectedNarrativeThemes": {
+    "themes": [
+      "ENDOCRINE_REBALANCE",
+      "ANDROGENIC_PROGRESSION",
+      "MULTIFACTORIAL_COORDINATION"
+    ],
+    "mustContainTokens": [
+      "pcos",
+      "androgen"
+    ],
+    "mustNotContainTokens": [
+      "guaranteed",
+      "cure"
+    ]
+  },
+  "clinicalRationale": {
+    "whyPrimary": "26-year-old woman with PCOS diagnosis and metabolic features, oily scalp, pattern thinning at crown, Grade 2 severity, family history positive. The endocrine driver (PCOS) carries the strongest log-likelihood weight in the cause registry for this signal mix; miniaturization activates as a downstream mechanism but the named driver is hormonal because endocrine signals dominate. Metabolic-dysfunction pathway co-activates via insulin–androgen cross-talk. Protocol class is PCOS with mandatory metabolic and endocrine monitoring.",
+    "whyNotCompetitors": {
+      "androgen-driven-miniaturization": "Androgenic cause co-explains but the named upstream driver is endocrine (PCOS) — captured by the legacy 'co-explanation' parity strategy in the cause registry.",
+      "stress-driven-telogen-effluvium": "No acute precipitant, no synchronized telogen wave.",
+      "autoimmune-hair-loss": "No patchy loss markers.",
+      "inflammatory-scalp-dysfunction": "Oily scalp without inflammatory markers (no itching, redness, pustules); insufficient for primary inflammation lead.",
+      "multifactorial-hair-loss": "Two-to-three pathways activate but causal hierarchy is clear — endocrine leads."
+    }
+  }
+}

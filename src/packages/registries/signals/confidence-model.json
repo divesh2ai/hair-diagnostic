@@ -1,0 +1,82 @@
+{
+  "$schema": "../../../packages/governance/version/registry.meta.schema.json",
+  "registry": "signals.confidence-model",
+  "version": "1.0.0",
+  "frozenContract": "ClinicalIntelligence@1.0/Signal.confidence + Phase1.1.4 aggregation",
+  "description": "Defines how confidence is computed and aggregated when multiple extraction rules emit the same signal. This file is the SINGLE source of truth for confidence arithmetic across the Signal Registry. No engine or rule may override these constants.",
+  "aggregationMethod": "NOISY_OR",
+  "aggregationFormula": "conf(s) = 1 - product_over_i (1 - conf_i(s))",
+  "rationale": "Noisy-OR caps natively at 1.0, rewards corroboration without double-counting, and is monotonic in evidence accumulation. It matches the Clinical Architecture v1.0 Phase 1.4 aggregation requirement and produces stable values under rule reordering. Chosen over weighted-sum (no natural cap) and Bayesian update (requires per-signal priors not yet authored).",
+  "parameters": {
+    "baseConfidence": {
+      "default": 0.60,
+      "range": [0.10, 0.99],
+      "description": "Default confidence applied when an extraction rule does not declare its own confidence. Rules SHOULD declare explicit confidence; this default exists only for authoring fallback and triggers a registry-CI warning."
+    },
+    "reinforcementMultiplier": {
+      "value": 1.10,
+      "appliesWhen": "An extracted signal's corroboratingSignals[] member is also present at confidence >= 0.40",
+      "cap": 0.99,
+      "description": "Per-corroborator multiplicative bump applied AFTER noisy-OR aggregation. Capped at maxConfidence. Applied at most once per declared corroborator regardless of corroborator multiplicity."
+    },
+    "contradictionPenalty": {
+      "value": 0.20,
+      "appliesWhen": "An extracted signal's conflictingSignals[] member is present at confidence >= 0.40",
+      "floor": 0.05,
+      "description": "Subtractive penalty applied after aggregation and reinforcement. Floored at 0.05. Applied once per declared conflict regardless of multiplicity."
+    },
+    "maxConfidence": {
+      "value": 0.99,
+      "description": "Hard ceiling. A signal can never reach 1.0 — self-report and observation always carry residual uncertainty. Enforced after all aggregation, reinforcement, and penalty steps."
+    },
+    "minimumEvidenceThreshold": {
+      "value": 0.40,
+      "description": "Signals emitted at confidence < 0.40 are flagged as `subthreshold` and do NOT contribute to Pathway Activation (Clinical Phase 2). They remain in the graph for explainability transparency but their downstream effect is zero. This is the floor that Pathway 'requiredSignal' gates check against."
+    },
+    "evidenceTierWeighting": {
+      "established": 1.00,
+      "emerging": 0.85,
+      "heuristic": 0.65,
+      "description": "Multiplicative weight applied to a signal's confidenceBase BEFORE noisy-OR aggregation, based on the signal's declared evidenceTier. Causes the registry's evidence tier to flow naturally into every downstream confidence calculation. This is the architectural source of evidence-tier propagation required by Clinical Architecture Phase 6.6."
+    }
+  },
+  "aggregationSteps": [
+    {
+      "step": 1,
+      "name": "Tier-Weighted Base",
+      "operation": "For each rule_i emitting signal s: weighted_i = rule_i.confidence * evidenceTierWeighting[s.evidenceTier]"
+    },
+    {
+      "step": 2,
+      "name": "Noisy-OR Aggregation",
+      "operation": "aggregated = 1 - product_over_i (1 - weighted_i)"
+    },
+    {
+      "step": 3,
+      "name": "Corroboration Reinforcement",
+      "operation": "for each present corroboratingSignal at conf >= 0.40: aggregated = min(maxConfidence, aggregated * reinforcementMultiplier)"
+    },
+    {
+      "step": 4,
+      "name": "Conflict Penalty",
+      "operation": "for each present conflictingSignal at conf >= 0.40: aggregated = max(0.05, aggregated - contradictionPenalty)"
+    },
+    {
+      "step": 5,
+      "name": "Subthreshold Marking",
+      "operation": "if aggregated < minimumEvidenceThreshold: signal.subthreshold = true (still emitted, but excluded from pathway activation contributions)"
+    },
+    {
+      "step": 6,
+      "name": "Ceiling Clip",
+      "operation": "final = min(maxConfidence, aggregated)"
+    }
+  ],
+  "determinism": "Steps 1-6 are pure and order-independent within each step (Noisy-OR is commutative). Same rule firings + same registry version → identical confidence. No randomness, no time-dependence.",
+  "governanceConstraints": [
+    "Confidence values in registry.json signals.confidenceBase are validated to be in [0.10, 0.99].",
+    "An evidenceTier of 'heuristic' combined with confidenceBase > 0.85 is rejected by registry CI as overstatement.",
+    "Reinforcement and penalty values are constants — no per-signal overrides permitted.",
+    "Any change to aggregation method, parameters, or steps requires a major version bump of this file and regeneration of all parity fixtures."
+  ]
+}

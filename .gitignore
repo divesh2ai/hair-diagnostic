@@ -1,0 +1,45 @@
+# dependencies
+node_modules/
+.pnpm-store/
+
+# build outputs
+dist/
+build/
+.next/
+out/
+*.tsbuildinfo
+
+# editor / OS
+.DS_Store
+Thumbs.db
+*.swp
+.vscode/
+.idea/
+
+# logs
+*.log
+logs/
+patient-portal-dev.err.log
+patient-portal-dev.out.log
+
+# env / secrets
+.env
+.env.local
+.env.*.local
+
+# replay run artifacts (generated)
+tests/fixtures/replay-corpus-v2/_runs/
+src/packages/replay-engine/baselines/baseline.json
+
+# big unpacked assets / scratch
+hairos_unpacked/
+hairOS_output/
+"All Kits  Info.docx"
+
+# Prisma
+prisma/migrations_backup/
+*.db
+*.db-journal
+
+# react-pdf cache
+.next/cache/

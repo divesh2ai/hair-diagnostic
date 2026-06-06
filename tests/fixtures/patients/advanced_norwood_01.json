@@ -1,0 +1,35 @@
+{
+  "id": "advanced_norwood_01",
+  "description": "Advanced Norwood Grade 5 male — mirrors male_aga_grade45 pattern.",
+  "budget": "COMPREHENSIVE",
+  "answers": {
+    "sex": "Male",
+    "age": "52",
+    "goal": ["Reduce hair fall"],
+    "grade": "Grade 5",
+    "scalp": ["Oily scalp"],
+    "cause": ["Family history"],
+    "lifestyle": [],
+    "thyroid": [],
+    "hormonal": [],
+    "immunity": [],
+    "deficiency": [],
+    "gut": [],
+    "diet": [],
+    "hairtype": ["Thinning at crown", "Receding hairline"],
+    "treatment": [],
+    "duration": "More than 1 year",
+    "count": "thinning visible, minimal fall"
+  },
+  "expected": {
+    "diagnoses": ["AGA_MALE_45"],
+    "scalpStates": ["OILY_SCALP"],
+    "rootCauses": ["GENETICS", "DHT"],
+    "therapyNeeds": ["IMMUNE_MODULATION", "DHT_SUPPRESSION", "INFLAMMATION_CONTROL"],
+    "topKit": "MPHL",
+    "mustIncludeKits": ["MPHL", "PHENOTYPE INFLAMATION", "PRO IMMUNE GOLD"],
+    "mustExcludeKits": ["HAIR FACT TE GOLD", "HAIR FACT TE GOLD VEG", "MPHL PLUS"],
+    "mustTriggerRules": ["NO_VISIBLE_FALL"],
+    "mustBlockRules": ["ACTIVE_SHEDDING", "GLP1_EARLY", "GLP1_LATE", "RULE1_HYPO_METABOLIC"]
+  }
+}

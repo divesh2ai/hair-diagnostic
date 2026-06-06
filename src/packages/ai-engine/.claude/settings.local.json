@@ -1,0 +1,26 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(Get-ChildItem -Path \"C:\\\\Users\\\\ERA\\\\Desktop\\\\Dr Fact Folder\\\\RAG Chatbot\\\\src\\\\packages\\\\ai-engine\" -Recurse)",
+      "Bash(Select-Object -ExpandProperty FullName)",
+      "Bash(Sort-Object)",
+      "Bash(find \"C:\\\\\\\\Users\\\\\\\\ERA\\\\\\\\Desktop\\\\\\\\Dr Fact Folder\\\\\\\\RAG Chatbot\\\\\\\\src\\\\\\\\packages\\\\\\\\ai-engine\" -type f -o -type d)",
+      "Bash(find \"C:\\\\\\\\Users\\\\\\\\ERA\\\\\\\\Desktop\\\\\\\\Dr Fact Folder\\\\\\\\RAG Chatbot\\\\\\\\src\\\\\\\\packages\" -name \"types.ts\" -type f)",
+      "Bash(find \"C:\\\\\\\\Users\\\\\\\\ERA\\\\\\\\Desktop\\\\\\\\Dr Fact Folder\\\\\\\\RAG Chatbot\\\\\\\\src\\\\\\\\packages\" -path \"*/packages/ai-engine/types.ts\" -type f)",
+      "Bash(Get-ChildItem -Path \"C:\\\\Users\\\\ERA\\\\Desktop\\\\Dr Fact Folder\\\\RAG Chatbot\\\\src\\\\packages\\\\ai-engine\" -Recurse -Force)",
+      "Bash(Select-Object FullName, PSIsContainer)",
+      "Bash(Sort-Object FullName)",
+      "Bash(Format-Table -AutoSize)",
+      "Bash(find \"C:\\\\Users\\\\ERA\\\\Desktop\\\\Dr Fact Folder\\\\RAG Chatbot\\\\src\" -name \"types.ts\" -type f | grep -v \"node_modules\" | grep -v \"ai-engine\" | head -5)",
+      "Bash(find \"C:\\\\Users\\\\ERA\\\\Desktop\\\\Dr Fact Folder\\\\RAG Chatbot\\\\src\\\\packages\\\\ai-engine\" -name \"types.ts\" -path \"*/ai-engine/types.ts\" -o -name \"index.ts\" -path \"*/ai-engine/index.ts\" 2>/dev/null || find \"C:\\\\Users\\\\ERA\\\\Desktop\\\\Dr Fact Folder\\\\RAG Chatbot\" -name \"types.ts\" -path \"*/packages/*/types.ts\" | head -3)",
+      "Bash(npx tsc *)",
+      "Bash(Get-ChildItem -Path \"C:\\\\Users\\\\ERA\\\\Desktop\\\\Dr Fact Folder\\\\RAG Chatbot\\\\src\\\\packages\\\\ai-engine\\\\knowledge-engine\" -Recurse -File)",
+      "Bash(Get-ChildItem -Path \"C:\\\\Users\\\\ERA\\\\Desktop\\\\Dr Fact Folder\\\\RAG Chatbot\\\\src\\\\packages\\\\ai-engine\" -Directory)",
+      "Bash(Select-Object Name)",
+      "Bash(find \"C:\\\\Users\\\\ERA\\\\Desktop\\\\Dr Fact Folder\\\\RAG Chatbot\\\\src\\\\packages\" -name \"types.ts\" -not -path \"*ai-engine*\" | head -5)",
+      "Bash(find \"C:\\\\Users\\\\ERA\\\\Desktop\\\\Dr Fact Folder\\\\RAG Chatbot\\\\src\" -name \"types.ts\" -not -path \"*ai-engine*\" | head -5)",
+      "PowerShell(tree /F \"C:\\\\Users\\\\ERA\\\\Desktop\\\\Dr Fact Folder\\\\RAG Chatbot\\\\src\\\\packages\\\\ai-engine\" -L 2)",
+      "PowerShell(Get-ChildItem -Path \"C:\\\\Users\\\\ERA\\\\Desktop\\\\Dr Fact Folder\\\\RAG Chatbot\\\\src\\\\packages\\\\ai-engine\" -Recurse -Directory | ForEach-Object { $_.FullName.Replace\\('C:\\\\Users\\\\ERA\\\\Desktop\\\\Dr Fact Folder\\\\RAG Chatbot\\\\src\\\\packages\\\\ai-engine', ''\\).Trim\\('\\\\'\\) } | Sort-Object)"
+    ]
+  }
+}

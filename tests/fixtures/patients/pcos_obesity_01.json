@@ -1,0 +1,35 @@
+{
+  "id": "pcos_obesity_01",
+  "description": "PCOS_OBESITY (insulin resistance dominant). PRO FACT META B PCOS is primary — covers AMPK/insulin correction AND androgen suppression in a single kit. F-PCOS-1 must NOT be prescribed (ingredient duplication). Validates PCOS_OBESITY exclusion gate.",
+  "budget": "STANDARD",
+  "answers": {
+    "sex": "Female",
+    "age": "32",
+    "grade": "Grade 2",
+    "goal": ["Reduce hair fall"],
+    "hormonal": ["PCOS / PCOD + Obesity"],
+    "lifestyle": ["Obesity", "Sedentary"],
+    "scalp": [],
+    "cause": [],
+    "thyroid": [],
+    "immunity": [],
+    "deficiency": [],
+    "gut": [],
+    "diet": [],
+    "hairtype": [],
+    "treatment": [],
+    "duration": "3–6 months",
+    "count": "50–100 strands"
+  },
+  "expected": {
+    "diagnoses": ["PCOS_OBESITY"],
+    "scalpStates": ["NORMAL_SCALP"],
+    "rootCauses": ["PCOS", "METABOLIC"],
+    "therapyNeeds": ["METABOLIC_SUPPORT", "ANDROGENIC_CORRECTION", "INFLAMMATION_CONTROL"],
+    "topKit": "HAIR FACT TE GOLD",
+    "mustIncludeKits": ["HAIR FACT TE GOLD", "PRO FACT META B PCOS", "PHENOTYPE INFLAMATION"],
+    "mustExcludeKits": ["F-PCOS -1", "PRO FACT META B HYPOTHYROID", "PRO FACT META B"],
+    "mustTriggerRules": ["ACTIVE_SHEDDING"],
+    "mustBlockRules": ["PCOS_DIABETES_UPGRADE", "RULE1_HYPO_METABOLIC", "PCOS_OBESITY_HYPO"]
+  }
+}

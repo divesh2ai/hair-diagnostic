@@ -1,0 +1,137 @@
+{
+  "caseId": "aa_01_patchy_single_age12_female",
+  "corpusVersion": "2.0.0",
+  "description": "Alopecia areata — patchy single, 12y Female.",
+  "category": "ALOPECIA_AREATA",
+  "severity": "mild",
+  "presentationClarity": "ambiguous",
+  "demographicProfile": {
+    "sex": "Female",
+    "age": "12",
+    "region": null,
+    "dietType": "Mixed"
+  },
+  "questionnaireAnswers": {
+    "sex": "Female",
+    "age": "12",
+    "goal": [
+      "Reduce hair fall"
+    ],
+    "grade": "Grade 1",
+    "scalp": [
+      "Normal scalp"
+    ],
+    "cause": [
+      "Autoimmune"
+    ],
+    "lifestyle": [],
+    "thyroid": [],
+    "hormonal": [],
+    "immunity": [
+      "Alopecia areata history"
+    ],
+    "deficiency": [],
+    "gut": [],
+    "diet": [],
+    "hairtype": [
+      "Patchy bald spots"
+    ],
+    "treatment": [],
+    "duration": "Less than 3 months",
+    "count": "patches without diffuse fall"
+  },
+  "expectedSignals": [
+    {
+      "signalId": "patchy-loss-marker",
+      "minConfidence": 0.9,
+      "mustBePrimary": true
+    },
+    {
+      "signalId": "alopecia-areata-history",
+      "minConfidence": 0.85
+    },
+    {
+      "signalId": "sex-female",
+      "minConfidence": 0.99
+    },
+    {
+      "signalId": "age-young-modifier",
+      "minConfidence": 0.99
+    }
+  ],
+  "expectedPathways": [
+    {
+      "pathwayId": "immune-dysregulation",
+      "minActivation": 0.6,
+      "role": "leading"
+    }
+  ],
+  "expectedRootCauses": [
+    {
+      "causeId": "autoimmune-hair-loss",
+      "minPosterior": 0.55,
+      "surfaceAs": "lead"
+    }
+  ],
+  "expectedDiagnosis": {
+    "primary": "autoimmune-hair-loss",
+    "secondary": [],
+    "legacyDiagnosisKey": "ALOPECIA_AREATA",
+    "legacyDiagnosisKeyAlternates": []
+  },
+  "expectedSeverity": "mild",
+  "expectedProtocolClass": "AUTOIMMUNE_AA",
+  "expectedTherapyNeeds": [
+    "AUTOIMMUNE_QUIESCENCE",
+    "IMMUNE_MODULATION",
+    "INFLAMMATION_CONTROL"
+  ],
+  "expectedMonitoringRequirements": {
+    "required": [
+      "GLOBAL_PHOTO_3M",
+      "SCALP_EXAM_3M"
+    ],
+    "recommended": [
+      "TRICHOSCOPY_6M"
+    ],
+    "forbidden": [
+      "ANDROGEN_PANEL_6M"
+    ]
+  },
+  "expectedNarrativeThemes": {
+    "themes": [
+      "AUTOIMMUNE_CONTROL",
+      "EXPECTATION_SETTING_SLOW"
+    ],
+    "mustContainTokens": [
+      "immune",
+      "areata"
+    ],
+    "mustNotContainTokens": [
+      "guaranteed regrowth",
+      "cure"
+    ]
+  },
+  "clinicalRationale": {
+    "whyPrimary": "12-year-old female with well-demarcated patchy loss and confirmed alopecia areata history. The patchy-loss-marker and alopecia-areata-history signals together carry the strongest LLRs in the autoimmune cause definition; immune-dysregulation pathway leads at ≥0.60 activation. Protocol class is AUTOIMMUNE_AA — treatment focuses on immune quiescence and expectation setting for relapse/remission rather than miniaturization-style intervention.",
+    "whyNotCompetitors": {
+      "androgen-driven-miniaturization": "Pattern signal is structurally different (patchy vs gradient) and miniaturization pathway is exclusionary in autoimmune cause definition.",
+      "stress-driven-telogen-effluvium": "Patchy topology is incompatible with TE.",
+      "inflammatory-scalp-dysfunction": "Inflammatory scalp surface signals do not fire above background.",
+      "nutritional-hair-stress": "No deficiency signals.",
+      "multifactorial-hair-loss": "Single dominant pathway; multifactorial not met."
+    }
+  },
+  "adversarial": {
+    "isAdversarial": true,
+    "expectedPrimaryDriver": "autoimmune-hair-loss",
+    "expectedSecondaryDrivers": [],
+    "commonFailureModes": [
+      {
+        "failureMode": "PATCHY_DISMISSED",
+        "impactedComponent": "ROOTCAUSE",
+        "description": "Incipient diffuse AA can be classified as TE without the alopecia-areata-history signal forcing autoimmune leadership."
+      }
+    ]
+  }
+}

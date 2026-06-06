@@ -1,0 +1,35 @@
+{
+  "id": "greying_with_hairloss_01",
+  "description": "Early greying co-concern with active stress-induced hair fall. hasGreyGoal=true but hasHairGoal=true → NOT locked to EARLY_GREY. Hair fall protocol takes precedence (TE_STRESS primary). EARLY GREYING CARE appended as final phase via GREY_GOAL rule. PHENOTYPE present → OXIDATIVE STRESS NOT added (pathway overlap avoided).",
+  "budget": "STANDARD",
+  "answers": {
+    "sex": "Female",
+    "age": "35",
+    "grade": "Grade 2",
+    "goal": ["Reduce hair fall", "Early greying concerns"],
+    "cause": ["Stress"],
+    "scalp": [],
+    "lifestyle": [],
+    "thyroid": [],
+    "hormonal": [],
+    "immunity": [],
+    "deficiency": [],
+    "gut": [],
+    "diet": [],
+    "hairtype": [],
+    "treatment": [],
+    "duration": "3–6 months",
+    "count": "50–100 strands"
+  },
+  "expected": {
+    "diagnoses": ["TE_STRESS"],
+    "scalpStates": ["NORMAL_SCALP"],
+    "rootCauses": ["STRESS"],
+    "therapyNeeds": ["SHEDDING_ARREST", "INFLAMMATION_CONTROL", "MELANOCYTE_PROTECTION"],
+    "topKit": "HAIR FACT TE GOLD",
+    "mustIncludeKits": ["HAIR FACT TE GOLD", "PHENOTYPE INFLAMATION", "EARLY GREYING CARE GOLD"],
+    "mustExcludeKits": ["OXIDATIVE STRESS", "MPHL", "FPHL", "LACTIHEALTH"],
+    "mustTriggerRules": ["GREY_GOAL", "ACTIVE_SHEDDING"],
+    "mustBlockRules": ["GREY_OXIDATIVE", "GLP1_EARLY", "GLP1_LATE"]
+  }
+}

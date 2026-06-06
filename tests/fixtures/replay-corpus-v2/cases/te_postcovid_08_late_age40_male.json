@@ -1,0 +1,146 @@
+{
+  "caseId": "te_postcovid_08_late_age40_male",
+  "corpusVersion": "2.0.0",
+  "description": "Post-COVID telogen effluvium, late-phase, 40y Male.",
+  "category": "POST_COVID_TE",
+  "severity": "severe",
+  "presentationClarity": "clear",
+  "demographicProfile": {
+    "sex": "Male",
+    "age": "40",
+    "region": null,
+    "dietType": "Mixed"
+  },
+  "questionnaireAnswers": {
+    "sex": "Male",
+    "age": "40",
+    "goal": [
+      "Reduce hair fall"
+    ],
+    "grade": "Grade 1",
+    "scalp": [
+      "Normal scalp"
+    ],
+    "cause": [
+      "Recent illness"
+    ],
+    "lifestyle": [
+      "Chronic stress"
+    ],
+    "thyroid": [],
+    "hormonal": [],
+    "immunity": [],
+    "deficiency": [],
+    "gut": [],
+    "diet": [],
+    "hairtype": [
+      "Diffuse shedding"
+    ],
+    "treatment": [],
+    "duration": "6–12 months",
+    "count": "more than 200 hairs/day"
+  },
+  "expectedSignals": [
+    {
+      "signalId": "diffuse-shedding-marker",
+      "minConfidence": 0.85,
+      "mustBePrimary": true
+    },
+    {
+      "signalId": "post-illness-recovery",
+      "minConfidence": 0.85
+    },
+    {
+      "signalId": "subacute-duration-marker",
+      "minConfidence": 0.7
+    },
+    {
+      "signalId": "active-shedding-heavy",
+      "minConfidence": 0.7
+    },
+    {
+      "signalId": "sex-male",
+      "minConfidence": 0.99
+    },
+    {
+      "signalId": "age-mature-modifier",
+      "minConfidence": 0.99
+    },
+    {
+      "signalId": "chronic-stress-reported",
+      "minConfidence": 0.6
+    }
+  ],
+  "expectedPathways": [
+    {
+      "pathwayId": "telogen-cycle-disruption",
+      "minActivation": 0.65,
+      "role": "leading"
+    },
+    {
+      "pathwayId": "oxidative-stress",
+      "minActivation": 0.35,
+      "role": "modulator"
+    }
+  ],
+  "expectedRootCauses": [
+    {
+      "causeId": "stress-driven-telogen-effluvium",
+      "minPosterior": 0.5,
+      "surfaceAs": "lead"
+    }
+  ],
+  "expectedDiagnosis": {
+    "primary": "stress-driven-telogen-effluvium",
+    "secondary": [],
+    "legacyDiagnosisKey": "POST_ILLNESS_TE",
+    "legacyDiagnosisKeyAlternates": [
+      "ACUTE_TE",
+      "CHRONIC_TE"
+    ]
+  },
+  "expectedSeverity": "severe",
+  "expectedProtocolClass": "TE_POST_ILLNESS",
+  "expectedTherapyNeeds": [
+    "CYCLE_RESTORATION",
+    "STRESS_DOWNREGULATION",
+    "NUTRITIONAL_REPLETION"
+  ],
+  "expectedMonitoringRequirements": {
+    "required": [
+      "SHED_COUNT_MONTHLY",
+      "GLOBAL_PHOTO_3M",
+      "FERRITIN_4M",
+      "VITAMIN_D_4M"
+    ],
+    "recommended": [
+      "STRESS_PHQ_MONTHLY"
+    ],
+    "forbidden": []
+  },
+  "expectedNarrativeThemes": {
+    "themes": [
+      "CYCLE_RESET",
+      "REVERSIBILITY_REASSURANCE",
+      "STRESS_RECOVERY"
+    ],
+    "mustContainTokens": [
+      "recovery",
+      "telogen"
+    ],
+    "mustNotContainTokens": [
+      "permanent",
+      "guaranteed"
+    ]
+  },
+  "clinicalRationale": {
+    "whyPrimary": "40-year-old male with diffuse heavy shedding 6–12 months post-COVID infection. The post-illness signal carries the strongest cause-registry log-likelihood for telogen-driven shedding; cytokine-driven oxidative stress contributes as a modulator pathway. Reversibility is expected on standard TE timeline (one telogen cycle from removal of stressor). Protocol class TE_POST_ILLNESS isolates this from idiopathic chronic TE in monitoring cadence.",
+    "whyNotCompetitors": {
+      "androgen-driven-miniaturization": "No pattern topology; the precipitant is clear and the shedding is diffuse.",
+      "autoimmune-hair-loss": "No patchy markers, no AA history.",
+      "inflammatory-scalp-dysfunction": "Scalp surface unremarkable.",
+      "nutritional-hair-stress": "No documented deficiency markers in this case; supplementation is precautionary, not causal.",
+      "multifactorial-hair-loss": "Single dominant precipitant + pathway; multifactorial gate not met."
+    }
+  }
+}

@@ -1,0 +1,137 @@
+﻿Sheet: Sequential Protocol Designer
+
+Dr. FACT  —  Sequential Protocol Designer  |  Define which kit the patient receives first, second, third and fourth |  |  |  |  |  |
+UPDATE THIS SHEET: Fill Phase 1-4 columns with the exact kit name for each condition. Phase 1 = highest priority (Month 1-2). Leave Phase 3/4 blank if not needed. Send back to update the AI. |  |  |  |  |  |
+Patient Condition / Scenario | PHASE 1  —  Month 1-2
+(Repair cellular environment FIRST) | PHASE 2  —  Month 3-4
+(Target primary hair condition) | PHASE 3  —  Month 5-6
+(Hormonal / Metabolic layer) | PHASE 4  —  Month 7-8
+(Consolidate & prevent relapse) | Total
+Phases | Clinical Rationale  (why this sequence?)
+Telogen Effluvium
+(Stress / Anxiety / Depression) | HAIR FACT TE GOLD
+(or VEG variant) | PHENOTYPE INFLAMATION |  |  | 2 | TE repairs active shedding first; INFLAM clears stress-triggered scalp inflammation in Phase 2
+Telogen Effluvium
+(Nutritional deficiency) | HAIR FACT TE GOLD
+(or VEG variant) | PHENOTYPE INFLAMATION | PRO IMMUNE GOLD |  | 3 | Correct nutritional deficit → clear inflammation → strengthen immune response
+Telogen Effluvium
+(Post-pregnancy) | HAIR FACT TE GOLD
+(or VEG variant) | LACTIHEALTH | PRO IMMUNE GOLD |  | 3 | Stop shedding first; LACTIHEALTH supports breastfeeding nutrition; immune repair last
+Telogen Effluvium
+(Illness / Surgery) | PHENOTYPE INFLAMATION | HAIR FACT TE GOLD
+(or VEG variant) | PRO IMMUNE GOLD |  | 3 | Post-illness inflammation must be cleared before TE kit can be effective
+Male AGA
+(Grade 1-2-3) | PHENOTYPE INFLAMATION | M-AGA GOLD | PRO IMMUNE GOLD |  | 3 | Scalp inflammation blocks DHT-blocker absorption — clear terrain in Ph1 first
+Male AGA
+(Grade 4-5 — Advanced) | PHENOTYPE INFLAMATION | M-AGA GOLD PLUS | PRO IMMUNE GOLD PLUS |  | 3 | Advanced grade needs stronger DHT protocol; immune PLUS supports follicle rescue
+Female AGA
+(Grade 1-2-3) | PHENOTYPE INFLAMATION | F-AGA GOLD | PRO IMMUNE GOLD |  | 3 | Inflammation terrain cleared first; female AGA pattern targeted in Phase 2
+Female AGA
+(Grade 4-5 — Advanced) | PHENOTYPE INFLAMATION | F-AGA GOLD PLUS | PRO IMMUNE GOLD PLUS |  | 3 | Advanced female AGA — full 3-phase protocol required
+PCOS — Hair Loss only
+(No obesity) | F-PCOS -1
+(or VEG variant) | PHENOTYPE INFLAMATION | PRO IMMUNE GOLD |  | 3 | PCOS hormonal correction drives Phase 1; inflammation cleared in Phase 2
+PCOS + Obesity
+(Metabolic PCOS) | PRO FACT META B PCOS | F-PCOS -1
+(or VEG variant) | PHENOTYPE INFLAMATION |  | 3 | Metabolic correction first (insulin resistance); then PCOS hormonal; then inflammation
+Thyroid
+(Hypo / Hyper) | PRO FACT META B THYROID | PHENOTYPE INFLAMATION | HAIR FACT TE GOLD |  | 3 | Thyroid metabolic correction unlocks the terrain; inflammation cleared; then TE repair
+Alopecia Areata
+(Autoimmune) | HAIR FACT ALOPECIA AREATA | PRO FACT META B | PHENOTYPE INFLAMATION | PRO IMMUNE GOLD | 4 | Autoimmune-specific kit first; metabolic support in Ph2; inflammation in Ph3; immune last
+Peri-Menopause | HAIR FACT PERI MENOPAUSE
+(or VEG) | F-AGA GOLD | HAIR FACT TE GOLD | PRO IMMUNE GOLD | 4 | Hormonal fluctuation corrected first; TE shedding addressed in Ph2; immune support last
+Menopause | PRO FACT META B MENOPAUSE | F-AGA GOLD | HAIR FACT TE GOLD | PRO IMMUNE GOLD | 4 | Menopausal metabolic shift corrected first; AGA correction in Ph2
+Endometriosis | FH WELL | PHENOTYPE INFLAMATION | PRO IMMUNE GOLD |  | 3 | FH WELL targets endometriotic inflammation; systemic INFLAM kit follows
+Pregnancy | HEALTHY - 9 |  |  |  | 1 | Pregnancy support ONLY — single kit, no other kits during pregnancy
+Post-delivery /
+Breastfeeding | HAIR FACT TE GOLD
+(or VEG variant) | LACTIHEALTH |  |  | 2 | Post-natal TE shedding addressed first; LACTIHEALTH supports lactation nutrition
+Iron Deficiency /
+Anaemia | IRON UP GOLD | HAIR FACT TE GOLD | PRO IMMUNE GOLD | 3 | Iron repletion is non-negotiable Phase 1; immune follows; TE repair after iron restored
+Scalp Inflammation
+(Dandruff / Oily / Seborrhoea) | PHENOTYPE INFLAMATION | M-AGA GOLD / F-AGA GOLD |  |  | 2 | Inflammation is the root cause here — must be cleared before AGA correction
+Hair Breakage
+(Chemical / Heat / Hard water) | HAIR FACT HAIR BREAKAGE REPAIR(HBR) | HAIR FACT TE GOLD
+(or VEG variant) | PHENOTYPE INFLAMATION |  | 3 | Shaft repair and keratin restoration first; then inflammation clearance
+Night Shift /
+Circadian Disruption | HAIR FACT NIGHT SHIFT | HAIR FACT TE GOLD
+(or VEG variant) | PHENOTYPE INFLAMATION |  | 3 | Circadian reset is the primary driver; TE follows; inflammation cleared last
+Frequent Flying /
+Passive Smoke Exposure | HAIR FACT FREQUENT FLYERS | HAIR FACT TE GOLD
+(or VEG variant) | PHENOTYPE INFLAMATION |  | 3 | Circadian + travel stress corrected first; then inflammation; then oxidative shield
+Smoking / Alcohol /
+Vaping / Oxidative Stress | PHENOTYPE INFLAMATION | OXIDATIVE STRESS | PRO IMMUNE GOLD |  | 3 | Inflammation and oxidative damage require sequential correction — INFLAM enables OX kit
+Sudden Weight Loss
+(Crash diet / Illness) | RAPID WEIGHT LOSS SHIELD | HAIR FACT TE GOLD
+(or VEG variant) | PRO IMMUNE GOLD |  | 3 | Shedding shield deployed immediately; TE repair in Ph2; immune rebuilt in Ph3
+Chronic Medical Condition
+(Diabetes / BP / other) | PRO FACT META B | PRO IMMUNE GOLD | PHENOTYPE INFLAMATION |  | 3 | Metabolic root cause corrected first; immune support; inflammation clearance last
+Mouth / Tongue Ulcers
+(Immune-Gut link) | PHENOTYPE INFLAMATION | PRO IMMUNE GOLD | OXIDATIVE STRESS |  | 3 | Gut-immune inflammation cleared first; oxidative stress addressed; immune rebuilt
+Trichotillomania
+(Hair Pulling / OCD) | HAIR FACT TTM (OCD) | PHENOTYPE INFLAMATION | HAIR FACT TE GOLD
+(or VEG variant) |  | 3 | TTM-specific neurological support first; inflammation repair in Phase 2
+Multi-factorial
+(Stress + Gut + AGA combined) | PHENOTYPE INFLAMATION | HAIR FACT TE GOLD
+(or VEG variant) | M-AGA GOLD / F-AGA GOLD | PRO IMMUNE GOLD | 4 | Inflammation is the universal terrain — ALWAYS Phase 1 for multi-factorial cases
+Gut Issues
+(GERD / IBS / Bloating) | GI GOLD | PHENOTYPE INFLAMATION | PRO IMMUNE GOLD | HAIR FACT TE GOLD | 4 | Gut-hair axis: clear gut inflammation first; rebuild immune; then address TE
+
+Sheet: Kit Master Reference
+
+Dr. FACT  —  Kit Master Reference  |  29 Active Kits  |  Use EXACT names in Protocol Designer |  |  |  |  |
+# | Kit Name (use exact spelling) | Product Line | Gender | Veg Variant | Primary Condition / Use Case
+1 | HAIR FACT TE GOLD | Hair Fact | Both | Yes → VEG | Telogen Effluvium — non-veg patients
+2 | HAIR FACT TE GOLD VEG | Hair Fact | Both | — | Telogen Effluvium — veg/vegan patients
+3 | M-AGA GOLD | Hair Fact | Male | No | Male Androgenetic Alopecia — Grade 1-3
+4 | M-AGA GOLD PLUS | Hair Fact | Male | No | Male AGA — Grade 4-5 (advanced)
+5 | F-AGA GOLD | Hair Fact | Female | No | Female Androgenetic Alopecia — Grade 1-3
+6 | F-AGA GOLD PLUS | Hair Fact | Female | No | Female AGA — Grade 4-5 (advanced)
+7 | PHENOTYPE INFLAMATION | Hair Fact | Both | No | Scalp & systemic inflammation — universal Phase 1
+8 | PRO IMMUNE GOLD | Hair Fact | Both | No | Immune modulation — standard
+9 | PRO IMMUNE GOLD PLUS | Hair Fact | Both | No | Advanced immune — Grade 4-5 / severe cases
+10 | PRO IMMUNE VEG | Hair Fact | Both | — | Immune modulation — veg patients
+11 | HAIR FACT ALOPECIA AREATA | Hair Fact | Both | No | Autoimmune alopecia areata
+12 | HAIR FACT HAIR BREAKAGE REPAIR(HBR) | Hair Fact | Both | No | Hair shaft breakage / chemical / heat / hard water
+13 | F-PCOS -1 | Hair Fact | Female | Yes → VEG | PCOS hair loss — hormonal correction
+14 | F-PCOS VEG -1 | Hair Fact | Female | — | PCOS hair loss — veg patients
+15 | HAIR FACT PERI MENOPAUSE | Hair Fact | Female | Yes → VEG | Peri-menopausal hair loss
+16 | HAIR FACT PERI MENOPAUSE VEG | Hair Fact | Female | — | Peri-menopause — veg patients
+17 | HAIR FACT NIGHT SHIFT | Hair Fact | Both | No | Circadian disruption / night shift work
+18 | HAIR FACT FREQUENT FLYERS | Hair Fact | Both | No | Frequent flying / passive smoke / cabin radiation
+19 | HAIR FACT TTM (OCD) | Hair Fact | Both | No | Trichotillomania / hair pulling compulsion
+20 | HEALTHY - 9 | Hair Fact | Female | No | Pregnancy support ONLY — not for weight/obesity
+21 | PRO FACT META B | Pro Fact | Both | No | Metabolic dysfunction / chronic medical condition
+22 | PRO FACT META B PCOS | Pro Fact | Female | No | PCOS + obesity / metabolic PCOS
+23 | PRO FACT META B THYROID | Pro Fact | Female | No | Thyroid-related hair loss (Hypo/Hyper)
+24 | PRO FACT META B MENOPAUSE | Pro Fact | Female | No | Menopausal hair loss / transition
+25 | RAPID WEIGHT LOSS SHIELD | Hair Fact | Both | No | Sudden / rapid weight loss induced shedding
+26 | IRON UP GOLD | Hair Fact | Both | No | Iron deficiency / anaemia
+27 | LACTIHEALTH | Hair Fact | Female | No | Post-pregnancy / breastfeeding nutrition
+28 | FH WELL 3 | Hair Fact | Female | No | Endometriosis / hormonal inflammation
+29 | OXIDATIVE STRESS | Hair Fact | Both | No | Oxidative stress / smoking / pollution / ROS damage
+30 | PRO FACT GI HEALTH  | Pro Fact | Both | Yes → VEG | Gut Dysbiosis /Any all Gut problems
+
+Sheet: How To Use
+
+How To Use — Dr. FACT Sequential Protocol Designer |  |
+ACTION | INSTRUCTION | EXAMPLE / NOTE
+Step 1 | Open the "Sequential Protocol Designer" sheet | First tab in this workbook
+Step 2 | Find the row matching your patient condition | e.g. "PCOS — Hair Loss only (No obesity)"
+Step 3 | Phase 1 column = the FIRST kit (Month 1-2). This MUST repair the cellular terrain. | e.g. F-PCOS -1
+Step 4 | Phase 2 column = second kit (Month 3-4). Targets primary hair condition. | e.g. PHENOTYPE INFLAMATION
+Step 5 | Phase 3 (Month 5-6) — only if a hormonal/metabolic layer is needed | e.g. PRO IMMUNE GOLD
+Step 6 | Phase 4 (Month 7-8) — only for severe/multi-factorial cases | Leave blank if not needed
+Step 7 | Update "Total Phases" column with 1, 2, 3 or 4 | Tells the AI how long the protocol is
+Step 8 | Update "Clinical Rationale" column with your reasoning | The AI will use this to explain to patients
+Step 9 | Add a NEW ROW at the bottom if you need a new condition not listed | Use exact kit names from Kit Master Reference sheet
+|  |
+CLINICAL RULE | PRINCIPLE | WHY
+Phase 1 always | Repair the cellular ENVIRONMENT first | Inflamed / deficient cells cannot respond to targeted treatment
+Phase 2 | Target the PRIMARY hair condition | Cellular terrain is now ready — kit absorbs and works
+Phase 3 | Address HORMONAL or METABOLIC layer | Systemic correction that sustains Phase 2 results
+Phase 4 | CONSOLIDATE — prevent relapse | Immune modulation prevents regression in severe cases
+|  |
+Kit naming | Always use EXACT kit names as in "Kit Master Reference" sheet | Prevents AI mapping errors
+Veg patients | Write base kit name — AI auto-switches to VEG variant | Write HAIR FACT TE GOLD, not TE GOLD VEG
+Multi-factorial | PHENOTYPE INFLAMATION should almost always be Phase 1 or 2 | It clears the terrain that blocks every other kit

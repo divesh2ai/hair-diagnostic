@@ -1,0 +1,35 @@
+{
+  "id": "night_shift_oxidative_01",
+  "description": "Night shift circadian disruption with smoking-driven oxidative stress. NIGHT_SHIFT primary (62) over OXIDATIVE (58) and TE_STRESS (55). HAIR FACT NIGHT SHIFT corrects circadian disruption first; TE GOLD arrests concurrent shedding; PHENOTYPE clears oxidative/inflammatory load. Smoking signal tests OXIDATIVE_STRESS root cause derivation.",
+  "budget": "STANDARD",
+  "answers": {
+    "sex": "Male",
+    "age": "34",
+    "grade": "Grade 2",
+    "goal": ["Reduce hair fall"],
+    "lifestyle": ["Night shift", "Smoking"],
+    "cause": ["Stress"],
+    "scalp": [],
+    "thyroid": [],
+    "hormonal": [],
+    "immunity": [],
+    "deficiency": [],
+    "gut": [],
+    "diet": [],
+    "hairtype": [],
+    "treatment": [],
+    "duration": "3–6 months",
+    "count": "50–100 strands"
+  },
+  "expected": {
+    "diagnoses": ["NIGHT_SHIFT"],
+    "scalpStates": ["NORMAL_SCALP"],
+    "rootCauses": ["STRESS", "OXIDATIVE_STRESS", "CIRCADIAN_DISRUPTION"],
+    "therapyNeeds": ["CIRCADIAN_RESET", "SHEDDING_ARREST", "INFLAMMATION_CONTROL"],
+    "topKit": "HAIR FACT TE GOLD",
+    "mustIncludeKits": ["HAIR FACT TE GOLD", "HAIR FACT NIGHT SHIFT", "PHENOTYPE INFLAMATION"],
+    "mustExcludeKits": ["LACTIHEALTH", "RAPID WEIGHT LOSS SHIELD", "PRO FACT META B HYPOTHYROID"],
+    "mustTriggerRules": ["ACTIVE_SHEDDING"],
+    "mustBlockRules": ["GLP1_EARLY", "GLP1_LATE", "RULE1_HYPO_METABOLIC", "NO_VISIBLE_FALL"]
+  }
+}

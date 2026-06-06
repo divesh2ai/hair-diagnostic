@@ -1,0 +1,35 @@
+{
+  "id": "pcos_diabetes_upgrade_01",
+  "description": "PCOS_ONLY + diabetes/pre-diabetes → PCOS_DIABETES_UPGRADE fires: F-PCOS-1 replaced by PRO FACT META B PCOS. Single kit covers insulin-androgen axis + AMPK. Critical guard: F-PCOS-1 must not appear when diabetes co-exists with PCOS_ONLY.",
+  "budget": "COMPREHENSIVE",
+  "answers": {
+    "sex": "Female",
+    "age": "34",
+    "grade": "Grade 2",
+    "goal": ["Reduce hair fall"],
+    "hormonal": ["PCOS / PCOD only"],
+    "thyroid": ["Diabetes"],
+    "scalp": [],
+    "cause": [],
+    "lifestyle": [],
+    "immunity": [],
+    "deficiency": [],
+    "gut": [],
+    "diet": [],
+    "hairtype": [],
+    "treatment": [],
+    "duration": "3–6 months",
+    "count": "50–100 strands"
+  },
+  "expected": {
+    "diagnoses": ["PCOS_ONLY"],
+    "scalpStates": ["NORMAL_SCALP"],
+    "rootCauses": ["PCOS", "METABOLIC"],
+    "therapyNeeds": ["ANDROGENIC_CORRECTION", "INFLAMMATION_CONTROL", "SHEDDING_ARREST", "METABOLIC_SUPPORT"],
+    "topKit": "HAIR FACT TE GOLD",
+    "mustIncludeKits": ["HAIR FACT TE GOLD", "PRO FACT META B PCOS", "PHENOTYPE INFLAMATION"],
+    "mustExcludeKits": ["F-PCOS -1", "F-PCOS VEG -1", "PRO FACT META B HYPOTHYROID"],
+    "mustTriggerRules": ["PCOS_DIABETES_UPGRADE", "ACTIVE_SHEDDING"],
+    "mustBlockRules": ["RULE1_HYPO_METABOLIC", "PCOS_OBESITY_HYPO", "GLP1_EARLY"]
+  }
+}

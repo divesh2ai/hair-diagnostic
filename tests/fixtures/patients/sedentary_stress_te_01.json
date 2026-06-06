@@ -1,0 +1,35 @@
+{
+  "id": "sedentary_stress_te_01",
+  "description": "Sedentary lifestyle + stress-induced TE with metabolic META B injection. TE_STRESS primary (55) beats AGA (50). metabolicModifierRule METABOLIC_GENERIC fires: PRO FACT META B injected because TE_STRESS protocol doesn't include it by default. Tests metabolic injection into non-AGA, non-thyroid protocol.",
+  "budget": "STANDARD",
+  "answers": {
+    "sex": "Female",
+    "age": "38",
+    "grade": "Grade 2",
+    "goal": ["Reduce hair fall"],
+    "cause": ["Stress", "Anxiety"],
+    "lifestyle": ["Sedentary", "Obesity"],
+    "scalp": [],
+    "thyroid": [],
+    "hormonal": [],
+    "immunity": [],
+    "deficiency": [],
+    "gut": [],
+    "diet": [],
+    "hairtype": [],
+    "treatment": [],
+    "duration": "3–6 months",
+    "count": "50–100 strands"
+  },
+  "expected": {
+    "diagnoses": ["TE_STRESS"],
+    "scalpStates": ["NORMAL_SCALP"],
+    "rootCauses": ["STRESS", "METABOLIC"],
+    "therapyNeeds": ["SHEDDING_ARREST", "INFLAMMATION_CONTROL", "METABOLIC_SUPPORT"],
+    "topKit": "HAIR FACT TE GOLD",
+    "mustIncludeKits": ["HAIR FACT TE GOLD", "PHENOTYPE INFLAMATION", "PRO FACT META B"],
+    "mustExcludeKits": ["PRO FACT META B HYPOTHYROID", "RAPID WEIGHT LOSS SHIELD", "LACTIHEALTH"],
+    "mustTriggerRules": ["METABOLIC_GENERIC", "ACTIVE_SHEDDING"],
+    "mustBlockRules": ["RULE1_HYPO_METABOLIC", "GLP1_EARLY", "GLP1_LATE"]
+  }
+}

@@ -1,0 +1,35 @@
+{
+  "id": "alopecia_areata_iron_combo_01",
+  "description": "Autoimmune alopecia areata + confirmed iron deficiency — combination autoimmune + nutritional case. ALOPECIA_AREATA primary (105). IRON UP GOLD injected via signal-gated injection rule (iron deficiency confirmed). PRO IMMUNE must be the final phase (invariant). Tests the proImmuneLastRule + iron injection co-existence.",
+  "budget": "COMPREHENSIVE",
+  "answers": {
+    "sex": "Female",
+    "age": "30",
+    "grade": "Grade 2",
+    "goal": ["Reduce hair fall"],
+    "immunity": ["Alopecia Areata (patchy hair loss)"],
+    "deficiency": ["Iron / Ferritin deficiency"],
+    "scalp": [],
+    "cause": [],
+    "lifestyle": [],
+    "thyroid": [],
+    "hormonal": [],
+    "gut": [],
+    "diet": [],
+    "hairtype": [],
+    "treatment": [],
+    "duration": "3–6 months",
+    "count": "50–100 strands"
+  },
+  "expected": {
+    "diagnoses": ["ALOPECIA_AREATA"],
+    "scalpStates": ["NORMAL_SCALP"],
+    "rootCauses": ["AUTOIMMUNE", "IRON_DEFICIENCY"],
+    "therapyNeeds": ["IMMUNE_MODULATION", "METABOLIC_SUPPORT", "INFLAMMATION_CONTROL", "FOLLICLE_STIMULATION", "IRON_REPLETION"],
+    "topKit": "HAIR FACT TE GOLD",
+    "mustIncludeKits": ["HAIR FACT TE GOLD", "HAIR FACT ALOPECIA AREATA", "PRO FACT META B", "PHENOTYPE INFLAMATION", "PRO IMMUNE GOLD"],
+    "mustExcludeKits": ["LACTIHEALTH", "RAPID WEIGHT LOSS SHIELD", "PRO FACT META B HYPOTHYROID"],
+    "mustTriggerRules": ["ACTIVE_SHEDDING"],
+    "mustBlockRules": ["GLP1_EARLY", "GLP1_LATE", "RULE1_HYPO_METABOLIC", "PCOS_DIABETES_UPGRADE"]
+  }
+}

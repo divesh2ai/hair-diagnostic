@@ -1,0 +1,145 @@
+{
+  "caseId": "fphl_02_lud1_age32",
+  "corpusVersion": "2.0.0",
+  "description": "Female AGA Ludwig 1, 32y.",
+  "category": "FPHL",
+  "severity": "mild",
+  "presentationClarity": "clear",
+  "demographicProfile": {
+    "sex": "Female",
+    "age": "32",
+    "region": null,
+    "dietType": "Mixed"
+  },
+  "questionnaireAnswers": {
+    "sex": "Female",
+    "age": "32",
+    "goal": [
+      "Reduce hair fall",
+      "Regrow lost hair"
+    ],
+    "grade": "Grade 2",
+    "scalp": [
+      "Normal scalp"
+    ],
+    "cause": [
+      "Family history"
+    ],
+    "lifestyle": [],
+    "thyroid": [],
+    "hormonal": [],
+    "immunity": [],
+    "deficiency": [],
+    "gut": [],
+    "diet": [],
+    "hairtype": [
+      "Widening parting",
+      "Thinning at crown"
+    ],
+    "treatment": [],
+    "duration": "More than 1 year",
+    "count": "thinning visible, minimal fall"
+  },
+  "expectedSignals": [
+    {
+      "signalId": "pattern-thinning-marker",
+      "minConfidence": 0.75,
+      "mustBePrimary": true
+    },
+    {
+      "signalId": "thinning-without-shedding",
+      "minConfidence": 0.55
+    },
+    {
+      "signalId": "grade123-severity-marker",
+      "minConfidence": 0.7
+    },
+    {
+      "signalId": "sex-female",
+      "minConfidence": 0.99
+    },
+    {
+      "signalId": "age-mid-modifier",
+      "minConfidence": 0.99
+    },
+    {
+      "signalId": "genetic-predisposition-reported",
+      "minConfidence": 0.7
+    }
+  ],
+  "expectedPathways": [
+    {
+      "pathwayId": "follicular-miniaturization",
+      "minActivation": 0.55,
+      "role": "leading"
+    },
+    {
+      "pathwayId": "hormonal-dysregulation",
+      "minActivation": 0.4,
+      "role": "supporting"
+    }
+  ],
+  "expectedRootCauses": [
+    {
+      "causeId": "androgen-driven-miniaturization",
+      "minPosterior": 0.3,
+      "surfaceAs": "co-lead"
+    },
+    {
+      "causeId": "hormonal-hair-loss",
+      "minPosterior": 0.3,
+      "surfaceAs": "co-lead"
+    }
+  ],
+  "expectedDiagnosis": {
+    "primary": "androgen-driven-miniaturization",
+    "secondary": [
+      "hormonal-hair-loss"
+    ],
+    "legacyDiagnosisKey": "AGA_FEMALE_123",
+    "legacyDiagnosisKeyAlternates": []
+  },
+  "expectedSeverity": "mild",
+  "expectedProtocolClass": "FPHL",
+  "expectedTherapyNeeds": [
+    "DHT_SUPPRESSION",
+    "ENDOCRINE_OPTIMIZATION",
+    "INFLAMMATION_CONTROL"
+  ],
+  "expectedMonitoringRequirements": {
+    "required": [
+      "GLOBAL_PHOTO_3M",
+      "TRICHOSCOPY_6M"
+    ],
+    "recommended": [
+      "SHED_COUNT_MONTHLY"
+    ],
+    "forbidden": [
+      "ANDROGEN_PANEL_6M"
+    ]
+  },
+  "expectedNarrativeThemes": {
+    "themes": [
+      "ANDROGENIC_PROGRESSION",
+      "ENDOCRINE_REBALANCE",
+      "EXPECTATION_SETTING_SLOW"
+    ],
+    "mustContainTokens": [
+      "androgen",
+      "hormonal"
+    ],
+    "mustNotContainTokens": [
+      "guaranteed regrowth"
+    ]
+  },
+  "clinicalRationale": {
+    "whyPrimary": "Female, age 32, Ludwig 1 pattern with widening parting, family history positive, minimal active shedding. The crown-emphasized topology with intact frontal hairline is the female-pattern signature of androgen-driven miniaturization expressed within an endocrine context. Both miniaturization (≥0.55) and hormonal-dysregulation (≥0.40) pathways activate, producing a co-leading androgenic + hormonal cause posterior — the legacy DiagnosisKey for FPHL maps directly to this co-explanation.",
+    "whyNotCompetitors": {
+      "stress-driven-telogen-effluvium": "No acute precipitant, no synchronized diffuse shedding lagging a known stressor by 2–4 months; chronic timing without heavy shed weakens TE.",
+      "autoimmune-hair-loss": "No patchy loss or areata/scarring history.",
+      "inflammatory-scalp-dysfunction": "Scalp surface is unremarkable; inflammation signals do not fire above background.",
+      "nutritional-hair-stress": "No deficiency signals.",
+      "multifactorial-hair-loss": "Only two pathways exceed 0.40; compositeRule (≥3 pathways) not met."
+    }
+  }
+}

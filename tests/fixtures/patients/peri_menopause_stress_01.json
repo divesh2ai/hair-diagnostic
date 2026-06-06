@@ -1,0 +1,35 @@
+{
+  "id": "peri_menopause_stress_01",
+  "description": "Peri-menopausal hair loss with stress co-condition. PERI_MENOPAUSE dominates (score 98) over TE_STRESS (55). HAIR FACT PERI MENOPAUSE stabilises hormonal fluctuation; FPHL corrects oestrogen-decline androgenetic loss; PRO IMMUNE last. No metabolic signal — PRO FACT META B injection does NOT fire.",
+  "budget": "STANDARD",
+  "answers": {
+    "sex": "Female",
+    "age": "48",
+    "grade": "Grade 2",
+    "goal": ["Reduce hair fall"],
+    "hormonal": ["Peri-menopause"],
+    "cause": ["Stress"],
+    "scalp": [],
+    "lifestyle": [],
+    "thyroid": [],
+    "immunity": [],
+    "deficiency": [],
+    "gut": [],
+    "diet": [],
+    "hairtype": [],
+    "treatment": [],
+    "duration": "3–6 months",
+    "count": "50–100 strands"
+  },
+  "expected": {
+    "diagnoses": ["PERI_MENOPAUSE"],
+    "scalpStates": ["NORMAL_SCALP"],
+    "rootCauses": ["STRESS", "HORMONAL_SHIFT"],
+    "therapyNeeds": ["HORMONAL_REBALANCING", "DHT_SUPPRESSION", "SHEDDING_ARREST", "IMMUNE_MODULATION"],
+    "topKit": "HAIR FACT TE GOLD",
+    "mustIncludeKits": ["HAIR FACT TE GOLD", "HAIR FACT PERI MENOPAUSE", "FPHL", "PRO IMMUNE GOLD"],
+    "mustExcludeKits": ["MPHL", "LACTIHEALTH", "RAPID WEIGHT LOSS SHIELD", "PRO FACT META B HYPOTHYROID"],
+    "mustTriggerRules": ["ACTIVE_SHEDDING"],
+    "mustBlockRules": ["PERI_MENO_METABOLIC", "GLP1_EARLY", "GLP1_LATE", "RULE1_HYPO_METABOLIC"]
+  }
+}

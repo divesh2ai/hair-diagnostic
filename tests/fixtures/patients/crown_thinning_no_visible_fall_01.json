@@ -1,0 +1,35 @@
+{
+  "id": "crown_thinning_no_visible_fall_01",
+  "description": "Crown thinning only — patient reports thinning visible at crown with no active shedding. NO_VISIBLE_FALL rule fires: TE GOLD must be stripped from all protocols. PHENOTYPE becomes Phase 1 kit. Validates that count field containing 'Thinning' correctly gates TE GOLD removal.",
+  "budget": "STANDARD",
+  "answers": {
+    "sex": "Male",
+    "age": "42",
+    "grade": "Grade 3",
+    "goal": ["Reduce hair fall"],
+    "cause": ["Family history"],
+    "hairtype": ["Thinning at crown", "widening parting"],
+    "scalp": ["Oily scalp"],
+    "lifestyle": [],
+    "thyroid": [],
+    "hormonal": [],
+    "immunity": [],
+    "deficiency": [],
+    "gut": [],
+    "diet": [],
+    "treatment": [],
+    "duration": "More than 1 year",
+    "count": "Thinning visible at crown, no active shedding"
+  },
+  "expected": {
+    "diagnoses": ["AGA_MALE_123"],
+    "scalpStates": ["OILY_SCALP"],
+    "rootCauses": ["GENETICS", "DHT"],
+    "therapyNeeds": ["DHT_SUPPRESSION", "INFLAMMATION_CONTROL", "SHEDDING_ARREST", "METABOLIC_SUPPORT", "FOLLICLE_STIMULATION"],
+    "topKit": "PHENOTYPE INFLAMATION",
+    "mustIncludeKits": ["PHENOTYPE INFLAMATION", "MPHL", "PRO FACT META B"],
+    "mustExcludeKits": ["HAIR FACT TE GOLD", "HAIR FACT TE GOLD VEG"],
+    "mustTriggerRules": ["NO_VISIBLE_FALL"],
+    "mustBlockRules": ["ACTIVE_SHEDDING", "GLP1_EARLY", "GLP1_LATE"]
+  }
+}
