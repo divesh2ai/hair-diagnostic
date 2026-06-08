@@ -272,7 +272,7 @@ Apply in this order; first match wins per kit. When a kit has no explicit row, i
 | HAIR FACT TE GOLD / VEG | Phase 2 | Primary TE kit (Phase 1 only if no stronger root-cause kit is present) |
 | MPHL | Phase 2 (G1–G3) / Phase 2 (G4–G5 after PRO IMMUNE GOLD) | See AGA grade branching below |
 | FPHL | Phase 2 (G1–G3) / Phase 2 (G4–G5 after PRO IMMUNE GOLD) | See AGA grade branching below |
-| GI GOLD / PRO FACT GI HEALTH | Phase 2 or 3 | Gut-axis correction comes after primary terrain in multi-factorial cases |
+| **PRO FACT GI GOLD / GI HEALTH** | **Phase 1** | **Gut-hair axis is upstream — when any gut symptom (Q10) is present, GI GOLD is the first kit. Gut inflammation must be cleared before any other kit can be effective.** |
 | PRO IMMUNE GOLD | Phase 3 | Systemic immune layer |
 | OXIDATIVE STRESS | Phase 3 | After inflammation, before final consolidation |
 | PRO IMMUNE GOLD PLUS | Phase 4 | Consolidation for severe / Grade 4–5 cases |
@@ -293,13 +293,43 @@ Apply in this order; first match wins per kit. When a kit has no explicit row, i
 3. If it is a **systemic / immune** kit → Phase 3.
 4. If it is **PRO IMMUNE GOLD PLUS or a consolidation kit** → Phase 4.
 
+### Root-cause precedence (Phase 1 priority order)
+
+When multiple kits are eligible for Phase 1, exactly one takes the slot. The rest shift to Phase 2+. Apply this precedence top-down — first match wins:
+
+1. **Pregnancy (HEALTHY-9)** — exclusive; no other kit ships during pregnancy.
+2. **Gut-axis kit (GI GOLD)** — if Q10 fires any gut symptom, GI GOLD is Phase 1. The gut-hair axis is upstream of metabolic, hormonal, and inflammatory layers.
+3. **Iron repletion (IRON UP GOLD)** — if Q11 = iron deficiency, iron correction is non-negotiable Phase 1 (cells cannot grow hair without oxygen delivery).
+4. **Acute lactation / weight-loss shield** — LACTIHEALTH or RAPID WEIGHT LOSS SHIELD when those root causes are active.
+5. **Condition-specific root-cause kit** — HAIR FACT ALOPECIA AREATA, HAIR FACT TTM, HAIR FACT NIGHT SHIFT, HAIR FACT FREQUENT FLYERS, FH WELL 3.
+6. **Hormonal kit** — F-PCOS-1 / PRO FACT META B PCOS / META B HYPOTHYROID / THYROID CARE / PERI MENOPAUSE / META B POSTMENOPAUSE.
+7. **Metabolic kit** — PRO FACT META B (for Q7 obesity/sedentary/diet, Q8 chronic, Q4 genetics-F≥30, Q4 post-partum).
+8. **Shaft-repair (HBR)** — when Q3 = broken/short hair.
+9. **PHENOTYPE INFLAMMATION** — terrain clearer (Phase 1 only if nothing above qualifies; otherwise Phase 2).
+10. **HAIR FACT TE GOLD** — Phase 1 only if no stronger root cause fires; otherwise Phase 2.
+
+Everything else cascades into Phase 2+ per the kit→phase table above.
+
 ### Universal rule (multi-factorial)
 
-If the patient triggers 3+ root causes across Q4/Q7/Q8/Q9, **PHENOTYPE INFLAMMATION is forced to Phase 1** regardless of the kit table above. The Sequencer doc states: *"Inflammation is the universal terrain — ALWAYS Phase 1 for multi-factorial cases."*
+If the patient triggers 3+ root causes across Q4/Q7/Q8/Q9, **PHENOTYPE INFLAMMATION is forced to Phase 1** regardless of the kit table above — *unless* a higher-precedence root cause (GI, Iron, Pregnancy) is also active. The Sequencer doc states: *"Inflammation is the universal terrain — ALWAYS Phase 1 for multi-factorial cases."*
 
 ---
 
 ## 6. Worked examples
+
+### Example 0 — Female, 35, GERD + AGA G2 thinning + family history
+
+Triggered: Q10 GERD → GI GOLD + PRO IMMUNE GOLD · Q3 gradual thinning → FPHL · Q4 genetics F≥30 → META B + PRO IMMUNE GOLD (G-4 suppresses FPHL from Q4 path but Q3 still fires it).
+
+Per G-4, Genetics + F ≥ 30 suppresses FPHL **entirely** (not just from Q4). Dedup: {GI GOLD, PRO IMMUNE GOLD, META B}.
+
+Sequence (per root-cause precedence: gut > metabolic > immune):
+- **Phase 1:** PRO FACT GI GOLD (gut-axis upstream — clear gut inflammation first)
+- **Phase 2:** PRO FACT META B (metabolic correction)
+- **Phase 3:** PRO IMMUNE GOLD (systemic immune layer)
+
+
 
 ### Example A — Sanjay (male, age 34, AGA G2, oily scalp, sedentary)
 
