@@ -1,7 +1,12 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { ArtifactType } from "@prisma/client";
-import type { AssessmentArtifact, AssessmentStatusResponse } from "@shared/types/assessment";
+import type {
+  AssessmentArtifact,
+  AssessmentStatusResponse,
+  VideoExperienceBlock,
+} from "@shared/types/assessment";
+import { liftNarratives } from "@/lib/narratives/liftNarratives";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -11,9 +16,12 @@ const PROGRESS_BY_STATUS: Record<string, number> = {
   PENDING: 0,
   QUEUED: 5,
   NORMALIZING: 15,
-  RUNNING_CLINICAL_ENGINE: 35,
-  GENERATING_RECOMMENDATIONS: 55,
-  GENERATING_REPORT: 75,
+  RUNNING_CLINICAL_ENGINE: 30,
+  GENERATING_RECOMMENDATIONS: 45,
+  GENERATING_NARRATIVE: 55,
+  GENERATING_VIDEO_SCRIPT: 65,
+  RENDERING_VIDEO: 80,
+  GENERATING_REPORT: 90,
   COMPLETED: 100,
   PARTIAL_FAILURE: 90,
   FAILED: 0,
@@ -41,52 +49,35 @@ export async function GET(req: Request): Promise<NextResponse> {
   const assessmentId = id.trim();
 
   try {
-    // ── Fetch all data in parallel ─────────────────────────────────────────
-    const [assessment, artifacts, events, logs] = await Promise.all([
-      prisma.assessment.findUnique({
-        where: { id: assessmentId },
-        select: {
-          id: true,
-          status: true,
-          orchestrationStage: true,
-          orchestrationMeta: true,
-          executionId: true,
-          retryCount: true,
-          lastCompletedStage: true,
-          lastError: true,
-          submittedAt: true,
-          queuedAt: true,
-          startedAt: true,
-          completedAt: true,
-          updatedAt: true,
-          patient: { select: { name: true, age: true, gender: true } },
-          clinic: { select: { name: true } },
-        },
-      }),
-      prisma.aIArtifact.findMany({
-        where: { assessmentId },
-        select: {
-          id: true,
-          type: true,
-          content: true,
-          createdAt: true,
-          generationMs: true,
-          schemaVersion: true,
-          engineVersion: true,
-        },
-        orderBy: { createdAt: "asc" },
-      }),
-      prisma.assessmentEvent.findMany({
-        where: { assessmentId },
-        select: { id: true, type: true, stage: true, message: true, durationMs: true, createdAt: true },
-        orderBy: { createdAt: "asc" },
-      }),
-      prisma.orchestrationLog.findMany({
-        where: { assessmentId },
-        select: { id: true, stage: true, status: true, durationMs: true, error: true, createdAt: true },
-        orderBy: { createdAt: "asc" },
-      }),
-    ]);
+    // ── Fetch sequentially, NOT in parallel ────────────────────────────────
+    // The Vercel + Supabase + Prisma combo runs each serverless invocation
+    // with connection_limit=1 on the transaction-pooler. Firing four
+    // findMany() calls in parallel makes three of them wait for the pool
+    // and then trip the 10s pool_timeout, returning 500 even though the
+    // data is ready. Serialising costs ~3x latency on a cold call but
+    // never times out. (See Vercel runtime logs around any /api/assessment/
+    // status burst for the exact stack.) Pair this with a higher
+    // connection_limit in DATABASE_URL when you're ready to revisit.
+    const assessment = await prisma.assessment.findUnique({
+      where: { id: assessmentId },
+      select: {
+        id: true,
+        status: true,
+        orchestrationStage: true,
+        orchestrationMeta: true,
+        executionId: true,
+        retryCount: true,
+        lastCompletedStage: true,
+        lastError: true,
+        submittedAt: true,
+        queuedAt: true,
+        startedAt: true,
+        completedAt: true,
+        updatedAt: true,
+        patient: { select: { name: true, age: true, gender: true } },
+        clinic: { select: { name: true } },
+      },
+    });
 
     if (!assessment) {
       console.warn("[STATUS] NOT FOUND", { assessmentId });
@@ -95,6 +86,40 @@ export async function GET(req: Request): Promise<NextResponse> {
         { status: 404 }
       );
     }
+
+    const artifacts = await prisma.aIArtifact.findMany({
+      where: { assessmentId },
+      select: {
+        id: true,
+        type: true,
+        content: true,
+        createdAt: true,
+        generationMs: true,
+        schemaVersion: true,
+        engineVersion: true,
+      },
+      orderBy: { createdAt: "asc" },
+    });
+
+    // Events + logs are diagnostic-only. Skip them once the run has
+    // settled (COMPLETED / FAILED / PARTIAL_FAILURE) — the preview page
+    // doesn't render anything from them in that state, and they are by
+    // far the heaviest of the four reads as run history grows.
+    const terminal = TERMINAL_STATUSES.has(assessment.status);
+    const events = terminal
+      ? []
+      : await prisma.assessmentEvent.findMany({
+          where: { assessmentId },
+          select: { id: true, type: true, stage: true, message: true, durationMs: true, createdAt: true },
+          orderBy: { createdAt: "asc" },
+        });
+    const logs = terminal
+      ? []
+      : await prisma.orchestrationLog.findMany({
+          where: { assessmentId },
+          select: { id: true, stage: true, status: true, durationMs: true, error: true, createdAt: true },
+          orderBy: { createdAt: "asc" },
+        });
 
     console.log("[STATUS] FOUND", { assessmentId, status: assessment.status });
 
@@ -110,7 +135,13 @@ export async function GET(req: Request): Promise<NextResponse> {
       narratives: artifactTypes.has(ArtifactType.NARRATIVES),
       visualJourney: artifactTypes.has(ArtifactType.VISUAL_JOURNEY),
       report: artifactTypes.has(ArtifactType.REPORT),
+      videoScript: artifactTypes.has(ArtifactType.VIDEO_SCRIPT),
+      video: artifactTypes.has(ArtifactType.AVATAR_VIDEO),
     };
+
+    // ── Derived video block — never exposes providerJobId/internal status ────
+    const videoArtifact = artifacts.find((a) => a.type === ArtifactType.AVATAR_VIDEO);
+    const video: VideoExperienceBlock = deriveVideoBlock(videoArtifact?.content);
 
     // Transform to canonical array format: never object map
     const artifactArray: AssessmentArtifact[] = artifacts.map((artifact) => ({
@@ -122,6 +153,9 @@ export async function GET(req: Request): Promise<NextResponse> {
       schemaVersion: artifact.schemaVersion,
       engineVersion: artifact.engineVersion,
     }));
+
+    const narrativesArtifact = artifacts.find((artifact) => artifact.type === ArtifactType.NARRATIVES);
+    const narratives = narrativesArtifact ? liftNarratives(narrativesArtifact.content) : null;
 
     // ── Stuck detection ───────────────────────────────────────────────────
     const errors: string[] = [];
@@ -168,6 +202,8 @@ export async function GET(req: Request): Promise<NextResponse> {
       completedAt: assessment.completedAt?.toISOString() ?? null,
       artifacts: artifactArray, // GATE #3: Always array, never object map
       artifactPresence,
+      narratives,
+      video,
       patient: assessment.patient,
       clinic: assessment.clinic,
       timing: {
@@ -228,4 +264,30 @@ export async function GET(req: Request): Promise<NextResponse> {
       { status: 500 }
     );
   }
+}
+
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+
+function deriveVideoBlock(content: unknown): VideoExperienceBlock {
+  if (!content || typeof content !== "object") {
+    return { state: "PENDING", url: null, thumbnailUrl: null, durationSec: null };
+  }
+  const v = content as Record<string, unknown>;
+  const status = typeof v.status === "string" ? v.status : "PENDING";
+
+  if (status === "READY" && typeof v.videoUrl === "string") {
+    return {
+      state: "READY",
+      url: v.videoUrl,
+      thumbnailUrl: typeof v.thumbnailUrl === "string" ? v.thumbnailUrl : null,
+      durationSec: typeof v.durationSec === "number" ? v.durationSec : null,
+    };
+  }
+  if (status === "FAILED") {
+    return { state: "UNAVAILABLE", url: null, thumbnailUrl: null, durationSec: null };
+  }
+  if (status === "RENDERING") {
+    return { state: "RENDERING", url: null, thumbnailUrl: null, durationSec: null };
+  }
+  return { state: "PENDING", url: null, thumbnailUrl: null, durationSec: null };
 }
