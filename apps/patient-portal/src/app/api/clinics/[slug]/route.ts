@@ -20,7 +20,26 @@ export async function GET(
         slug: true,
         region: true,
         language: true,
+        address: true,
+        logoUrl: true,
+        tagline: true,
         isActive: true,
+        // Lead clinician = isPrimary first, else oldest active doctor.
+        // Same selection logic is duplicated in two places: keep them in
+        // sync if you change the heuristic.
+        doctors: {
+          where: { isActive: true, deletedAt: null },
+          orderBy: [{ isPrimary: 'desc' }, { createdAt: 'asc' }],
+          take: 1,
+          select: {
+            id: true,
+            name: true,
+            specialization: true,
+            credentials: true,
+            photoUrl: true,
+            bio: true,
+          },
+        },
       },
     });
 
@@ -32,7 +51,11 @@ export async function GET(
       return NextResponse.json({ success: false, error: 'Clinic is not active' }, { status: 403 });
     }
 
-    return NextResponse.json({ success: true, clinic });
+    const { doctors, ...rest } = clinic;
+    return NextResponse.json({
+      success: true,
+      clinic: { ...rest, leadDoctor: doctors[0] ?? null },
+    });
   } catch (err) {
     console.error('[CLINICS API] ERROR', err);
     return NextResponse.json({ success: false, error: 'Internal server error' }, { status: 500 });

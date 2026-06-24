@@ -142,6 +142,11 @@ model Clinic {
   phone   String?
   email   String?
 
+  // Branding — surfaced on the public /q/[clinicSlug] landing page.
+  // All optional; the page falls back to HairOS chrome when unset.
+  logoUrl String?
+  tagline String?
+
   isActive Boolean @default(true)
 
   doctors     Doctor[]
@@ -172,6 +177,12 @@ model Doctor {
   name           String
   email          String @unique
   specialization String?
+
+  // Public-facing clinician profile, shown on the clinic landing page.
+  photoUrl       String?
+  credentials    String?
+  bio            String?
+  isPrimary      Boolean @default(false)
 
   reviewedAssessments Assessment[] @relation("DoctorReviewer")
 
