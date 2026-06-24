@@ -29,6 +29,9 @@ enum AssessmentStatus {
   NORMALIZING
   RUNNING_CLINICAL_ENGINE
   GENERATING_RECOMMENDATIONS
+  GENERATING_NARRATIVE
+  GENERATING_VIDEO_SCRIPT
+  RENDERING_VIDEO
   GENERATING_REPORT
   COMPLETED
   FAILED
@@ -42,6 +45,13 @@ enum AssessmentSource {
   WHATSAPP
 }
 
+enum ReviewDecision {
+  PENDING
+  APPROVED
+  EDITS_REQUESTED
+  REJECTED
+}
+
 enum ArtifactType {
   CLINICAL_REASONING
   SEVERITY_ANALYSIS
@@ -51,6 +61,8 @@ enum ArtifactType {
   THERAPY_PLAN
   VISUAL_JOURNEY
   PIPELINE_RUNTIME
+  VIDEO_SCRIPT
+  AVATAR_VIDEO
 }
 
 enum DeliveryStatus {
@@ -243,6 +255,15 @@ model Assessment {
 
   reviewingDoctorId String?
   reviewingDoctor   Doctor? @relation("DoctorReviewer", fields: [reviewingDoctorId], references: [id])
+
+  // Doctor review (token-link approval flow). Captured free-text for tokens
+  // shared with doctors who don't yet have a Supabase account; once /doctor
+  // auth lands the reviewerName/Email will be backfilled from the session.
+  reviewDecision   ReviewDecision @default(PENDING)
+  reviewerName     String?
+  reviewerEmail    String?
+  reviewNotes      String?
+  reviewedAt       DateTime?
 
   status AssessmentStatus @default(PENDING)
   source AssessmentSource @default(QR)
