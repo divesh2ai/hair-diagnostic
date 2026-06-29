@@ -1,0 +1,184 @@
+{
+  "patientSummary": {
+    "name": "Sara",
+    "age": 43,
+    "gender": "Female",
+    "goal": ["Reduce hair fall and improve quality & growth"],
+    "hairLossDuration": "6–12 months",
+    "hairLossPattern": ["Hair on pillow / floor / shower"],
+    "scalpConcerns": ["Dandruff / white flakes"],
+    "lifestyleFactors": ["Chronic stress"],
+    "medicalFactors": ["PCOS", "Family history of hair thinning"],
+    "previousTreatments": [],
+    "questionnaireSelections": {
+      "duration": "6–12 months",
+      "scalp": ["Dandruff / white flakes"],
+      "hormonal": ["PCOS"],
+      "lifestyle": ["Chronic stress"],
+      "goal": ["Reduce hair fall and improve quality & growth"]
+    },
+    "clinicalInterpretation": [
+      {
+        "signal": "Irregular cycles + parting widening",
+        "condition": "Hormonal & Metabolic Factors",
+        "interpretation": "Persistent shedding, reduced volume, and progressive thinning. Can disrupt normal follicle signalling and shorten healthy growth cycles."
+      },
+      {
+        "signal": "Shedding after stressful period",
+        "condition": "Stress-Related Shedding",
+        "interpretation": "Sudden increase in hair fall during periods of stress. Can push more follicles into the shedding phase."
+      },
+      {
+        "signal": "Family history of thinning",
+        "condition": "Genetic & Androgen-Driven Pattern Hair Loss",
+        "interpretation": "Family history and progressive reduction in density. Increases follicle sensitivity and may contribute to gradual thinning."
+      },
+      {
+        "signal": "Environmental exposure",
+        "condition": "Oxidative Stress",
+        "interpretation": "Smoking, alcohol, or chronic environmental exposure. Gradually wears down the follicle environment over time."
+      },
+      {
+        "signal": "Dandruff / white flakes",
+        "condition": "Scalp Inflammation",
+        "interpretation": "Itching, dandruff, oiliness, or scalp discomfort. Creates a less supportive environment for healthy hair growth."
+      }
+    ]
+  },
+  "rootCauseAnalysis": {
+    "primary": [],
+    "secondary": [],
+    "amplifiers": []
+  },
+  "treatmentStrategy": [
+    {
+      "phase": 1,
+      "kitId": "phenotype_inflammation",
+      "displayName": "Phenotype Inflammation",
+      "whySelected": "Selected because your responses pointed to scalp inflammation signals (Dandruff / white flakes) alongside PCOS hormonal imbalance and chronic stress.",
+      "supportingConditions": ["Scalp Inflammation", "PCOS hormonal imbalance", "Chronic stress"],
+      "keyIngredients": ["Curcumin", "NAC", "Resveratrol", "Vitamin D"],
+      "mechanismOfAction": [
+        "Cytokine suppression — reduces follicular stress signals",
+        "Immune modulation — restores balanced immune response"
+      ],
+      "formulationGroups": []
+    },
+    {
+      "phase": 2,
+      "kitId": "pro_fact_meta_b_pcos",
+      "displayName": "Pro Fact Meta B PCOS",
+      "whySelected": "Selected as part of the protocol for PCOS-driven Hair Loss to address hormonal imbalance and insulin resistance.",
+      "supportingConditions": ["PCOS hormonal imbalance"],
+      "keyIngredients": ["Beta-sitosterol", "Stinging Nettle", "Myo-Inositol", "Melatonin"],
+      "mechanismOfAction": [
+        "Hormonal regulation — reduces androgen excess",
+        "Insulin sensitisation — improves metabolic control"
+      ],
+      "formulationGroups": []
+    },
+    {
+      "phase": 3,
+      "kitId": "pro_immune_5v_veg",
+      "displayName": "Pro Immune 5V (Veg)",
+      "whySelected": "Consolidation phase — selected to lock in regrowth after upstream correction.",
+      "supportingConditions": ["Follicular recovery consolidation"],
+      "keyIngredients": ["Lactoferrin", "Vitamin C", "Vitamin D3", "Pine Bark Extract"],
+      "mechanismOfAction": [
+        "Immune modulation — strengthens innate and adaptive immunity",
+        "Inflammation control — reduces cytokine-driven follicular damage"
+      ],
+      "formulationGroups": []
+    },
+    {
+      "phase": 4,
+      "kitId": "hair_fact_fphl",
+      "displayName": "Hair Fact FPHL",
+      "whySelected": "Selected to support long-term follicle resilience against inherited androgen sensitivity (Female pattern topology with androgen pressure).",
+      "supportingConditions": ["Genetic predisposition"],
+      "keyIngredients": ["MSM", "NMN", "CoQ10", "Quercetin"],
+      "mechanismOfAction": [
+        "Androgen regulation — reduces DHT impact on follicles",
+        "Follicle rejuvenation — supports stronger, thicker hair growth"
+      ],
+      "formulationGroups": []
+    }
+  ],
+  "topicalRecommendations": [],
+  "topicalCautions": [],
+  "recoveryRoadmap": [],
+  "recoveryMilestones": [
+    {
+      "window": "1–2 Months",
+      "bullets": [
+        "Reduction in active hair fall",
+        "Improvement in scalp health and comfort",
+        "Better hair texture and overall hair quality"
+      ]
+    },
+    {
+      "window": "3rd Month",
+      "bullets": [
+        "Early signs of follicular recovery",
+        "Improvement in hair caliber (thickness)",
+        "Appearance of fine new (vellus) hair growth"
+      ]
+    },
+    {
+      "window": "4th Month",
+      "bullets": [
+        "Visible improvement in hair volume and density",
+        "Reduced scalp show-through in responsive areas",
+        "Continued strengthening of existing follicles"
+      ]
+    },
+    {
+      "window": "5th Month onwards",
+      "bullets": [
+        "Further improvement in density and coverage",
+        "Consolidation of regrowth achieved",
+        "Long-term maintenance and stabilization of results"
+      ]
+    }
+  ],
+  "finalClinicalAssessment": {
+    "videoTitle": "",
+    "scene1": "",
+    "scene2": "",
+    "scene3": "",
+    "scene4": "",
+    "fullNarration": ""
+  },
+  "clinicalInsightStory": {
+    "yourHairStory": "",
+    "whyThisMayBeHappening": "",
+    "whyThisPlanWasRecommended": "",
+    "whatToExpect": "",
+    "drivers": [],
+    "treatmentGoals": []
+  },
+  "whyHairosChoseThisPlan": {
+    "categories": [],
+    "sequencingRationale": "",
+    "collectiveRationale": ""
+  },
+  "dietAndLifestyle": [
+    {
+      "condition": "PCOS hormonal imbalance",
+      "recommendation": "Low-glycaemic, high-fibre diet with consistent meal timing.",
+      "expectedBenefit": "Supports insulin sensitivity and reduces androgen-driven follicular pressure."
+    },
+    {
+      "condition": "Chronic stress",
+      "recommendation": "Daily 10-minute decompression routine (breathwork or walk).",
+      "expectedBenefit": "Lowers cortisol exposure on the hair cycle."
+    }
+  ],
+  "generalLifestyleGuide": {
+    "foodsToAvoid": [],
+    "foodsToAdd": [],
+    "lifestyleRecommendations": []
+  },
+  "schemaVersion": "v4",
+  "generatedAt": "2026-06-22T00:00:00.000Z"
+}

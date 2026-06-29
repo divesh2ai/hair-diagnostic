@@ -1,7 +1,7 @@
 "use client";
 
 import { useParams } from "next/navigation";
-import { OrchestrationProgress } from "@/components/processing/OrchestrationProgress";
+import { CinematicProcessing } from "@/components/processing/CinematicProcessing";
 
 export default function ProcessingPage() {
   const params = useParams();
@@ -9,7 +9,7 @@ export default function ProcessingPage() {
   const assessmentId = String(params.assessmentId ?? "");
 
   return (
-    <OrchestrationProgress
+    <CinematicProcessing
       assessmentId={assessmentId}
       clinicSlug={clinicSlug}
     />

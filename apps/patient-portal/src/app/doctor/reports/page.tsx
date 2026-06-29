@@ -3,6 +3,12 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { Filter, RotateCcw, FileText, ClipboardCheck, Inbox } from "lucide-react";
+import { PageContainer } from "@/components/app-shell";
+import {
+  DecisionBadge,
+  SeverityBadge,
+  StatusBadge,
+} from "@/components/ui/StatusBadges";
 
 interface ReportRow {
   id: string;
@@ -64,37 +70,6 @@ const TABS: { id: Tab; label: string; icon: typeof Inbox }[] = [
   { id: "approved",     label: "Approved",      icon: FileText },
 ];
 
-function severityClass(s: string | null) {
-  switch (s) {
-    case "HIGH":
-    case "SEVERE":
-      return "bg-rose-50 text-rose-700 border-rose-200";
-    case "MODERATE":
-      return "bg-amber-50 text-amber-700 border-amber-200";
-    case "LOW":
-    case "MILD":
-      return "bg-emerald-50 text-emerald-700 border-emerald-200";
-    default:
-      return "bg-slate-50 text-slate-600 border-slate-200";
-  }
-}
-
-function statusClass(s: string) {
-  if (s === "COMPLETED") return "bg-emerald-50 text-emerald-700";
-  if (s === "FAILED" || s === "PARTIAL_FAILURE") return "bg-rose-50 text-rose-700";
-  return "bg-sky-50 text-sky-700";
-}
-
-function decisionChip(d: string | null) {
-  switch (d) {
-    case "APPROVED":        return { label: "Approved",        className: "bg-emerald-50 text-emerald-700 border-emerald-200" };
-    case "EDITS_REQUESTED": return { label: "Edits requested", className: "bg-amber-50 text-amber-700 border-amber-200" };
-    case "REJECTED":        return { label: "Rejected",        className: "bg-rose-50 text-rose-700 border-rose-200" };
-    case "PENDING":         return { label: "Pending",         className: "bg-stone-50 text-stone-600 border-stone-200" };
-    default:                return null;
-  }
-}
-
 export default function ReportsPage() {
   const [tab, setTab] = useState<Tab>("needs_review");
   const [filters, setFilters] = useState<Filters>(EMPTY);
@@ -152,7 +127,7 @@ export default function ReportsPage() {
   const reset = () => setFilters(EMPTY);
 
   return (
-    <div className="space-y-6">
+    <PageContainer className="space-y-6">
       {/* ── Editorial header ─────────────────────────────────────────────── */}
       <header className="flex flex-col gap-1">
         <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-teal-700">
@@ -300,7 +275,6 @@ export default function ReportsPage() {
                 </tr>
               )}
               {rows.map((r) => {
-                const chip = decisionChip(r.decision);
                 return (
                   <tr key={r.id} className="hover:bg-stone-50/70">
                     <td className="px-4 py-3 text-slate-700 whitespace-nowrap">
@@ -314,30 +288,24 @@ export default function ReportsPage() {
                     <td className="px-4 py-3 text-slate-700">{r.careDoctorName ?? "—"}</td>
                     <td className="px-4 py-3 text-slate-700">{r.primaryDiagnosis ?? "—"}</td>
                     <td className="px-4 py-3">
-                      {r.severity ? (
-                        <span className={`inline-block rounded-md border px-2 py-0.5 text-xs font-medium ${severityClass(r.severity)}`}>
-                          {r.severity}
-                        </span>
-                      ) : "—"}
+                      <SeverityBadge severity={r.severity} />
                     </td>
                     <td className="px-4 py-3">
-                      <span className={`inline-block rounded-md px-2 py-0.5 text-xs font-medium ${statusClass(r.status)}`}>
-                        {r.status}
-                      </span>
+                      <StatusBadge status={r.status} />
                     </td>
                     <td className="px-4 py-3">
-                      {chip ? (
+                      {r.decision ? (
                         <div className="flex flex-col gap-0.5">
-                          <span className={`inline-block w-fit rounded-md border px-2 py-0.5 text-xs font-medium ${chip.className}`}>
-                            {chip.label}
-                          </span>
+                          <DecisionBadge decision={r.decision} className="w-fit" />
                           {r.decisionReviewerName && (
                             <span className="text-[11px] text-stone-500">
                               by {r.decisionReviewerName}
                             </span>
                           )}
                         </div>
-                      ) : "—"}
+                      ) : (
+                        <span className="text-slate-400 text-xs">—</span>
+                      )}
                     </td>
                     <td className="px-4 py-3 text-right whitespace-nowrap">
                       <Link
@@ -371,7 +339,7 @@ export default function ReportsPage() {
           box-shadow: 0 0 0 3px rgb(14 165 233 / 0.15);
         }
       `}</style>
-    </div>
+    </PageContainer>
   );
 }
 

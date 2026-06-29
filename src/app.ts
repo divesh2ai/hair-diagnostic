@@ -6,6 +6,7 @@ import diagnoseRoute from './routes/diagnose';
 import whatsappRoute from './routes/whatsappWebhook';
 import debugClinicalEngineRoute from './routes/debugClinicalEngine';
 import assessmentsRoute from './routes/assessments';
+import consultationRoute from './routes/consultation';
 
 const app = express();
 app.use(bodyParser.json({ limit: '50mb' }));
@@ -13,6 +14,7 @@ app.use(bodyParser.urlencoded({ limit: '50mb', extended: true }));
 app.use(cors());
 
 app.use('/api/assessments', assessmentsRoute);
+app.use('/api/consultation', consultationRoute);
 app.use('/api/chat', chatRoute);
 app.use('/api/diagnose', diagnoseRoute);
 app.use('/api/whatsapp-webhook', whatsappRoute);

@@ -137,8 +137,8 @@ describe('scoreKits — PREGNANCY single kit', () => {
 // PRO IMMUNE last invariant
 // ─────────────────────────────────────────────────────────────────────────────
 
-describe('scoreKits — PRO IMMUNE always last', () => {
-  test('PRO IMMUNE is the final kit when present', () => {
+describe('scoreKits — PRO IMMUNE precedes pattern kits', () => {
+  test('PRO IMMUNE comes before any pattern kit (FPHL/MPHL) when present', () => {
     const ans = base({
       immunity: ['Alopecia Areata (patchy hair loss)'],
       deficiency: ['Iron / Ferritin deficiency'],
@@ -146,9 +146,13 @@ describe('scoreKits — PRO IMMUNE always last', () => {
     const rec = run(ans, COMPREHENSIVE_BUDGET);
     const kits = rec.rankedKits.map((k) => k.kitId);
     const immuneIdx = kits.findIndex((k) => k.includes('PRO IMMUNE'));
-    if (immuneIdx >= 0) {
-      expect(immuneIdx).toBe(kits.length - 1);
+    const patternIdx = kits.findIndex((k) => /^(MPHL|FPHL)(\s|$|\sPLUS|\sVEG)/.test(k));
+    if (immuneIdx >= 0 && patternIdx >= 0) {
+      expect(immuneIdx).toBeLessThan(patternIdx);
     }
+    // PRO IMMUNE is no longer guaranteed to be the absolute last — IRON UP / GI GOLD
+    // in MID_SUPPORT tier may follow PRO IMMUNE per the locked priority order.
+    // Only PATTERN_KIT_LAST guarantees true tail placement.
   });
 });
 
@@ -189,10 +193,16 @@ describe('scoreKits — RULE 2 (GLP-1 Shield precedence)', () => {
     expect(rec.appliedRules.some((r) => r.includes('GLP1_EARLY'))).toBe(true);
   });
 
-  test('GLP-1 Late → RAPID WEIGHT LOSS SHIELD is kit 2 (phase 2)', () => {
+  test('GLP-1 Late → RAPID WEIGHT LOSS SHIELD leads protocol (TE GOLD stripped: duration > 3 months)', () => {
+    // Locked clinical rule: TE GOLD is reserved for acute shedding (≤ 3 months).
+    // GLP-1 Late means hair loss has been present > 6 months, so TE GOLD is
+    // stripped from the protocol. SHIELD then leads as the sole acute-shedding-
+    // arrest kit; the GLP-1 Late "Shield at position 1" intent is obsolete in
+    // this branch because the kit it was supposed to follow (TE GOLD) is gone.
     const rec = run(base({ cause: ['GLP-1 receptor agonist (hair loss after 6 months)'] }), COMPREHENSIVE_BUDGET);
-    expect(rec.rankedKits[1]!.kitId).toBe('RAPID WEIGHT LOSS SHIELD');
-    expect(rec.appliedRules.some((r) => r.includes('GLP1_LATE'))).toBe(true);
+    expect(rec.rankedKits[0]!.kitId).toBe('RAPID WEIGHT LOSS SHIELD');
+    expect(rec.rankedKits.some((k) => k.kitId.includes('HAIR FACT TE GOLD'))).toBe(false);
+    expect(rec.appliedRules.some((r) => r.includes('TE_GOLD_DURATION_CAP'))).toBe(true);
   });
 
   test('GLP-1 Early: Shield is Phase 1 even after priority lifting', () => {
@@ -252,6 +262,38 @@ describe('scoreKits — PCOS protocols', () => {
     expect(kitIds).toContain('PRO FACT META B');
     expect(kitIds).not.toContain('PRO FACT META B PCOS');
     expect(kitIds).not.toContain('PRO FACT META B HYPOTHYROID');
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Endometriosis + TE duration
+// ─────────────────────────────────────────────────────────────────────────────
+
+describe('scoreKits — endometriosis and TE duration guards', () => {
+  test('endometriosis signal injects FH WELL 3 even when AGA is dominant', () => {
+    const rec = run(base({
+      age: '32',
+      grade: 'Grade 4',
+      hormonal: ['Endometriosis'],
+      duration: '6–12 months',
+      count: '50–100 strands',
+    }), COMPREHENSIVE_BUDGET);
+
+    const ids = rec.rankedKits.map((k) => k.kitId);
+    expect(ids).toContain('FH WELL 3');
+    expect(rec.appliedRules.join('\n')).toContain('FH WELL 3');
+  });
+
+  test('hair fall longer than 3 months strips TE GOLD across goals', () => {
+    const rec = run(base({
+      duration: '3–6 months',
+      cause: ['Stress'],
+    }), COMPREHENSIVE_BUDGET);
+
+    const ids = rec.rankedKits.map((k) => k.kitId);
+    expect(ids).not.toContain('HAIR FACT TE GOLD');
+    expect(ids).not.toContain('HAIR FACT TE GOLD VEG');
+    expect(rec.appliedRules.join('\n')).toContain('TE_GOLD_DURATION_CAP');
   });
 });
 

@@ -50,7 +50,6 @@ export function applyPcosStackRule(
     s.deficiency('Iron') || s.deficiency('Anaemia');
 
   const hasMetabolicSignal = detectMetabolicSignal(ans);
-  const hasDiabetesSignal  = s.thyroid('Pre diabetes') || s.thyroid('Diabetes');
 
   // ── Build stack in clinical priority order ────────────────────────────────
 
@@ -89,15 +88,18 @@ export function applyPcosStackRule(
     rules.push('PCOS_IMMUNE: systemic immune compromise confirmed → PRO IMMUNE added.');
   }
 
-  // PCOS_ONLY + diabetes/pre-diabetes → upgrade F-PCOS-1 to META B PCOS
-  // Covers insulin-androgen axis + AMPK in single kit
-  if (primaryDiagnosis === 'PCOS_ONLY' && hasDiabetesSignal) {
-    const fpcsIdx = phases.findIndex((k) => k === 'F-PCOS -1' || k === 'F-PCOS VEG -1');
-    if (fpcsIdx >= 0 && !phases.includes('PRO FACT META B PCOS')) {
-      phases[fpcsIdx] = 'PRO FACT META B PCOS';
-      rules.push('PCOS_DIABETES_UPGRADE: PCOS_ONLY + diabetes/pre-diabetes → F-PCOS-1 upgraded to PRO FACT META B PCOS.');
-    } else if (fpcsIdx >= 0) {
-      phases.splice(fpcsIdx, 1);
+  // F-PCOS -1 retired (locked clinical rule 2026-06-14). PRO FACT META B PCOS is
+  // the single PCOS kit — it already covers AMPK/insulin sensitisation AND
+  // androgen suppression. No diabetes-upgrade swap needed. Strip any legacy
+  // F-PCOS -1 that may have leaked in from older fixtures or migrations.
+  const legacyFpcosIdx = phases.findIndex((k) => k === 'F-PCOS -1' || k === 'F-PCOS VEG -1');
+  if (legacyFpcosIdx >= 0) {
+    if (!phases.includes('PRO FACT META B PCOS')) {
+      phases[legacyFpcosIdx] = 'PRO FACT META B PCOS';
+      rules.push('PCOS_FPCOS_RETIRED: legacy F-PCOS -1 replaced with PRO FACT META B PCOS (locked rule — F-PCOS -1 retired).');
+    } else {
+      phases.splice(legacyFpcosIdx, 1);
+      rules.push('PCOS_FPCOS_RETIRED: legacy F-PCOS -1 dropped — PRO FACT META B PCOS already present.');
     }
   }
 
@@ -129,16 +131,12 @@ export function applyPcosStackRule(
     }
   }
 
-  // HBR — only for confirmed shaft damage: broken/short strands OR hard water (cortex damage)
-  const hardWater        = s.cause('Hard water') || s.cause('hard');
-  const confirmedBreakage = s.hairtype('Broken') || s.hairtype('short');
-  const heatChem         =
-    s.treatment('Heat') || s.treatment('Chemical') || s.treatment('Straighten') ||
-    s.treatment('Bleach') || s.treatment('Colour') || s.treatment('Perm');
-  const needsHBR = hardWater || confirmedBreakage || (heatChem && confirmedBreakage);
-  if (needsHBR && !phases.includes('HAIR FACT HAIR BREAKAGE REPAIR(HBR)') && phases.length < 5) {
+  // HBR — only for confirmed shaft damage. Hard water is the only reachable
+  // shaft-damage signal in the current questionnaire (Q3 'Broken/short' retired).
+  const hardWater = s.cause('Hard water') || s.cause('hard');
+  if (hardWater && !phases.includes('HAIR FACT HAIR BREAKAGE REPAIR(HBR)') && phases.length < 5) {
     phases.push('HAIR FACT HAIR BREAKAGE REPAIR(HBR)');
-    rules.push('PCOS_HBR: confirmed structural shaft damage → HBR added.');
+    rules.push('PCOS_HBR: hard-water shaft damage → HBR added.');
   }
 
   phases = phases.slice(0, 7); // practical max for PCOS

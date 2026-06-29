@@ -1,4 +1,5 @@
 import type { PatientAnswers } from '../../../types';
+import { isTeGoldDurationAboveThreeMonths } from '../../kit-scorer/rules/teGoldGatingRule';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Types
@@ -96,7 +97,9 @@ function deriveHasCrashDiet(ans: PatientAnswers): boolean {
 
 function deriveIsVeg(ans: PatientAnswers): boolean {
   const diet = ans.diet ?? [];
-  return has(diet, 'Vegetarian') || has(diet, 'Vegan') || has(diet, 'Jain');
+  const hasVegOption = has(diet, 'Vegetarian') || has(diet, 'Vegan') || has(diet, 'Jain');
+  const hasNonVegOption = has(diet, 'Non-vegetarian') || has(diet, 'Pescatarian');
+  return hasVegOption && !hasNonVegOption;
 }
 
 function deriveIsMale(ans: PatientAnswers): boolean {
@@ -145,10 +148,6 @@ function deriveHasPCOS(ans: PatientAnswers): boolean {
   return has(ans.hormonal ?? [], 'PCOS') || has(ans.hormonal ?? [], 'PCOD');
 }
 
-function deriveConfirmedBreakage(ans: PatientAnswers): boolean {
-  return has(ans.hairtype ?? [], 'Broken') || has(ans.hairtype ?? [], 'short');
-}
-
 function deriveHasHBRHardWater(ans: PatientAnswers): boolean {
   return has(ans.cause ?? [], 'Hard water');
 }
@@ -171,6 +170,17 @@ function deriveOxidativeCount(ans: PatientAnswers): number {
 // ─────────────────────────────────────────────────────────────────────────────
 
 function checkTeGoldEligibility(ans: PatientAnswers): KitEligibility | null {
+  if (isTeGoldDurationAboveThreeMonths(ans.duration)) {
+    return {
+      kitId: 'HAIR FACT TE GOLD',
+      status: 'BLOCKED',
+      ruleId: 'SR_009',
+      reason:
+        'TE GOLD suppressed â€” hair fall has been present longer than 3 months. ' +
+        'TE GOLD is reserved for shorter-duration telogen shedding across goals.',
+    };
+  }
+
   const isRegrowGoal = deriveIsRegrowGoal(ans);
   const hasNoVisibleFall = deriveHasNoVisibleFall(ans);
 
@@ -271,23 +281,20 @@ function checkFphlUnder30(ans: PatientAnswers, dominantKey?: string): KitEligibi
 // ─────────────────────────────────────────────────────────────────────────────
 
 function checkHbrEligibility(ans: PatientAnswers): KitEligibility | null {
-  const confirmedBreakage = deriveConfirmedBreakage(ans);
   const hasHBRHardWater = deriveHasHBRHardWater(ans);
   const hasHBRTreatment = deriveHasHBRTreatment(ans);
-  const realShaftDamage = confirmedBreakage || hasHBRHardWater;
-  const heatWithBreakage = hasHBRTreatment && confirmedBreakage;
 
-  if (realShaftDamage || heatWithBreakage) return null; // eligible
+  if (hasHBRHardWater) return null; // eligible
 
-  if (hasHBRTreatment && !confirmedBreakage) {
+  if (hasHBRTreatment) {
     return {
       kitId: 'HAIR FACT HAIR BREAKAGE REPAIR (HBR)',
       status: 'BLOCKED',
       ruleId: 'SR_005',
       reason:
-        'HBR kit blocked — heat/chemical treatment reported but NO broken or short hairs confirmed in hairtype. ' +
-        'Heat/chemical treatment alone is insufficient for HBR prescription. ' +
-        'Patient must also report broken/short hair strands to confirm shaft damage requiring HBR.',
+        'HBR kit blocked — heat/chemical treatment reported but no hard-water shaft-damage signal. ' +
+        'Heat/chemical treatment alone is insufficient for HBR prescription; ' +
+        'hard water (cortex damage) is the corroborating signal required.',
     };
   }
 
@@ -326,18 +333,23 @@ function checkOxidativeStressEligibility(
 // ─────────────────────────────────────────────────────────────────────────────
 
 function checkGiGoldEligibility(ans: PatientAnswers): KitEligibility | null {
+  // Locked clinical rule (2026-06-14): GI GOLD is eligible only for structural
+  // gut-axis signals (GERD / IBS / Acid reflux / Crohn). Constipation, Bloating,
+  // and Indigestion are mild gut symptoms that do not warrant L-Glutamine
+  // mucosal repair or digestive-enzyme supplementation.
   const gut = ans.gut ?? [];
   const hasStrongGutSignal =
-    has(gut, 'IBS') ||
-    has(gut, "Crohn") ||
-    has(gut, 'Acid reflux') ||
     has(gut, 'GERD') ||
-    has(gut, 'Constipation');
+    has(gut, 'IBS') ||
+    has(gut, 'Acid reflux') ||
+    has(gut, 'Acid') ||
+    has(gut, 'Crohn');
 
   if (hasStrongGutSignal) return null; // eligible
 
   const hasMildGutOnly =
-    has(gut, 'Bloating') || has(gut, 'gas') || has(gut, 'Indigestion');
+    has(gut, 'Bloating') || has(gut, 'gas') ||
+    has(gut, 'Indigestion') || has(gut, 'Constipation');
 
   if (hasMildGutOnly) {
     return {
@@ -345,8 +357,9 @@ function checkGiGoldEligibility(ans: PatientAnswers): KitEligibility | null {
       status: 'BLOCKED',
       ruleId: 'SR_008',
       reason:
-        'PRO FACT GI GOLD blocked — mild gut symptoms only (bloating/gas/indigestion) without strong gut signal (IBS/GERD/Crohn/Constipation). ' +
-        'Mild bloating alone does not indicate structural gut-hair axis compromise requiring L-Glutamine mucosal repair or Digestive Enzyme supplementation.',
+        'PRO FACT GI GOLD blocked — mild gut symptoms only (bloating / constipation / indigestion / gas) without structural gut-axis signal ' +
+        '(GERD / IBS / Acid reflux / Crohn). Locked clinical rule: GI GOLD is reserved for confirmed gut-hair axis compromise requiring ' +
+        'L-Glutamine mucosal repair, probiotic restoration, and digestive enzyme supplementation. Mild symptoms are covered by PRO IMMUNE / PHENOTYPE.',
     };
   }
 

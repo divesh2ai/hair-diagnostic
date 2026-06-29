@@ -187,12 +187,26 @@ describe('golden patient fixture regression', () => {
       });
 
       // ── PRO IMMUNE last invariant ─────────────────────────────────────────────
+      //
+      // PRO IMMUNE is normally the final phase, EXCEPT in regrow-goal AGA cases
+      // where the pattern kit (MPHL / FPHL) is the polish kit at the tail and
+      // PRO IMMUNE primes follicles for re-entry just before it.
 
       test('PRO IMMUNE is the final kit when present', () => {
         const kits = result.recommendation.rankedKits;
         const ids  = kits.map((k) => k.kitId);
         const immuneIdx = ids.findIndex((id) => id.includes('PRO IMMUNE'));
-        if (immuneIdx >= 0) {
+        if (immuneIdx < 0) return;
+
+        const tail = ids[ids.length - 1];
+        const tailIsPatternKit = typeof tail === 'string' && /^(MPHL|FPHL)(\s|$)/.test(tail);
+        const isRegrowGoalCase = (result.recommendation.appliedRules ?? []).some((r) =>
+          r.startsWith('REGROW_GOAL_AGA'),
+        );
+
+        if (isRegrowGoalCase && tailIsPatternKit) {
+          expect(immuneIdx).toBe(ids.length - 2);
+        } else {
           expect(immuneIdx).toBe(ids.length - 1);
         }
       });

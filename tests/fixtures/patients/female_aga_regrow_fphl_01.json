@@ -1,6 +1,6 @@
 {
   "id": "female_aga_regrow_fphl_01",
-  "description": "Female AGA regrow-only goal — established pattern loss, shedding has stopped. isRegrowGoal=true → REGROW_GOAL_AGA fires: protocol collapses to [FPHL, PRO IMMUNE GOLD]. TE GOLD must not be prescribed. Tests female AGA regrow protocol and distinction from male (MPHL vs FPHL).",
+  "description": "Female AGA regrow-only goal — established pattern loss, shedding has stopped. isRegrowGoal=true → REGROW_GOAL_AGA fires: TE GOLD stripped, PRO FACT META B retained (non-negotiable for thinning/widening regrowth), and the tail is reordered to PRO IMMUNE → FPHL so DHT blockade lands on primed follicles. Final sequence: [META B, PHENOTYPE INFLAMATION, PRO IMMUNE GOLD, FPHL].",
   "budget": "STANDARD",
   "answers": {
     "sex": "Female",
@@ -26,9 +26,9 @@
     "scalpStates": ["NORMAL_SCALP"],
     "rootCauses": ["GENETICS"],
     "therapyNeeds": ["DHT_SUPPRESSION", "INFLAMMATION_CONTROL", "SHEDDING_ARREST", "METABOLIC_SUPPORT", "FOLLICLE_STIMULATION"],
-    "topKit": "FPHL",
-    "mustIncludeKits": ["FPHL", "PRO IMMUNE GOLD"],
-    "mustExcludeKits": ["HAIR FACT TE GOLD", "HAIR FACT TE GOLD VEG", "MPHL", "LACTIHEALTH"],
+    "topKit": "PRO FACT META B",
+    "mustIncludeKits": ["FPHL", "PRO IMMUNE GOLD", "PRO FACT META B", "PHENOTYPE INFLAMATION"],
+    "mustExcludeKits": ["HAIR FACT TE GOLD", "HAIR FACT TE GOLD VEG", "MPHL", "LACTIHEALTH", "OXIDATIVE STRESS"],
     "mustTriggerRules": ["REGROW_GOAL_AGA"],
     "mustBlockRules": ["ACTIVE_SHEDDING", "GLP1_EARLY", "GLP1_LATE", "RULE1_HYPO_METABOLIC"]
   }

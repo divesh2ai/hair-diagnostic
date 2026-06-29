@@ -225,16 +225,18 @@ export interface FinalClinicalAssessment {
  * Hard rules:
  *  - 2–5 drivers per story. Driver tiers (Primary / Secondary / Contributing)
  *    are used INTERNALLY for ranking only and are NEVER displayed.
- *  - Section 3 must include the canonical personalisation statement and map
- *    drivers → treatment goals. No products, ingredients, or marketing tone.
- *  - Section 4 is structured internally as Stabilisation → Recovery →
- *    Resilience. Phase names are never displayed.
- *  - No timelines ("within X weeks/months"), no regrowth or density promises.
- *  - Target word counts per section:
- *      Section 1 (Your Hair Story):                60–90 words
- *      Section 2 (Why This May Be Happening):      80–120 words
- *      Section 3 (Why This Plan Was Recommended):  80–120 words
- *      Section 4 (What To Expect):                 60–90 words
+ *  - Section 3 names the selected kits and explains, per kit, the problem
+ *    surfaced from the patient's responses and the intended improvement.
+ *    Ingredient lists and detailed mechanisms are still forbidden.
+ *  - Section 4 paraphrases the Universal Recovery Milestone data. Timelines
+ *    are sourced from that data, never invented. No regrowth promises.
+ *  - Section weights (per HairOS clinical-weighting spec): the patient
+ *    experience must prioritise biological explanation over generic
+ *    reporting. Word targets reflect those weights:
+ *      Section 1 (Your Hair Story)                — 10%   ~40–60 words
+ *      Section 2 (What We Found)                  — 65%   ~280–340 words
+ *      Section 3 (Your Recovery Plan)             — 20%   ~90–110 words
+ *      Section 4 (What Recovery Could Look Like)  — 5%    ~25–40 words
  */
 export interface InsightDriver {
   /** Patient-facing label, e.g. "Hormonal & Metabolic Dysfunction". */
@@ -250,11 +252,15 @@ export interface InsightDriver {
 export interface ClinicalInsightStory {
   /** Section 1 — Your Hair Story (60–90 words). */
   yourHairStory: string;
-  /** Section 2 — Why This May Be Happening (80–120 words). */
+  /** Section 2 — What We Found (80–120 words). Field key retained for
+   *  back-compat; the rendered title is "What we found". */
   whyThisMayBeHappening: string;
-  /** Section 3 — Why This Plan Was Recommended (80–120 words). */
+  /** Section 3 — Your Recovery Plan (80–120 words). Field key retained
+   *  for back-compat; the rendered title is "Your recovery plan". */
   whyThisPlanWasRecommended: string;
-  /** Section 4 — What To Expect (60–90 words). */
+  /** Section 4 — What Recovery Could Look Like (60–90 words). Field key
+   *  retained for back-compat; the rendered title is "What recovery could
+   *  look like". */
   whatToExpect: string;
   /** 2–5 drivers ordered by internal tier (tier not exposed). */
   drivers: InsightDriver[];

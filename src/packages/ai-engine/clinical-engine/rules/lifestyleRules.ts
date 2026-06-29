@@ -59,13 +59,11 @@ export function applyLifestyleScores(
   }
 
   // ── Hair breakage (52) — only when structural shaft damage is confirmed ───
-  // Hard water or confirmed broken/short strands. Heat/chemical alone is insufficient.
-  const hasHBRHairtype  = s.hairtype('Broken') || s.hairtype('short');
+  // Hard water is the only reachable shaft-damage signal in the current
+  // questionnaire (Q3 'Broken/short' option retired). Heat/chemical alone is
+  // insufficient.
   const hasHBRHardWater = s.cause('Hard water');
-  const hasHBRTreatment =
-    s.treatment('Heat') || s.treatment('Chemical') || s.treatment('Straighten') ||
-    s.treatment('Bleach') || s.treatment('Colour') || s.treatment('Perm');
-  if (hasHBRHairtype || hasHBRHardWater || (hasHBRTreatment && hasHBRHairtype)) {
+  if (hasHBRHardWater) {
     acc['HAIR_BREAKAGE'] = (acc['HAIR_BREAKAGE'] ?? 0) + 52;
   }
 }

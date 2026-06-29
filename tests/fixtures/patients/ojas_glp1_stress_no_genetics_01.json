@@ -1,0 +1,28 @@
+{
+  "id": "ojas_glp1_stress_no_genetics_01",
+  "description": "32F regrow-goal patient with stress + GLP-1 + B12 deficiency + endometriosis + hypothyroidism + diabetes + obesity + smoking/vaping + dandruff + dry scalp + constipation + chemical treatment. CRITICAL: she did NOT select Genetics or Family history, so narrative must NOT mention Genetic & Androgen-Driven Pattern Hair Loss.",
+  "budget": "STANDARD",
+  "answers": {
+    "sex": "Female",
+    "age": "32",
+    "grade": "Grade 3",
+    "goal": ["No active hair fall but need to better hair growth quality"],
+    "scalp": ["Dandruff", "Dry scalp"],
+    "cause": ["Stress", "Post GLP-1 receptor agonist (hair loss within 6 months)"],
+    "lifestyle": ["Smoking / Vaping", "Obesity / Struggle to lose weight", "Irregular eating time / Outside eating (3-4x/week)"],
+    "hormonal": ["Endometriosis"],
+    "thyroid": ["Hypothyroidism", "Diabetes"],
+    "immunity": ["Asthma"],
+    "deficiency": ["Vitamin B12"],
+    "gut": ["Constipation"],
+    "diet": ["Normal diet"],
+    "treatment": ["Chemical treatment (colour / keratin)"],
+    "duration": "6–12 months",
+    "count": "50–100 strands",
+    "hairtype": []
+  },
+  "expected": {
+    "mustExcludeNarrativeDrivers": ["Genetic & Androgen-Driven Pattern Hair Loss"],
+    "mustIncludeNarrativeDrivers": ["Hormonal & Metabolic Factors", "Stress-Related Shedding", "Nutritional Deficiency", "Oxidative Stress", "Scalp Inflammation"]
+  }
+}

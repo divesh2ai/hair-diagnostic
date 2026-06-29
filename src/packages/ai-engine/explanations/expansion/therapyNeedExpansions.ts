@@ -204,6 +204,90 @@ export const THERAPY_NEED_EXPANSIONS: Record<string, TherapyNeedExpansion> = {
     ],
   },
 
+  DHT_SUPPRESSION: {
+    key: "DHT_SUPPRESSION",
+    title: "DHT Pathway Suppression",
+    clinicalRationale:
+      "Dihydrotestosterone (DHT) miniaturises genetically susceptible follicles. Suppressing 5-alpha reductase activity and reducing intrafollicular DHT slows progression and stabilises shedding in androgenetic presentations.",
+    patientExplanation:
+      "Your protocol targets the hormone pathway that shrinks hair follicles over time. Reducing this signal helps stabilise shedding and protect follicles from further miniaturisation.",
+    therapeuticGoal:
+      "Lower DHT-driven follicle miniaturisation and stabilise the hair growth cycle",
+    supportingSignals: [
+      "Pattern hair loss with temporal or vertex involvement",
+      "Family history of androgenetic alopecia",
+      "Elevated androgen sensitivity markers",
+    ],
+    expectedOutcomes: [
+      "Reduced shedding within 8-12 weeks",
+      "Stabilised miniaturisation over 3-6 months",
+      "Improved hair calibre with sustained therapy",
+    ],
+  },
+
+  FOLLICLE_STIMULATION: {
+    key: "FOLLICLE_STIMULATION",
+    title: "Follicle Reactivation and Growth Stimulation",
+    clinicalRationale:
+      "Dormant or miniaturised follicles require growth-factor support, improved microcirculation, and peptide-mediated signalling to re-enter productive anagen. Stimulation is most effective once shedding is arrested and scalp inflammation is controlled.",
+    patientExplanation:
+      "Once shedding slows, your follicles need active support to wake up and produce stronger hair. This phase focuses on reactivating growth rather than only stopping loss.",
+    therapeuticGoal:
+      "Promote anagen re-entry, improve follicle perfusion, and support regenerative signalling",
+    supportingSignals: [
+      "Thinning with preserved follicle openings",
+      "Regrowth-oriented treatment goal",
+      "Concurrent metabolic or inflammatory drivers controlled",
+    ],
+    expectedOutcomes: [
+      "Early regrowth signals within 3-4 months",
+      "Improved hair density over 6-9 months",
+      "Better shaft calibre in previously miniaturised zones",
+    ],
+  },
+
+  SHEDDING_ARREST: {
+    key: "SHEDDING_ARREST",
+    title: "Acute Shedding Arrest",
+    clinicalRationale:
+      "Telogen-predominant shedding and stress-triggered effluvium require rapid cycle stabilisation before regrowth protocols can work. Arresting excess fall protects existing anagen follicles and prevents further density loss.",
+    patientExplanation:
+      "Your hair is shedding faster than it should. The first priority is to slow that shedding so your follicles can recover and new growth has time to appear.",
+    therapeuticGoal:
+      "Shorten telogen burden, stabilise the hair cycle, and reduce daily fall volume",
+    supportingSignals: [
+      "Diffuse or increased daily hair fall",
+      "Recent stress, illness, surgery, or postpartum trigger",
+      "Shedding-predominant presentation before regrowth focus",
+    ],
+    expectedOutcomes: [
+      "Reduced shedding within 4-8 weeks",
+      "Cycle stabilisation within 2-3 months",
+      "Improved readiness for regrowth-phase therapy",
+    ],
+  },
+
+  HORMONAL_REBALANCING: {
+    key: "HORMONAL_REBALANCING",
+    title: "Hormonal Axis Rebalancing",
+    clinicalRationale:
+      "Oestrogen-androgen imbalance, PCOS-related hyperandrogenism, and perimenopausal transition can all shift follicles toward telogen and miniaturisation. Rebalancing the hormonal environment reduces follicle stress and improves treatment response.",
+    patientExplanation:
+      "Hormone shifts can directly affect how your hair grows and sheds. Supporting hormonal balance helps create a healthier environment for your follicles.",
+    therapeuticGoal:
+      "Normalise hormone-driven follicle stress and improve cycle regularity",
+    supportingSignals: [
+      "PCOS, perimenopause, or post-menopausal transition",
+      "Irregular cycles or hyperandrogenic features",
+      "Hormone-linked diffuse thinning",
+    ],
+    expectedOutcomes: [
+      "Reduced hormone-driven shedding",
+      "Improved response to targeted scalp therapy",
+      "More stable growth cycles over 3-6 months",
+    ],
+  },
+
   MELANOCYTE_PROTECTION: {
     key: "MELANOCYTE_PROTECTION",
     title: "Melanocyte Preservation and Grey Hair Prevention",

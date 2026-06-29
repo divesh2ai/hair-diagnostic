@@ -36,8 +36,8 @@ export const PROTOCOL_SEQUENCER: Record<DiagnosisKey, ProtocolEntry> = {
   // ── MALE / FEMALE PATTERN HAIR LOSS ───────────────────────────────────────
   AGA_MALE_123: {
     label: 'Male Pattern Hair Loss — MPHL (Grade 1-2-3)',
-    rationale: 'Phase 1 TE GOLD arrests active shedding; Phase 2 PHENOTYPE clears NF-kB/TNF-alpha inflammatory terrain so DHT-blockade nutrients can reach follicles; Phase 3 MPHL corrects DHT; Phase 4 META B corrects insulin-androgen axis; Phase 5 PRO IMMUNE last — nutritional regrowth supply into a clean environment',
-    phases: ['HAIR FACT TE GOLD', 'PHENOTYPE INFLAMATION', 'MPHL', 'PRO FACT META B', 'PRO IMMUNE GOLD'],
+    rationale: 'PHENOTYPE clears NF-kB/TNF-alpha perifollicular inflammatory terrain so DHT-blockade nutrients can reach follicles; MPHL corrects DHT-driven miniaturisation. META B injected only when metabolic signals are present (obesity/insulin resistance/sedentary/crash diet). PRO IMMUNE injected only when immune signals are present (illness/surgery/nutritional/regrow goal). TE GOLD injected only for acute shedding ≤ 3 months.',
+    phases: ['HAIR FACT TE GOLD', 'PHENOTYPE INFLAMATION', 'MPHL'],
   },
   AGA_MALE_45: {
     label: 'Male Pattern Hair Loss — MPHL (Grade 4-5 Advanced)',
@@ -46,8 +46,8 @@ export const PROTOCOL_SEQUENCER: Record<DiagnosisKey, ProtocolEntry> = {
   },
   AGA_FEMALE_123: {
     label: 'Female Pattern Hair Loss — FPHL (Grade 1-2-3)',
-    rationale: 'Phase 1 TE GOLD arrests shedding; Phase 2 PHENOTYPE clears inflammatory terrain; Phase 3 FPHL corrects androgenetic miniaturisation; Phase 4 META B corrects metabolic terrain; Phase 5 PRO IMMUNE last',
-    phases: ['HAIR FACT TE GOLD', 'PHENOTYPE INFLAMATION', 'FPHL', 'PRO FACT META B', 'PRO IMMUNE GOLD'],
+    rationale: 'PHENOTYPE clears NF-kB/TNF-alpha perifollicular inflammatory terrain; FPHL corrects androgenetic miniaturisation. META B injected only when metabolic signals are present. PRO IMMUNE injected only when immune signals are present. TE GOLD injected only for acute shedding ≤ 3 months.',
+    phases: ['HAIR FACT TE GOLD', 'PHENOTYPE INFLAMATION', 'FPHL'],
   },
   AGA_FEMALE_45: {
     label: 'Female Pattern Hair Loss — FPHL (Grade 4-5 Advanced)',
@@ -58,8 +58,8 @@ export const PROTOCOL_SEQUENCER: Record<DiagnosisKey, ProtocolEntry> = {
   // ── PCOS ──────────────────────────────────────────────────────────────────
   PCOS_ONLY: {
     label: 'PCOS — Hormonal Hair Loss',
-    rationale: 'F-PCOS-1 corrects androgen excess and insulin-AMPK pathway (Phase 1); PHENOTYPE clears inflammation (Phase 2); TE GOLD addresses concurrent shedding (Phase 3)',
-    phases: ['F-PCOS -1', 'PHENOTYPE INFLAMATION', 'HAIR FACT TE GOLD'],
+    rationale: 'PRO FACT META B PCOS corrects androgen excess + insulin-AMPK pathway in one disease-specific kit (Phase 1); PHENOTYPE clears inflammation (Phase 2); TE GOLD addresses concurrent shedding (Phase 3). F-PCOS -1 retired — META B PCOS supersedes it (locked clinical rule).',
+    phases: ['PRO FACT META B PCOS', 'PHENOTYPE INFLAMATION', 'HAIR FACT TE GOLD'],
   },
   PCOS_OBESITY: {
     label: 'PCOS + Metabolic (Insulin Resistance)',
@@ -92,11 +92,9 @@ export const PROTOCOL_SEQUENCER: Record<DiagnosisKey, ProtocolEntry> = {
     rationale: 'PERI kit stabilises hormonal fluctuation first; FPHL corrects androgenetic pattern driven by oestrogen decline; TE GOLD stops active shedding; PRO IMMUNE last. PRO FACT META B injected at runtime when metabolic signals present',
     phases: ['HAIR FACT PERI MENOPAUSE', 'FPHL', 'HAIR FACT TE GOLD', 'PRO IMMUNE GOLD'],
   },
-  MENOPAUSE: {
-    label: 'Menopause',
-    rationale: 'META B MENOPAUSE corrects sustained oestrogen decline and metabolic shift; FPHL corrects androgenetic pattern; TE GOLD addresses concurrent shedding',
-    phases: ['PRO FACT META B MENOPAUSE', 'FPHL', 'HAIR FACT TE GOLD'],
-  },
+  // MENOPAUSE protocol retired 2026-06-15 — bare 'Menopause' hormonal option
+  // removed from the questionnaire, so this protocol key is no longer derivable.
+  // PERI_MENOPAUSE and POST_MENOPAUSE cover the continuum.
   POST_MENOPAUSE: {
     label: 'Post-Menopause',
     rationale: 'META B POSTMENOPAUSE corrects post-menopausal metabolic shift; FPHL corrects androgenetic pattern; TE GOLD addresses shedding; PRO IMMUNE last',
@@ -203,9 +201,9 @@ export const PROTOCOL_SEQUENCER: Record<DiagnosisKey, ProtocolEntry> = {
 
   // ── MULTI-FACTORIAL ───────────────────────────────────────────────────────
   MULTI: {
-    label: 'Multi-factorial (Stress + Gut + Pattern combined)',
-    rationale: 'Inflammation is the universal terrain for multi-factorial — always Phase 1; TE GOLD stops active shedding; GI GOLD restores absorption; AGA_GENDER corrects pattern loss last',
-    phases: ['PHENOTYPE INFLAMATION', 'HAIR FACT TE GOLD', 'PRO FACT GI GOLD', 'AGA_GENDER'],
+    label: 'Multi-factorial (Stress + Pattern combined)',
+    rationale: 'Inflammation is the universal terrain for multi-factorial — always Phase 1; TE GOLD stops active shedding; AGA_GENDER corrects pattern loss last. GI GOLD removed from base — only injected when GERD / IBS / Acid / Crohn confirmed (locked rule).',
+    phases: ['PHENOTYPE INFLAMATION', 'HAIR FACT TE GOLD', 'AGA_GENDER'],
   },
 
   // ── EARLY GREYING ─────────────────────────────────────────────────────────

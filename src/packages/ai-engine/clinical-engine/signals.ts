@@ -52,14 +52,24 @@ export function extractFlags(ans: PatientAnswers): ClinicalFlags {
   const hasGreyGoal   = /early greying|greying/i.test(rawGoal);
   const hasGLP1Early  = (ans.cause ?? []).some((c) => c.includes('within 6 months'));
   const hasGLP1Late   = (ans.cause ?? []).some((c) => c.includes('after 6 months'));
+  const hasCrashDiet  =
+    s.cause('Post crash') || s.cause('crash diet') ||
+    s.diet('Crash') || s.diet('Keto');
   const hasNoVisibleFall = /thinning|no visible fall/i.test(count);
 
   const isPregnant =
     s.hormonal('pregnant') || s.hormonal('Pregnancy') || s.cause('Currently pregnant');
 
-  const isVeg = (ans.diet ?? []).some(
+  // isVeg is true only when the patient is EXCLUSIVELY vegetarian/vegan/jain.
+  // If non-veg or pescatarian is also selected, standard kit variants are used.
+  const diet = ans.diet ?? [];
+  const hasVegOption = diet.some(
     (d) => d.includes('Vegetarian') || d.includes('Vegan') || d.includes('Jain')
   );
+  const hasNonVegOption = diet.some(
+    (d) => d.includes('Non-vegetarian') || d.includes('Pescatarian')
+  );
+  const isVeg = hasVegOption && !hasNonVegOption;
 
   // Active shedding = not a regrow-only goal, not thinning-only, plus at least one shedding signal.
   const hasActiveShedding =
@@ -86,6 +96,7 @@ export function extractFlags(ans: PatientAnswers): ClinicalFlags {
     hasNoVisibleFall,
     hasGLP1Early,
     hasGLP1Late,
+    hasCrashDiet,
     age: parseInt(String(ans.age), 10) || 25,
     goal: rawGoal,
     grade,

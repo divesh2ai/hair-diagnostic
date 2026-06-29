@@ -1,9 +1,19 @@
-import { NextResponse } from 'next/server';
+﻿import { NextResponse } from 'next/server';
 import { PrismaClient, ArtifactType } from '@prisma/client';
 import { generateAndStoreReports } from '@hairos/packages/pdf-engine';
 
 const prisma = new PrismaClient();
 type PdfPayload = Parameters<typeof generateAndStoreReports>[0];
+
+function slugifyName(name: string): string {
+  return name
+    .toLowerCase()
+    .normalize('NFKD')
+    .replace(/[̀-ͯ]/g, '')
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+    .slice(0, 60);
+}
 
 export async function POST(req: Request) {
   try {
@@ -101,20 +111,27 @@ export async function POST(req: Request) {
 export async function GET(req: Request) {
   const { searchParams } = new URL(req.url);
   const assessmentId = searchParams.get('id');
+  const download = searchParams.get('download') === '1';
 
   if (!assessmentId) {
     return NextResponse.json({ error: 'Missing assessment id' }, { status: 400 });
   }
 
-  const report = await prisma.aIArtifact.findUnique({
-    where: {
-      assessmentId_type: {
-        assessmentId,
-        type: ArtifactType.REPORT,
+  const [report, assessment] = await Promise.all([
+    prisma.aIArtifact.findUnique({
+      where: {
+        assessmentId_type: {
+          assessmentId,
+          type: ArtifactType.REPORT,
+        },
       },
-    },
-    select: { content: true },
-  });
+      select: { content: true },
+    }),
+    prisma.assessment.findUnique({
+      where: { id: assessmentId },
+      select: { patient: { select: { name: true } } },
+    }),
+  ]);
 
   const content =
     report?.content && typeof report.content === 'object' && !Array.isArray(report.content)
@@ -126,5 +143,25 @@ export async function GET(req: Request) {
     return NextResponse.json({ error: 'PDF not ready yet' }, { status: 202 });
   }
 
-  return NextResponse.redirect(patientPdfUrl);
+  const response = await fetch(patientPdfUrl);
+  if (!response.ok || !response.body) {
+    return NextResponse.json({ error: 'Failed to fetch PDF' }, { status: 502 });
+  }
+
+  const patientSlug = slugifyName(assessment?.patient?.name ?? '') || `hair-dossier-${assessmentId}`;
+  const filename = `${patientSlug}.pdf`;
+
+  const headers = new Headers(response.headers);
+  headers.set('Content-Type', response.headers.get('content-type') ?? 'application/pdf');
+  headers.set('Cache-Control', 'no-store');
+  headers.set(
+    'Content-Disposition',
+    download ? `attachment; filename="${filename}"` : `inline; filename="${filename}"`
+  );
+
+  return new NextResponse(response.body, {
+    status: 200,
+    headers,
+  });
 }
+

@@ -11,12 +11,15 @@ export function applyHormonalScores(ans: PatientAnswers, acc: ScoreAccumulator):
   if (s.hormonal('Post-menopause') || s.hormonal('Post menopause') || s.hormonal('Post-Menopause')) {
     acc['POST_MENOPAUSE'] = (acc['POST_MENOPAUSE'] ?? 0) + 98;
   }
-  if (s.hormonal('Menopause') && !s.hormonal('Peri') && !s.hormonal('Post')) {
-    acc['MENOPAUSE'] = (acc['MENOPAUSE'] ?? 0) + 98;
-  }
+  // Bare 'Menopause' hormonal option retired 2026-06-15 — no questionnaire path
+  // produces this signal. MENOPAUSE score branch removed; PERI / POST handle
+  // the menopause continuum.
+  //
+  // Use the menopause-specific substrings only — bare 'peri' would collide with
+  // "Heavy bleeding periods" (locked rule 2026-06-15).
   const hasPeri =
     s.hormonal('Peri-menopause') || s.hormonal('Peri menopause') ||
-    s.hormonal('Perimenopause')   || s.hormonal('peri') || s.hormonal('Peri-Menopause');
+    s.hormonal('Perimenopause')   || s.hormonal('Peri-Menopause');
   if (hasPeri) {
     acc['PERI_MENOPAUSE'] = (acc['PERI_MENOPAUSE'] ?? 0) + 98;
   }
@@ -37,13 +40,23 @@ export function applyHormonalScores(ans: PatientAnswers, acc: ScoreAccumulator):
   }
 
   // ── Post-partum TE ────────────────────────────────────────────────────────
-  // Mutually exclusive: "not feeding" → TE_DELIVERY, else → TE_POSTPREG
-  const postPartumNotFeeding =
-    (s.cause('Post partum') && s.cause('not feeding')) ||
-    (s.cause('Post partum') && !s.hormonal('breastfeeding') && !s.cause('breastfeed'));
-  if (postPartumNotFeeding) {
+  // Mutually exclusive feeding states from the cause step (questionnaire uses
+  // "still feeding" / "not feeding" — NOT "breastfeeding"). Hormonal step uses
+  // "Post-delivery or breastfeeding" which is implicitly the still-feeding path.
+  //
+  //   Explicit "not feeding"                 → TE_DELIVERY
+  //   "Post partum — still feeding" OR
+  //     "Post-delivery or breastfeeding"      → TE_POSTPREG (LACTIHEALTH path)
+  //   Bare "Post partum" with no qualifier    → TE_POSTPREG (default to feeding;
+  //                                              safer to include LACTIHEALTH)
+  const postPartumCause       = s.cause('Post partum');
+  const explicitlyNotFeeding  = s.cause('not feeding');
+  const explicitlyStillFeeding =
+    s.cause('still feeding') || s.hormonal('breastfeeding') || s.hormonal('Post-delivery');
+
+  if (postPartumCause && explicitlyNotFeeding) {
     acc['TE_DELIVERY'] = (acc['TE_DELIVERY'] ?? 0) + 90;
-  } else if (s.cause('Post partum') || s.hormonal('Post-delivery') || s.hormonal('breastfeeding')) {
+  } else if (postPartumCause || explicitlyStillFeeding) {
     acc['TE_POSTPREG'] = (acc['TE_POSTPREG'] ?? 0) + 92;
   }
 }

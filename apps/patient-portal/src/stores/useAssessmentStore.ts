@@ -127,8 +127,11 @@ export const useAssessmentStore = create<AssessmentState>()(
       onRehydrateStorage: () => (state) => {
         if (!state) return;
         const protocol = defaultProtocol;
-        const derived = computeDerivedState(protocol, state.answers ?? {}, state.currentStepIndex ?? 0);
-        Object.assign(state, { protocol, ...derived });
+        const persistedIndex = state.currentStepIndex ?? 0;
+        const safeIndex =
+          persistedIndex >= 0 && persistedIndex < protocol.length ? persistedIndex : 0;
+        const derived = computeDerivedState(protocol, state.answers ?? {}, safeIndex);
+        Object.assign(state, { protocol, currentStepIndex: safeIndex, ...derived });
       },
     }
   )

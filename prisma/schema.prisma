@@ -1,5 +1,5 @@
 generator client {
-  provider        = "prisma-client-js"
+  provider = "prisma-client-js"
 }
 
 datasource db {
@@ -72,6 +72,105 @@ enum DeliveryStatus {
   FAILED
 }
 
+enum InvitationStatus {
+  PENDING
+  ACCEPTED
+  REVOKED
+  EXPIRED
+}
+
+// Ordered by addendum §6 preference.
+enum NotificationChannel {
+  WHATSAPP
+  SMS
+  EMAIL
+  IN_APP
+}
+
+// Subscription tiers — controls clinic-level quotas (assessments/month, doctors,
+// storage). Super Admin upgrades/downgrades; usage tracked separately.
+enum SubscriptionPlan {
+  TRIAL
+  STARTER
+  PROFESSIONAL
+  ENTERPRISE
+}
+
+enum SubscriptionStatus {
+  ACTIVE
+  PAST_DUE
+  SUSPENDED
+  CANCELED
+  EXPIRED
+}
+
+// Supported regional languages. Adding a language = extending this enum +
+// translation files; business logic stays untouched.
+enum SupportedLanguage {
+  EN
+  HI
+  MR
+  GU
+  PA
+  TA
+  TE
+}
+
+// Operational status for a Clinic — distinct from `isActive` (which is a
+// legacy soft-on/off). Super Admin transitions the lifecycle here; UI shows
+// this as the canonical state.
+enum ClinicStatus {
+  ACTIVE
+  SUSPENDED
+  ARCHIVED
+}
+
+// Lifecycle of a Consultation aggregate. A Consultation always has exactly one
+// "current" ConsultationVersion; older versions are retained for audit.
+enum ConsultationStatus {
+  DRAFT
+  AWAITING_DOCTOR_REVIEW
+  REVISED
+  APPROVED
+  ARCHIVED
+}
+
+// Outbox event kinds emitted by the consultation orchestrator. Handlers
+// subscribe by type; payload shape is defined in the orchestrator package.
+enum ConsultationEventType {
+  CONSULTATION_CREATED
+  CONSULTATION_UPDATED
+  CONSULTATION_APPROVED
+  DOCTOR_REVIEW_COMPLETED
+  REPORT_GENERATED
+  PDF_GENERATED
+  VIDEO_GENERATION_REQUESTED
+  VIDEO_GENERATED
+  RAG_INDEX_REQUESTED
+  PATIENT_NOTIFICATION_REQUESTED
+  PATIENT_NOTIFIED
+  FOLLOWUP_CREATED
+}
+
+// Approval state captured on each ConsultationVersion. APPROVED versions are
+// the ones surfaced to patients; PENDING_REVIEW + REVISION_REQUESTED versions
+// are visible only to clinicians.
+enum ConsultationApprovalStatus {
+  DRAFT
+  PENDING_REVIEW
+  APPROVED
+  REVISION_REQUESTED
+  REJECTED
+}
+
+// Status of an outbox event row. Dispatch flips PENDING -> PROCESSED on
+// successful handler completion, or PENDING -> FAILED on terminal failure.
+enum ConsultationEventStatus {
+  PENDING
+  PROCESSED
+  FAILED
+}
+
 //////////////////////////////////////////////////////
 // ORGANIZATION (top of tenant hierarchy)
 //////////////////////////////////////////////////////
@@ -90,8 +189,9 @@ model Organization {
   timezone String  @default("Asia/Kolkata")
   isActive Boolean @default(true)
 
-  clinics Clinic[]
-  members OrganizationMember[]
+  clinics     Clinic[]
+  members     OrganizationMember[]
+  invitations ClinicInvitation[]
 
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
@@ -107,10 +207,12 @@ model OrganizationMember {
   organizationId String
   organization   Organization @relation(fields: [organizationId], references: [id])
 
-  supabaseUserId String    @unique // auth.users.id from Supabase
+  supabaseUserId String     @unique // auth.users.id from Supabase
   role           SystemRole
   name           String
-  email          String    @unique
+  email          String     @unique
+  // Mobile = WhatsApp number (India-first). Required per addendum §4.
+  phone          String
 
   isActive Boolean @default(true)
 
@@ -142,16 +244,44 @@ model Clinic {
   phone   String?
   email   String?
 
-  // Branding — surfaced on the public /q/[clinicSlug] landing page.
-  // All optional; the page falls back to HairOS chrome when unset.
-  logoUrl String?
-  tagline String?
+  // Branding — surfaced on the public /q/[clinicSlug] landing page, doctor
+  // workspace chrome, PDF + WhatsApp reports. All optional; the consumer
+  // falls back to HairOS chrome when unset.
+  logoUrl        String?
+  tagline        String?
+  primaryColor   String? // hex e.g. "#1A73E8" — workspace + report accents
+  secondaryColor String? // hex — secondary accents, header gradient
+  accentColor    String? // hex — call-to-action / highlight
+  footerText     String? // report + PDF footer
+  website        String?
+  whatsappNumber String? // E.164, e.g. "+919876543210"
+  pdfBranding    Json? // { footerText, watermarkUrl, headerStyle, ... }
+  reportBranding Json? // { coverStyle, sectionTheme, ... } for in-app reports
 
-  isActive Boolean @default(true)
+  // Patient-facing locales offered by this clinic. Subset of SupportedLanguage.
+  // Empty = all locales offered (platform default).
+  supportedLanguages SupportedLanguage[] @default([])
 
-  doctors     Doctor[]
-  patients    Patient[]
-  assessments Assessment[]
+  // General clinic settings bag — timezone overrides, business hours,
+  // assessment duration, auto-archive days, report approval, feature flags.
+  // Shape declared in lib/clinic/settings.ts; stored as JSON to avoid
+  // churning the schema as toggles evolve.
+  settings         Json?
+  // WhatsApp business-cloud config — businessName, default template ids,
+  // welcome/reminder copy, connectionStatus. Shape in lib/clinic/whatsapp.ts.
+  whatsappSettings Json?
+
+  status   ClinicStatus @default(ACTIVE)
+  isActive Boolean      @default(true)
+
+  subscription Subscription?
+
+  doctors       Doctor[]
+  patients      Patient[]
+  assessments   Assessment[]
+  members       ClinicMember[]
+  invitations   ClinicInvitation[]
+  consultations Consultation[]
 
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
@@ -159,6 +289,129 @@ model Clinic {
 
   @@index([organizationId])
   @@index([slug])
+}
+
+// Non-doctor clinic staff (CLINIC_ADMIN, STAFF) bound to a single Clinic and
+// to a Supabase auth user. Doctors keep their own model (Doctor) because they
+// carry clinical attributes (specialization, public bio, isPrimary). The JWT
+// custom_access_token_hook reads this table to inject `clinic_id` for roles
+// that aren't doctors. See memory: project_jwt_custom_claims.
+model ClinicMember {
+  id String @id @default(cuid())
+
+  clinicId String
+  clinic   Clinic @relation(fields: [clinicId], references: [id])
+
+  supabaseUserId String // auth.users.id from Supabase
+  role           SystemRole // expected: CLINIC_ADMIN | STAFF
+  name           String
+  email          String
+  // Mobile = WhatsApp number. Required per addendum §4.
+  phone          String
+
+  isActive Boolean @default(true)
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  @@unique([clinicId, supabaseUserId])
+  @@unique([clinicId, email])
+  @@unique([clinicId, phone])
+  @@index([clinicId])
+  @@index([supabaseUserId])
+}
+
+// Invitation to join either an Organization (ORG_ADMIN) or a Clinic
+// (CLINIC_ADMIN | STAFF | DOCTOR). Exactly one of clinicId/organizationId
+// is set per row — enforced at the API layer and by the CHECK constraint
+// added in the migration. The recipient receives a link containing the
+// raw token; the server hashes incoming tokens before lookup so a DB
+// leak doesn't expose redeemable invites.
+model ClinicInvitation {
+  id String @id @default(cuid())
+
+  // Scope — exactly one set
+  clinicId String?
+  clinic   Clinic? @relation(fields: [clinicId], references: [id])
+
+  organizationId String?
+  organization   Organization? @relation(fields: [organizationId], references: [id])
+
+  // India-first identity: phone (WhatsApp) is primary, email is secondary.
+  // Either must be present; both is preferred. Enforced by CHECK constraint
+  // (ClinicInvitation_contact_required) in the accompanying migration.
+  email String?
+  phone String?
+  name  String?
+
+  role SystemRole
+
+  // Notification channel chosen at creation. WHATSAPP is the default per
+  // addendum §6; sender falls back through SMS → EMAIL → IN_APP.
+  channel   NotificationChannel @default(WHATSAPP)
+  sentAt    DateTime?
+  sendError String?
+
+  // sha256(rawToken). Raw token is returned exactly once at creation; only
+  // the hash is stored so a DB leak can't expose redeemable invites.
+  tokenHash String @unique
+
+  invitedBySupabaseUserId String?
+  invitedByEmail          String?
+  invitedByPhone          String?
+
+  status                   InvitationStatus @default(PENDING)
+  expiresAt                DateTime
+  acceptedAt               DateTime?
+  acceptedBySupabaseUserId String?
+  revokedAt                DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([clinicId])
+  @@index([organizationId])
+  @@index([email])
+  @@index([phone])
+  @@index([status])
+}
+
+//////////////////////////////////////////////////////
+// SUBSCRIPTION (per-clinic plan + quotas)
+//////////////////////////////////////////////////////
+
+// One row per Clinic. Super Admin manages plan/status; usage counters reset
+// at periodEnd. Hard limits live here; the AI Command Center reads them.
+model Subscription {
+  id String @id @default(cuid())
+
+  clinicId String @unique
+  clinic   Clinic @relation(fields: [clinicId], references: [id])
+
+  plan   SubscriptionPlan   @default(TRIAL)
+  status SubscriptionStatus @default(ACTIVE)
+
+  // Quota limits — null = unlimited.
+  monthlyAssessmentLimit Int?
+  doctorSeatLimit        Int?
+  storageMbLimit         Int?
+
+  // Current period usage (incremented by orchestration / upload pipelines).
+  assessmentsThisPeriod Int @default(0)
+  storageMbUsed         Int @default(0)
+
+  periodStart DateTime  @default(now())
+  periodEnd   DateTime?
+
+  // Free-form notes from Super Admin.
+  notes String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([status])
+  @@index([plan])
 }
 
 //////////////////////////////////////////////////////
@@ -175,14 +428,29 @@ model Doctor {
   clinic   Clinic @relation(fields: [clinicId], references: [id])
 
   name           String
-  email          String @unique
+  email          String  @unique
+  // Mobile = WhatsApp number. Required per addendum §4.
+  phone          String?
   specialization String?
 
   // Public-facing clinician profile, shown on the clinic landing page.
-  photoUrl       String?
-  credentials    String?
-  bio            String?
-  isPrimary      Boolean @default(false)
+  photoUrl    String?
+  credentials String?
+  bio         String?
+  isPrimary   Boolean @default(false)
+
+  // Doctor avatar (workspace-internal, distinct from public photoUrl) +
+  // signature applied to approved reports + preferred UI language.
+  avatarUrl         String?
+  signatureUrl      String?
+  preferredLanguage SupportedLanguage @default(EN)
+
+  // Clinical credentials shown on reports + PDF. `bio` (legacy) and
+  // `biography` coexist — `biography` is the editable long-form used in the
+  // Clinic Admin profile editor; `bio` remains the short public string.
+  qualification      String?
+  registrationNumber String?
+  biography          String?
 
   reviewedAssessments Assessment[] @relation("DoctorReviewer")
 
@@ -218,8 +486,9 @@ model Patient {
   age    Int?
   gender String?
 
-  identifiers PatientIdentifier[]
-  assessments Assessment[]
+  identifiers   PatientIdentifier[]
+  assessments   Assessment[]
+  consultations Consultation[]
 
   isActive Boolean @default(true)
 
@@ -270,11 +539,11 @@ model Assessment {
   // Doctor review (token-link approval flow). Captured free-text for tokens
   // shared with doctors who don't yet have a Supabase account; once /doctor
   // auth lands the reviewerName/Email will be backfilled from the session.
-  reviewDecision   ReviewDecision @default(PENDING)
-  reviewerName     String?
-  reviewerEmail    String?
-  reviewNotes      String?
-  reviewedAt       DateTime?
+  reviewDecision ReviewDecision @default(PENDING)
+  reviewerName   String?
+  reviewerEmail  String?
+  reviewNotes    String?
+  reviewedAt     DateTime?
 
   status AssessmentStatus @default(PENDING)
   source AssessmentSource @default(QR)
@@ -282,9 +551,9 @@ model Assessment {
   orchestrationStage String?
   orchestrationMeta  Json?
   executionId        String?
-  retryCount          Int     @default(0)
-  lastError           String?
-  lastCompletedStage  String?
+  retryCount         Int     @default(0)
+  lastError          String?
+  lastCompletedStage String?
 
   rawResponses Json?
 
@@ -300,6 +569,7 @@ model Assessment {
   analyticsEvents    AnalyticsEvent[]
   whatsappDeliveries WhatsappDelivery[]
   auditLogs          AuditLog[]
+  consultations      Consultation[]
 
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
@@ -354,6 +624,7 @@ model AIArtifact {
   @@index([assessmentId])
   @@index([assessmentId, type])
 }
+
 //////////////////////////////////////////////////////
 // ORCHESTRATION / PIPELINE LOGGING
 //////////////////////////////////////////////////////
@@ -364,13 +635,13 @@ model OrchestrationLog {
   assessmentId String
   assessment   Assessment @relation(fields: [assessmentId], references: [id])
 
-  stage      String
-  status     String
-  durationMs Int?
-  confidence Float?
+  stage       String
+  status      String
+  durationMs  Int?
+  confidence  Float?
   uncertainty Json?
-  metadata   Json?
-  error      String?
+  metadata    Json?
+  error       String?
 
   createdAt DateTime @default(now())
 
@@ -381,17 +652,17 @@ model OrchestrationLog {
 // Full event sourcing log — every lifecycle transition is recorded here.
 // Used for orchestration debugging, audit trails, and the viewer timeline.
 model AssessmentEvent {
-  id           String   @id @default(cuid())
+  id           String     @id @default(cuid())
   assessmentId String
   assessment   Assessment @relation(fields: [assessmentId], references: [id])
 
-  type         String   // SUBMITTED | QUEUED | ORCHESTRATION_STARTED | etc.
-  stage        String?
-  message      String?
-  metadata     Json?
-  durationMs   Int?
+  type       String // SUBMITTED | QUEUED | ORCHESTRATION_STARTED | etc.
+  stage      String?
+  message    String?
+  metadata   Json?
+  durationMs Int?
 
-  createdAt    DateTime @default(now())
+  createdAt DateTime @default(now())
 
   @@index([assessmentId])
   @@index([type])
@@ -456,7 +727,7 @@ model AuditLog {
   // Who performed the action
   actorId   String?
   actorRole SystemRole?
-  actorType String?    // "doctor" | "admin" | "system" | "patient"
+  actorType String? // "doctor" | "admin" | "system" | "patient"
 
   // What was acted upon
   assessmentId String?
@@ -472,6 +743,31 @@ model AuditLog {
   @@index([entityType, entityId])
   @@index([actorId])
   @@index([assessmentId])
+}
+
+//////////////////////////////////////////////////////
+// PLATFORM SETTINGS (Super Admin owned, singleton)
+//////////////////////////////////////////////////////
+
+// Singleton row — enforced by `singletonKey = 'singleton'` unique. Holds
+// platform-wide defaults the Super Admin tunes from /admin/settings.
+model PlatformSettings {
+  id           String @id @default(cuid())
+  singletonKey String @unique @default("singleton")
+
+  platformName            String            @default("HairOS")
+  defaultTheme            String            @default("system") // light | dark | system
+  defaultLanguage         SupportedLanguage @default(EN)
+  defaultWhatsappTemplate String?
+
+  // AI defaults (read-only in this phase — surfaced for visibility).
+  aiModelDefault String?
+  aiNotes        String?
+
+  versionInfo String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 //////////////////////////////////////////////////////
@@ -561,4 +857,121 @@ model Recommendation {
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+}
+
+//////////////////////////////////////////////////////
+// CONSULTATION AGGREGATE (Sprint 2 — orchestrator output)
+//////////////////////////////////////////////////////
+
+// The Consultation aggregate root. One per Assessment per clinical workflow.
+// Holds a pointer to the latest ConsultationVersion; older versions remain
+// immutable for audit + diffing. Tenant-scoped via clinicId.
+model Consultation {
+  id String @id @default(cuid())
+
+  assessmentId String
+  assessment   Assessment @relation(fields: [assessmentId], references: [id])
+
+  clinicId String
+  clinic   Clinic @relation(fields: [clinicId], references: [id])
+
+  patientId String
+  patient   Patient @relation(fields: [patientId], references: [id])
+
+  status ConsultationStatus @default(DRAFT)
+
+  // Pointer to the latest version. Always set after createConsultation.
+  currentVersionId String?              @unique
+  currentVersion   ConsultationVersion? @relation("CurrentVersion", fields: [currentVersionId], references: [id])
+
+  versions ConsultationVersion[] @relation("ConsultationVersions")
+  events   ConsultationEvent[]
+
+  createdBy String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([assessmentId])
+  @@index([clinicId])
+  @@index([patientId])
+  @@index([clinicId, status])
+}
+
+// Immutable snapshot of a consultation's content. New versions are appended
+// on doctor edits; the canonical Consultation JSON lives in `content`.
+model ConsultationVersion {
+  id String @id @default(cuid())
+
+  consultationId String
+  consultation   Consultation @relation("ConsultationVersions", fields: [consultationId], references: [id])
+
+  // Monotonic per consultation — 1, 2, 3 …
+  contentVersion Int
+  schemaVersion  String @default("v1")
+
+  // Snapshot of @shared/types/consultation.Consultation.
+  content Json
+
+  // Per-engine version stamps captured at composition time. Used for cache
+  // invalidation and replay.
+  engineVersions Json
+
+  // Deterministic SHA-256 of normalized `content`. Used for idempotency:
+  // re-running the pipeline with identical inputs skips creating a duplicate
+  // version.
+  contentHash String
+
+  // AI provenance — captured for regression testing + audit. Null on
+  // versions produced purely by deterministic engines (no LLM in the loop).
+  llmModel             String?
+  promptVersion        String?
+  knowledgeBaseVersion String?
+
+  // Clinical approval lifecycle. Patient-facing surfaces should only show
+  // versions where approvalStatus = APPROVED.
+  approvalStatus ConsultationApprovalStatus @default(PENDING_REVIEW)
+  approvedBy     String?
+  approvedAt     DateTime?
+
+  // Doctor-supplied notes captured at approval time (e.g., reason for edit).
+  // Kept on the version row so audits don't need to chase the audit log.
+  approvalNotes String?
+
+  createdBy String
+  createdAt DateTime @default(now())
+
+  // Back-reference used only when this row is the current pointer.
+  currentOf Consultation? @relation("CurrentVersion")
+
+  @@unique([consultationId, contentVersion])
+  @@index([consultationId])
+  @@index([contentHash])
+}
+
+// Durable outbox of domain events emitted by the orchestrator. Written in the
+// same transaction as the version that produced them; dispatched out-of-band
+// by an in-process handler today, ready for a real queue later.
+model ConsultationEvent {
+  id String @id @default(cuid())
+
+  consultationId String
+  consultation   Consultation @relation(fields: [consultationId], references: [id])
+
+  type    ConsultationEventType
+  status  ConsultationEventStatus @default(PENDING)
+  payload Json
+
+  // The version that caused the event, when applicable. Null for events that
+  // are version-independent (e.g., PATIENT_NOTIFICATION_REQUESTED).
+  consultationVersionId String?
+
+  attempts    Int       @default(0)
+  lastError   String?
+  processedAt DateTime?
+
+  createdAt DateTime @default(now())
+
+  @@index([consultationId])
+  @@index([status, createdAt])
+  @@index([type, status])
 }

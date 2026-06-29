@@ -1,11 +1,13 @@
 import { z } from "zod";
 import type {
   AssessmentArtifact,
+  AssessmentNarratives,
   AssessmentReportPayload,
   AssessmentStatusResponse,
 } from "@shared/types/assessment";
 import { artifactMapByType, normalizeArtifacts, safeArray, safeObject } from "@/lib/safeData";
 import { normalizeArtifactsResponse, verifyArtifactShape } from "@/lib/artifacts/normalizeResponse";
+import { liftNarratives } from "@/lib/narratives/liftNarratives";
 
 const statusValues = [
   "PENDING",
@@ -125,6 +127,21 @@ export function normalizeAssessmentReportPayload(raw: unknown): AssessmentReport
     logs: [],
   };
 
+  const rawNarratives = safeObject(raw).narratives as AssessmentNarratives | null | undefined;
+  const narratives: AssessmentNarratives | null =
+    rawNarratives ?? liftNarratives(artifactByType.NARRATIVES?.content) ?? null;
+
+  const rawVideo = safeObject(raw).video as Record<string, unknown> | undefined;
+  const videoState = (rawVideo?.state as string | undefined) ?? "PENDING";
+  const video: AssessmentReportPayload["video"] = {
+    state: (videoState === "READY" || videoState === "RENDERING" || videoState === "UNAVAILABLE"
+      ? videoState
+      : "PENDING") as AssessmentReportPayload["video"]["state"],
+    url: (rawVideo?.url as string | null | undefined) ?? null,
+    thumbnailUrl: (rawVideo?.thumbnailUrl as string | null | undefined) ?? null,
+    durationSec: (rawVideo?.durationSec as number | null | undefined) ?? null,
+  };
+
   return {
     assessmentId: response.assessmentId ?? "",
     status: response.status ?? "PENDING",
@@ -138,6 +155,8 @@ export function normalizeAssessmentReportPayload(raw: unknown): AssessmentReport
     artifacts,
     artifactByType,
     artifactPresence,
+    narratives,
+    video,
     processing: {
       status: (response.status ?? "PENDING") as AssessmentReportPayload["processing"]["status"],
       progressPercent: response.progressPercent ?? 0,
@@ -169,6 +188,7 @@ export function mergeStatusIntoReport(
     artifacts,
     artifactByType,
     artifactPresence: { ...previous.artifactPresence, ...next.artifactPresence },
+    narratives: next.narratives ?? previous.narratives,
     patient: next.patient ?? previous.patient,
     clinic: next.clinic ?? previous.clinic,
     events: next.events.length > 0 ? next.events : previous.events,

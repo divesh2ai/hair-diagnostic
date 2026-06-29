@@ -312,7 +312,14 @@ export interface NarrativePipelineOutput {
   readonly doctorReport: DoctorReport;
   readonly patientReport: PatientReport;
   readonly pdfPayload: PDFPayload;
+  /** @deprecated Legacy 7-scene cinematic script. Kept for video pipeline back-compat. */
   readonly avatarScript?: AvatarScript;
+  /**
+   * Runtime-agnostic 5-chapter doctor consultation. First-class artifact —
+   * generated automatically on every pipeline run alongside the report.
+   * See: packages/ai-engine/narrative-engine/consultation/types.ts
+   */
+  readonly doctorConsultation: import('./consultation/types').DoctorConsultationScript;
   readonly dashboardCard: DoctorDashboardCard;
   readonly whatsappSummary?: WhatsAppSummary;
   readonly metadata: NarrativeMetadata;

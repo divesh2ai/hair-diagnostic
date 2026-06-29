@@ -1,0 +1,5 @@
+{
+  "name": "Fluence Pharma WhatsApp Bot",
+  "description": "A RAG-based chatbot that diagnoses hair symptoms and recommends Fluence Pharma kits via WhatsApp.",
+  "requestFramePermissions": []
+}

@@ -6,6 +6,7 @@ import type { KitExplanationItem } from '../types';
 import { KIT_EXPLANATIONS } from '../dictionaries/kits';
 import { THERAPY_NEED_EXPLANATIONS } from '../dictionaries/therapyNeeds';
 import { lookupOrFallback, formatBullet, deduplicateBullets, normaliseKey } from '../utils';
+import { getKitSelectionLeadIn } from '../../shared/kitSelectionOpeners';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // buildKitExplanation
@@ -67,6 +68,11 @@ function buildWhySelected(
   therapyNeeds: TherapyNeeds
 ): string[] {
   const bullets: string[] = [];
+  const leadIn = getKitSelectionLeadIn(scoredKit.kitId);
+
+  if (leadIn) {
+    bullets.push(formatBullet(leadIn));
+  }
 
   // Therapy need explanations (patient-facing) for each matched need
   for (const need of scoredKit.matchedNeeds) {

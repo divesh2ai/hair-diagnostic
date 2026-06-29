@@ -4,6 +4,42 @@ import { rateLimit } from '@/lib/rate-limit';
 import { safeDispatchOrchestration } from '@/lib/orchestration/dispatch';
 import { AssessmentSource, AssessmentStatus, Prisma } from '@prisma/client';
 
+// ─── Patient name + age normalisation ────────────────────────────────────────
+// Names must be letters/spaces/.'- only and stored in Proper Case.
+// Age must be a whole number between 10 and 150.
+
+const AGE_MIN = 10;
+const AGE_MAX = 150;
+
+function sanitiseName(raw: string): string {
+  return raw.replace(/[^A-Za-z\s.'-]/g, '').replace(/\s+/g, ' ').trim();
+}
+
+function toProperCase(value: string): string {
+  return value
+    .toLowerCase()
+    .replace(/(^|[\s.'-])([a-z])/g, (_m, sep: string, ch: string) => sep + ch.toUpperCase());
+}
+
+function normaliseName(raw: unknown): { value: string; rejected: boolean } {
+  if (typeof raw !== 'string') return { value: '', rejected: false };
+  const containedDigit = /\d/.test(raw);
+  const cleaned = toProperCase(sanitiseName(raw));
+  return { value: cleaned, rejected: containedDigit };
+}
+
+function normaliseAge(raw: unknown): { value: number | null; error: string | null } {
+  if (raw === null || raw === undefined || raw === '') return { value: null, error: null };
+  const n = typeof raw === 'number' ? raw : Number(raw);
+  if (!Number.isFinite(n) || !Number.isInteger(n)) {
+    return { value: null, error: 'Age must be a whole number.' };
+  }
+  if (n < AGE_MIN || n > AGE_MAX) {
+    return { value: null, error: `Age must be between ${AGE_MIN} and ${AGE_MAX}.` };
+  }
+  return { value: n, error: null };
+}
+
 // ─── Types ───────────────────────────────────────────────────────────────────
 
 interface SubmitBody {
@@ -117,10 +153,16 @@ export async function POST(req: Request) {
 
     // ── STEP 3: Persist assessment atomically ──────────────────────────────────
     // Extract patient demographics from answers (real protocol IDs: age, sex, name)
-    const patientName =
-      (patientInfo.name ?? '').trim() ||
-      String(answers.name ?? '').trim() ||
-      'Anonymous';
+    const rawName =
+      (patientInfo.name ?? '').trim() || String(answers.name ?? '').trim() || '';
+    const nameNorm = normaliseName(rawName);
+    if (nameNorm.rejected) {
+      return NextResponse.json(
+        { success: false, error: 'Patient name cannot contain numbers — use letters only.' },
+        { status: 400 },
+      );
+    }
+    const patientName = nameNorm.value || 'Anonymous';
 
     const patientPhone =
       (patientInfo.phone ?? '').trim() ||
@@ -130,8 +172,22 @@ export async function POST(req: Request) {
       (patientInfo.email ?? '').trim() ||
       null;
 
-    const patientAge =
-      answers.age !== undefined ? Number(answers.age) : null;
+    const ageNorm = normaliseAge(answers.age);
+    if (ageNorm.error) {
+      return NextResponse.json(
+        { success: false, error: ageNorm.error },
+        { status: 400 },
+      );
+    }
+    const patientAge = ageNorm.value;
+
+    // Mirror the normalised values into the answers payload so downstream
+    // engines (clinical, narrative, report) see the cleaned versions.
+    const normalisedAnswers: Record<string, unknown> = {
+      ...answers,
+      name: patientName,
+      ...(patientAge !== null ? { age: patientAge } : {}),
+    };
 
     const patientGender =
       (answers.sex as string | undefined) ??
@@ -148,7 +204,7 @@ export async function POST(req: Request) {
           name:      patientName,
           phone:     patientPhone,
           email:     patientEmail,
-          age:       patientAge !== null && !isNaN(patientAge) ? patientAge : null,
+          age:       patientAge,
           gender:    patientGender,
         },
       });
@@ -162,13 +218,13 @@ export async function POST(req: Request) {
           reviewingDoctorId: doctor?.id ?? null,
           status:            AssessmentStatus.PENDING,
           source:            AssessmentSource.WEB,
-          rawResponses:      answers as Prisma.InputJsonValue,
+          rawResponses:      normalisedAnswers as Prisma.InputJsonValue,
         },
       });
 
       // Persist each question-answer pair as a structured AssessmentResponse row.
       // Enables per-question analytics and future re-processing without re-parsing rawResponses.
-      const responseRows = Object.entries(answers).map(([questionId, answer]) => ({
+      const responseRows = Object.entries(normalisedAnswers).map(([questionId, answer]) => ({
         assessmentId: newAssessment.id,
         questionId,
         answer: (Array.isArray(answer) ? answer : answer) as Prisma.InputJsonValue,

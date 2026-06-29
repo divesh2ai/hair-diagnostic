@@ -43,3 +43,5 @@ prisma/migrations_backup/
 
 # react-pdf cache
 .next/cache/
+
+.vercel

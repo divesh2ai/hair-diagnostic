@@ -27,6 +27,7 @@ import {
   ROOT_CAUSE_EXPLANATIONS,
 } from "../../ai-engine/explanations/expansion";
 import type { ComposedNarrative } from "../../ai-engine/explanations/composers/types";
+import { validateComposedNarrative } from "../validation/validateContentPopulation";
 
 /**
  * Complete assembled narratives payload with all sections
@@ -218,12 +219,17 @@ function buildFallbackNarrative(
  * the narratives stage to FAIL whenever any composer produced sparse output
  * for a profile that didn't match a populated template fragment.
  */
+function isPopulationReady(narrative: ComposedNarrative, section: string): boolean {
+  if (isDegenerate(narrative)) return false;
+  return validateComposedNarrative(narrative, section).valid;
+}
+
 function ensureNonEmpty(
   narrative: ComposedNarrative,
   section: string,
   context: ExplanationContext
 ): ComposedNarrative {
-  if (!isDegenerate(narrative)) return narrative;
+  if (isPopulationReady(narrative, section)) return narrative;
 
   // Surface the gap clearly — same severity as the original throw,
   // but non-blocking. Includes profile fingerprint to make the
@@ -236,7 +242,7 @@ function ensureNonEmpty(
     scalpStates: cp.scalpStates,
   });
   console.warn(
-    `[NarrativeAssembly] ${section} returned degenerate ComposedNarrative; ` +
+    `[NarrativeAssembly] ${section} returned unusable ComposedNarrative; ` +
     `falling back to deterministic minimum content. Profile fingerprint: ${fingerprint}`
   );
 

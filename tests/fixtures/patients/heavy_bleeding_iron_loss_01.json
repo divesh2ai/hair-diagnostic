@@ -1,0 +1,29 @@
+{
+  "id": "heavy_bleeding_iron_loss_01",
+  "description": "30F with heavy menstrual bleeding declared. Chronic monthly iron loss must trigger IRON_DEFICIENCY root cause AND lift IRON UP GOLD to Phase 1 (top). No other strong drivers — straightforward iron-loss case.",
+  "budget": "STANDARD",
+  "answers": {
+    "sex": "Female",
+    "age": "30",
+    "grade": "Grade 2",
+    "goal": ["Reduce hair fall"],
+    "scalp": ["Normal scalp"],
+    "cause": [],
+    "lifestyle": [],
+    "hormonal": ["Heavy bleeding periods"],
+    "thyroid": [],
+    "immunity": [],
+    "deficiency": [],
+    "gut": [],
+    "diet": ["Normal diet"],
+    "treatment": [],
+    "duration": "6–12 months",
+    "count": "50–100 strands",
+    "hairtype": []
+  },
+  "expected": {
+    "mustIncludeKits": ["IRON UP GOLD"],
+    "ironUpIsPhase1": true,
+    "rootCauses": ["IRON_DEFICIENCY"]
+  }
+}

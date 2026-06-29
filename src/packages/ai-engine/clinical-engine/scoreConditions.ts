@@ -100,8 +100,10 @@ function scoreRegrowConditions(
   let dominantKey: DiagnosisKey = 'REGROW_ONLY';
 
   if (s.hormonal('Post-menopause') || s.hormonal('Post menopause'))        dominantKey = 'POST_MENOPAUSE';
-  else if (s.hormonal('Menopause') && !s.hormonal('Peri'))                  dominantKey = 'MENOPAUSE';
-  else if (s.hormonal('Peri-menopause') || s.hormonal('peri'))              dominantKey = 'PERI_MENOPAUSE';
+  // Bare 'Menopause' hormonal option retired 2026-06-15 — MENOPAUSE dominantKey
+  // branch removed; PERI / POST handle the continuum.
+  else if (s.hormonal('Peri-menopause') || s.hormonal('Perimenopause') ||
+           s.hormonal('Peri menopause'))                                     dominantKey = 'PERI_MENOPAUSE';
   else if (s.hormonal('PCOS') || s.hormonal('PCOD')) {
     const pcosObese =
       s.hormonal('Obesity') || s.lifestyle('Obesity') ||

@@ -12,6 +12,27 @@ export { buildDoctorDashboardCard } from './buildDoctorDashboardCard';
 export { buildWhatsAppSummary } from './buildWhatsAppSummary';
 export { buildPrognosisNarrative, buildTherapyExplanations, buildFollowupPlan } from './buildFinalNarrative';
 
+// Doctor consultation (5-chapter runtime-agnostic script — the new primary
+// experience; replaces the cinematic avatar script as the consultation source
+// of truth, though build3DAvatarScript stays for legacy callers).
+export {
+  buildDoctorConsultation,
+  validateDoctorConsultation,
+  CONSULTATION_CHAPTER_ORDER,
+  CONSULTATION_SCRIPT_VERSION,
+  type DoctorConsultationScript,
+  type ConsultationChapter,
+  type ConsultationChapterId,
+  type ConsultationGreeting,
+  type ConsultationClosing,
+  type ConsultationContext,
+  type ConsultationLanguage,
+  type ConsultationMetadata,
+  type FollowUpPrompt,
+  type GestureCategory,
+  type BuildDoctorConsultationOptions,
+} from './consultation';
+
 // Types
 export type {
   NarrativePipelineInput,

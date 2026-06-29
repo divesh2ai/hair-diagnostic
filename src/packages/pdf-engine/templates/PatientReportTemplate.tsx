@@ -5,6 +5,7 @@ import { CinematicCover } from '../components/CinematicCover';
 import { VisualEducationBlock } from '../components/VisualEducationBlock';
 import { PatientClinicalSummary } from '../components/PatientClinicalSummary';
 import { AdjunctProtocolSection } from '../components/AdjunctProtocolSection';
+import { DossierReportPages } from '../components/DossierReportPages';
 
 // ─── Phase colour palette ─────────────────────────────────────────────────────
 
@@ -228,6 +229,23 @@ export const PatientReportTemplate = ({
   const sections = Array.isArray(payload.visualJourney?.sections)
     ? payload.visualJourney.sections
     : [];
+  const clinicalReport = payload.clinicalReport ?? null;
+
+  if (clinicalReport) {
+    return (
+      <Document>
+        <Page size="A4">
+          <CinematicCover
+            patient={payload.patient}
+            clinic={payload.clinic}
+            doctor={payload.doctor}
+            date={payload.createdAt}
+          />
+        </Page>
+        <DossierReportPages report={clinicalReport} />
+      </Document>
+    );
+  }
 
   return (
     <Document>

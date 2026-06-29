@@ -1,5 +1,6 @@
 import type { KitId, DiagnosisKey } from '../../../types';
 import type { KitScorerContext } from '../types';
+import { isTeGoldDurationAboveThreeMonths } from './teGoldGatingRule';
 
 const TE_GOLD_VARIANTS = new Set<KitId>(['HAIR FACT TE GOLD', 'HAIR FACT TE GOLD VEG']);
 
@@ -10,6 +11,7 @@ export function applyActiveSheddingRule(
   _primaryDiagnosis: DiagnosisKey
 ): KitScorerContext {
   const { isVeg, isRegrowGoal, hasNoVisibleFall, hasActiveShedding } = ctx.flags;
+  const durationTooLong = isTeGoldDurationAboveThreeMonths(ctx.flags.duration);
 
   // v39: "Just thinning, no visible fall" → TE GOLD must NEVER be recommended
   if (hasNoVisibleFall) {
@@ -20,6 +22,18 @@ export function applyActiveSheddingRule(
       appliedRules: [
         ...ctx.appliedRules,
         'NO_VISIBLE_FALL: TE GOLD removed. Patient reports thinning only — no active shedding phase.',
+      ],
+    };
+  }
+
+  if (durationTooLong) {
+    const phases = ctx.phases.filter((k) => !TE_GOLD_VARIANTS.has(k));
+    return {
+      ...ctx,
+      phases,
+      appliedRules: [
+        ...ctx.appliedRules,
+        'TE_GOLD_DURATION_CAP: TE GOLD removed on final pass - hair fall duration exceeds 3 months, so TE GOLD is not recommended.',
       ],
     };
   }

@@ -462,10 +462,10 @@ export const KITS_KB: KitKnowledgeRegistry = {
   // ───────────────────────────────────────────────────────────────────────────
   // OXIDATIVE STRESS
   // ───────────────────────────────────────────────────────────────────────────
-  'OXIDATIVE STRESS SHIELD': {
-    kitId: 'OXIDATIVE STRESS SHIELD',
-    displayName: 'Oxidative Stress Shield',
-    shortName: 'Ox Stress Shield',
+  'OXIDATIVE STRESS': {
+    kitId: 'OXIDATIVE STRESS',
+    displayName: 'Oxidative Stress Correction',
+    shortName: 'Ox Stress',
     category: 'antioxidant',
     description:
       'Antioxidant + mitochondrial + microcirculatory formula for high-oxidative-load profiles ' +

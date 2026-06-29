@@ -28,6 +28,12 @@ export interface QuestionOption {
     url: string;
     alt: string;
   };
+  /** Inline illustration (SVG/PNG with transparent bg). Rendered centered,
+   *  smaller than `image`. Distinguishes editorial diagrams from photography. */
+  illustration?: {
+    url: string;
+    alt: string;
+  };
   severityLevel?: 1 | 2 | 3 | 4 | 5;
   clinicalTags?: string[];
   followUpQuestionId?: string;
@@ -53,12 +59,48 @@ export interface Question {
   validation?: {
     min?: number;
     max?: number;
+    /** Length bounds for text inputs. */
+    minLength?: number;
+    maxLength?: number;
+    /** Regex pattern for text inputs (string form, compiled at runtime). */
     pattern?: string;
+    /** Optional placeholder text shown when the field is empty. */
+    placeholder?: string;
     errorMessage?: string;
   };
+  /** Optional UI format hint (e.g. "name") used by the renderer to apply
+   *  field-specific input handling (title-case, digit stripping, etc). */
+  uiFormat?: "name" | "number" | "text";
 
   // Skip logic: if true, this question is skipped
   skipIf?: LogicCondition[];
+
+  /**
+   * Lightweight conditional visibility. If `answers[questionId]` does NOT
+   * match `value`, the question is hidden, skipped during validation, and
+   * excluded from progress counts. Simpler dual of `skipIf` for the common
+   * "show only when X = Y" pattern (gender gates, follow-up branches, etc.).
+   *
+   * `value` semantics:
+   *  - string  : exact match against single-select answers, or `.includes`
+   *              against multi-select arrays.
+   *  - string[]: matches if any element of `value` matches as above.
+   */
+  showIf?: {
+    questionId: string;
+    value: string | string[];
+  };
+
+  /**
+   * Presentation tier — controls heading size, grid density, and spacing
+   * without changing the renderer architecture. Defaults to "standard".
+   *  - `high_impact` : hero question (e.g. "Pick your hair type") — larger
+   *                    heading, bigger cards, generous spacing.
+   *  - `standard`    : the current default behaviour.
+   *  - `compact`     : tighter grid + smaller heading for high-volume sections
+   *                    (e.g. symptom checklists).
+   */
+  presentationTier?: 'high_impact' | 'standard' | 'compact';
 
   // Filter logic: options to hide based on conditions
   filterOptions?: {

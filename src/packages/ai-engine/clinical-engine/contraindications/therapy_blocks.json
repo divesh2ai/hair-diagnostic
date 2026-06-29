@@ -361,9 +361,7 @@
         "required": {
           "operator": "OR",
           "conditions": [
-            "hairtype includes 'Broken' OR 'short'",
-            "cause includes 'Hard water'",
-            { "operator": "AND", "conditions": ["treatment includes Heat OR Chemical", "hairtype includes 'Broken' OR 'short'"] }
+            "cause includes 'Hard water'"
           ]
         },
         "insufficient_alone": [
@@ -373,13 +371,11 @@
       },
       "effect": "GATE",
       "kitGated": "HAIR FACT HAIR BREAKAGE REPAIR (HBR)",
-      "clinicalRationale": "Heat/chemical treatment damages the hair shaft but does not by itself cause the specific type of breakage HBR targets. Broken/short hairs in hairtype OR hard water in cause are required clinical corroboration.",
+      "clinicalRationale": "Heat/chemical treatment damages the hair shaft but does not by itself cause the specific type of breakage HBR targets. Hard water in cause is the required clinical corroboration. (Q3 'Broken/short' hairtype option retired — no longer a valid corroborating signal.)",
       "variables": {
-        "confirmedBreakage": "hairtype includes 'Broken' OR 'short hairs'",
         "hasHBRHardWater": "cause includes 'Hard water'",
         "hasHBRTreatment": "treatment includes 'Heat' OR 'Chemical'",
-        "heatWithBreakage": "hasHBRTreatment AND confirmedBreakage",
-        "realShaftDamage": "confirmedBreakage OR hasHBRHardWater"
+        "realShaftDamage": "hasHBRHardWater"
       },
       "sourceCodeReference": "getFunnelKits lines 4817-4830; matchProtocol lines 4360-4367"
     },

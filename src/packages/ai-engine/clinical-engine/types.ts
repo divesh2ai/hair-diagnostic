@@ -17,6 +17,8 @@ export interface ClinicalFlags {
   // GLP-1 state
   hasGLP1Early: boolean;
   hasGLP1Late: boolean;
+  // Rapid weight loss / crash diet (non-GLP-1 trigger for Shield kit)
+  hasCrashDiet: boolean;
   // Scalars
   age: number;
   // Raw answer strings used by downstream rules

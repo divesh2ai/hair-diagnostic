@@ -58,7 +58,10 @@ function deriveRootCauses(ans: PatientAnswers): RootCause[] {
 
   if (s.cause('Stress') || s.cause('Anxiety') || s.cause('Depression')) causes.push('STRESS');
   if (s.cause('Genetics') || s.cause('Family history'))                  causes.push('GENETICS');
-  if (s.deficiency('Iron') || s.deficiency('Anaemia'))                   causes.push('IRON_DEFICIENCY');
+  if (s.deficiency('Iron') || s.deficiency('Anaemia') ||
+      s.hormonal('Heavy bleeding'))                                       causes.push('IRON_DEFICIENCY');
+  if (s.deficiency('B12') || s.deficiency('Vitamin B12') ||
+      s.deficiency('Vitamin D') || s.deficiency('D3'))                    causes.push('POOR_NUTRITION');
   if (s.thyroid('Hypothyroidism'))                                        causes.push('HYPOTHYROID');
   if (s.thyroid('Hyperthyroidism'))                                       causes.push('HYPERTHYROID');
   if (s.hormonal('PCOS') || s.hormonal('PCOD'))                          causes.push('PCOS');
@@ -66,7 +69,9 @@ function deriveRootCauses(ans: PatientAnswers): RootCause[] {
       s.lifestyle('Obesity') || s.lifestyle('Sedentary'))                 causes.push('METABOLIC');
   if (s.cause('Nutritional') || s.diet('poor') || s.diet('Irregular'))   causes.push('POOR_NUTRITION');
   if (s.cause('Post partum') || s.hormonal('breastfeeding'))             causes.push('POST_PARTUM');
-  if (s.gut('IBS') || s.gut('GERD') || s.gut('Bloating') || s.gut('Crohn')) causes.push('GUT_MALABSORPTION');
+  // Locked clinical rule: GUT_MALABSORPTION cause derived only from structural gut signals
+  // (GERD / IBS / Acid / Crohn) — not from Bloating / Constipation / Indigestion.
+  if (s.gut('IBS') || s.gut('GERD') || s.gut('Acid') || s.gut('Crohn')) causes.push('GUT_MALABSORPTION');
   if (s.lifestyle('Smoking') || s.lifestyle('Vaping') || s.lifestyle('Alcohol')) causes.push('OXIDATIVE_STRESS');
   if (s.cause('Medication'))                                              causes.push('MEDICATION');
   if (s.cause('Illness') || s.cause('Surgery'))                          causes.push('ILLNESS');
@@ -76,8 +81,15 @@ function deriveRootCauses(ans: PatientAnswers): RootCause[] {
   if (s.lifestyle('Night shift') || s.lifestyle('Flying'))               causes.push('CIRCADIAN_DISRUPTION');
   if (s.cause('pulling') || s.cause('Trichotillomania'))                 causes.push('TRICHOTILLOMANIA');
   if (s.hormonal('Menopause') || s.hormonal('Peri-menopause') ||
-      s.hormonal('Post-menopause'))                                        causes.push('HORMONAL_SHIFT');
-  if (s.scalp('Dandruff') || s.scalp('Oily'))                            causes.push('DHT');
+      s.hormonal('Post-menopause') || s.hormonal('Endometriosis'))         causes.push('HORMONAL_SHIFT');
+  // Locked clinical rule (2026-06-15): Dandruff / Oily scalp DOES NOT imply DHT.
+  // Those are scalp-inflammation markers and are surfaced via SCALP_INFLAMMATION
+  // in the narrative engine. Attributing inherited / androgen-driven hair loss
+  // to a patient who only reported dandruff is clinically incorrect and breaks
+  // the patient-signals-only narrative rule (see feedback-narrative-patient-
+  // signals-only). DHT root cause now derives only from explicit Genetics /
+  // Family history selection, which is already covered by the GENETICS push
+  // above.
 
   return causes;
 }

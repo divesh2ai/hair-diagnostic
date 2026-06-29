@@ -1,15 +1,43 @@
 import { NextResponse } from "next/server";
-import { PrismaClient } from "@prisma/client";
+import { prisma } from "@/lib/prisma";
+import {
+  clinicScope,
+  getClinicContext,
+  handleAuthError,
+  isSuperAdmin,
+} from "@/lib/auth";
 
-const prisma = new PrismaClient();
+export const dynamic = "force-dynamic";
 
-/** RBAC: In production, filter by authenticated doctorId from session. */
+// Doctor-facing patient list. Tenant-scoped via JWT clinic_id; SUPER_ADMIN
+// can optionally pass ?clinicId= to inspect any clinic in preview mode.
 export async function GET(req: Request) {
-  const doctorId = new URL(req.url).searchParams.get("doctorId");
+  let ctx;
+  try {
+    ctx = await getClinicContext();
+  } catch (err) {
+    const resp = handleAuthError(err);
+    if (resp) return resp;
+    throw err;
+  }
+
+  const url = new URL(req.url);
+  const doctorId = url.searchParams.get("doctorId");
+  const requestedClinicId = url.searchParams.get("clinicId");
+
+  const scope = isSuperAdmin(ctx.role)
+    ? requestedClinicId
+      ? { clinicId: requestedClinicId }
+      : {}
+    : clinicScope(ctx);
 
   try {
     const patients = await prisma.patient.findMany({
-      where: doctorId ? { doctorId } : undefined,
+      where: {
+        ...scope,
+        ...(doctorId ? { doctorId } : {}),
+        deletedAt: null,
+      },
       take: 50,
       orderBy: { createdAt: "desc" },
       include: {
@@ -33,6 +61,6 @@ export async function GET(req: Request) {
     });
   } catch (error) {
     console.error("Doctor patients API:", error);
-    return NextResponse.json({ patients: [] });
+    return NextResponse.json({ patients: [], error: "Internal" }, { status: 500 });
   }
 }

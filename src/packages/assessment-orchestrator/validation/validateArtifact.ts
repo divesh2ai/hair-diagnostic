@@ -78,23 +78,8 @@ export function validateArtifactPayload(
           "[PayloadValidation] NARRATIVES missing doctor_narrative or patient_narrative"
         );
       }
-      // Validate narrative structure
-      if (data.doctor_narrative && typeof data.doctor_narrative === "object") {
-        const doc = data.doctor_narrative as Record<string, unknown>;
-        if (!doc.summary && !doc.narrative && !doc.body) {
-          throw new Error(
-            "[PayloadValidation] doctor_narrative missing summary/narrative/body"
-          );
-        }
-      }
-      if (data.patient_narrative && typeof data.patient_narrative === "object") {
-        const pat = data.patient_narrative as Record<string, unknown>;
-        if (!pat.summary && !pat.narrative && !pat.body) {
-          throw new Error(
-            "[PayloadValidation] patient_narrative missing summary/narrative/body"
-          );
-        }
-      }
+      validateNarrativeEnvelope(data.doctor_narrative, "doctor_narrative");
+      validateNarrativeEnvelope(data.patient_narrative, "patient_narrative");
       break;
 
     case ArtifactType.VISUAL_JOURNEY:
@@ -113,6 +98,30 @@ export function validateArtifactPayload(
       }
       break;
 
+    case ArtifactType.VIDEO_SCRIPT:
+      if (!Array.isArray(data.scenes) || data.scenes.length === 0) {
+        throw new Error(
+          "[PayloadValidation] VIDEO_SCRIPT missing non-empty scenes array"
+        );
+      }
+      break;
+
+    case ArtifactType.AVATAR_VIDEO: {
+      const allowed = new Set(["PENDING", "RENDERING", "READY", "FAILED"]);
+      if (typeof data.status !== "string" || !allowed.has(data.status)) {
+        throw new Error(
+          `[PayloadValidation] AVATAR_VIDEO.status must be one of PENDING|RENDERING|READY|FAILED, got ${String(data.status)}`
+        );
+      }
+      if (typeof data.provider !== "string") {
+        throw new Error("[PayloadValidation] AVATAR_VIDEO.provider must be a string");
+      }
+      if (data.status === "READY" && typeof data.videoUrl !== "string") {
+        throw new Error("[PayloadValidation] AVATAR_VIDEO READY status requires videoUrl");
+      }
+      break;
+    }
+
     default:
       // For unknown types, at least verify non-empty
       if (keys.length === 0) {
@@ -120,6 +129,36 @@ export function validateArtifactPayload(
           `[PayloadValidation] ${artifactType} has empty payload`
         );
       }
+  }
+}
+
+/**
+ * Accept ComposedNarrative (full/short/segments) and legacy shapes
+ * (summary/narrative/body). At least one must carry non-empty content.
+ */
+function validateNarrativeEnvelope(value: unknown, field: string): void {
+  if (!value) return;
+  if (typeof value !== "object" || Array.isArray(value)) {
+    throw new Error(
+      `[PayloadValidation] ${field} must be an object, got ${typeof value}`
+    );
+  }
+
+  const narrative = value as Record<string, unknown>;
+  const content =
+    narrative.full ||
+    narrative.short ||
+    narrative.summary ||
+    narrative.narrative ||
+    narrative.body ||
+    (Array.isArray(narrative.segments) && narrative.segments.length > 0
+      ? "segments"
+      : undefined);
+
+  if (!content || (typeof content === "string" && content.trim().length === 0)) {
+    throw new Error(
+      `[PayloadValidation] ${field} missing full/short/segments or legacy summary/narrative/body`
+    );
   }
 }
 

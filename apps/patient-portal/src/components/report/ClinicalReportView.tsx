@@ -150,10 +150,10 @@ function ClinicalInsightStorySection({ report }: { report: ClinicalReport }) {
   if (!story?.yourHairStory) return null;
 
   const sections: Array<{ key: string; eyebrow: string; title: string; body: string }> = [
-    { key: "s1", eyebrow: "Section 1", title: "Your hair story",               body: story.yourHairStory },
-    { key: "s2", eyebrow: "Section 2", title: "Why this may be happening",     body: story.whyThisMayBeHappening },
-    { key: "s3", eyebrow: "Section 3", title: "Why this plan was recommended", body: story.whyThisPlanWasRecommended },
-    { key: "s4", eyebrow: "Section 4", title: "What to expect",                body: story.whatToExpect },
+    { key: "s1", eyebrow: "Section 1", title: "Your hair story",                body: story.yourHairStory },
+    { key: "s2", eyebrow: "Section 2", title: "What we found",                  body: story.whyThisMayBeHappening },
+    { key: "s3", eyebrow: "Section 3", title: "Your recovery plan",             body: story.whyThisPlanWasRecommended },
+    { key: "s4", eyebrow: "Section 4", title: "What recovery could look like",  body: story.whatToExpect },
   ];
 
   return (
@@ -166,35 +166,6 @@ function ClinicalInsightStorySection({ report }: { report: ClinicalReport }) {
         influencing your hair, why they matter, why this plan was selected, and
         what realistic progress may look like.
       </p>
-
-      {story.drivers?.length > 0 && (
-        <div className="rounded-2xl border border-stone-200 bg-white p-5">
-          <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-teal-700">
-            Factors influencing your hair
-          </p>
-          <ul className="mt-3 grid gap-3 sm:grid-cols-2">
-            {story.drivers.map((d) => (
-              <li
-                key={d.label}
-                className="rounded-xl border border-stone-200/80 bg-stone-50/40 p-4"
-              >
-                <p className="font-serif text-sm font-semibold text-slate-900">
-                  {d.label}
-                </p>
-                <p className="mt-1 text-xs leading-relaxed text-slate-600">
-                  {d.hairImpact}
-                </p>
-                <p className="mt-2 text-[11px] uppercase tracking-wider text-teal-700">
-                  Goal
-                </p>
-                <p className="text-xs leading-relaxed text-slate-700">
-                  {d.treatmentGoal}
-                </p>
-              </li>
-            ))}
-          </ul>
-        </div>
-      )}
 
       <article className="relative overflow-hidden rounded-3xl border border-stone-200 bg-gradient-to-br from-teal-50/40 via-white to-amber-50/30 p-6 sm:p-8">
         <div className="absolute -left-12 top-1/2 hidden h-20 w-1 -translate-y-1/2 rounded-full bg-gradient-to-b from-teal-300 via-teal-400 to-teal-600 sm:block" />
@@ -420,13 +391,18 @@ function GuidanceColumn({
 }
 
 // ── Top level ─────────────────────────────────────────────────────────────
-export function ClinicalReportView({ report }: { report: unknown }) {
+export function ClinicalReportView({
+  report,
+}: {
+  report: unknown;
+}) {
   if (!isClinicalReport(report)) return null;
 
   const narrative = composeNarrativeV3(report);
 
   return (
-    <div className="space-y-10 rounded-3xl bg-stone-50/60 p-6 sm:p-8 lg:p-10">
+    <>
+      <div className="space-y-10 rounded-3xl bg-stone-50/60 p-6 sm:p-8 lg:p-10">
       {/* 1 — Hero */}
       <header className="relative overflow-hidden rounded-3xl border border-stone-200 bg-white p-8 sm:p-10">
         <div className="absolute -right-16 -top-16 h-48 w-48 rounded-full bg-gradient-to-br from-teal-100/60 to-transparent blur-2xl" />
@@ -481,6 +457,7 @@ export function ClinicalReportView({ report }: { report: unknown }) {
           doctor before starting.
         </p>
       </footer>
-    </div>
+      </div>
+    </>
   );
 }

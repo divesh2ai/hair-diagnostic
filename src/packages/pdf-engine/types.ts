@@ -1,6 +1,7 @@
 import { NormalizedClinicalProfile } from '../questionnaire-normalizer/types';
 import { VisualJourney } from '../visual-recommendation-engine/types';
 import { KitRecommendation } from '../ai-engine/kit-scorer/types';
+import type { ClinicalReport } from '../ai-engine/report-engine/types';
 
 export interface PatientInfo {
   name: string;
@@ -26,5 +27,6 @@ export interface ReportInputPayload {
   visualJourney: VisualJourney;
   kitRecommendation?: KitRecommendation | null;
   therapyPlan?: unknown;
+  clinicalReport?: ClinicalReport | null;
   createdAt: Date;
 }

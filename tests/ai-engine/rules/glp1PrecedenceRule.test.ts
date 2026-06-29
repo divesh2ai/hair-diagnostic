@@ -6,7 +6,7 @@ const TE_GOLD = 'HAIR FACT TE GOLD';
 
 function baseCtx(
   phases: string[],
-  glp: { hasGLP1Early?: boolean; hasGLP1Late?: boolean } = {}
+  glp: { hasGLP1Early?: boolean; hasGLP1Late?: boolean; hasCrashDiet?: boolean } = {}
 ): KitScorerContext {
   return {
     phases,
@@ -17,6 +17,7 @@ function baseCtx(
       hasActiveShedding: true, hasNoVisibleFall: false,
       hasGLP1Early: glp.hasGLP1Early ?? false,
       hasGLP1Late:  glp.hasGLP1Late  ?? false,
+      hasCrashDiet: glp.hasCrashDiet ?? false,
       age: 32,
       goal: 'Reduce hair fall', grade: 'Grade 2',
       count: '50–100 strands', duration: '3–6 months',
@@ -98,6 +99,37 @@ describe('RULE 2 — applyGLP1PrecedenceRule', () => {
     const result = applyGLP1PrecedenceRule(baseCtx(phases, { hasGLP1Early: true }));
     const withoutShield = result.phases.filter((k) => k !== SHIELD);
     expect(withoutShield).toEqual([TE_GOLD, 'FPHL', 'PRO IMMUNE GOLD']);
+  });
+
+  // ── Crash diet (non-GLP-1) — Shield at position 0 ─────────────────────────
+
+  test('CRASH_DIET: Shield injected at position 0 when missing', () => {
+    const phases = [TE_GOLD, 'FPHL', 'PRO IMMUNE GOLD'];
+    const result = applyGLP1PrecedenceRule(baseCtx(phases, { hasCrashDiet: true }));
+    expect(result.phases[0]).toBe(SHIELD);
+    expect(result.phases.filter((k) => k === SHIELD)).toHaveLength(1);
+  });
+
+  test('CRASH_DIET: Shield moved to position 0 when already present elsewhere', () => {
+    const phases = [TE_GOLD, SHIELD, 'PRO IMMUNE GOLD'];
+    const result = applyGLP1PrecedenceRule(baseCtx(phases, { hasCrashDiet: true }));
+    expect(result.phases[0]).toBe(SHIELD);
+    expect(result.phases.filter((k) => k === SHIELD)).toHaveLength(1);
+  });
+
+  test('CRASH_DIET: logs CRASH_DIET rule', () => {
+    const result = applyGLP1PrecedenceRule(baseCtx([TE_GOLD], { hasCrashDiet: true }));
+    expect(result.appliedRules.some((r) => r.includes('CRASH_DIET'))).toBe(true);
+  });
+
+  test('CRASH_DIET: GLP-1 Early takes precedence when both flags set', () => {
+    const phases = [TE_GOLD, 'PRO IMMUNE GOLD'];
+    const result = applyGLP1PrecedenceRule(
+      baseCtx(phases, { hasGLP1Early: true, hasCrashDiet: true }),
+    );
+    expect(result.phases[0]).toBe(SHIELD);
+    expect(result.appliedRules.some((r) => r.includes('GLP1_EARLY'))).toBe(true);
+    expect(result.appliedRules.some((r) => r.includes('CRASH_DIET'))).toBe(false);
   });
 
   // ── Two-pass idempotency (applied before and after prioritizeKits) ─────────

@@ -136,10 +136,40 @@ export default function AssessmentPage() {
   }
 
   // ─── Validation + nav helpers ──────────────────────────────────────────────
+  // Required-presence + lightweight per-type validation. Number questions
+  // honour validation.min/max so out-of-range entries (e.g. age outside
+  // 10–150) block progression; text questions honour the regex pattern so
+  // a name with digits or stray symbols is rejected before submission.
   const isAnswered = (() => {
-    if (!question.required) return true;
-    if (Array.isArray(currentAnswer)) return currentAnswer.length > 0;
-    return currentAnswer !== undefined && currentAnswer !== null && currentAnswer !== '';
+    if (Array.isArray(currentAnswer)) {
+      return question.required ? currentAnswer.length > 0 : true;
+    }
+    const hasValue =
+      currentAnswer !== undefined && currentAnswer !== null && currentAnswer !== '';
+    if (!hasValue) return !question.required;
+
+    if (question.type === 'number') {
+      const n = typeof currentAnswer === 'number' ? currentAnswer : Number(currentAnswer);
+      if (!Number.isFinite(n)) return false;
+      const { min, max } = question.validation ?? {};
+      if (min != null && n < min) return false;
+      if (max != null && n > max) return false;
+    }
+
+    if (question.type === 'text' && typeof currentAnswer === 'string') {
+      const { minLength, pattern } = question.validation ?? {};
+      const trimmed = currentAnswer.trim();
+      if (minLength != null && trimmed.length < minLength) return false;
+      if (pattern) {
+        try {
+          if (!new RegExp(pattern).test(trimmed)) return false;
+        } catch {
+          // Invalid regex in protocol — fall back to presence-only check.
+        }
+      }
+    }
+
+    return true;
   })();
 
   const isLast = progress.visiblePosition >= progress.visibleTotal;

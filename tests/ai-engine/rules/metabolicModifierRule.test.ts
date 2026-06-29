@@ -22,7 +22,7 @@ function baseCtx(phases: string[], overrides: Partial<KitScorerContext> = {}): K
       isVeg: false, isMale: false, isPregnant: false,
       isGrade45: false, isGrade123: true,
       hasActiveShedding: false, hasNoVisibleFall: false,
-      hasGLP1Early: false, hasGLP1Late: false,
+      hasGLP1Early: false, hasGLP1Late: false, hasCrashDiet: false,
       age: 35,
       goal: 'Reduce hair fall', grade: 'Grade 2',
       count: '50–100 strands', duration: '3–6 months',

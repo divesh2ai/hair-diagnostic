@@ -1,0 +1,185 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ===============================================================
+    // Assumed Data Model
+    // ===============================================================
+    //
+    // Collection: clinics
+    // Document ID: clinicId
+    // Fields:
+    //   - name: string (required)
+    //   - address: string (optional)
+    //   - phone: string (optional)
+    //   - createdAt: timestamp (required)
+    //
+    // Collection: users
+    // Document ID: userId (matches Firebase Auth UID)
+    // Fields:
+    //   - email: string (required)
+    //   - role: string (required, enum: ['admin', 'clinic_admin', 'doctor'])
+    //   - clinicId: string (required for non-admins)
+    //   - displayName: string (optional)
+    //   - createdAt: timestamp (required)
+    //
+    // Collection: doctors
+    // Document ID: doctorId
+    // Fields:
+    //   - userId: string (required)
+    //   - clinicId: string (required)
+    //   - specialization: string (optional)
+    //   - active: bool (required)
+    //
+    // Collection: patients
+    // Document ID: patientId
+    // Fields:
+    //   - name: string (required)
+    //   - phone: string (optional)
+    //   - clinicId: string (required)
+    //   - doctorId: string (optional)
+    //   - hairScore: number (optional)
+    //   - riskLevel: string (optional, enum: ['low', 'medium', 'high'])
+    //   - createdAt: timestamp (required)
+    //
+    // Collection: reports
+    // Document ID: reportId
+    // Fields:
+    //   - patientId: string (required)
+    //   - doctorId: string (required)
+    //   - clinicId: string (required)
+    //   - hairScore: number (required)
+    //   - diagnosis: string (required)
+    //   - risk: string (required, enum: ['low', 'medium', 'high'])
+    //   - createdAt: timestamp (required)
+    //
+    // ===============================================================
+
+    // ===============================================================
+    // Helper Functions
+    // ===============================================================
+
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    function getAuthUser() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
+    }
+
+    function isAdmin() {
+      return isAuthenticated() && 
+        (getAuthUser().role == 'admin' || 
+         (request.auth.token.email == "divesh2ai@gmail.com" && request.auth.token.email_verified == true));
+    }
+
+    function isClinicAdmin(clinicId) {
+      return isAuthenticated() && 
+        (isAdmin() || (getAuthUser().role == 'clinic_admin' && getAuthUser().clinicId == clinicId));
+    }
+
+    function isDoctor(clinicId) {
+      return isAuthenticated() && 
+        (isAdmin() || isClinicAdmin(clinicId) || (getAuthUser().role == 'doctor' && getAuthUser().clinicId == clinicId));
+    }
+
+    function hasRequiredFields(fields) {
+      return request.resource.data.keys().hasAll(fields);
+    }
+
+    function hasOnlyAllowedFields(fields) {
+      return request.resource.data.keys().hasOnly(fields);
+    }
+
+    function isValidEmail(email) {
+      return email is string && email.matches("^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$");
+    }
+
+    // ===============================================================
+    // Domain Validators
+    // ===============================================================
+
+    function isValidUser(data) {
+      return data.email is string && isValidEmail(data.email) &&
+             data.role in ['admin', 'clinic_admin', 'doctor'] &&
+             (data.role == 'admin' || data.clinicId is string) &&
+             data.createdAt is timestamp;
+    }
+
+    function isValidClinic(data) {
+      return data.name is string && data.name.size() > 0 && data.name.size() < 100 &&
+             data.createdAt is timestamp;
+    }
+
+    function isValidPatient(data) {
+      return data.name is string && data.name.size() > 0 && data.name.size() < 100 &&
+             data.clinicId is string &&
+             data.createdAt is timestamp &&
+             (!('riskLevel' in data) || data.riskLevel in ['low', 'medium', 'high']);
+    }
+
+    function isValidReport(data) {
+      return data.patientId is string &&
+             data.doctorId is string &&
+             data.clinicId is string &&
+             data.hairScore is number &&
+             data.diagnosis is string &&
+             data.risk in ['low', 'medium', 'high'] &&
+             data.createdAt is timestamp;
+    }
+
+    // ===============================================================
+    // Rules
+    // ===============================================================
+
+    match /users/{userId} {
+      allow read: if isOwner(userId) || isAdmin();
+      allow create: if isAuthenticated() && isValidUser(request.resource.data) && 
+                    (isOwner(userId) || isAdmin());
+      allow update: if isAuthenticated() && isValidUser(request.resource.data) && 
+                    (isOwner(userId) || isAdmin()) &&
+                    (request.resource.data.role == resource.data.role || isAdmin());
+    }
+
+    match /clinics/{clinicId} {
+      allow read: if isAuthenticated();
+      allow create: if isAdmin() && isValidClinic(request.resource.data);
+      allow update: if isClinicAdmin(clinicId) && isValidClinic(request.resource.data);
+      allow delete: if isAdmin();
+    }
+
+    match /doctors/{doctorId} {
+      allow read: if isAuthenticated() && (isAdmin() || getAuthUser().clinicId == resource.data.clinicId);
+      allow create: if isClinicAdmin(request.resource.data.clinicId);
+      allow update: if isClinicAdmin(resource.data.clinicId);
+    }
+
+    match /patients/{patientId} {
+      allow read: if isDoctor(resource.data.clinicId);
+      allow create: if isDoctor(request.resource.data.clinicId) && isValidPatient(request.resource.data);
+      allow update: if isDoctor(resource.data.clinicId) && isValidPatient(request.resource.data);
+    }
+
+    match /reports/{reportId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated();
+      allow update: if isAuthenticated();
+    }
+
+    match /doctor_reviews/{reviewId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated();
+      allow update: if isAuthenticated();
+    }
+
+    match /outcomes/{outcomeId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated();
+      allow update: if isAuthenticated();
+    }
+  }
+}

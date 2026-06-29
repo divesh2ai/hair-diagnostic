@@ -8,6 +8,8 @@ import { buildPDFPayload } from './buildPDFPayload';
 import { build3DAvatarScript } from './build3DAvatarScript';
 import { buildDoctorDashboardCard } from './buildDoctorDashboardCard';
 import { buildWhatsAppSummary } from './buildWhatsAppSummary';
+import { buildDoctorConsultation } from './consultation/buildDoctorConsultation';
+import { validateDoctorConsultation } from './consultation/validateConsultation';
 import { buildMetadata } from './utils';
 
 // ─── Narrative Pipeline ───────────────────────────────────────────────────────
@@ -49,7 +51,7 @@ export function narrativePipeline(input: NarrativePipelineInput): NarrativePipel
   // Step 5: Build dashboard card
   const dashboardCard = buildDoctorDashboardCard(input);
 
-  // Step 6: (Optional) Build avatar script
+  // Step 6: (Optional) Build legacy avatar script — kept for video pipeline back-compat
   let avatarScript: NarrativePipelineOutput['avatarScript'];
   if (input.includeAvatarScript) {
     avatarScript = build3DAvatarScript(input);
@@ -63,7 +65,20 @@ export function narrativePipeline(input: NarrativePipelineInput): NarrativePipel
     }
   }
 
-  // Step 7: (Optional) Build WhatsApp summary
+  // Step 7: Always-on — build the runtime-agnostic doctor consultation script.
+  // First-class artifact; not gated by a flag. Reuses the same inputs as the
+  // doctor/patient reports (no duplicated clinical logic).
+  const doctorConsultation = buildDoctorConsultation(input);
+  const consultationValidation = validateDoctorConsultation(doctorConsultation);
+  if (!consultationValidation.valid) {
+    throw new NarrativePipelineError(
+      `Doctor consultation validation failed:\n${consultationValidation.errors.join('\n')}`,
+      'DOCTOR_CONSULTATION_VALIDATION_FAILED',
+      consultationValidation.errors
+    );
+  }
+
+  // Step 8: (Optional) Build WhatsApp summary
   let whatsappSummary: NarrativePipelineOutput['whatsappSummary'];
   if (input.includeWhatsAppSummary) {
     whatsappSummary = buildWhatsAppSummary(input);
@@ -80,6 +95,7 @@ export function narrativePipeline(input: NarrativePipelineInput): NarrativePipel
     patientReport,
     pdfPayload,
     avatarScript,
+    doctorConsultation,
     dashboardCard,
     whatsappSummary,
     metadata,

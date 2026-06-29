@@ -189,6 +189,19 @@ function parseConditionToLogic(condition: string): LogicCondition[] {
   if (/sex\s*!==\s*['"]Female['"]/.test(condition)) {
     return [{ field: 'sex', operator: 'not_equals', value: 'Female' }];
   }
+  // "ans.age < N || ans.age > M"  →  age outside range [N, M] (OR semantics)
+  // Used by the Heavy bleeding periods option to hide outside the active
+  // reproductive window. visibilityEngine ORs multiple conditions in 'any'
+  // mode, so returning both bounds produces the desired hide-if-outside-range.
+  const ageRange = condition.match(/ans\.age\s*<\s*(\d+)\s*\|\|\s*ans\.age\s*>\s*(\d+)/);
+  if (ageRange) {
+    const low = Number(ageRange[1]);
+    const high = Number(ageRange[2]);
+    return [
+      { field: 'age', operator: 'less_than', value: low },
+      { field: 'age', operator: 'greater_than', value: high },
+    ];
+  }
   return [];
 }
 
@@ -197,23 +210,35 @@ function buildFilterOptions(
 ): Question['filterOptions'] {
   const result: NonNullable<Question['filterOptions']> = [];
 
+  // ── Question-level dynamicFilterRule ──────────────────────────────────────
   const rule: SchemaDynamicFilterRule | undefined = q.dynamicFilterRule;
-  if (!rule) return undefined;
-
-  const hideIf = parseConditionToLogic(rule.condition);
-  if (!hideIf.length) return undefined;
-
-  if (rule.removedOptions?.length) {
-    for (const optId of rule.removedOptions) {
-      result.push({ optionId: optId, hideIf });
-    }
-  } else if (rule.filteredOptions?.length) {
-    // Only the listed options are KEPT; all others are hidden when condition met
-    const kept = new Set(rule.filteredOptions);
-    for (const opt of q.options) {
-      if (!kept.has(opt.value)) {
-        result.push({ optionId: opt.value, hideIf });
+  if (rule) {
+    const hideIf = parseConditionToLogic(rule.condition);
+    if (hideIf.length) {
+      if (rule.removedOptions?.length) {
+        for (const optId of rule.removedOptions) {
+          result.push({ optionId: optId, hideIf });
+        }
+      } else if (rule.filteredOptions?.length) {
+        // Only the listed options are KEPT; all others are hidden when met
+        const kept = new Set(rule.filteredOptions);
+        for (const opt of q.options) {
+          if (!kept.has(opt.value)) {
+            result.push({ optionId: opt.value, hideIf });
+          }
+        }
       }
+    }
+  }
+
+  // ── Option-level visibleOnlyIf (sex-gated Norwood vs Ludwig, etc.) ────────
+  // Inverted to hideIf and merged with any question-level entries above.
+  for (const opt of q.options ?? []) {
+    if (opt.visibleOnlyIf) {
+      result.push({
+        optionId: opt.value,
+        hideIf: visibleOnlyIfToHideIf(opt.visibleOnlyIf),
+      });
     }
   }
 
@@ -269,10 +294,26 @@ function adaptOption(o: SchemaOption): QuestionOption {
     id: o.value,         // value IS the option ID in the real protocol
     label: o.label,
     icon: o.icon ?? undefined,
+    image: o.image,
+    illustration: o.illustration,
     clinicalTags: o.clinicalTags?.length ? o.clinicalTags : undefined,
     followUpQuestionId: o.followUpQuestions?.[0] ?? undefined,
     // description: not present in schema options; omit
   };
+}
+
+// Convert an option-level visibleOnlyIf into a hideIf LogicCondition[].
+// "show if sex equals Male" → "hide if sex not_equals Male"
+function visibleOnlyIfToHideIf(
+  rule: NonNullable<SchemaOption['visibleOnlyIf']>
+): LogicCondition[] {
+  return [
+    {
+      field: rule.dependsOn,
+      operator: mapOperator(rule.operator, true),
+      value: rule.value,
+    },
+  ];
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -309,14 +350,25 @@ function adaptQuestion(q: SchemaQuestion, section: SchemaSection): Question {
       }
     : undefined;
 
-  // Validation
+  // Validation — propagate all schema validation fields the renderer uses.
   const validation: Question['validation'] = q.validation
     ? {
         min: q.validation.min,
         max: q.validation.max,
+        minLength: (q.validation as { minLength?: number }).minLength,
+        maxLength: (q.validation as { maxLength?: number }).maxLength,
+        pattern: (q.validation as { pattern?: string }).pattern,
+        placeholder: (q.validation as { placeholder?: string }).placeholder,
         errorMessage: q.validation.hint,
       }
     : undefined;
+
+  // UI format hint — drives field-specific input handling in the renderer.
+  const uiFormat: Question['uiFormat'] = (() => {
+    const fmt = (q.uiMetadata as { format?: string } | undefined)?.format;
+    if (fmt === 'name' || fmt === 'number' || fmt === 'text') return fmt;
+    return undefined;
+  })();
 
   const options = q.options?.length ? q.options.map(adaptOption) : undefined;
 
@@ -333,6 +385,7 @@ function adaptQuestion(q: SchemaQuestion, section: SchemaSection): Question {
     required: q.required,
     options,
     validation,
+    uiFormat,
     skipIf: skipIf.length ? skipIf : undefined,
     filterOptions,
     mutualExclusivityGroups,

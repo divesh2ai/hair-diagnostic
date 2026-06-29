@@ -21,6 +21,7 @@ import type { ClinicalProfile } from "../clinical-engine/types";
 import type { TherapyNeeds } from "../therapy-engine/types";
 import type { KitRecommendation } from "../kit-scorer/types";
 import { getKitInfo } from "../../registries/kits/info";
+import { getKitSelectionLeadIn } from "../shared/kitSelectionOpeners";
 import { recommendTopicals } from "../../registries/topicals/recommendTopicals";
 import { buildFinalClinicalAssessment } from "./buildFinalClinicalAssessment";
 import { buildClinicalInsightStory } from "./buildClinicalInsightStory";
@@ -232,6 +233,7 @@ const SIGNAL_INTERPRETATION: Array<{ match: RegExp; group: keyof QuestionnaireSe
   { match: /Post[-\s]?menopaus/i, group: "hormonal", condition: "Post Menopausal transition", interpretation: "Relative androgen excess causes imbalance in the hormonal regulation of the hair cycles. There can also be associated poor absorption and assimilation of nutrients from the gut." },
   { match: /Menopaus/i, group: "hormonal", condition: "Menopausal transition", interpretation: "Relative androgen excess causes imbalance in the hormonal regulation of the hair cycles. There can also be associated poor absorption and assimilation of nutrients from the gut." },
   { match: /HRT|Hormone replacement/i, group: "hormonal", condition: "Hormonal therapy support", interpretation: "Hormones can stimulate cellular activity, however, nutritional support is essential for effective cellular function in response to the hormones." },
+  { match: /Heavy bleeding|Heavy menstrual|Menorrhagia/i, group: "hormonal", condition: "Chronic iron loss", interpretation: "Heavy menstrual bleeding causes ongoing iron and ferritin depletion. Low iron stores directly arrest the hair cycle — DNA repair, T4→T3 conversion and follicular oxygenation all depend on adequate ferritin. Iron repletion is the foundational kit." },
 
   // ── Q10 — Gut ────────────────────────────────────────────────────────────
   { match: /GERD|Acid reflux|Acidity|Heartburn/i, group: "gut", condition: "Gut-hair axis disruption", interpretation: "GERD which is Gastro esophageal reflux disease or acid peptic disease is associated with acidity, digestive issues, gastritis and inflammation." },
@@ -246,6 +248,7 @@ const SIGNAL_INTERPRETATION: Array<{ match: RegExp; group: keyof QuestionnaireSe
 
   // ── Q12 — Diet ───────────────────────────────────────────────────────────
   { match: /Vegan|Vegetarian|Jain/i, group: "diet", condition: "Veg only", interpretation: "Known to be associated with deficiencies of iron, zinc, amino acids, omega 3 and vitamin D." },
+  { match: /Pescatarian/i, group: "diet", condition: "Pescatarian", interpretation: "Fish-inclusive plant-leaning diet — generally adequate omega-3 and B12 from seafood, but iron and zinc remain at risk; absorption supports may still be required to sustain hair-cycle nutrient demand." },
   { match: /Non[-\s]?vegetarian/i, group: "diet", condition: "Standard", interpretation: "Increases blood acidity, urea nitrogenous load and creatinine which are unfavorable for hair growth." },
   { match: /High protein/i, group: "diet", condition: "DHT boost risk", interpretation: "Rise in amino acids makes the blood acidic and leads to calcinuria." },
   { match: /Poor diet|Irregular frequency|Irregular meal/i, group: "diet", condition: "Nutritional gap", interpretation: "Results in multiple nutrition deficiencies." },
@@ -258,8 +261,18 @@ const SIGNAL_INTERPRETATION: Array<{ match: RegExp; group: keyof QuestionnaireSe
   // ── Hair pattern (kept from prior — pattern topology insight) ───────────
   { match: /Thinning at crown|Widening parting|Receding hairline|widening|crown|parting/i, group: "hairType", condition: "Pattern miniaturisation", interpretation: "Pattern topology consistent with androgen-driven miniaturisation." },
   { match: /Diffuse|all over/i, group: "hairType", condition: "Diffuse telogen exit", interpretation: "Cycle-wide telogen exit — not a localised pattern process." },
-  { match: /Patchy|circular|patches/i, group: "hairType", condition: "Localised follicle attack", interpretation: "Localised follicle attack pattern — autoimmune until proven otherwise." },
+  { match: /Patchy|circular|patches|Coin[-\s]?sized/i, group: "hairType", condition: "Localised follicle attack", interpretation: "Localised follicle attack pattern — autoimmune until proven otherwise." },
   { match: /Broken|short|breakage/i, group: "hairType", condition: "Mid-shaft breakage", interpretation: "Mid-shaft damage — root architecture intact; shaft-repair layer required." },
+
+  // ── Q-Grade — severity / pattern stage ───────────────────────────────────
+  // Order matters — leading "Grade N" is the canonical anchor; patterns are
+  // ordered most-severe → least-severe so "Grade 3 — Ludwig I-1" hits the
+  // Grade 3 rule (not the Ludwig-I substring inside the Grade 1 rule).
+  { match: /Grade 5\b|Norwood VII|Advanced grade 5/i, group: "grade", condition: "Advanced pattern loss", interpretation: "Advanced pattern loss — pattern-correction leads the protocol with maximum nutrient support; recovery expectation is partial restoration of remaining viable follicles." },
+  { match: /Grade 4\b|Norwood VI|Advanced/i, group: "grade", condition: "Advanced pattern loss", interpretation: "Advanced pattern loss — pattern-correction leads the protocol with maximum nutrient support; recovery expectation is partial restoration of remaining viable follicles." },
+  { match: /Grade 3\b|Norwood IV|Norwood V/i, group: "grade", condition: "Moderate pattern loss", interpretation: "Moderate pattern loss with visible scalp through hair — full upstream-to-pattern stack required (inflammation control, metabolic correction, pattern-correction) to consolidate density." },
+  { match: /Grade 2\b|Norwood III/i, group: "grade", condition: "Mild-moderate pattern loss", interpretation: "Mild to moderate pattern loss — DHT-driven miniaturisation is establishing; pattern-correction kit added to the terrain stack to reverse follicle thinning." },
+  { match: /Grade 1\b|Norwood I\b|Norwood II\b/i, group: "grade", condition: "Early-stage pattern loss", interpretation: "Early-stage pattern loss — follicles are not yet miniaturised; terrain correction and inflammation control are sufficient to halt progression and restore density." },
 ];
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -270,7 +283,93 @@ function uniq<T>(arr: T[]): T[] {
   return Array.from(new Set(arr));
 }
 
+// Strips "no-choice" placeholder options (e.g. "None of the above",
+// "No heat or chemical treatments", "No gut issues", "None / Not tested")
+// from selection arrays before they are surfaced on the report. These options
+// indicate the patient consciously selected nothing relevant for that
+// question — showing them as factors is confusing.
+const NO_CHOICE_PATTERN = /^\s*(none\b|no\s|not\s|n\/a|na$)/i;
+
+// ─────────────────────────────────────────────────────────────────────────────
+// VALUE → DISPLAY LABEL OVERRIDES
+//
+// The schema preserves legacy `value` strings (used as the canonical ID for
+// scoring, exclusivity rules, and substring matchers) but the patient-visible
+// `label` was updated. This map translates the stored value back to the
+// updated display label so the report shows current copy without breaking
+// upstream signal matching.
+// ─────────────────────────────────────────────────────────────────────────────
+const VALUE_DISPLAY_OVERRIDE: Record<string, string> = {
+  // Goal (Q3)
+  'Reduce hair fall and improve growth':
+    'Reduce hair fall and improve quality & growth',
+  'Hair fall is stopped but needs to regrow lost hair':
+    'No active hair fall but need to better hair growth quality',
+
+  // Scalp (Q5)
+  'Dandruff / white flakes': 'Dandruff',
+
+  // Cause (Q4)
+  'Post crash diet': 'Rapid weight loss / Crash diet',
+
+  // Lifestyle (Q7)
+  'Erratic / Outside eating (3–4×/week)':
+    'Irregular eating time / Outside eating (3–4×/week)',
+  'Obesity / Sedentary / Struggle to lose weight / Slowly gaining weight':
+    'Obesity / Struggle to lose weight',
+
+  // Hormonal (Q9)
+  'PCOS / PCOD only': 'PMOS / PCOS',
+  'PCOS / PCOD + Obesity': 'PMOS / PCOS', // legacy data — collapse to current option
+
+  // Diet (Q12)
+  'Crash Diet / Keto / IF': 'Crash / Keto / Intermittent fasting',
+};
+
+function displayLabel(value: string): string {
+  return VALUE_DISPLAY_OVERRIDE[value.trim()] ?? value;
+}
+
+function stripNoChoice(values: readonly string[] | undefined): string[] | undefined {
+  if (!values || values.length === 0) return undefined;
+  const filtered = values
+    .filter((v) => !!v && !NO_CHOICE_PATTERN.test(v))
+    .map(displayLabel);
+  // de-dupe (legacy values can collapse to the same new label)
+  const seen = new Set<string>();
+  const deduped: string[] = [];
+  for (const v of filtered) {
+    if (!seen.has(v)) {
+      seen.add(v);
+      deduped.push(v);
+    }
+  }
+  return deduped.length > 0 ? deduped : undefined;
+}
+function stripNoChoiceScalar(value: string | undefined): string | undefined {
+  if (!value) return undefined;
+  if (NO_CHOICE_PATTERN.test(value)) return undefined;
+  return displayLabel(value);
+}
+
+// Hair-fall visual descriptors ("Hair on pillow / floor / shower", "Full-length
+// hairs with white bulb") are observation prompts, not clinical drivers — they
+// belong in the questionnaire echo, not the interpretation list. Filter them
+// out so they never appear as a "reported finding" in §3.
+const VISUAL_OBSERVATION_PATTERN =
+  /Hair on pillow|pillow.*floor|pillow.*shower|floor.*shower|Full[-\s]?length hairs.*white bulb|^white bulb/i;
+
 function collectAllSignals(ans: PatientAnswers): string[] {
+  // Scalar clinical descriptor: severity grade. Duration and strand count are
+  // observations, not clinical drivers — excluded by design from §3.
+  const thyroidArr = Array.isArray(ans.thyroid)
+    ? ans.thyroid
+    : ans.thyroid
+    ? [String(ans.thyroid)]
+    : [];
+  const scalars = [
+    ans.grade,
+  ].filter((v): v is string => typeof v === 'string' && v.trim().length > 0);
   return uniq([
     ...(ans.cause ?? []),
     ...(ans.gut ?? []),
@@ -279,11 +378,12 @@ function collectAllSignals(ans: PatientAnswers): string[] {
     ...(ans.scalp ?? []),
     ...(ans.lifestyle ?? []),
     ...(ans.immunity ?? []),
-    ...(ans.thyroid ?? []),
+    ...thyroidArr,
     ...(ans.hairtype ?? []),
     ...(ans.diet ?? []),
     ...(ans.treatment ?? []),
-  ]);
+    ...scalars,
+  ]).filter((s) => !VISUAL_OBSERVATION_PATTERN.test(s));
 }
 
 function impactFor(signalCount: number): ImpactLevel {
@@ -300,42 +400,66 @@ function buildPatientSummary(
   patient: { name: string; age: number; gender: string },
   ans: PatientAnswers
 ): PatientSummary {
+  const thyroidArr = ans.thyroid?.length
+    ? Array.isArray(ans.thyroid) ? ans.thyroid : [String(ans.thyroid)]
+    : undefined;
+  const goalArr = Array.isArray(ans.goal) ? ans.goal : ans.goal ? [ans.goal] : undefined;
+
   const selections: QuestionnaireSelections = {
-    duration: ans.duration || undefined,
-    count: ans.count || undefined,
-    grade: ans.grade || undefined,
-    hairType: ans.hairtype?.length ? ans.hairtype : undefined,
-    scalp: ans.scalp?.length ? ans.scalp : undefined,
-    cause: ans.cause?.length ? ans.cause : undefined,
-    lifestyle: ans.lifestyle?.length ? ans.lifestyle : undefined,
-    hormonal: ans.hormonal?.length ? ans.hormonal : undefined,
-    thyroid: ans.thyroid?.length
-      ? Array.isArray(ans.thyroid) ? ans.thyroid : [String(ans.thyroid)]
-      : undefined,
-    immunity: ans.immunity?.length ? ans.immunity : undefined,
-    deficiency: ans.deficiency?.length ? ans.deficiency : undefined,
-    gut: ans.gut?.length ? ans.gut : undefined,
-    diet: ans.diet?.length ? ans.diet : undefined,
-    treatment: ans.treatment?.length ? ans.treatment : undefined,
-    goal: Array.isArray(ans.goal) ? ans.goal : ans.goal ? [ans.goal] : undefined,
+    duration: stripNoChoiceScalar(ans.duration || undefined),
+    count: stripNoChoiceScalar(ans.count || undefined),
+    grade: stripNoChoiceScalar(ans.grade || undefined),
+    hairType: stripNoChoice(ans.hairtype),
+    scalp: stripNoChoice(ans.scalp),
+    cause: stripNoChoice(ans.cause),
+    lifestyle: stripNoChoice(ans.lifestyle),
+    hormonal: stripNoChoice(ans.hormonal),
+    thyroid: stripNoChoice(thyroidArr),
+    immunity: stripNoChoice(ans.immunity),
+    deficiency: stripNoChoice(ans.deficiency),
+    gut: stripNoChoice(ans.gut),
+    diet: stripNoChoice(ans.diet),
+    treatment: stripNoChoice(ans.treatment),
+    goal: stripNoChoice(goalArr),
   };
 
   const allSignals = collectAllSignals(ans);
   const interpretationRaw: ClinicalInterpretation[] = [];
-  const seen = new Set<string>();
+  // Every distinct questionnaire signal gets its own row — no dedup by condition.
+  // Only NO_CHOICE_PATTERN entries ("None of the above", "No gut issues", etc.)
+  // are filtered out. collectAllSignals() already dedupes by signal text via uniq().
+  const seenUnmappedSignals = new Set<string>();
   for (const sig of allSignals) {
+    if (NO_CHOICE_PATTERN.test(sig)) continue;
+    const displayed = displayLabel(sig);
+    // Match patterns against the raw value (matching rules use legacy substrings),
+    // but display the updated label to the patient.
     const rule = SIGNAL_INTERPRETATION.find((r) => r.match.test(sig));
-    if (rule && !seen.has(rule.interpretation)) {
+    if (rule) {
       interpretationRaw.push({
-        signal: sig,
+        signal: displayed,
         condition: rule.condition,
         interpretation: rule.interpretation,
       });
-      seen.add(rule.interpretation);
+    } else {
+      // Unmapped signal — still surfaced as a generic "reported finding" so
+      // the patient and clinician see we noted it. Clinical-safety net: no
+      // detected signal is ever dropped silently. If a generic row is
+      // confusing, add a dedicated rule to SIGNAL_INTERPRETATION above.
+      const key = displayed.toLowerCase().trim();
+      if (seenUnmappedSignals.has(key)) continue;
+      interpretationRaw.push({
+        signal: displayed,
+        condition: "Reported finding",
+        interpretation: "Patient-reported factor noted in the clinical picture; correlation reviewed against the protocol's signal set.",
+      });
+      seenUnmappedSignals.add(key);
     }
   }
-  // Spec caps clinical interpretation at 4-6 observations.
-  const interpretation = interpretationRaw.slice(0, 6);
+  // Cap kept generous (20) so multifactorial patients (PCOS + thyroid + iron +
+  // gut + scalp + lifestyle stacks) are fully represented rather than
+  // truncated. The cap exists only as a runaway-protection upper bound.
+  const interpretation = interpretationRaw.slice(0, 20);
 
   // Bucket-level medical / lifestyle factors for the patient card.
   const medicalFactors = uniq([
@@ -440,9 +564,11 @@ function buildRootCauseAnalysis(
 function whyKitSelected(
   kitId: string,
   ans: PatientAnswers,
-  clinical: ClinicalProfile
+  clinical: ClinicalProfile,
+  phase: number = 0,
 ): string {
   const reasons: string[] = [];
+  const leadIn = getKitSelectionLeadIn(kitId);
 
   if (/GI GOLD/i.test(kitId) && (ans.gut ?? []).some((g) => /IBS|GERD|Acid|Crohn/i.test(g))) {
     reasons.push("strong gut-axis signal (IBS / GERD / Crohn's / acid reflux)");
@@ -486,8 +612,29 @@ function whyKitSelected(
   if (/PRO IMMUNE/i.test(kitId)) {
     reasons.push("consolidation phase — lock in regrowth after upstream correction");
   }
-  if (/TE GOLD/i.test(kitId) && clinical.flags.hasActiveShedding) {
-    reasons.push("active shedding confirmed — TE arrest is non-negotiable");
+  if (/TE GOLD/i.test(kitId)) {
+    // Phase-aware TE GOLD reasoning:
+    //   • When TE GOLD leads the protocol (phase 1) it is there to arrest
+    //     active shedding — that is always the stated reason.
+    //   • When it sits downstream, surface the specific telogen trigger
+    //     reported by the patient (stress / anxiety or nutritional gap).
+    const causeText = (ans.cause ?? []).join(' ');
+    const lifestyleText = (ans.lifestyle ?? []).join(' ');
+    const hasStress = /Stress|Anxiety|Depression/i.test(causeText)
+      || /Night shift|Frequent flying|Sleep/i.test(lifestyleText);
+    const hasNutrition = /Nutritional|Nutrition|Crash diet|GLP[-\s]?1|Irregular/i.test(causeText + ' ' + (ans.diet ?? []).join(' '));
+
+    if (phase === 1) {
+      reasons.push('arrest the active shedding');
+    } else if (hasStress) {
+      reasons.push('stress / anxiety driving telogen shedding — TE arrest layered on stabilisation');
+    } else if (hasNutrition) {
+      reasons.push('nutritional deficiency driving telogen shedding — TE arrest layered on substrate repletion');
+    } else if (clinical.flags.hasActiveShedding) {
+      reasons.push('active shedding confirmed — TE arrest is non-negotiable');
+    } else {
+      reasons.push('telogen-effluvium arrest layered into the protocol');
+    }
   }
   if (/NIGHT SHIFT/i.test(kitId) && ans.lifestyle?.some((l) => /Night shift/i.test(l))) {
     reasons.push("night-shift exposure reported");
@@ -500,9 +647,11 @@ function whyKitSelected(
   }
 
   if (reasons.length === 0) {
-    return `Selected as part of the protocol for ${DIAGNOSIS_DISPLAY[clinical.primaryDiagnosis] ?? clinical.primaryDiagnosis}.`;
+    const fallback = `Selected as part of the protocol for ${DIAGNOSIS_DISPLAY[clinical.primaryDiagnosis] ?? clinical.primaryDiagnosis}.`;
+    return leadIn ? `${leadIn} ${fallback}` : fallback;
   }
-  return reasons.join("; ").replace(/^./, (c) => c.toUpperCase()) + ".";
+  const reasonText = reasons.join("; ").replace(/^./, (c) => c.toUpperCase()) + ".";
+  return leadIn ? `${leadIn} ${reasonText}` : reasonText;
 }
 
 /** Returns which RootCauseAnalysis conditions this kit addresses. */
@@ -575,7 +724,7 @@ function buildTreatmentStrategy(
       phase: sk.phase,
       kitId: sk.kitId,
       displayName,
-      whySelected: whyKitSelected(sk.kitId, ans, clinical),
+      whySelected: whyKitSelected(sk.kitId, ans, clinical, sk.phase),
       supportingConditions: supportingConditionsFor(sk.kitId, analysis),
       keyIngredients: ingredients,
       mechanismOfAction: mechanism,
@@ -892,7 +1041,14 @@ export function buildClinicalReport(
   const finalClinicalAssessment: FinalClinicalAssessment =
     buildFinalClinicalAssessment(clinical, rootCauseAnalysis, kits, ans);
   const clinicalInsightStory =
-    buildClinicalInsightStory(clinical, rootCauseAnalysis, kits, ans);
+    buildClinicalInsightStory(
+      clinical,
+      rootCauseAnalysis,
+      treatmentStrategy,
+      UNIVERSAL_RECOVERY_MILESTONES,
+      ans,
+      patientSummary.clinicalInterpretation,
+    );
 
   return {
     patientSummary,

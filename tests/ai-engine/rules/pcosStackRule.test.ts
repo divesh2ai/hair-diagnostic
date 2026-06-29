@@ -26,7 +26,7 @@ function baseCtx(
       isVeg: false, isMale: false, isPregnant: false,
       isGrade45: false, isGrade123: true,
       hasActiveShedding: false, hasNoVisibleFall: false,
-      hasGLP1Early: false, hasGLP1Late: false,
+      hasGLP1Early: false, hasGLP1Late: false, hasCrashDiet: false,
       age: 30,
       goal: 'Reduce hair fall', grade: 'Grade 2',
       count: '50–100 strands', duration: '3–6 months',
@@ -54,12 +54,14 @@ describe('pcosStackRule — non-PCOS passthrough', () => {
 // ─────────────────────────────────────────────────────────────────────────────
 
 describe('pcosStackRule — PCOS_ONLY', () => {
-  test('no extra signals → no kits added beyond base', () => {
+  test('no extra signals → legacy F-PCOS -1 auto-retired to META B PCOS (locked rule)', () => {
     const ctx = baseCtx(['F-PCOS -1']);
     const result = applyPcosStackRule(ctx, baseAns(), 'PCOS_ONLY');
-    expect(result.phases).toContain('F-PCOS -1');
+    expect(result.phases).toContain('PRO FACT META B PCOS');
+    expect(result.phases).not.toContain('F-PCOS -1');
     expect(result.phases).not.toContain('IRON UP GOLD');
     expect(result.phases).not.toContain('PRO IMMUNE GOLD');
+    expect(result.appliedRules.some((r) => r.includes('PCOS_FPCOS_RETIRED'))).toBe(true);
   });
 
   test('iron deficiency → IRON UP GOLD added', () => {
@@ -103,7 +105,7 @@ describe('pcosStackRule — PCOS_ONLY', () => {
         isVeg: true, isMale: false, isPregnant: false,
         isGrade45: false, isGrade123: true,
         hasActiveShedding: false, hasNoVisibleFall: false,
-        hasGLP1Early: false, hasGLP1Late: false,
+        hasGLP1Early: false, hasGLP1Late: false, hasCrashDiet: false,
         age: 30, goal: 'Reduce hair fall', grade: 'Grade 2',
         count: '50–100 strands', duration: '3–6 months',
       },
@@ -120,12 +122,13 @@ describe('pcosStackRule — PCOS_ONLY', () => {
     expect(result.appliedRules.some((r) => r.includes('PCOS_META_B'))).toBe(true);
   });
 
-  test('PCOS_ONLY + diabetes → F-PCOS-1 upgraded to PRO FACT META B PCOS', () => {
+  test('PCOS_ONLY + diabetes → META B PCOS (F-PCOS -1 retired, no separate upgrade rule needed)', () => {
     const ans = baseAns({ thyroid: ['Diabetes'] });
     const result = applyPcosStackRule(baseCtx(['F-PCOS -1']), ans, 'PCOS_ONLY');
     expect(result.phases).toContain('PRO FACT META B PCOS');
     expect(result.phases).not.toContain('F-PCOS -1');
-    expect(result.appliedRules.some((r) => r.includes('PCOS_DIABETES_UPGRADE'))).toBe(true);
+    // F-PCOS -1 is retired (locked rule) — replacement is automatic regardless of diabetes signal.
+    expect(result.appliedRules.some((r) => r.includes('PCOS_FPCOS_RETIRED'))).toBe(true);
   });
 
   test('phase count capped at 7', () => {

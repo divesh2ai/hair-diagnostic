@@ -23,10 +23,18 @@ export interface SchemaOption {
   triggers: string[];
   clinicalTags: string[];
   followUpQuestions: string[];
-  /** Option-level visibility gate (e.g. postpartum options only for Female) */
+  /** Option-level visibility gate (e.g. postpartum options only for Female,
+   *  Norwood stages only for Male, Ludwig stages only for Female). */
   visibleOnlyIf?: { dependsOn: string; operator: string; value: string };
   /** Pairwise mutual exclusion label (e.g. "Oily scalp" ↔ "Dry scalp") */
   mutuallyExclusive?: string;
+  /** Photographic tile rendered above the option label (object-cover, 4:3
+   *  crop). Use for real photography. */
+  image?: { url: string; alt: string };
+  /** Editorial diagram / SVG illustration rendered above the option label
+   *  (object-contain, no crop, transparent bg). Use for schematics like the
+   *  Norwood / Ludwig grade picker. */
+  illustration?: { url: string; alt: string };
 }
 
 export interface SchemaSkipCondition {

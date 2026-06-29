@@ -1,0 +1,84 @@
+{
+  "entities": {
+    "Clinic": {
+      "title": "Clinic",
+      "description": "A hair clinic in the HairOS network.",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string", "description": "Name of the clinic" },
+        "address": { "type": "string", "description": "Physical address" },
+        "phone": { "type": "string", "description": "Contact phone" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["name", "createdAt"]
+    },
+    "User": {
+      "title": "User",
+      "description": "A user of the HairOS platform.",
+      "type": "object",
+      "properties": {
+        "email": { "type": "string", "format": "email" },
+        "role": { "type": "string", "enum": ["admin", "clinic_admin", "doctor"] },
+        "clinicId": { "type": "string", "description": "ID of the clinic this user belongs to" },
+        "displayName": { "type": "string" },
+        "photoURL": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["email", "role", "createdAt"]
+    },
+    "Doctor": {
+      "title": "Doctor",
+      "description": "A doctor working at a clinic.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string", "description": "Reference to User entity" },
+        "clinicId": { "type": "string", "description": "Reference to Clinic entity" },
+        "specialization": { "type": "string" },
+        "bio": { "type": "string" },
+        "active": { "type": "boolean" }
+      },
+      "required": ["userId", "clinicId", "active"]
+    },
+    "Patient": {
+      "title": "Patient",
+      "description": "A patient receiving care at a clinic.",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "phone": { "type": "string" },
+        "email": { "type": "string", "format": "email" },
+        "clinicId": { "type": "string" },
+        "doctorId": { "type": "string", "description": "Assigned doctor ID" },
+        "hairScore": { "type": "number" },
+        "lastDiagnosis": { "type": "string" },
+        "riskLevel": { "type": "string", "enum": ["low", "medium", "high"] },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["name", "clinicId", "createdAt"]
+    },
+    "Report": {
+      "title": "Report",
+      "description": "An AI-generated hair health report.",
+      "type": "object",
+      "properties": {
+        "patientId": { "type": "string" },
+        "doctorId": { "type": "string" },
+        "clinicId": { "type": "string" },
+        "hairScore": { "type": "number" },
+        "diagnosis": { "type": "string" },
+        "risk": { "type": "string", "enum": ["low", "medium", "high"] },
+        "recommendedProducts": { "type": "array", "items": { "type": "string" } },
+        "questionnaireAnswers": { "type": "object" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["patientId", "clinicId", "hairScore", "diagnosis", "risk", "createdAt"]
+    }
+  },
+  "firestore": {
+    "/clinics/{clinicId}": { "schema": "Clinic", "description": "Clinic documents" },
+    "/users/{userId}": { "schema": "User", "description": "User profiles and roles" },
+    "/doctors/{doctorId}": { "schema": "Doctor", "description": "Doctor-specific data" },
+    "/patients/{patientId}": { "schema": "Patient", "description": "Patient records" },
+    "/reports/{reportId}": { "schema": "Report", "description": "Diagnosis reports" }
+  }
+}

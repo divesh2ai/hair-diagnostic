@@ -72,16 +72,16 @@ for (const fixture of fixtures) {
 
   const wc = (s: string) => s.trim().split(/\s+/).filter(Boolean).length;
 
-  console.log(`\n1. YOUR HAIR STORY  (${wc(story.yourHairStory)} words — target 60–90)`);
+  console.log(`\n1. YOUR HAIR STORY  (${wc(story.yourHairStory)} words — target 40–60, weight 10%)`);
   console.log(story.yourHairStory);
 
-  console.log(`\n2. WHY THIS MAY BE HAPPENING  (${wc(story.whyThisMayBeHappening)} words — target 80–120)`);
+  console.log(`\n2. WHAT WE FOUND  (${wc(story.whyThisMayBeHappening)} words — target 280–340, weight 65%)`);
   console.log(story.whyThisMayBeHappening);
 
-  console.log(`\n3. WHY THIS PLAN WAS RECOMMENDED  (${wc(story.whyThisPlanWasRecommended)} words — target 80–120)`);
+  console.log(`\n3. YOUR RECOVERY PLAN  (${wc(story.whyThisPlanWasRecommended)} words — target 90–110, weight 20%)`);
   console.log(story.whyThisPlanWasRecommended);
 
-  console.log(`\n4. WHAT TO EXPECT  (${wc(story.whatToExpect)} words — target 60–90)`);
+  console.log(`\n4. WHAT RECOVERY COULD LOOK LIKE  (${wc(story.whatToExpect)} words — target 25–40, weight 5%)`);
   console.log(story.whatToExpect);
 }
 

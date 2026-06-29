@@ -1,15 +1,20 @@
 import { NextResponse } from "next/server";
-import { PrismaClient } from "@prisma/client";
+import { prisma } from "@/lib/prisma";
+import { assertSuperAdmin, handleAuthError } from "@/lib/auth";
 
-const prisma = new PrismaClient();
-
+// Platform-wide metrics — SUPER_ADMIN only. CLINIC_ADMINs use /api/doctor/stats
+// for clinic-scoped numbers.
 export async function GET() {
   try {
+    await assertSuperAdmin();
+
     const [clinics, doctors, assessments, failures, logs] = await Promise.all([
-      prisma.clinic.count(),
-      prisma.doctor.count(),
-      prisma.assessment.count(),
-      prisma.assessment.count({ where: { status: "FAILED" } }),
+      prisma.clinic.count({ where: { deletedAt: null } }),
+      prisma.doctor.count({ where: { deletedAt: null } }),
+      prisma.assessment.count({ where: { deletedAt: null } }),
+      prisma.assessment.count({
+        where: { deletedAt: null, status: "FAILED" },
+      }),
       prisma.orchestrationLog.findMany({
         where: { status: "SUCCESS", durationMs: { not: null } },
         take: 100,
@@ -31,13 +36,13 @@ export async function GET() {
       failures,
       avgOrchestrationMs,
     });
-  } catch {
-    return NextResponse.json({
-      clinics: 0,
-      doctors: 0,
-      assessments: 0,
-      failures: 0,
-      avgOrchestrationMs: 0,
-    });
+  } catch (err) {
+    const resp = handleAuthError(err);
+    if (resp) return resp;
+    console.error("[ADMIN METRICS API]", err);
+    return NextResponse.json(
+      { clinics: 0, doctors: 0, assessments: 0, failures: 0, avgOrchestrationMs: 0 },
+      { status: 500 },
+    );
   }
 }

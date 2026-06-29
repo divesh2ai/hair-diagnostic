@@ -1,0 +1,134 @@
+{
+  "chapter1": {
+    "hairPattern": [
+      "Hair on pillow / floor / shower"
+    ],
+    "duration": "6–12 months",
+    "scalpConcerns": [
+      "Dandruff / white flakes"
+    ],
+    "goal": [
+      "Reduce hair fall and improve quality & growth"
+    ]
+  },
+  "chapter2": {
+    "sourcePolicy": "clinicalInterpretation_only",
+    "factors": [
+      {
+        "signal": "Irregular cycles + parting widening",
+        "condition": "Hormonal & Metabolic Factors",
+        "interpretation": "Persistent shedding, reduced volume, and progressive thinning. Can disrupt normal follicle signalling and shorten healthy growth cycles."
+      },
+      {
+        "signal": "Shedding after stressful period",
+        "condition": "Stress-Related Shedding",
+        "interpretation": "Sudden increase in hair fall during periods of stress. Can push more follicles into the shedding phase."
+      },
+      {
+        "signal": "Family history of thinning",
+        "condition": "Genetic & Androgen-Driven Pattern Hair Loss",
+        "interpretation": "Family history and progressive reduction in density. Increases follicle sensitivity and may contribute to gradual thinning."
+      },
+      {
+        "signal": "Environmental exposure",
+        "condition": "Oxidative Stress",
+        "interpretation": "Smoking, alcohol, or chronic environmental exposure. Gradually wears down the follicle environment over time."
+      },
+      {
+        "signal": "Dandruff / white flakes",
+        "condition": "Scalp Inflammation",
+        "interpretation": "Itching, dandruff, oiliness, or scalp discomfort. Creates a less supportive environment for healthy hair growth."
+      }
+    ]
+  },
+  "chapter3": {
+    "phases": [
+      {
+        "phase": 1,
+        "kitId": "phenotype_inflammation",
+        "kitName": "Phenotype Inflammation",
+        "whySelected": "Selected because your responses pointed to scalp inflammation signals (Dandruff / white flakes) alongside PCOS hormonal imbalance and chronic stress.",
+        "supportingConditions": [
+          "Scalp Inflammation",
+          "PCOS hormonal imbalance",
+          "Chronic stress"
+        ]
+      },
+      {
+        "phase": 2,
+        "kitId": "pro_fact_meta_b_pcos",
+        "kitName": "Pro Fact Meta B PCOS",
+        "whySelected": "Selected as part of the protocol for PCOS-driven Hair Loss to address hormonal imbalance and insulin resistance.",
+        "supportingConditions": [
+          "PCOS hormonal imbalance"
+        ]
+      },
+      {
+        "phase": 3,
+        "kitId": "pro_immune_5v_veg",
+        "kitName": "Pro Immune 5V (Veg)",
+        "whySelected": "Consolidation phase — selected to lock in regrowth after upstream correction.",
+        "supportingConditions": [
+          "Follicular recovery consolidation"
+        ]
+      },
+      {
+        "phase": 4,
+        "kitId": "hair_fact_fphl",
+        "kitName": "Hair Fact FPHL",
+        "whySelected": "Selected to support long-term follicle resilience against inherited androgen sensitivity (Female pattern topology with androgen pressure).",
+        "supportingConditions": [
+          "Genetic predisposition"
+        ]
+      }
+    ]
+  },
+  "chapter4": {
+    "stages": [
+      {
+        "window": "1–2 Months",
+        "bullets": [
+          "Reduction in active hair fall",
+          "Improvement in scalp health and comfort",
+          "Better hair texture and overall hair quality"
+        ]
+      },
+      {
+        "window": "3rd Month",
+        "bullets": [
+          "Early signs of follicular recovery",
+          "Improvement in hair caliber (thickness)",
+          "Appearance of fine new (vellus) hair growth"
+        ]
+      },
+      {
+        "window": "4th Month",
+        "bullets": [
+          "Visible improvement in hair volume and density",
+          "Reduced scalp show-through in responsive areas",
+          "Continued strengthening of existing follicles"
+        ]
+      },
+      {
+        "window": "5th Month onwards",
+        "bullets": [
+          "Further improvement in density and coverage",
+          "Consolidation of regrowth achieved",
+          "Long-term maintenance and stabilization of results"
+        ]
+      }
+    ],
+    "dietAndLifestyle": [
+      {
+        "condition": "PCOS hormonal imbalance",
+        "recommendation": "Low-glycaemic, high-fibre diet with consistent meal timing.",
+        "expectedBenefit": "Supports insulin sensitivity and reduces androgen-driven follicular pressure."
+      },
+      {
+        "condition": "Chronic stress",
+        "recommendation": "Daily 10-minute decompression routine (breathwork or walk).",
+        "expectedBenefit": "Lowers cortisol exposure on the hair cycle."
+      }
+    ]
+  }
+}

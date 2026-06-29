@@ -96,6 +96,7 @@ export function AssessmentDashboard({ initialData }: { initialData: AssessmentVi
           artifacts: previousArtifacts,
           artifactByType: Object.fromEntries(previousArtifacts.map((artifact) => [artifact.type, artifact])),
           artifactPresence: {},
+          narratives: null,
           processing: {
             status: data.status as AssessmentReportPayload["processing"]["status"],
             progressPercent: data.progressPercent,

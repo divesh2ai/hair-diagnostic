@@ -4,6 +4,9 @@ export type AssessmentProcessingStatus =
   | "NORMALIZING"
   | "RUNNING_CLINICAL_ENGINE"
   | "GENERATING_RECOMMENDATIONS"
+  | "GENERATING_NARRATIVE"
+  | "GENERATING_VIDEO_SCRIPT"
+  | "RENDERING_VIDEO"
   | "GENERATING_REPORT"
   | "COMPLETED"
   | "FAILED"
@@ -17,7 +20,18 @@ export type AssessmentArtifactType =
   | "REPORT"
   | "THERAPY_PLAN"
   | "VISUAL_JOURNEY"
-  | "PIPELINE_RUNTIME";
+  | "PIPELINE_RUNTIME"
+  | "VIDEO_SCRIPT"
+  | "AVATAR_VIDEO";
+
+export type VideoExperienceState = "PENDING" | "RENDERING" | "READY" | "UNAVAILABLE";
+
+export interface VideoExperienceBlock {
+  state: VideoExperienceState;
+  url: string | null;
+  thumbnailUrl: string | null;
+  durationSec: number | null;
+}
 
 export interface AssessmentArtifact {
   id: string;
@@ -59,6 +73,51 @@ export interface AssessmentProcessingState {
   errors: string[];
 }
 
+export interface NarrativeSection {
+  full: string;
+  short: string;
+  segments: Array<{ label: string; text: string }>;
+  length: "brief" | "detailed" | string;
+  target: string;
+  locale: string;
+  generatedAt: string;
+}
+
+export interface EnrichedTherapyNeed {
+  need: string;
+  title: string;
+  clinicalRationale: string;
+  patientExplanation: string;
+}
+
+export interface EnrichedRootCause {
+  cause: string;
+  title: string;
+  clinicalContext: string;
+  patientFriendly: string;
+}
+
+export interface AssessmentNarratives {
+  executiveSummary: string;
+  doctorNarrative: NarrativeSection;
+  patientNarrative: NarrativeSection;
+  therapyExplanation: NarrativeSection;
+  lifestylePlan: NarrativeSection;
+  prognosis: NarrativeSection;
+  monitoringPlan: NarrativeSection;
+  enrichedTherapyNeeds: EnrichedTherapyNeed[];
+  enrichedRootCauses: EnrichedRootCause[];
+  /** V4 structured clinical report — patient summary, treatment strategy, roadmap, etc. */
+  clinicalReport?: Record<string, unknown> | null;
+  /**
+   * Runtime-agnostic 5-chapter DoctorConsultationScript produced by the
+   * narrative pipeline. Drives the DoctorConsultationViewer at the top of
+   * the patient report. Typed as `unknown` here to keep the shared types
+   * package free of ai-engine imports; the viewer casts at the boundary.
+   */
+  doctorConsultation?: Record<string, unknown> | null;
+}
+
 export interface AssessmentStatusResponse {
   success: boolean;
   assessmentId?: string;
@@ -70,6 +129,8 @@ export interface AssessmentStatusResponse {
   completedAt?: string | null;
   artifacts?: Record<string, AssessmentArtifact> | AssessmentArtifact[];
   artifactPresence?: Record<string, boolean>;
+  narratives?: AssessmentNarratives | null;
+  video?: VideoExperienceBlock;
   timing?: {
     queueLatencyMs: number | null;
     orchestrationDurationMs: number | null;
@@ -105,6 +166,8 @@ export interface AssessmentReportPayload {
   artifacts: AssessmentArtifact[];
   artifactByType: Record<string, AssessmentArtifact>;
   artifactPresence: Record<string, boolean>;
+  narratives: AssessmentNarratives | null;
+  video: VideoExperienceBlock;
   processing: AssessmentProcessingState;
   events: AssessmentEventPayload[];
   orchestrationLogs: AssessmentOrchestrationLog[];

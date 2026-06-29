@@ -1,6 +1,6 @@
 {
   "id": "postpartum_breastfeeding_01",
-  "description": "Post-partum TE actively breastfeeding → TE_POSTPREG (score 92). LACTIHEALTH addresses lactation nutritional demand. Active shedding promotes TE GOLD to Phase 1, pushing LACTIHEALTH to Phase 2. PRO IMMUNE rebuilds post-partum immunity last.",
+  "description": "Post-partum TE actively breastfeeding → TE_POSTPREG (score 92). LACTIHEALTH covers the lactation-driven nutritional shedding mechanism. Locked clinical rule: TE GOLD is NEVER prescribed to a breastfeeding patient — LACTIHEALTH alone handles shedding arrest in this context. PRO IMMUNE rebuilds post-partum immunity last.",
   "budget": "STANDARD",
   "answers": {
     "sex": "Female",
@@ -25,11 +25,11 @@
     "diagnoses": ["TE_POSTPREG"],
     "scalpStates": ["NORMAL_SCALP"],
     "rootCauses": ["POST_PARTUM"],
-    "therapyNeeds": ["LACTATION_SUPPORT", "SHEDDING_ARREST", "IMMUNE_MODULATION"],
-    "topKit": "HAIR FACT TE GOLD",
-    "mustIncludeKits": ["HAIR FACT TE GOLD", "LACTIHEALTH", "PRO IMMUNE GOLD"],
-    "mustExcludeKits": ["MPHL", "FPHL", "RAPID WEIGHT LOSS SHIELD", "PRO FACT META B HYPOTHYROID"],
-    "mustTriggerRules": ["ACTIVE_SHEDDING"],
+    "therapyNeeds": ["LACTATION_SUPPORT", "IMMUNE_MODULATION"],
+    "topKit": "LACTIHEALTH",
+    "mustIncludeKits": ["LACTIHEALTH", "PRO IMMUNE GOLD"],
+    "mustExcludeKits": ["HAIR FACT TE GOLD", "HAIR FACT TE GOLD VEG", "MPHL", "FPHL", "RAPID WEIGHT LOSS SHIELD", "PRO FACT META B HYPOTHYROID"],
+    "mustTriggerRules": ["TE_GOLD_BREASTFEEDING_STRIP"],
     "mustBlockRules": ["GLP1_EARLY", "GLP1_LATE", "RULE1_HYPO_METABOLIC", "REGROW_GOAL_AGA"]
   }
 }

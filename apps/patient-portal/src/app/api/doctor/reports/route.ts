@@ -1,16 +1,28 @@
 import { NextResponse } from "next/server";
 import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
+import { getClinicContext, handleAuthError, isSuperAdmin } from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
 
 export async function GET(req: Request) {
+  let ctx;
+  try {
+    ctx = await getClinicContext();
+  } catch (err) {
+    const resp = handleAuthError(err);
+    if (resp) return resp;
+    throw err;
+  }
+
   const url = new URL(req.url);
   const q = url.searchParams;
 
   const dateFrom = q.get("dateFrom");
   const dateTo = q.get("dateTo");
-  const clinicId = q.get("clinicId");
+  // Non-Super-Admins are pinned to their own clinic regardless of query param.
+  const requestedClinicId = q.get("clinicId");
+  const clinicId = isSuperAdmin(ctx.role) ? requestedClinicId : ctx.clinicId;
   const doctorId = q.get("doctorId");
   const status = q.get("status");
   const diagnosis = q.get("diagnosis");

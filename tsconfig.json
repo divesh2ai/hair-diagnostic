@@ -15,5 +15,6 @@
       "@/*": ["src/*"],
       "@shared/*": ["packages/shared/*"]
     }
-  }
+  },
+  "exclude": ["node_modules", "legacy", "apps", "Dashboard"]
 }

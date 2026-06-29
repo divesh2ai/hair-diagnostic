@@ -128,7 +128,6 @@
       { "protocolKey": "THYROID_HYPO", "baseScore": 100, "triggers": ["thyroid includes 'Hypothyroidism'", "hormonal includes 'Thyroid'"] },
       { "protocolKey": "THYROID_HYPER", "baseScore": 100, "triggers": ["thyroid includes 'Hyperthyroidism'"] },
       { "protocolKey": "POST_MENOPAUSE", "baseScore": 98, "triggers": ["hormonal includes 'Post-menopause'", "hormonal includes 'Post menopause'", "hormonal includes 'Post-Menopause'"] },
-      { "protocolKey": "MENOPAUSE", "baseScore": 98, "triggers": ["hormonal includes 'Menopause' AND NOT 'Peri' AND NOT 'Post'"] },
       { "protocolKey": "PERI_MENOPAUSE", "baseScore": 98, "triggers": ["hormonal includes 'Peri-menopause'", "hormonal includes 'Peri menopause'", "hormonal includes 'Perimenopause'", "hormonal includes 'peri'", "hormonal includes 'Peri-Menopause'"] },
       { "protocolKey": "ENDOMETRIOSIS", "baseScore": 85, "triggers": ["hormonal includes 'Endometriosis'"] },
       { "protocolKey": "PCOS_ONLY", "baseScore": 92, "modifiers": ["+9 if also Hypothyroidism → 101"], "triggers": ["hormonal includes 'PCOS'/'PCOD' AND NOT obesity/sedentary/weight signals"] },
@@ -152,7 +151,7 @@
       { "protocolKey": "AGA_MALE_45", "baseScore": "65 (or 45 if age-only signal)", "modifiers": ["+5 if age > 30"], "triggers": ["male + AGA signals + isGrade45=true"] },
       { "protocolKey": "AGA_FEMALE_123", "baseScore": "65 (or 45 if age-only signal)", "modifiers": ["+5 if age > 30", "+95 if also PCOS + WEIGHT_LOSS (Rule 1A)"], "triggers": ["female + AGA signals present"] },
       { "protocolKey": "AGA_FEMALE_45", "baseScore": "65 (or 45 if age-only signal)", "modifiers": ["+5 if age > 30", "+95 if also PCOS + WEIGHT_LOSS (Rule 1A)"], "triggers": ["female + AGA signals + isGrade45=true"] },
-      { "protocolKey": "HAIR_BREAKAGE", "baseScore": 52, "triggers": ["hairtype includes 'Broken'/'short'", "cause includes 'Hard water'", "(treatment includes Heat/Chemical AND hairtype includes 'Broken'/'short')"] }
+      { "protocolKey": "HAIR_BREAKAGE", "baseScore": 52, "triggers": ["cause includes 'Hard water'"] }
     ],
     "rule1AOverride": {
       "description": "Rule 1A: When AGA_FEMALE + PCOS + WEIGHT_LOSS all simultaneously scored, AGA_FEMALE boosted to 95 to dominate. Protocol: Shield → F-PCOS-1 → PHENOTYPE INFLAMATION → FPHL Kit. TE Gold suppressed.",
@@ -261,12 +260,6 @@
         "phases": ["HAIR FACT PERI MENOPAUSE", "FPHL", "HAIR FACT TE GOLD", "PRO IMMUNE GOLD"],
         "rationale": "PERI MENOPAUSE kit stabilises hormonal fluctuation first; FPHL corrects androgenetic pattern driven by oestrogen decline; TE GOLD stops active shedding; PRO IMMUNE GOLD consolidates.",
         "metabolicModifier": "If metabolic signal (obesity/sedentary/weight): PRO FACT META B inserted at position 1 (after PERI kit, before TE GOLD)"
-      },
-      {
-        "key": "MENOPAUSE",
-        "label": "Menopause",
-        "phases": ["PRO FACT META B MENOPAUSE", "FPHL", "HAIR FACT TE GOLD"],
-        "rationale": "PRO FACT META B MENOPAUSE corrects sustained oestrogen decline and metabolic shift first; FPHL corrects androgenetic pattern; TE GOLD addresses any concurrent shedding"
       },
       {
         "key": "POST_MENOPAUSE",
@@ -603,7 +596,7 @@
     { "kit": "IRON UP GOLD", "vegVariant": null, "primaryMechanism": "Iron Bisglycinate (3x absorption vs ferrous sulphate) restores ferritin above 40 ng/mL threshold; Vitamin C co-administration", "trigger": "Iron deficiency/anaemia confirmed; always high priority insertion" },
     { "kit": "PRO FACT GI GOLD", "vegVariant": null, "primaryMechanism": "Lactobacillus/Bifidobacterium microbiome restoration; L-Glutamine mucosal repair; Digestive Enzymes for iron/B12 absorption; without this all other kits absorb at 20-30% efficiency", "trigger": "IBS/GERD/Crohn/Acid reflux (strong gut signals only — mild bloating alone insufficient)" },
     { "kit": "OXIDATIVE STRESS", "vegVariant": null, "primaryMechanism": "Mitochondrial ROS clearance via Astaxanthin (6000x singlet oxygen quenching); CoQ10+ALA mitochondrial protection; Glutathione+Selenium Phase II detox", "trigger": "2+ oxidative signals: smoking+alcohol; smoking+asthma; greying co-condition; night shift+greying" },
-    { "kit": "HAIR FACT HAIR BREAKAGE REPAIR(HBR)", "vegVariant": null, "primaryMechanism": "Shaft structural repair; keratin rebuilding; not follicle treatment — targets shaft damage", "trigger": "Confirmed broken/short hairs OR hard water damage; heat/chemical alone insufficient" },
+    { "kit": "HAIR FACT HAIR BREAKAGE REPAIR(HBR)", "vegVariant": null, "primaryMechanism": "Shaft structural repair; keratin rebuilding; not follicle treatment — targets shaft damage", "trigger": "Hard water shaft damage; heat/chemical alone insufficient. (Q3 'Broken/short' hairtype option retired.)" },
     { "kit": "LACTIHEALTH", "vegVariant": null, "primaryMechanism": "Breastfeeding nutritional demand support", "trigger": "Post-partum + breastfeeding (TE_POSTPREG); Phase 1 of breastfeeding protocol" },
     { "kit": "EARLY GREYING CARE GOLD", "vegVariant": "EARLY GREYING CARE VEG", "primaryMechanism": "Catalase replenishment (H2O2 breakdown in melanocytes); Copper for tyrosinase; PABA+B12+Folic Acid melanocyte DNA methylation", "trigger": "Early greying sole concern (EARLY_GREY protocol); or co-concern (appended at end of hair fall protocol)" },
     { "kit": "HAIR FACT ALOPECIA AREATA", "vegVariant": null, "primaryMechanism": "Autoimmune modulation; AA-specific formulation", "trigger": "ALOPECIA_AREATA dominant protocol" },
@@ -611,7 +604,7 @@
     { "kit": "HAIR FACT NIGHT SHIFT", "vegVariant": null, "primaryMechanism": "Melatonin-serotonin circadian cycle restoration; follicle circadian rhythm repair", "trigger": "NIGHT_SHIFT protocol; lifestyle includes Night shift" },
     { "kit": "HAIR FACT FREQUENT FLYERS", "vegVariant": null, "primaryMechanism": "Oxidative stress protection from cabin radiation; circadian disruption correction; dehydration-immune support", "trigger": "FREQUENT_FLYING protocol" },
     { "kit": "HAIR FACT PERI MENOPAUSE", "vegVariant": "HAIR FACT PERI MENOPAUSE VEG", "primaryMechanism": "Hormonal fluctuation stabilisation during peri-menopausal transition", "trigger": "PERI_MENOPAUSE protocol Phase 1" },
-    { "kit": "PRO FACT META B MENOPAUSE", "vegVariant": null, "primaryMechanism": "Sustained oestrogen decline correction + metabolic shift at menopause", "trigger": "MENOPAUSE protocol Phase 1" },
+    { "kit": "PRO FACT META B MENOPAUSE", "vegVariant": null, "primaryMechanism": "Sustained oestrogen decline correction + metabolic shift at menopause", "trigger": "[RETIRED 2026-06-15 trigger path] Kit retained in registry; bare 'Menopause' hormonal option removed from questionnaire — kit no longer reachable via questionnaire-driven protocol routing." },
     { "kit": "PRO FACT META B POSTMENOPAUSE", "vegVariant": null, "primaryMechanism": "Post-menopausal metabolic shift correction", "trigger": "POST_MENOPAUSE protocol Phase 1" },
     { "kit": "PRO FACT META B HYPOTHYROID", "vegVariant": null, "primaryMechanism": "T3 metabolic correction; Ashwagandha+B-Complex+CoQ10 support T3 conversion", "trigger": "THYROID_HYPO protocol WITHOUT metabolic co-morbidity; swapped for PRO FACT META B if obesity/sedentary also present" },
     { "kit": "PRO FACT THYROID CARE", "vegVariant": null, "primaryMechanism": "Hyperthyroid metabolic overactivity correction", "trigger": "THYROID_HYPER protocol Phase 1" },
@@ -686,7 +679,7 @@
     {
       "ruleId": "HR_007",
       "name": "HEAT_CHEMICAL_TREATMENT_INSUFFICIENT_FOR_HBR",
-      "description": "Heat styling or chemical treatment alone does NOT trigger HBR kit. Patient must ALSO report broken/short hair strands (hairtype). This is a hidden coupling: treatment question alone is insufficient; hairtype must corroborate.",
+      "description": "Heat styling or chemical treatment alone does NOT trigger HBR kit. Patient must ALSO report Hard water in cause as the corroborating shaft-damage signal. (Q3 'Broken/short' hairtype option retired — no longer a valid corroborating signal.)",
       "sourceCodeReference": "getFunnelKits lines 4817-4830; matchProtocol lines 4360-4367"
     },
     {

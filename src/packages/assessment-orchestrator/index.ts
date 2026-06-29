@@ -25,6 +25,13 @@ import type { ExplanationContext } from "../ai-engine/explanations/types";
 import { validateArtifactPayload } from "./validation/validateArtifact";
 import { persistArtifact, persistNarrativeArtifact } from "./persistence/persistArtifacts";
 import { assembleAssessmentNarratives, formatEnrichedNarratives } from "./narratives/assembleNarratives";
+import { buildClinicalReport } from "../ai-engine/report-engine";
+import { buildFourChapterNarrative } from "../narrative-engine";
+import { build3DAvatarScript } from "../ai-engine/narrative-engine/build3DAvatarScript";
+import { buildDoctorConsultation } from "../ai-engine/narrative-engine/consultation/buildDoctorConsultation";
+import type { NarrativePipelineInput } from "../ai-engine/narrative-engine/types";
+import { startAvatarVideoRender, probeVideoStatus } from "../video-engine";
+import type { VideoArtifactContent } from "../video-engine";
 
 // ─── Prisma Singleton ─────────────────────────────────────────────────────────
 // Shared within the package process lifetime. Prevents connection thrash during
@@ -36,7 +43,16 @@ if (process.env.NODE_ENV !== "production") g._hairosPrisma = prisma;
 
 // ─── Stage Ordering ────────────────────────────────────────────────────────────
 
-type StageName = "normalize" | "clinical" | "therapy" | "recommendations" | "narratives" | "visual" | "pdf";
+type StageName =
+  | "normalize"
+  | "clinical"
+  | "therapy"
+  | "recommendations"
+  | "narratives"
+  | "videoScript"
+  | "videoRender"
+  | "visual"
+  | "pdf";
 
 const STAGE_ORDER: StageName[] = [
   "normalize",
@@ -44,6 +60,8 @@ const STAGE_ORDER: StageName[] = [
   "therapy",
   "recommendations",
   "narratives",
+  "videoScript",
+  "videoRender",
   "visual",
   "pdf",
 ];
@@ -55,6 +73,8 @@ const STAGE_ARTIFACT: Record<StageName, ArtifactType> = {
   therapy:         ArtifactType.THERAPY_PLAN,
   recommendations: ArtifactType.RECOMMENDATIONS,
   narratives:      ArtifactType.NARRATIVES,
+  videoScript:     ArtifactType.VIDEO_SCRIPT,
+  videoRender:     ArtifactType.AVATAR_VIDEO,
   visual:          ArtifactType.VISUAL_JOURNEY,
   pdf:             ArtifactType.REPORT,
 };
@@ -253,6 +273,36 @@ async function runNarratives(
   const assembled = assembleAssessmentNarratives(context);
   const base = buildNarrative(context);
 
+  const clinicalReport = buildClinicalReport(
+    {
+      name: ctx.patient.name,
+      age: ctx.patient.age ?? 30,
+      sex: ctx.patient.gender ?? "unknown",
+    },
+    clinical,
+    therapy,
+    recommendations,
+    ctx.answers
+  );
+
+  // ── Phase 1: FourChapterNarrative (additive) ─────────────────────────────
+  // Single canonical narrative payload derived purely from ClinicalReport.
+  // Phase 1 only produces and persists it. No renderer consumes it yet.
+  const fourChapterNarrative = buildFourChapterNarrative(clinicalReport);
+
+  // ── Doctor consultation (5-chapter runtime-agnostic script) ──────────────
+  // Reuses the exact clinical inputs the report uses — no duplicated logic.
+  // Persisted alongside the narratives so the patient report's
+  // DoctorConsultationViewer can render it immediately on report load.
+  const doctorConsultation = buildDoctorConsultation({
+    patient: ctx.answers,
+    clinicalProfile: clinical,
+    therapyPlan: therapy,
+    kitRecommendation: recommendations,
+    explanationResult: {} as NarrativePipelineInput["explanationResult"],
+    narrativeLength: "detailed",
+  } as NarrativePipelineInput);
+
   const narrativesPayload = {
     doctor_narrative:    assembled.doctor_narrative,
     patient_narrative:   assembled.patient_narrative,
@@ -264,6 +314,9 @@ async function runNarratives(
     patientSummary:      base.patientSummary,
     narrative:           base.narrative,
     length:              base.length,
+    clinical_report:     clinicalReport,
+    four_chapter_narrative: fourChapterNarrative,
+    doctor_consultation: doctorConsultation,
     // Enriched content for rendering
     enrichedTherapyNeeds: assembled.enrichedTherapyNeeds,
     enrichedRootCauses:  assembled.enrichedRootCauses,
@@ -297,6 +350,108 @@ async function runNarratives(
     where: { id: ctx.assessmentId },
     data: { lastCompletedStage: "narratives" },
   });
+}
+
+async function runVideoScript(
+  ctx: OrchestrationContext,
+  clinical: ReturnType<typeof evaluateClinicalProfile>,
+  therapy: ReturnType<typeof mapTherapyNeeds>,
+  recommendations: ReturnType<typeof scoreKits>
+): Promise<ReturnType<typeof build3DAvatarScript> | null> {
+  const start = Date.now();
+  await logOrchestrationStage(ctx.assessmentId, "videoScript", "RUNNING");
+
+  // build3DAvatarScript only reads patient / clinicalProfile / therapyPlan /
+  // kitRecommendation / prognosis. explanationResult is required by the type
+  // but unused at runtime — pass a minimal cast to keep the contract.
+  const scriptInput = {
+    patient: ctx.answers,
+    clinicalProfile: clinical,
+    therapyPlan: therapy,
+    kitRecommendation: recommendations,
+    explanationResult: {} as NarrativePipelineInput["explanationResult"],
+    narrativeLength: "detailed" as const,
+    includeAvatarScript: true,
+    includeWhatsAppSummary: false,
+  } as NarrativePipelineInput;
+
+  const script = build3DAvatarScript(scriptInput);
+
+  await upsertArtifact(ctx.assessmentId, ArtifactType.VIDEO_SCRIPT, script, Date.now() - start);
+  await logOrchestrationStage(ctx.assessmentId, "videoScript", "SUCCESS", {
+    durationMs: Date.now() - start,
+    metadata: { sceneCount: script.scenes.length },
+  });
+  await prisma.assessment.update({
+    where: { id: ctx.assessmentId },
+    data: { lastCompletedStage: "videoScript" },
+  });
+
+  return script;
+}
+
+async function runVideoRender(
+  ctx: OrchestrationContext,
+  script: ReturnType<typeof build3DAvatarScript>
+): Promise<void> {
+  const start = Date.now();
+  await logOrchestrationStage(ctx.assessmentId, "videoRender", "RUNNING");
+
+  const initial = await startAvatarVideoRender({
+    assessmentId: ctx.assessmentId,
+    script,
+  });
+
+  await upsertArtifact(ctx.assessmentId, ArtifactType.AVATAR_VIDEO, initial, Date.now() - start);
+  await logOrchestrationStage(ctx.assessmentId, "videoRender", "SUCCESS", {
+    durationMs: Date.now() - start,
+    metadata: { status: initial.status, provider: initial.provider },
+  });
+  await prisma.assessment.update({
+    where: { id: ctx.assessmentId },
+    data: { lastCompletedStage: "videoRender" },
+  });
+
+  // Kick off background poll — does NOT block the rest of the pipeline.
+  void pollVideoUntilSettled(ctx.assessmentId);
+}
+
+/**
+ * Background poller — advances the AVATAR_VIDEO artifact from RENDERING to
+ * READY/FAILED. Runs out-of-band; safe to call concurrently because each
+ * tick re-reads the latest artifact content.
+ */
+async function pollVideoUntilSettled(assessmentId: string): Promise<void> {
+  const MAX_TICKS = 60;       // 60 * 5s = 5 minutes hard ceiling
+  const INTERVAL_MS = 5_000;
+
+  for (let i = 0; i < MAX_TICKS; i++) {
+    await new Promise<void>((r) => setTimeout(r, INTERVAL_MS));
+    try {
+      const row = await prisma.aIArtifact.findUnique({
+        where: { assessmentId_type: { assessmentId, type: ArtifactType.AVATAR_VIDEO } },
+      });
+      const current = row?.content as VideoArtifactContent | undefined;
+      if (!current) return;
+      if (current.status === "READY" || current.status === "FAILED") return;
+
+      const next = await probeVideoStatus(current);
+      if (next === current) continue;
+
+      await prisma.aIArtifact.update({
+        where: { assessmentId_type: { assessmentId, type: ArtifactType.AVATAR_VIDEO } },
+        data: { content: next as unknown as Prisma.InputJsonValue },
+      });
+
+      if (next.status === "READY" || next.status === "FAILED") return;
+    } catch (err) {
+      console.error("[Orchestrator] video poll error", {
+        assessmentId,
+        error: err instanceof Error ? err.message : String(err),
+      });
+      return;
+    }
+  }
 }
 
 async function runVisualJourney(
@@ -333,14 +488,20 @@ async function runReportGeneration(
 ): Promise<void> {
   const start = Date.now();
   await logOrchestrationStage(ctx.assessmentId, "pdf", "RUNNING");
-  const [recommendationsArtifact, therapyArtifact] = await Promise.all([
+  const [recommendationsArtifact, therapyArtifact, narrativesArtifact] = await Promise.all([
     prisma.aIArtifact.findUnique({
       where: { assessmentId_type: { assessmentId: ctx.assessmentId, type: ArtifactType.RECOMMENDATIONS } },
     }),
     prisma.aIArtifact.findUnique({
       where: { assessmentId_type: { assessmentId: ctx.assessmentId, type: ArtifactType.THERAPY_PLAN } },
     }),
+    prisma.aIArtifact.findUnique({
+      where: { assessmentId_type: { assessmentId: ctx.assessmentId, type: ArtifactType.NARRATIVES } },
+    }),
   ]);
+
+  const narrativesContent = narrativesArtifact?.content as Record<string, unknown> | null;
+  const clinicalReport = narrativesContent?.clinical_report ?? null;
 
   const pdfPayload: ReportInputPayload = {
     assessmentId: ctx.assessmentId,
@@ -355,6 +516,7 @@ async function runReportGeneration(
     visualJourney: visual,
     kitRecommendation: (recommendationsArtifact?.content ?? null) as unknown as ReportInputPayload["kitRecommendation"],
     therapyPlan: therapyArtifact?.content ?? null,
+    clinicalReport: clinicalReport as ReportInputPayload["clinicalReport"],
     createdAt: new Date(),
   };
 
@@ -501,6 +663,8 @@ export async function orchestrateAssessment(assessmentId: string): Promise<void>
     }
 
     // ── Stage 5: Narratives ───────────────────────────────────────────────────
+    await setStatus(assessmentId, AssessmentStatus.GENERATING_NARRATIVE);
+
     if (clinical && therapy && recommendations) {
       if (!(await stageAlreadyComplete(assessmentId, "narratives"))) {
         try {
@@ -511,6 +675,50 @@ export async function orchestrateAssessment(assessmentId: string): Promise<void>
           await logAssessmentEvent(prisma, assessmentId, "FAILED", { stage: "narratives", message: msg });
           console.error(`[Orchestrator] narratives stage failed ${assessmentId}:`, msg);
         }
+      }
+    }
+
+    // ── Stage 5b: Video Script ────────────────────────────────────────────────
+    // Video is the patient's primary artifact. Script + render kick off BEFORE
+    // visual journey / PDF so the result page can hero the video as soon as
+    // possible. The render itself is async — kicked off here, completed by
+    // pollVideoUntilSettled in the background.
+    await setStatus(assessmentId, AssessmentStatus.GENERATING_VIDEO_SCRIPT);
+
+    let videoScript: ReturnType<typeof build3DAvatarScript> | null = null;
+    if (clinical && therapy && recommendations) {
+      if (!(await stageAlreadyComplete(assessmentId, "videoScript"))) {
+        try {
+          videoScript = await runVideoScript(ctx, clinical, therapy, recommendations);
+        } catch (err) {
+          const msg = err instanceof Error ? err.message : String(err);
+          await logOrchestrationStage(assessmentId, "videoScript", "FAILED", { error: msg });
+          console.error(`[Orchestrator] videoScript stage failed ${assessmentId}:`, msg);
+        }
+      } else {
+        const artifact = await prisma.aIArtifact.findUnique({
+          where: { assessmentId_type: { assessmentId, type: ArtifactType.VIDEO_SCRIPT } },
+        });
+        videoScript = (artifact?.content ?? null) as ReturnType<typeof build3DAvatarScript> | null;
+      }
+    }
+
+    // ── Stage 5c: Video Render (kick off, do NOT block visual/pdf) ────────────
+    await setStatus(assessmentId, AssessmentStatus.RENDERING_VIDEO);
+
+    if (videoScript) {
+      if (!(await stageAlreadyComplete(assessmentId, "videoRender"))) {
+        try {
+          await runVideoRender(ctx, videoScript);
+        } catch (err) {
+          const msg = err instanceof Error ? err.message : String(err);
+          await logOrchestrationStage(assessmentId, "videoRender", "FAILED", { error: msg });
+          console.error(`[Orchestrator] videoRender stage failed ${assessmentId}:`, msg);
+        }
+      } else {
+        // On resume, restart the background poller in case the artifact is
+        // still RENDERING but the previous process died.
+        void pollVideoUntilSettled(assessmentId);
       }
     }
 

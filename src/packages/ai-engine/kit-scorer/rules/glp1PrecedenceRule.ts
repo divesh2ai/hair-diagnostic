@@ -11,6 +11,12 @@ import type { KitScorerContext } from '../types';
 //   SHIELD is ALWAYS Kit 2 — acute shedding peak has passed.
 //   TE GOLD leads (shedding arrest), Shield provides nutritional recovery support.
 //
+// Rapid weight loss / Crash diet (non-GLP-1):
+//   SHIELD is ALWAYS Kit 1 — same acute nutritional shedding mechanism as
+//   GLP-1 Early. Patient declared crash-diet/keto driven rapid weight loss;
+//   Shield is non-negotiable regardless of which primary diagnosis wins the
+//   score race.
+//
 // This rule is applied TWICE in the pipeline:
 //   - Once after initial rule processing
 //   - Once after priority lifting (to survive liftPhase reordering)
@@ -19,8 +25,8 @@ import type { KitScorerContext } from '../types';
 const SHIELD = 'RAPID WEIGHT LOSS SHIELD';
 
 export function applyGLP1PrecedenceRule(ctx: KitScorerContext): KitScorerContext {
-  const { hasGLP1Early, hasGLP1Late } = ctx.flags;
-  if (!hasGLP1Early && !hasGLP1Late) return ctx;
+  const { hasGLP1Early, hasGLP1Late, hasCrashDiet } = ctx.flags;
+  if (!hasGLP1Early && !hasGLP1Late && !hasCrashDiet) return ctx;
 
   let phases = [...ctx.phases];
   const rules: string[] = [];
@@ -39,6 +45,14 @@ export function applyGLP1PrecedenceRule(ctx: KitScorerContext): KitScorerContext
     rules.push(
       'GLP1_LATE: RAPID WEIGHT LOSS SHIELD enforced at position 1. ' +
       'Acute shedding peak has passed — TE GOLD leads at position 0, Shield supports nutritional recovery at Phase 2.'
+    );
+  } else if (hasCrashDiet) {
+    phases = phases.filter((k) => k !== SHIELD);
+    phases.unshift(SHIELD);
+    rules.push(
+      'CRASH_DIET: RAPID WEIGHT LOSS SHIELD enforced at position 0. ' +
+      'Rapid weight loss / Crash diet declared — non-negotiable Phase 1 regardless of primary diagnosis. ' +
+      'Acute nutrient depletion drives diffuse telogen release; Shield arrests it at the trigger level.'
     );
   }
 

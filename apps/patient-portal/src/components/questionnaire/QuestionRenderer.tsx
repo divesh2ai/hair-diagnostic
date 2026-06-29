@@ -8,6 +8,25 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { UploadCloud } from 'lucide-react';
+
+// ─── Input formatting helpers ───────────────────────────────────────────────
+
+/** Title-case a name: collapses whitespace and capitalises each word. */
+function toTitleCase(value: string): string {
+  return value
+    .toLowerCase()
+    .replace(/\s+/g, ' ')
+    .replace(/(^|[\s.'-])([a-z])/g, (_match, sep: string, ch: string) => sep + ch.toUpperCase());
+}
+
+/** Strip any character outside the allowed name character set. */
+function sanitiseNameInput(value: string): string {
+  return value.replace(/[^A-Za-z\s.'-]/g, '');
+}
+
+/** Age range constants used when schema validation is missing. */
+const AGE_MIN_DEFAULT = 10;
+const AGE_MAX_DEFAULT = 150;
 import {
   getVisibleOptions,
   applyMultiSelectRules,
@@ -32,6 +51,15 @@ export function QuestionRenderer({ question, currentAnswer, onAnswer, allAnswers
   // Driven entirely by protocol metadata (question.mutualExclusivityToast) — no option names hardcoded here.
   const [deselectedHint, setDeselectedHint] = useState<string | null>(null);
   const recordExclusivityEvent = useAssessmentStore(s => s.recordExclusivityEvent);
+
+  // ── Field-specific validation state ────────────────────────────────────
+  const isNameField = question.id === 'name' || question.uiFormat === 'name';
+  const isAgeField = question.id === 'age';
+  const ageMin = question.validation?.min ?? AGE_MIN_DEFAULT;
+  const ageMax = question.validation?.max ?? AGE_MAX_DEFAULT;
+
+  const [nameError, setNameError] = useState<string | null>(null);
+  const [ageError, setAgeError] = useState<string | null>(null);
 
   return (
     <AnimatePresence mode="wait">
@@ -86,9 +114,34 @@ export function QuestionRenderer({ question, currentAnswer, onAnswer, allAnswers
               type="text"
               placeholder={question.validation?.errorMessage ?? 'Type your answer…'}
               value={currentAnswer ?? ''}
-              onChange={(e) => onAnswer(e.target.value)}
+              onChange={(e) => {
+                const raw = e.target.value;
+                if (!isNameField) {
+                  onAnswer(raw);
+                  return;
+                }
+                // Names: digits / symbols are rejected; clean input is title-cased
+                if (/\d/.test(raw)) {
+                  setNameError('Numbers are not allowed in a name. Use letters only.');
+                } else {
+                  setNameError(null);
+                }
+                const sanitised = sanitiseNameInput(raw);
+                const cased = toTitleCase(sanitised);
+                onAnswer(cased);
+              }}
+              onBlur={() => {
+                if (isNameField && typeof currentAnswer === 'string') {
+                  onAnswer(toTitleCase(sanitiseNameInput(currentAnswer)));
+                }
+              }}
+              inputMode={isNameField ? 'text' : undefined}
+              autoCapitalize={isNameField ? 'words' : undefined}
               className="h-16 text-xl px-6 rounded-2xl shadow-sm border-2 border-slate-200 focus-visible:ring-primary"
             />
+            {isNameField && nameError && (
+              <p className="mt-2 text-sm font-medium text-rose-600">{nameError}</p>
+            )}
           </div>
         )}
 
@@ -97,13 +150,35 @@ export function QuestionRenderer({ question, currentAnswer, onAnswer, allAnswers
           <div className="mt-4">
             <Input
               type="number"
-              placeholder="e.g. 28"
+              placeholder={isAgeField ? `e.g. 28 (between ${ageMin} and ${ageMax})` : 'e.g. 28'}
               value={currentAnswer ?? ''}
-              onChange={(e) => onAnswer(Number(e.target.value))}
+              onChange={(e) => {
+                const raw = e.target.value;
+                if (raw === '') {
+                  if (isAgeField) setAgeError(null);
+                  onAnswer('');
+                  return;
+                }
+                const num = Number(raw);
+                if (isAgeField) {
+                  if (!Number.isFinite(num) || !Number.isInteger(num)) {
+                    setAgeError('Age must be a whole number.');
+                  } else if (num < ageMin || num > ageMax) {
+                    setAgeError(`Age must be between ${ageMin} and ${ageMax}.`);
+                  } else {
+                    setAgeError(null);
+                  }
+                }
+                onAnswer(num);
+              }}
               className="h-16 text-2xl px-6 rounded-2xl shadow-sm border-2 border-slate-200 focus-visible:ring-primary"
-              min={question.validation?.min}
-              max={question.validation?.max}
+              min={isAgeField ? ageMin : question.validation?.min}
+              max={isAgeField ? ageMax : question.validation?.max}
+              step={isAgeField ? 1 : undefined}
             />
+            {isAgeField && ageError && (
+              <p className="mt-2 text-sm font-medium text-rose-600">{ageError}</p>
+            )}
           </div>
         )}
 
