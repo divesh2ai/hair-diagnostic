@@ -38,6 +38,7 @@ export const te: Dictionary = {
     patients: "రోగులు",
     queue: "క్యూ",
     reports: "నివేదికలు",
+    reviewQueue: "సమీక్ష క్యూ",
     treatment: "చికిత్స",
     subscriptions: "సబ్‌స్క్రిప్షన్‌లు",
     audit: "ఆడిట్",
@@ -50,6 +51,7 @@ export const te: Dictionary = {
     searchPlaceholder: "రోగులు, నివేదికలు, క్లినిక్‌లను వెతకండి…",
     breadcrumbHome: "హోమ్",
     notificationsEmpty: "అన్నీ చూశారు",
+    greetingHi: "నమస్కారం",
   },
   roles: {
     superAdmin: "సూపర్ అడ్మిన్",

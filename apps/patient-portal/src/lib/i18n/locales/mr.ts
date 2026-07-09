@@ -38,6 +38,7 @@ export const mr: Dictionary = {
     patients: "रुग्ण",
     queue: "रांग",
     reports: "अहवाल",
+    reviewQueue: "समीक्षा रांग",
     treatment: "उपचार",
     subscriptions: "सदस्यता",
     audit: "ऑडिट",
@@ -50,6 +51,7 @@ export const mr: Dictionary = {
     searchPlaceholder: "रुग्ण, अहवाल, क्लिनिक्स शोधा…",
     breadcrumbHome: "मुख्य",
     notificationsEmpty: "सर्व पाहिले",
+    greetingHi: "नमस्कार",
   },
   roles: {
     superAdmin: "सुपर अ‍ॅडमिन",

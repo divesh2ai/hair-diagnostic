@@ -37,6 +37,7 @@ export const en: Dictionary = {
     patients: "Patients",
     queue: "Queue",
     reports: "Reports",
+    reviewQueue: "Review Queue",
     treatment: "Treatment",
     subscriptions: "Subscriptions",
     audit: "Audit",
@@ -49,6 +50,7 @@ export const en: Dictionary = {
     searchPlaceholder: "Search patients, reports, clinics…",
     breadcrumbHome: "Home",
     notificationsEmpty: "You're all caught up",
+    greetingHi: "Hey",
   },
   roles: {
     superAdmin: "Super Admin",

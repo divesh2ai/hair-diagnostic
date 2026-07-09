@@ -38,6 +38,7 @@ export const pa: Dictionary = {
     patients: "ਮਰੀਜ਼",
     queue: "ਕਤਾਰ",
     reports: "ਰਿਪੋਰਟਾਂ",
+    reviewQueue: "ਸਮੀਖਿਆ ਕਤਾਰ",
     treatment: "ਇਲਾਜ",
     subscriptions: "ਮੈਂਬਰਸ਼ਿਪ",
     audit: "ਆਡਿਟ",
@@ -50,6 +51,7 @@ export const pa: Dictionary = {
     searchPlaceholder: "ਮਰੀਜ਼, ਰਿਪੋਰਟਾਂ, ਕਲੀਨਿਕਸ ਖੋਜੋ…",
     breadcrumbHome: "ਮੁੱਖ",
     notificationsEmpty: "ਸਭ ਪੜ੍ਹ ਲਿਆ",
+    greetingHi: "ਸਤ ਸ੍ਰੀ ਅਕਾਲ",
   },
   roles: {
     superAdmin: "ਸੁਪਰ ਐਡਮਿਨ",

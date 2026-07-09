@@ -1,5 +1,6 @@
 "use client";
 
+import { useRef } from "react";
 import { LogOut, Sun, Moon, MonitorSmartphone } from "lucide-react";
 import { Menu as MenuPrimitive } from "@base-ui/react/menu";
 import { Avatar } from "@/components/ui/avatar";
@@ -9,21 +10,33 @@ import { useBranding } from "@/lib/branding";
 
 export function UserMenu({
   email,
+  displayName,
   roleLabel,
-  onSignOut,
 }: {
   email: string | null;
+  displayName?: string | null;
   roleLabel: string;
-  onSignOut: () => void | Promise<void>;
 }) {
+  // Self-contained sign-out: hidden form that submits to the existing
+  // /auth/signout POST endpoint. Keeps the sign-out mechanism a pure
+  // client-side detail so server layouts don't have to pass callbacks
+  // across the RSC boundary (which is forbidden).
+  const signOutFormRef = useRef<HTMLFormElement>(null);
+  const submitSignOut = () => signOutFormRef.current?.submit();
   const t = useT();
   const b = useBranding();
   const { mode, setMode } = useTheme();
 
-  const name = b.doctorName ?? email ?? roleLabel;
+  const name = displayName ?? b.doctorName ?? email ?? roleLabel;
 
   return (
     <MenuPrimitive.Root>
+      <form
+        ref={signOutFormRef}
+        action="/auth/signout"
+        method="post"
+        className="hidden"
+      />
       <MenuPrimitive.Trigger className="inline-flex items-center gap-2 rounded-full pl-1 pr-2 h-9 hover:bg-muted text-sm">
         <Avatar name={name} src={b.doctorAvatarUrl} size="sm" />
         <span className="hidden sm:inline truncate max-w-[10rem]">{name}</span>
@@ -64,7 +77,7 @@ export function UserMenu({
             </div>
 
             <MenuPrimitive.Item
-              onClick={() => void onSignOut()}
+              onClick={submitSignOut}
               className="mt-1 flex items-center gap-2 rounded-md px-2 py-1.5 text-sm cursor-pointer hover:bg-muted outline-none data-[highlighted]:bg-muted"
             >
               <LogOut className="size-3.5" />

@@ -16,16 +16,18 @@ import type { NavSection } from "@/lib/navigation";
 export function AppShell({
   nav,
   email,
+  displayName,
+  greetingName,
   roleLabel,
-  onSignOut,
   unreadNotifications,
   navBadges,
   children,
 }: {
   nav: NavSection[];
   email: string | null;
+  displayName?: string | null;
+  greetingName?: string | null;
   roleLabel: string;
-  onSignOut: () => void | Promise<void>;
   unreadNotifications?: number;
   navBadges?: Record<string, number>;
   children: ReactNode;
@@ -44,8 +46,9 @@ export function AppShell({
         <Header
           onMenuClick={() => setSidebarOpen(true)}
           email={email}
+          displayName={displayName ?? null}
+          greetingName={greetingName ?? null}
           roleLabel={roleLabel}
-          onSignOut={onSignOut}
           unreadNotifications={unreadNotifications}
         />
         <main className="flex-1 min-w-0">{children}</main>

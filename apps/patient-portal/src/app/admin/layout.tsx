@@ -1,27 +1,32 @@
 import type { ReactNode } from "react";
 import { AppShell, AppShellProviders } from "@/components/app-shell";
-import { loadSuperAdminShellData } from "@/components/app-shell/loadShellData";
-import { SignOutForm } from "@/components/app-shell/SignOutForm";
+import { navForRole } from "@/lib/navigation";
 
-// Super Admin console shell. Wraps every /admin/* page in the standard
-// providers + chrome. Auth is gated by /proxy + redirected by loader.
+export const dynamic = "force-dynamic";
+
+import {
+  loadSuperAdminShellData,
+  firstNameOf,
+} from "@/components/app-shell/loadShellData";
+
+// Super Admin console shell. Nav is pinned to SUPER_ADMIN regardless of the
+// caller's JWT role — route drives visible workspace, not the role claim.
 export default async function AdminLayout({ children }: { children: ReactNode }) {
   const data = await loadSuperAdminShellData();
+  const greetingName = firstNameOf(data.displayName, data.email);
+  const adminNav = navForRole("SUPER_ADMIN");
 
   return (
     <AppShellProviders branding={data.branding} locale={data.locale}>
-      <SignOutForm>
-        {({ submit }) => (
-          <AppShell
-            nav={data.nav}
-            email={data.email}
-            roleLabel="Super Admin"
-            onSignOut={submit}
-          >
-            {children}
-          </AppShell>
-        )}
-      </SignOutForm>
+      <AppShell
+        nav={adminNav}
+        email={data.email}
+        displayName={data.displayName}
+        greetingName={greetingName}
+        roleLabel="Super Admin"
+      >
+        {children}
+      </AppShell>
     </AppShellProviders>
   );
 }

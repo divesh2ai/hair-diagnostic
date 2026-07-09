@@ -162,6 +162,10 @@ export default function DoctorSettingsPage() {
           Save preferences
         </button>
       </div>
+
+      <footer className="pt-6 text-center text-[11px] text-stone-400">
+        Dr FACT — powered by HairOS Intelligence
+      </footer>
     </PageContainer>
   );
 }

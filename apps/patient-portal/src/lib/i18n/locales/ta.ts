@@ -38,6 +38,7 @@ export const ta: Dictionary = {
     patients: "நோயாளிகள்",
     queue: "வரிசை",
     reports: "அறிக்கைகள்",
+    reviewQueue: "மதிப்பாய்வு வரிசை",
     treatment: "சிகிச்சை",
     subscriptions: "சந்தாக்கள்",
     audit: "தணிக்கை",
@@ -50,6 +51,7 @@ export const ta: Dictionary = {
     searchPlaceholder: "நோயாளிகள், அறிக்கைகள், கிளினிக்குகளைத் தேடவும்…",
     breadcrumbHome: "முகப்பு",
     notificationsEmpty: "எல்லாம் பார்த்து முடிந்தது",
+    greetingHi: "வணக்கம்",
   },
   roles: {
     superAdmin: "சூப்பர் அட்மின்",

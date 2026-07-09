@@ -28,17 +28,27 @@ type Ctx = {
 
 const I18nContext = createContext<Ctx | null>(null);
 
-function resolve(dict: Dictionary, path: string): string {
-  const parts = path.split(".");
+function walk(dict: unknown, parts: string[]): string | null {
   let cur: unknown = dict;
   for (const p of parts) {
     if (cur && typeof cur === "object" && p in (cur as Record<string, unknown>)) {
       cur = (cur as Record<string, unknown>)[p];
     } else {
-      return path; // fall back to the key — visible in dev, never crashes
+      return null;
     }
   }
-  return typeof cur === "string" ? cur : path;
+  return typeof cur === "string" ? cur : null;
+}
+
+function resolve(dict: Dictionary, path: string): string {
+  const parts = path.split(".");
+  const inLocale = walk(dict, parts);
+  if (inLocale !== null) return inLocale;
+  // Fall back to English so a missing translation renders in a real language,
+  // never as a raw dot-path. Better fully-English than mixed-mode.
+  const inEnglish = walk(DICTIONARIES.en, parts);
+  if (inEnglish !== null) return inEnglish;
+  return path;
 }
 
 function interpolate(s: string, vars?: Record<string, string | number>): string {

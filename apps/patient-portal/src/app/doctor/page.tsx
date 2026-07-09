@@ -1,23 +1,33 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import {
-  Users,
-  FileText,
+  ArrowUpRight,
+  ChevronRight,
   Clock,
-  ArrowRight,
-  ClipboardCheck,
-  Settings as SettingsIcon,
-  Sparkles,
-  Languages,
-  ImageIcon,
-  Video,
-  Stethoscope,
-  Pill,
+  Inbox,
+  Users,
 } from "lucide-react";
-import { StatusBadge } from "@/components/ui/StatusBadges";
-import { PageContainer } from "@/components/app-shell";
+import { StatusBadge } from "@/components/ui/status-badge";
+import { composeWorkflowLabel } from "@/lib/labels/statusLabels";
+import { waitingTime } from "@/lib/format/waitingTime";
+
+// Editorial doctor dashboard.
+//
+// Design brief: this is where clinicians spend the workday. Every millimetre
+// competes for their attention, so the surface is intentionally quiet.
+//
+//  • One hero headline (serif) — the greeting sits above a single primary
+//    call to action instead of a wall of tiles.
+//  • Three restrained stat cards. Numeric emphasis, understated labels,
+//    hairline dividers, no borders competing with content.
+//  • A single ranked "Today's inbox" that shows the doctor exactly what to
+//    open next; secondary lists come below.
+//  • Warm stone / bone palette, teal accent, deep slate text — no clinical
+//    grey. Feels like a private studio, not a call centre.
+//
+// No API contract changes — reads the same /api/doctor/stats payload.
 
 interface RecentRow {
   id: string;
@@ -39,206 +49,278 @@ export default function DoctorDashboardPage() {
   useEffect(() => {
     fetch("/api/doctor/stats")
       .then((r) => r.json())
-      .then((d) => setStats(d))
+      .then(setStats)
       .catch(() => setStats(null))
       .finally(() => setLoading(false));
   }, []);
 
   const pendingCount = stats?.counts.pending ?? 0;
+  const patientsCount = stats?.counts.patients ?? 0;
+  const reportsCount = stats?.counts.reports ?? 0;
 
-  const cards = [
-    {
-      icon: ClipboardCheck,
-      label: "Needs review",
-      value: pendingCount,
-      href: "/doctor/reports",
-      accent: pendingCount > 0 ? "text-amber-700 bg-amber-50" : "text-slate-500 bg-slate-50",
-      hint: pendingCount > 0 ? "Open the inbox" : "Nothing pending",
-    },
-    {
-      icon: FileText,
-      label: "Reports",
-      value: stats?.counts.reports ?? "—",
-      href: "/doctor/reports",
-      accent: "text-sky-700 bg-sky-50",
-      hint: "All completed cases",
-    },
-    {
-      icon: Users,
-      label: "Patients",
-      value: stats?.counts.patients ?? "—",
-      href: "/doctor/patients",
-      accent: "text-teal-700 bg-teal-50",
-      hint: "Open registry",
-    },
-  ];
+  const heroCopy = useMemo(() => {
+    if (loading) return "Preparing your workspace…";
+    if (pendingCount === 0) return "Nothing waits for your review. A rare quiet morning.";
+    if (pendingCount === 1) return "One consultation is ready for you.";
+    return `${pendingCount} consultations are ready for your review.`;
+  }, [loading, pendingCount]);
+
+  const heroDate = new Date().toLocaleDateString(undefined, {
+    weekday: "long",
+    day: "numeric",
+    month: "long",
+  });
 
   return (
-    <PageContainer className="space-y-8">
-      <header className="flex flex-col gap-1">
-        <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-teal-700">
-          DrFACT · Doctor workspace
-        </p>
-        <h2 className="font-serif text-3xl font-medium tracking-tight text-slate-900">
-          Today
-        </h2>
-        <p className="text-sm text-slate-500">
-          {loading
-            ? "Loading clinical inbox…"
-            : pendingCount === 0
-              ? "All caught up — nothing waits for your review."
-              : `${pendingCount} case${pendingCount === 1 ? "" : "s"} waiting for your review.`}
-        </p>
-      </header>
-
-      <div className="grid sm:grid-cols-3 gap-4">
-        {cards.map(({ icon: Icon, label, value, href, accent, hint }) => (
-          <Link
-            key={label}
-            href={href}
-            className="group rounded-2xl bg-white border border-stone-200 p-5 shadow-sm hover:shadow-md hover:border-stone-300 transition-all"
-          >
-            <div className="flex items-start justify-between">
-              <span className={`inline-flex h-9 w-9 items-center justify-center rounded-xl ${accent}`}>
-                <Icon className="h-4 w-4" />
-              </span>
-              <ArrowRight className="h-4 w-4 text-stone-300 group-hover:text-stone-500 transition-colors" />
-            </div>
-            <p className="mt-4 text-3xl font-semibold tracking-tight text-slate-900">
-              {loading ? "…" : value}
-            </p>
-            <p className="mt-1 text-sm font-medium text-slate-700">{label}</p>
-            <p className="text-xs text-slate-500">{hint}</p>
-          </Link>
-        ))}
-      </div>
-
-      <section className="rounded-2xl bg-white border border-stone-200 shadow-sm overflow-hidden">
-        <div className="px-5 py-4 border-b border-stone-200 flex items-center justify-between">
-          <div>
-            <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-stone-500">
-              Recent activity
-            </p>
-            <h2 className="font-serif text-lg text-slate-900">Recent reports</h2>
+    <div className="min-h-full bg-stone-50">
+      <div className="mx-auto w-full max-w-6xl px-6 lg:px-10 py-10 lg:py-14 space-y-14">
+        {/* ── HERO ─────────────────────────────────────────────────────── */}
+        <header className="space-y-6">
+          <div className="flex items-center gap-3">
+            <span className="inline-flex h-1.5 w-1.5 rounded-full bg-teal-600" />
+            <span className="text-[11px] font-medium uppercase tracking-[0.22em] text-stone-500">
+              Dr FACT · Clinical Intelligence · {heroDate}
+            </span>
           </div>
-          <Link
-            href="/doctor/reports"
-            className="text-sm text-sky-600 font-medium inline-flex items-center gap-1 hover:text-sky-700"
-          >
-            View all <ArrowRight className="h-3.5 w-3.5" />
-          </Link>
-        </div>
 
-        {loading ? (
-          <SkeletonRows />
-        ) : (stats?.recent.length ?? 0) === 0 ? (
-          <EmptyRecent />
-        ) : (
-          <ul className="divide-y divide-stone-200">
-            {stats!.recent.map((r) => (
-              <li key={r.id}>
-                <Link
-                  href={`/doctor/reports/${r.id}`}
-                  className="block px-5 py-3 hover:bg-stone-50 focus:outline-none focus:bg-stone-50"
-                >
-                  <div className="flex items-center justify-between gap-4">
-                    <div className="min-w-0">
-                      <p className="font-medium text-slate-900 truncate">
-                        {r.patientName}
-                      </p>
-                      <p className="text-xs text-slate-500 truncate inline-flex items-center gap-1">
-                        <Clock className="h-3 w-3" />
-                        {r.clinicName} ·{" "}
-                        {r.submittedAt ? new Date(r.submittedAt).toLocaleString() : "—"}
-                      </p>
-                    </div>
-                    <div className="flex items-center gap-3 whitespace-nowrap">
-                      <StatusBadge status={r.status} />
-                      <span className="text-sm text-sky-600 font-medium">Open →</span>
-                    </div>
-                  </div>
-                </Link>
-              </li>
-            ))}
-          </ul>
-        )}
-      </section>
-
-      {/* ── Workspace customization (additive — does not replace anything) ── */}
-      <section className="rounded-2xl bg-white border border-stone-200 shadow-sm overflow-hidden">
-        <div className="px-5 py-4 border-b border-stone-200 flex items-center justify-between">
-          <div>
-            <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-stone-500">
-              Workspace
+          <div className="max-w-3xl space-y-4">
+            <h1 className="font-serif text-4xl lg:text-5xl leading-[1.05] tracking-tight text-slate-900">
+              Good to see you.
+            </h1>
+            <p className="text-lg leading-relaxed text-stone-600">
+              {heroCopy}
             </p>
-            <h2 className="font-serif text-lg text-slate-900">Customization</h2>
           </div>
-          <Link
-            href="/doctor/settings"
-            className="text-sm text-sky-600 font-medium inline-flex items-center gap-1 hover:text-sky-700"
-          >
-            Open settings <ArrowRight className="h-3.5 w-3.5" />
-          </Link>
-        </div>
-        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3 p-5">
-          {CUSTOMIZATION_TILES.map(({ icon: Icon, label, hint, href }) => (
+
+          <div className="flex flex-wrap items-center gap-3 pt-2">
             <Link
-              key={label}
-              href={href}
-              className="group rounded-xl border border-stone-200 bg-stone-50/40 p-4 hover:bg-white hover:border-stone-300 transition-colors"
+              href="/doctor/reports"
+              className="group inline-flex items-center gap-2 rounded-full bg-slate-900 pl-5 pr-4 py-2.5 text-sm font-medium text-white hover:bg-slate-800 transition-colors"
             >
-              <div className="flex items-center gap-3">
-                <span className="inline-flex h-9 w-9 items-center justify-center rounded-xl bg-white border border-stone-200 text-slate-700">
-                  <Icon className="h-4 w-4" />
-                </span>
-                <div className="min-w-0">
-                  <p className="text-sm font-medium text-slate-800">{label}</p>
-                  <p className="text-xs text-slate-500 truncate">{hint}</p>
-                </div>
-              </div>
+              Open clinical inbox
+              <ArrowUpRight className="h-4 w-4 transition-transform group-hover:-translate-y-0.5 group-hover:translate-x-0.5" />
             </Link>
-          ))}
-        </div>
-      </section>
-    </PageContainer>
+            <Link
+              href="/doctor/patients"
+              className="inline-flex items-center gap-2 rounded-full border border-stone-300 bg-white/80 px-4 py-2.5 text-sm font-medium text-slate-700 hover:border-stone-400 hover:bg-white transition-colors"
+            >
+              Patient registry
+            </Link>
+          </div>
+        </header>
+
+        {/* ── STAT ROW ─────────────────────────────────────────────────── */}
+        <section className="grid gap-4 sm:grid-cols-3">
+          <StatCard
+            eyebrow="Needs review"
+            value={pendingCount}
+            loading={loading}
+            href="/doctor/reports"
+            accent={pendingCount > 0 ? "amber" : "quiet"}
+            hint={
+              pendingCount > 0
+                ? pendingCount === 1
+                  ? "Awaiting your read"
+                  : "Awaiting your reads"
+                : "You are caught up"
+            }
+          />
+          <StatCard
+            eyebrow="Consultations"
+            value={reportsCount}
+            loading={loading}
+            href="/doctor/reports"
+            accent="quiet"
+            hint="All completed cases"
+          />
+          <StatCard
+            eyebrow="Patients"
+            value={patientsCount}
+            loading={loading}
+            href="/doctor/patients"
+            accent="quiet"
+            hint="Under your care"
+          />
+        </section>
+
+        {/* ── INBOX PREVIEW ────────────────────────────────────────────── */}
+        <section className="space-y-6">
+          <div className="flex items-end justify-between gap-4">
+            <div className="space-y-1.5">
+              <span className="inline-block text-[10px] font-semibold uppercase tracking-[0.2em] text-stone-500">
+                Recent activity
+              </span>
+              <h2 className="font-serif text-2xl text-slate-900">
+                Today's inbox
+              </h2>
+            </div>
+            <Link
+              href="/doctor/reports"
+              className="inline-flex items-center gap-1 text-sm text-slate-700 hover:text-slate-900"
+            >
+              View all
+              <ChevronRight className="h-3.5 w-3.5" />
+            </Link>
+          </div>
+
+          <div className="rounded-2xl border border-stone-200 bg-white overflow-hidden">
+            {loading ? (
+              <SkeletonList />
+            ) : (stats?.recent.length ?? 0) === 0 ? (
+              <EmptyInbox />
+            ) : (
+              <ul className="divide-y divide-stone-100">
+                {stats!.recent.map((r) => (
+                  <InboxRow key={r.id} row={r} />
+                ))}
+              </ul>
+            )}
+          </div>
+        </section>
+      </div>
+    </div>
   );
 }
 
-const CUSTOMIZATION_TILES = [
-  { icon: Sparkles,    label: "Doctor AI",            hint: "Pick your assistant model",  href: "/doctor/settings#ai" },
-  { icon: Languages,   label: "Preferred language",   hint: "Default report language",    href: "/doctor/settings#language" },
-  { icon: ImageIcon,   label: "Brand logo",           hint: "Header & PDF logo",          href: "/doctor/settings#logo" },
-  { icon: Video,       label: "Avatar & video",       hint: "Patient handoff video",      href: "/doctor/settings#avatar" },
-  { icon: Stethoscope, label: "Consultation",         hint: "Default session preferences",href: "/doctor/settings#consultation" },
-  { icon: Pill,        label: "Prescription defaults",hint: "Refill, dosage, signature",  href: "/doctor/settings#prescription" },
-] as const;
+/* ────────────────────────────────────────────────────────────────────── */
 
-function SkeletonRows() {
+function StatCard({
+  eyebrow,
+  value,
+  hint,
+  loading,
+  href,
+  accent,
+}: {
+  eyebrow: string;
+  value: number | string;
+  hint: string;
+  loading: boolean;
+  href: string;
+  accent: "amber" | "quiet";
+}) {
+  const dot =
+    accent === "amber"
+      ? "bg-amber-500"
+      : "bg-stone-300";
+  const numeral =
+    accent === "amber" ? "text-slate-900" : "text-slate-800";
+
   return (
-    <ul className="divide-y divide-stone-200 animate-pulse">
-      {Array.from({ length: 5 }).map((_, i) => (
-        <li key={i} className="px-5 py-4 flex items-center justify-between gap-4">
-          <div className="space-y-2 min-w-0 w-full">
-            <div className="h-4 w-48 bg-stone-100 rounded" />
-            <div className="h-3 w-64 bg-stone-100 rounded" />
+    <Link
+      href={href}
+      className="group relative flex flex-col justify-between rounded-2xl border border-stone-200 bg-white p-6 hover:border-stone-300 hover:shadow-[0_1px_2px_rgba(15,23,42,0.04),0_16px_40px_-24px_rgba(15,23,42,0.14)] transition-all"
+    >
+      <div className="flex items-center gap-2">
+        <span className={`inline-flex h-1.5 w-1.5 rounded-full ${dot}`} />
+        <span className="text-[10px] font-medium uppercase tracking-[0.18em] text-stone-500">
+          {eyebrow}
+        </span>
+      </div>
+      <div className="mt-6 flex items-baseline gap-3">
+        {loading ? (
+          <span className="inline-block h-9 w-14 rounded bg-stone-100 animate-pulse" />
+        ) : (
+          <span className={`font-serif text-5xl leading-none tracking-tight tabular-nums ${numeral}`}>
+            {value}
+          </span>
+        )}
+      </div>
+      <div className="mt-4 flex items-center justify-between text-xs text-stone-500">
+        <span>{hint}</span>
+        <ArrowUpRight className="h-3.5 w-3.5 text-stone-300 transition-colors group-hover:text-stone-500" />
+      </div>
+    </Link>
+  );
+}
+
+function InboxRow({ row }: { row: RecentRow }) {
+  const initials =
+    row.patientName
+      ?.split(/\s+/)
+      .filter(Boolean)
+      .map((s) => s[0]?.toUpperCase())
+      .slice(0, 2)
+      .join("") || "•";
+
+  return (
+    <li>
+      <Link
+        href={`/doctor/reports/${row.id}`}
+        className="group flex items-center gap-4 px-5 py-4 hover:bg-stone-50 focus:outline-none focus:bg-stone-50 transition-colors"
+      >
+        <span className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-stone-100 to-stone-200 text-xs font-medium text-stone-600">
+          {initials}
+        </span>
+        <div className="min-w-0 flex-1">
+          <div className="flex items-center gap-2">
+            <p className="truncate font-medium text-slate-900">
+              {row.patientName}
+            </p>
+            <InboxStatus status={row.status} />
           </div>
-          <div className="h-4 w-16 bg-stone-100 rounded" />
+          <p className="mt-0.5 flex items-center gap-1 truncate text-xs text-stone-500">
+            <Clock className="h-3 w-3" />
+            {row.clinicName}
+            {row.submittedAt && (
+              <>
+                <span className="mx-1 h-0.5 w-0.5 rounded-full bg-stone-300" />
+                {waitingTime(row.submittedAt)}
+              </>
+            )}
+          </p>
+        </div>
+        <ChevronRight className="h-4 w-4 text-stone-300 transition-transform group-hover:translate-x-0.5 group-hover:text-stone-500" />
+      </Link>
+    </li>
+  );
+}
+
+function InboxStatus({ status }: { status: string }) {
+  // The inbox row only carries assessment status; workflow composer handles
+  // the missing decision/approval as unknown, which is the correct read for
+  // the "recent activity" strip on the home page.
+  const w = composeWorkflowLabel({ assessmentStatus: status });
+  return <StatusBadge tone={w.tone}>{w.label}</StatusBadge>;
+}
+
+function SkeletonList() {
+  return (
+    <ul className="divide-y divide-stone-100 animate-pulse">
+      {Array.from({ length: 5 }).map((_, i) => (
+        <li key={i} className="flex items-center gap-4 px-5 py-4">
+          <div className="h-10 w-10 rounded-full bg-stone-100" />
+          <div className="flex-1 space-y-2">
+            <div className="h-3.5 w-40 rounded bg-stone-100" />
+            <div className="h-3 w-60 rounded bg-stone-100" />
+          </div>
+          <div className="h-3 w-14 rounded bg-stone-100" />
         </li>
       ))}
     </ul>
   );
 }
 
-function EmptyRecent() {
+function EmptyInbox() {
   return (
-    <div className="px-6 py-12 text-center">
-      <div className="mx-auto h-12 w-12 rounded-full bg-stone-100 grid place-items-center">
-        <FileText className="h-5 w-5 text-stone-400" />
+    <div className="px-6 py-16 text-center">
+      <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-stone-100">
+        <Inbox className="h-5 w-5 text-stone-400" />
       </div>
-      <p className="mt-3 text-sm font-medium text-slate-700">No reports yet</p>
-      <p className="mt-1 text-xs text-slate-500">
-        Reports appear as patients complete assessments.
+      <p className="mt-4 font-serif text-lg text-slate-800">
+        A rare quiet morning.
       </p>
+      <p className="mx-auto mt-1 max-w-sm text-sm text-stone-500">
+        New consultations will appear here the moment a patient completes their
+        assessment.
+      </p>
+      <Link
+        href="/doctor/patients"
+        className="mt-6 inline-flex items-center gap-1.5 rounded-full border border-stone-300 bg-white px-4 py-2 text-xs font-medium text-slate-700 hover:border-stone-400"
+      >
+        <Users className="h-3.5 w-3.5" />
+        Browse patient registry
+      </Link>
     </div>
   );
 }

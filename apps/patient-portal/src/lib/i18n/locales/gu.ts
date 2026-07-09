@@ -38,6 +38,7 @@ export const gu: Dictionary = {
     patients: "દર્દીઓ",
     queue: "કતાર",
     reports: "અહેવાલો",
+    reviewQueue: "સમીક્ષા કતાર",
     treatment: "સારવાર",
     subscriptions: "સબ્સ્ક્રિપ્શન",
     audit: "ઓડિટ",
@@ -50,6 +51,7 @@ export const gu: Dictionary = {
     searchPlaceholder: "દર્દીઓ, અહેવાલો, ક્લિનિક્સ શોધો…",
     breadcrumbHome: "મુખ્ય",
     notificationsEmpty: "બધું વાંચાઈ ગયું",
+    greetingHi: "નમસ્તે",
   },
   roles: {
     superAdmin: "સુપર એડમિન",

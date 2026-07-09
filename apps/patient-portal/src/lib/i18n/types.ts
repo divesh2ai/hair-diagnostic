@@ -60,6 +60,7 @@ export type Dictionary = {
     patients: string;
     queue: string;
     reports: string;
+    reviewQueue: string;
     treatment: string;
     subscriptions: string;
     audit: string;
@@ -72,6 +73,7 @@ export type Dictionary = {
     searchPlaceholder: string;
     breadcrumbHome: string;
     notificationsEmpty: string;
+    greetingHi: string;
   };
   roles: {
     superAdmin: string;

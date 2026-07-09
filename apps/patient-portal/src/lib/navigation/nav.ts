@@ -79,20 +79,21 @@ const NAV_CLINIC_ADMIN: NavSection[] = [
   },
 ];
 
+// Doctor workspace nav. Queue and Treatment routes remain as placeholders in
+// the codebase but are hidden from nav until their pages are wired — showing
+// a link to an empty "coming soon" page erodes trust in the workspace.
 const NAV_DOCTOR: NavSection[] = [
   {
     labelKey: null,
     items: [
       { href: "/doctor", labelKey: "nav.dashboard", icon: "dashboard" },
       {
-        href: "/doctor/queue",
-        labelKey: "nav.queue",
-        icon: "queue",
+        href: "/doctor/reports",
+        labelKey: "nav.reviewQueue",
+        icon: "reports",
         badgeChannel: "pendingReviews",
       },
       { href: "/doctor/patients", labelKey: "nav.patients", icon: "patients" },
-      { href: "/doctor/reports", labelKey: "nav.reports", icon: "reports" },
-      { href: "/doctor/treatment", labelKey: "nav.treatment", icon: "treatment" },
       { href: "/doctor/settings", labelKey: "common.settings", icon: "settings" },
     ],
   },
