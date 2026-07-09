@@ -12,7 +12,12 @@ export type AssessmentEventType =
   | "FAILED"
   | "RETRY_STARTED"
   | "RETRY_SUCCEEDED"
-  | "RETRY_FAILED";
+  | "RETRY_FAILED"
+  | "REVIEW_PATHWAY_EVALUATION_ATTEMPTED"
+  | "REVIEW_PATHWAY_PERSISTED"
+  | "REVIEW_PATHWAY_SKIPPED"
+  | "REVIEW_PATHWAY_PERSIST_FAILED"
+  | "REVIEW_PATHWAY_INPUT_MALFORMED";
 
 export interface EventOptions {
   stage?: string;

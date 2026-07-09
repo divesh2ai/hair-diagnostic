@@ -52,6 +52,15 @@ enum ReviewDecision {
   REJECTED
 }
 
+// Shadow-mode doctor review pathway persisted on Assessment. This is a
+// workflow-routing signal, not a clinical content source of truth.
+enum ReviewPathway {
+  ROUTINE_REVIEW
+  FOCUSED_REVIEW
+  EXAMINATION_REQUIRED
+  RESOLUTION_REQUIRED
+}
+
 enum ArtifactType {
   CLINICAL_REASONING
   SEVERITY_ANALYSIS
@@ -557,6 +566,14 @@ model Assessment {
 
   rawResponses Json?
 
+  // Shadow-mode review pathway persistence. Additive-only routing signal
+  // written before CLINICAL_READY. Never blocks the pipeline.
+  reviewPathway            ReviewPathway?
+  reviewPathwayReasons     String[]       @default([])
+  reviewPathwayVersion     String?
+  reviewPathwayEvaluatedAt DateTime?
+  reviewPathwaySource      Json?
+
   submittedAt DateTime  @default(now())
   queuedAt    DateTime?
   startedAt   DateTime?
@@ -579,6 +596,7 @@ model Assessment {
   @@index([patientId])
   @@index([reviewingDoctorId])
   @@index([clinicId, status])
+  @@index([clinicId, reviewPathway])
 }
 
 model AssessmentResponse {
