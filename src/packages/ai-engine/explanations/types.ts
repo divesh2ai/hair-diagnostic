@@ -129,6 +129,17 @@ export interface ExplanationContext {
   narrativeLength?: NarrativeLength;
   /** Optional patient first name for personalized patient-facing copy */
   patientName?: string;
+  /**
+   * Patient-grounded facts (reported findings + clinical inferences).
+   * When present, every fragment selected during composition is checked
+   * against ClinicalFacts: fragments whose `requiredFindings` are not all
+   * supported are dropped before rendering. Composers may omit facts
+   * (legacy callers) — in which case fragment-level evidence checks are
+   * skipped and only the post-composition validator runs.
+   */
+  facts?: import('../clinical-facts/types').ClinicalFacts;
+  /** Raw answers — kept for composers that still derive bespoke phrasing. */
+  patientAnswers?: import('../../types').PatientAnswers;
 }
 
 // ─── Fallback when a dictionary key is missing ────────────────────────────────
