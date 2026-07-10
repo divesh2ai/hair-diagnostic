@@ -24,6 +24,7 @@ import { OPEN_CLINIC } from "../../sandbox/loaders/fixtureLoader";
 import type { PatientAnswers } from "../types";
 import { mapPortalToPatientAnswers } from "./mapPortalAnswers";
 import { logAssessmentEvent } from "./events";
+import { runReviewPathwayShadowGuarded } from "./review-pathway/runReviewPathwayShadowGuarded";
 import type { AssessmentArtifact } from "@shared/types/assessment";
 import { buildNarrative } from "../ai-engine/explanations/builders/buildNarrative";
 import type { ExplanationContext } from "../ai-engine/explanations/types";
@@ -369,6 +370,22 @@ async function runPhaseA(ctx: PipelineContext): Promise<PhaseRecorder> {
       Date.now() - stageStart,
     );
     t.tick("db");
+
+    // Review-pathway shadow evaluation. Additive persistence only; runs
+    // after Phase A clinical outputs are finalized and BEFORE the outer
+    // CLINICAL_READY lease-renew. Extracted so the try/catch guard can
+    // be unit-tested without booting the whole pipeline. Return value
+    // is intentionally void — the orchestrator does not branch on the
+    // pathway result.
+    await runReviewPathwayShadowGuarded(prisma, {
+      assessmentId: ctx.assessmentId,
+      clinicId: ctx.clinicId,
+      answers: ctx.answers,
+      clinical: ctx.clinical!,
+      therapy: ctx.therapy!,
+      recommendations: ctx.recommendations!,
+    });
+    t.tick("cpu");
 
     await renewLease(prisma, ctx.assessmentId, lease, {
       lastCompletedStage: "clinical_summary",
