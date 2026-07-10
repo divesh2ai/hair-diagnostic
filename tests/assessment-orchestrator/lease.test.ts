@@ -2,7 +2,7 @@
 // Pure Prisma-shape stub tests, following the pattern in single-flight.test.ts
 // so we don't drag in the whole orchestrator + PDF ESM chain.
 
-import { describe, it, expect } from "@jest/globals";
+import { describe, it, expect } from "vitest";
 import {
   claimPhaseA,
   renewLease,

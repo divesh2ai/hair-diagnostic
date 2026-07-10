@@ -5,7 +5,7 @@
 // The helper is a pure function over a Prisma-shaped API; we hand it a
 // stub that models the DB compare-and-set semantics.
 
-import { describe, it, expect, beforeEach } from "@jest/globals";
+import { describe, it, expect, beforeEach } from "vitest";
 import { claimPhaseA, PhaseAAlreadyRunningError, PHASE_A_STARTABLE_STATES } from "../../src/packages/assessment-orchestrator/claim";
 import type { PrismaClient } from "@prisma/client";
 
