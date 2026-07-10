@@ -1,3 +1,4 @@
+import { Prisma } from "@prisma/client";
 import type { PrismaClient } from "@prisma/client";
 
 export type AssessmentEventType =
@@ -13,6 +14,7 @@ export type AssessmentEventType =
   | "RETRY_STARTED"
   | "RETRY_SUCCEEDED"
   | "RETRY_FAILED"
+  | "PHASE_A_RECLAIMED"
   | "REVIEW_PATHWAY_EVALUATION_ATTEMPTED"
   | "REVIEW_PATHWAY_PERSISTED"
   | "REVIEW_PATHWAY_SKIPPED"
@@ -30,7 +32,7 @@ export async function logAssessmentEvent(
   prisma: PrismaClient,
   assessmentId: string,
   type: AssessmentEventType,
-  opts: EventOptions = {}
+  opts: EventOptions = {},
 ): Promise<void> {
   await prisma.assessmentEvent.create({
     data: {
@@ -38,7 +40,7 @@ export async function logAssessmentEvent(
       type,
       stage: opts.stage ?? null,
       message: opts.message ?? null,
-      metadata: (opts.metadata ?? null) as object | null,
+      metadata: opts.metadata === null ? Prisma.JsonNull : (opts.metadata as Prisma.InputJsonValue | undefined),
       durationMs: opts.durationMs ?? null,
     },
   });

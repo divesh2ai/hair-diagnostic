@@ -33,6 +33,8 @@ enum AssessmentStatus {
   GENERATING_VIDEO_SCRIPT
   RENDERING_VIDEO
   GENERATING_REPORT
+  CLINICAL_READY
+  REPORT_GENERATING
   COMPLETED
   FAILED
   PARTIAL_FAILURE
@@ -564,6 +566,14 @@ model Assessment {
   lastError          String?
   lastCompletedStage String?
 
+  // Phase A execution lease. Written by claimPhaseA on the winning
+  // updateMany, refreshed by intra-phase status writes, expired by the
+  // reclaim path. A worker whose executionId no longer matches must abort
+  // without mutating state (see LeaseLostError). Bounded by phaseAAttempt.
+  phaseAExecutionId    String?
+  phaseALeaseExpiresAt DateTime?
+  phaseAAttempt        Int       @default(0)
+
   rawResponses Json?
 
   // Shadow-mode review pathway persistence. Additive-only routing signal
@@ -597,6 +607,7 @@ model Assessment {
   @@index([reviewingDoctorId])
   @@index([clinicId, status])
   @@index([clinicId, reviewPathway])
+  @@index([status, phaseALeaseExpiresAt])
 }
 
 model AssessmentResponse {

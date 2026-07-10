@@ -28,6 +28,16 @@ import {
 } from "../../ai-engine/explanations/expansion";
 import type { ComposedNarrative } from "../../ai-engine/explanations/composers/types";
 import { validateComposedNarrative } from "../validation/validateContentPopulation";
+import {
+  buildClinicalFacts,
+  validateEvidenceGrounding,
+  formatViolations,
+} from "../../ai-engine/clinical-facts";
+import type {
+  ClinicalFacts,
+  GroundingViolation,
+  SectionInput,
+} from "../../ai-engine/clinical-facts";
 
 /**
  * Complete assembled narratives payload with all sections
@@ -51,6 +61,12 @@ export interface AssembledNarratives {
     clinicalContext: string;
     patientFriendly: string;
   }>;
+  /**
+   * Evidence-grounding violations detected on the final composed narratives.
+   * Empty when every section is supported by ClinicalFacts. Non-empty values
+   * MUST block PDF generation in `reportGenerationService` per Rule 10.
+   */
+  groundingViolations: readonly GroundingViolation[];
 }
 
 /**
@@ -64,6 +80,22 @@ export interface AssembledNarratives {
 export function assembleAssessmentNarratives(
   context: ExplanationContext
 ): AssembledNarratives {
+  // ── Build ClinicalFacts ────────────────────────────────────────────────────
+  // Facts are the single source of truth for what the patient reported vs.
+  // what the engine inferred. We build them once here and attach to the
+  // context so every downstream composer (and the post-composition
+  // evidence-grounding validator) reads from the same object — eliminating
+  // the class of bug where one composer references `patientAnswers.scalp`
+  // and another reads `clinicalProfile.scalpStates`, and they disagree.
+  // Prefer pre-computed facts (passed in by the orchestrator's Phase A) to
+  // avoid the double buildClinicalFacts call. Fall back to building from raw
+  // patientAnswers for callers that haven't been migrated to the split.
+  const facts: ClinicalFacts | undefined = context.facts
+    ?? (context.patientAnswers
+      ? buildClinicalFacts(context.patientAnswers, context.clinicalProfile)
+      : undefined);
+  const ctxWithFacts: ExplanationContext = facts ? { ...context, facts } : context;
+
   // ── Compose base narratives ────────────────────────────────────────────────
   // Each composer is wrapped via ensureNonEmpty to guarantee a non-degenerate
   // ComposedNarrative even when fragment templates fail to resolve against
@@ -71,12 +103,12 @@ export function assembleAssessmentNarratives(
   // otherwise a deterministic fallback segment is injected so downstream
   // persistence and rendering continue. Warnings are logged so authoring
   // gaps remain visible without breaking the pipeline.
-  const doctor_narrative    = ensureNonEmpty(composeClinicalNarrative(context),   "doctor_narrative",    context);
-  const patient_narrative   = ensureNonEmpty(composePatientNarrative(context),    "patient_narrative",   context);
-  const therapy_explanation = ensureNonEmpty(composeTherapyExplanation(context),  "therapy_explanation", context);
-  const lifestyle_plan      = ensureNonEmpty(composeLifestylePlan(context),       "lifestyle_plan",      context);
-  const prognosis           = ensureNonEmpty(composePrognosis(context),           "prognosis",           context);
-  const monitoring_plan     = ensureNonEmpty(composeMonitoringPlan(context),      "monitoring_plan",     context);
+  const doctor_narrative    = ensureNonEmpty(composeClinicalNarrative(ctxWithFacts),   "doctor_narrative",    ctxWithFacts);
+  const patient_narrative   = ensureNonEmpty(composePatientNarrative(ctxWithFacts),    "patient_narrative",   ctxWithFacts);
+  const therapy_explanation = ensureNonEmpty(composeTherapyExplanation(ctxWithFacts),  "therapy_explanation", ctxWithFacts);
+  const lifestyle_plan      = ensureNonEmpty(composeLifestylePlan(ctxWithFacts),       "lifestyle_plan",      ctxWithFacts);
+  const prognosis           = ensureNonEmpty(composePrognosis(ctxWithFacts),           "prognosis",           ctxWithFacts);
+  const monitoring_plan     = ensureNonEmpty(composeMonitoringPlan(ctxWithFacts),      "monitoring_plan",     ctxWithFacts);
 
   // ── Enrich therapy needs with expansions ────────────────────────────────────
   const { therapyNeeds, clinicalProfile } = context;
@@ -117,6 +149,24 @@ export function assembleAssessmentNarratives(
       (item): item is NonNullable<typeof item> => item !== null
     );
 
+  // ── Evidence-grounding validation (Rule 10) ────────────────────────────────
+  // Scan the final composed text for symptom claims that the patient never
+  // reported. Returns the violation list; reportGenerationService is
+  // responsible for translating violations into a hard PDF block.
+  const groundingViolations = facts
+    ? runGroundingValidator(
+        {
+          doctor_narrative,
+          patient_narrative,
+          therapy_explanation,
+          lifestyle_plan,
+          prognosis,
+          monitoring_plan,
+        },
+        facts,
+      )
+    : [];
+
   return {
     doctor_narrative,
     patient_narrative,
@@ -126,7 +176,42 @@ export function assembleAssessmentNarratives(
     monitoring_plan,
     enrichedTherapyNeeds,
     enrichedRootCauses,
+    groundingViolations,
   };
+}
+
+/**
+ * Scans the assembled narratives for evidence-grounding violations and
+ * surfaces them as a structured list. Warnings are also logged so the
+ * authoring loop has fast feedback even when the caller doesn't act on
+ * the returned violations.
+ */
+function runGroundingValidator(
+  narratives: {
+    doctor_narrative: ComposedNarrative;
+    patient_narrative: ComposedNarrative;
+    therapy_explanation: ComposedNarrative;
+    lifestyle_plan: ComposedNarrative;
+    prognosis: ComposedNarrative;
+    monitoring_plan: ComposedNarrative;
+  },
+  facts: ClinicalFacts,
+): readonly GroundingViolation[] {
+  const sections: SectionInput[] = [
+    { section: "doctor_narrative",    text: narratives.doctor_narrative.full },
+    { section: "patient_narrative",   text: narratives.patient_narrative.full },
+    { section: "therapy_explanation", text: narratives.therapy_explanation.full },
+    { section: "lifestyle_plan",      text: narratives.lifestyle_plan.full },
+    { section: "prognosis",           text: narratives.prognosis.full },
+    { section: "monitoring_plan",     text: narratives.monitoring_plan.full },
+  ];
+  const result = validateEvidenceGrounding(sections, facts);
+  if (!result.valid) {
+    console.warn(
+      `[NarrativeAssembly] Evidence-grounding violations:\n${formatViolations(result)}`,
+    );
+  }
+  return result.violations;
 }
 
 /**

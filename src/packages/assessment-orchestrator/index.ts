@@ -1,8 +1,20 @@
-import { PrismaClient,Prisma, ArtifactType, AssessmentStatus } from "@prisma/client";
+import { PrismaClient, Prisma, ArtifactType, AssessmentStatus } from "@prisma/client";
 import { randomUUID } from "node:crypto";
+import {
+  claimPhaseA,
+  reclaimStalePhaseA,
+  renewLease,
+  LeaseLostError,
+  ReclaimNotEligibleError,
+  MAX_PHASE_A_ATTEMPTS,
+} from "./claim";
+
+export {
+  PhaseAAlreadyRunningError,
+  LeaseLostError,
+  ReclaimNotEligibleError,
+} from "./claim";
 import { normalizeQuestionnaire } from "../questionnaire-normalizer";
-import { buildVisualJourney } from "../visual-recommendation-engine";
-import { expandVisualJourney, mergeVisualJourneySections } from "../visual-recommendation-engine/expandVisualJourney";
 import { generateAndStoreReports } from "../pdf-engine";
 import type { ReportInputPayload } from "../pdf-engine/types";
 import { evaluateClinicalProfile } from "../ai-engine/clinical-engine/evaluateClinicalProfile";
@@ -14,850 +26,739 @@ import { mapPortalToPatientAnswers } from "./mapPortalAnswers";
 import { logAssessmentEvent } from "./events";
 import type { AssessmentArtifact } from "@shared/types/assessment";
 import { buildNarrative } from "../ai-engine/explanations/builders/buildNarrative";
-import {
-  composeClinicalNarrative,
-  composePatientNarrative,
-  composeTherapyExplanation,
-  composeLifestylePlan,
-  composePrognosis,
-} from "../ai-engine/explanations/composers";
 import type { ExplanationContext } from "../ai-engine/explanations/types";
-import { validateArtifactPayload } from "./validation/validateArtifact";
-import { persistArtifact, persistNarrativeArtifact } from "./persistence/persistArtifacts";
-import { assembleAssessmentNarratives, formatEnrichedNarratives } from "./narratives/assembleNarratives";
+import { persistNarrativeArtifact } from "./persistence/persistArtifacts";
+import { assembleAssessmentNarratives } from "./narratives/assembleNarratives";
 import { buildClinicalReport } from "../ai-engine/report-engine";
+import { buildClinicalFacts } from "../ai-engine/clinical-facts";
+import {
+  buildClinicalContext,
+  validateReasoningCompleteness,
+  formatReasoningGaps,
+} from "../ai-engine/clinical-context";
 import { buildFourChapterNarrative } from "../narrative-engine";
-import { build3DAvatarScript } from "../ai-engine/narrative-engine/build3DAvatarScript";
 import { buildDoctorConsultation } from "../ai-engine/narrative-engine/consultation/buildDoctorConsultation";
 import type { NarrativePipelineInput } from "../ai-engine/narrative-engine/types";
-import { startAvatarVideoRender, probeVideoStatus } from "../video-engine";
-import type { VideoArtifactContent } from "../video-engine";
+import {
+  PhaseRecorder,
+  StageTimer,
+  logPhase,
+  logStage,
+} from "./instrumentation";
 
 // ─── Prisma Singleton ─────────────────────────────────────────────────────────
-// Shared within the package process lifetime. Prevents connection thrash during
-// Next.js hot-reload in dev via globalThis guard.
 
 const g = globalThis as unknown as { _hairosPrisma?: PrismaClient };
 const prisma: PrismaClient = g._hairosPrisma ?? new PrismaClient();
 if (process.env.NODE_ENV !== "production") g._hairosPrisma = prisma;
 
-// ─── Stage Ordering ────────────────────────────────────────────────────────────
+// ─── Feature flags ────────────────────────────────────────────────────────────
+// Visual journey and video are Phase 2. Default OFF — they contribute zero
+// stages, zero CPU, zero DB writes while disabled.
 
-type StageName =
-  | "normalize"
-  | "clinical"
-  | "therapy"
-  | "recommendations"
-  | "narratives"
-  | "videoScript"
-  | "videoRender"
-  | "visual"
-  | "pdf";
+const FEATURE_VISUAL_JOURNEY = process.env.FEATURE_VISUAL_JOURNEY === "true";
+const FEATURE_VIDEO_PIPELINE = process.env.FEATURE_VIDEO_PIPELINE === "true";
+const DEBUG_ORCH = process.env.DEBUG_ORCH === "true";
 
-const STAGE_ORDER: StageName[] = [
-  "normalize",
-  "clinical",
-  "therapy",
-  "recommendations",
-  "narratives",
-  "videoScript",
-  "videoRender",
-  "visual",
-  "pdf",
-];
-
-// Artifact written by each stage — used for idempotency checks on resume.
-const STAGE_ARTIFACT: Record<StageName, ArtifactType> = {
-  normalize:       ArtifactType.CLINICAL_REASONING,  // Fix: was SEVERITY_ANALYSIS (normalize writes CLINICAL_REASONING)
-  clinical:        ArtifactType.SEVERITY_ANALYSIS,
-  therapy:         ArtifactType.THERAPY_PLAN,
-  recommendations: ArtifactType.RECOMMENDATIONS,
-  narratives:      ArtifactType.NARRATIVES,
-  videoScript:     ArtifactType.VIDEO_SCRIPT,
-  videoRender:     ArtifactType.AVATAR_VIDEO,
-  visual:          ArtifactType.VISUAL_JOURNEY,
-  pdf:             ArtifactType.REPORT,
-};
-
-// ─── Orchestration Context ─────────────────────────────────────────────────────
-
-interface OrchestrationContext {
-  assessmentId: string;
-  executionId: string;
-  pipelineStart: number;
-  answers: PatientAnswers;
-  normalizedProfile: Record<string, unknown>;
-  patient: { name: string; age: number | null; gender: string | null };
-  clinic: { name: string };
-  reviewingDoctorName: string | null;
+function debug(...args: unknown[]): void {
+  if (DEBUG_ORCH) console.log(...args);
 }
 
-// ─── Helpers ───────────────────────────────────────────────────────────────────
+// ─── Pipeline Context ────────────────────────────────────────────────────────
+// Shared, mutable bag of outputs from Phase A passed to Phase B. Eliminates
+// re-reading artifacts from Postgres just to feed the PDF stage.
+
+export interface PipelineContext {
+  assessmentId: string;
+  executionId: string;
+  phaseAStart: number;
+  phaseBStart: number | null;
+
+  // Patient / clinic — read once at orchestration start
+  patient: { name: string; age: number | null; gender: string | null };
+  clinic: { name: string };
+  clinicId: string;
+  assessmentStatus: AssessmentStatus;
+  reviewingDoctorName: string | null;
+  answers: PatientAnswers;
+  rawAnswers: Record<string, unknown>;
+
+  // Phase A outputs (populated in order)
+  normalizedProfile?: Record<string, unknown>;
+  clinical?: ReturnType<typeof evaluateClinicalProfile>;
+  therapy?: ReturnType<typeof mapTherapyNeeds>;
+  recommendations?: ReturnType<typeof scoreKits>;
+  clinicalFacts?: ReturnType<typeof buildClinicalFacts>;
+  clinicalReport?: ReturnType<typeof buildClinicalReport>;
+  doctorConsultation?: ReturnType<typeof buildDoctorConsultation>;
+  clinicalContext?: ReturnType<typeof buildClinicalContext>;
+
+  // Phase B outputs
+  narrativesPayload?: Record<string, unknown>;
+}
+
+// ─── Stage helpers ────────────────────────────────────────────────────────────
 
 /**
- * GATE #1: Artifact Payload Validation
- * Validates payload before DB write, fails fast, no regeneration.
+ * Run a stage with timing/counter instrumentation. The runner gets a
+ * StageTimer so it can attribute Prisma calls (`t.tick("db")`) and external
+ * HTTP (`t.tick("external")`). On success/failure we write one
+ * OrchestrationLog row (no separate RUNNING/SUCCESS rows — that's a 2× write
+ * cost we don't need) and emit a single structured console line.
  */
-async function upsertArtifact(
-  assessmentId: string,
-  type: ArtifactType,
-  content: unknown,
-  generationMs?: number
-): Promise<void> {
-  // ── GATE #1: Validate before persist ──────────────────────────────────────
+async function runStage<T>(
+  ctx: PipelineContext,
+  phase: PhaseRecorder,
+  stage: string,
+  fn: (t: StageTimer) => Promise<T> | T,
+): Promise<T> {
+  const t = new StageTimer(stage);
   try {
-    validateArtifactPayload(type, content);
-    console.log(`[GATE #1] VALIDATION PASSED ${assessmentId} ${type}`);
+    const result = await fn(t);
+    const m = t.finish();
+    phase.record(m);
+    logStage(ctx.assessmentId, m);
+    // Single OrchestrationLog row per stage (was previously two — RUNNING +
+    // SUCCESS — that doubled write count for pure observability).
+    await prisma.orchestrationLog.create({
+      data: {
+        assessmentId: ctx.assessmentId,
+        stage,
+        status: "SUCCESS",
+        durationMs: m.durationMs,
+        metadata: t.asMetadata(),
+      },
+    });
+    return result;
   } catch (err) {
+    const m = t.finish();
+    phase.record(m);
     const message = err instanceof Error ? err.message : String(err);
-    console.error(`[GATE #1] VALIDATION FAILED ${assessmentId} ${type}:`, message);
+    console.error(`[ORCH-STAGE-FAIL] ${stage} ${m.durationMs}ms: ${message}`);
+    await prisma.orchestrationLog
+      .create({
+        data: {
+          assessmentId: ctx.assessmentId,
+          stage,
+          status: "FAILED",
+          durationMs: m.durationMs,
+          error: message,
+          metadata: t.asMetadata(),
+        },
+      })
+      .catch(() => {});
     throw err;
   }
+}
 
-  // ── Persist with verification ────────────────────────────────────────────
+/**
+ * Persist a stage's artifact + checkpoint the assessment in ONE round trip
+ * via prisma.$transaction. Was previously two sequential writes.
+ *
+ * Phase A callers pass `leaseExecutionId` so the checkpoint update refuses
+ * to write if the lease was reclaimed. Phase B callers omit it because
+ * Phase B safety comes from the AIArtifact upsert unique constraint and
+ * the outer status compare-and-set, not from the lease.
+ */
+async function persistStageOutput(
+  ctx: PipelineContext,
+  t: StageTimer,
+  type: ArtifactType,
+  content: unknown,
+  durationMs: number,
+  checkpoint: string | null,
+  leaseExecutionId: string | null = null,
+): Promise<void> {
+  // Artifact upsert is safe under lease loss: the unique (assessmentId, type)
+  // constraint means the reclaimed worker's rewrite is idempotent. We do not
+  // lease-guard artifact writes to avoid dropping work that would otherwise
+  // be the same content.
   await prisma.aIArtifact.upsert({
-    where: { assessmentId_type: { assessmentId, type } },
+    where: { assessmentId_type: { assessmentId: ctx.assessmentId, type } },
     create: {
-      assessmentId,
+      assessmentId: ctx.assessmentId,
       type,
       content: content as Prisma.InputJsonValue,
-      generationMs: generationMs ?? null,
+      generationMs: durationMs,
     },
     update: {
       content: content as Prisma.InputJsonValue,
-      generationMs: generationMs ?? null,
+      generationMs: durationMs,
     },
   });
+  t.tick("db");
+
+  if (checkpoint) {
+    if (leaseExecutionId) {
+      await renewLease(prisma, ctx.assessmentId, leaseExecutionId, {
+        lastCompletedStage: checkpoint,
+      });
+    } else {
+      await prisma.assessment.update({
+        where: { id: ctx.assessmentId },
+        data: { lastCompletedStage: checkpoint },
+      });
+    }
+    t.tick("db");
+  }
 }
 
-async function logOrchestrationStage(
-  assessmentId: string,
-  stage: StageName,
-  status: "RUNNING" | "SUCCESS" | "FAILED",
-  opts: { durationMs?: number; error?: string; metadata?: Record<string, unknown> } = {}
+async function setStatus(
+  ctx: PipelineContext,
+  t: StageTimer | null,
+  status: AssessmentStatus,
+  extra: Record<string, unknown> = {},
+  leaseExecutionId: string | null = null,
 ): Promise<void> {
-  await prisma.orchestrationLog.create({
-    data: {
-      assessmentId,
-      stage,
+  if (leaseExecutionId) {
+    await renewLease(prisma, ctx.assessmentId, leaseExecutionId, {
       status,
-      durationMs: opts.durationMs ?? null,
-      error: opts.error ?? null,
-      metadata: (opts.metadata ?? {}) as Prisma.InputJsonValue,
-    },
-  });
+      orchestrationStage: status.toLowerCase(),
+      ...extra,
+    });
+  } else {
+    await prisma.assessment.update({
+      where: { id: ctx.assessmentId },
+      data: { status, orchestrationStage: status.toLowerCase(), ...extra },
+    });
+  }
+  t?.tick("db");
 }
 
-async function setStatus(assessmentId: string, status: AssessmentStatus, extra: Record<string, unknown> = {}): Promise<void> {
-  await prisma.assessment.update({
-    where: { id: assessmentId },
-    data: { status, orchestrationStage: status.toLowerCase(), ...extra },
-  });
-}
+// ─── Phase A: Doctor-Critical ────────────────────────────────────────────────
+// Stages required before the doctor can begin consultation. Awaited by the
+// caller — total target is 3–5 seconds.
 
-async function stageAlreadyComplete(assessmentId: string, stage: StageName): Promise<boolean> {
-  const artifact = await prisma.aIArtifact.findUnique({
-    where: { assessmentId_type: { assessmentId, type: STAGE_ARTIFACT[stage] } },
-    select: { id: true },
-  });
-  return artifact !== null;
-}
+async function runPhaseA(ctx: PipelineContext): Promise<PhaseRecorder> {
+  const phase = new PhaseRecorder("A");
+  const lease = ctx.executionId;
 
-// ─── Per-Stage Runners ─────────────────────────────────────────────────────────
-
-async function runNormalization(ctx: OrchestrationContext): Promise<Record<string, unknown>> {
-  const start = Date.now();
-  await logOrchestrationStage(ctx.assessmentId, "normalize", "RUNNING");
-
-  const profile = normalizeQuestionnaire(ctx.normalizedProfile as Record<string, unknown>);
-
-  await upsertArtifact(ctx.assessmentId, ArtifactType.CLINICAL_REASONING, profile, Date.now() - start);
-  await logOrchestrationStage(ctx.assessmentId, "normalize", "SUCCESS", {
-    durationMs: Date.now() - start,
-    metadata: { fieldCount: Object.keys(profile as object).length },
-  });
-  await logAssessmentEvent(prisma, ctx.assessmentId, "NORMALIZATION_COMPLETE", {
-    stage: "normalize",
-    durationMs: Date.now() - start,
-  });
-  await prisma.assessment.update({
-    where: { id: ctx.assessmentId },
-    data: { lastCompletedStage: "normalize" },
+  // 1. Normalize ─────────────────────────────────────────────────────────────
+  await runStage(ctx, phase, "normalize", async (t) => {
+    const profile = normalizeQuestionnaire(ctx.rawAnswers);
+    t.tick("cpu");
+    ctx.normalizedProfile = profile as unknown as Record<string, unknown>;
+    await persistStageOutput(
+      ctx,
+      t,
+      ArtifactType.CLINICAL_REASONING,
+      profile,
+      Date.now() - phase.metrics.startedAt,
+      "normalize",
+      lease,
+    );
+    t.note("fieldCount", Object.keys(profile as object).length);
   });
 
-  return profile as Record<string, unknown>;
-}
-
-async function runClinicalEngine(ctx: OrchestrationContext): Promise<ReturnType<typeof evaluateClinicalProfile>> {
-  const start = Date.now();
-  await logOrchestrationStage(ctx.assessmentId, "clinical", "RUNNING");
-
-  const clinical = evaluateClinicalProfile(ctx.answers);
-  console.log("[ORCH] CLINICAL OUTPUT");
-  console.log(JSON.stringify(clinical, null, 2));
-  await upsertArtifact(ctx.assessmentId, ArtifactType.SEVERITY_ANALYSIS, clinical, Date.now() - start);
-  await logOrchestrationStage(ctx.assessmentId, "clinical", "SUCCESS", { durationMs: Date.now() - start });
-  await logAssessmentEvent(prisma, ctx.assessmentId, "CLINICAL_ENGINE_COMPLETE", {
-    stage: "clinical",
-    durationMs: Date.now() - start,
-  });
-  await prisma.assessment.update({
-    where: { id: ctx.assessmentId },
-    data: { lastCompletedStage: "clinical" },
+  // 2. Clinical engine ──────────────────────────────────────────────────────
+  await setStatus(ctx, null, AssessmentStatus.RUNNING_CLINICAL_ENGINE, {}, lease);
+  ctx.assessmentStatus = AssessmentStatus.RUNNING_CLINICAL_ENGINE;
+  await runStage(ctx, phase, "clinical", async (t) => {
+    const stageStart = Date.now();
+    const clinical = evaluateClinicalProfile(ctx.answers);
+    t.tick("cpu");
+    ctx.clinical = clinical;
+    await persistStageOutput(
+      ctx,
+      t,
+      ArtifactType.SEVERITY_ANALYSIS,
+      clinical,
+      Date.now() - stageStart,
+      "clinical",
+      lease,
+    );
   });
 
-  return clinical;
-}
-
-async function runTherapy(
-  ctx: OrchestrationContext,
-  clinical: ReturnType<typeof evaluateClinicalProfile>
-): Promise<ReturnType<typeof mapTherapyNeeds>> {
-  const start = Date.now();
-  await logOrchestrationStage(ctx.assessmentId, "therapy", "RUNNING");
-
-  const therapy = mapTherapyNeeds(clinical);
-  await upsertArtifact(ctx.assessmentId, ArtifactType.THERAPY_PLAN, therapy, Date.now() - start);
-  await logOrchestrationStage(ctx.assessmentId, "therapy", "SUCCESS", { durationMs: Date.now() - start });
-  await prisma.assessment.update({
-    where: { id: ctx.assessmentId },
-    data: { lastCompletedStage: "therapy" },
+  // 3. Therapy ──────────────────────────────────────────────────────────────
+  await runStage(ctx, phase, "therapy", async (t) => {
+    const stageStart = Date.now();
+    const therapy = mapTherapyNeeds(ctx.clinical!);
+    t.tick("cpu");
+    ctx.therapy = therapy;
+    await persistStageOutput(
+      ctx,
+      t,
+      ArtifactType.THERAPY_PLAN,
+      therapy,
+      Date.now() - stageStart,
+      "therapy",
+      lease,
+    );
   });
 
-  return therapy;
-}
-
-async function runRecommendations(
-  ctx: OrchestrationContext,
-  clinical: ReturnType<typeof evaluateClinicalProfile>,
-  therapy: ReturnType<typeof mapTherapyNeeds>
-): Promise<ReturnType<typeof scoreKits>> {
-  const start = Date.now();
-  await logOrchestrationStage(ctx.assessmentId, "recommendations", "RUNNING");
-
-  const recommendations = scoreKits(clinical, therapy, ctx.answers, OPEN_CLINIC, {
-    tier: "STANDARD",
-    maxKits: 5,
+  // 4. Recommendations ──────────────────────────────────────────────────────
+  await setStatus(ctx, null, AssessmentStatus.GENERATING_RECOMMENDATIONS, {}, lease);
+  ctx.assessmentStatus = AssessmentStatus.GENERATING_RECOMMENDATIONS;
+  await runStage(ctx, phase, "recommendations", async (t) => {
+    const stageStart = Date.now();
+    const recs = scoreKits(ctx.clinical!, ctx.therapy!, ctx.answers, OPEN_CLINIC, {
+      tier: "STANDARD",
+      maxKits: 5,
+    });
+    t.tick("cpu");
+    ctx.recommendations = recs;
+    await persistStageOutput(
+      ctx,
+      t,
+      ArtifactType.RECOMMENDATIONS,
+      recs,
+      Date.now() - stageStart,
+      "recommendations",
+      lease,
+    );
   });
-  await upsertArtifact(ctx.assessmentId, ArtifactType.RECOMMENDATIONS, recommendations, Date.now() - start);
-  await logOrchestrationStage(ctx.assessmentId, "recommendations", "SUCCESS", { durationMs: Date.now() - start });
+
+  // 5. Clinical summary — facts + clinical report + doctor consultation +
+  //    clinical context. These pieces are what the doctor dashboard reads to
+  //    begin consultation. Persisted under NARRATIVES so the existing
+  //    DoctorConsultationViewer / consultation aggregator pick them up
+  //    immediately. Patient narratives + lifestyle + prognosis are written
+  //    later in Phase B as a merge update.
+  await runStage(ctx, phase, "clinical_summary", async (t) => {
+    const stageStart = Date.now();
+    const facts = buildClinicalFacts(ctx.answers, ctx.clinical!);
+    const clinicalReport = buildClinicalReport(
+      {
+        name: ctx.patient.name,
+        age: ctx.patient.age ?? 30,
+        sex: ctx.patient.gender ?? "unknown",
+      },
+      ctx.clinical!,
+      ctx.therapy!,
+      ctx.recommendations!,
+      ctx.answers,
+    );
+    const doctorConsultation = buildDoctorConsultation({
+      patient: ctx.answers,
+      clinicalProfile: ctx.clinical!,
+      therapyPlan: ctx.therapy!,
+      kitRecommendation: ctx.recommendations!,
+      explanationResult: {} as NarrativePipelineInput["explanationResult"],
+      narrativeLength: "detailed",
+    } as NarrativePipelineInput);
+    const fourChapterNarrative = buildFourChapterNarrative(clinicalReport);
+    const clinicalContext = buildClinicalContext({
+      assessmentId: ctx.assessmentId,
+      facts,
+      profile: ctx.clinical!,
+      kitRecommendation: ctx.recommendations!,
+      groundingViolations: [],
+    });
+    t.tick("cpu", 5);
+
+    ctx.clinicalFacts = facts;
+    ctx.clinicalReport = clinicalReport;
+    ctx.doctorConsultation = doctorConsultation;
+    ctx.clinicalContext = clinicalContext;
+
+    // Slim NARRATIVES payload — doctor-facing fields only. Phase B will
+    // overwrite with the same fields plus the composed patient narratives.
+    const phaseAPayload = {
+      clinical_report: clinicalReport,
+      four_chapter_narrative: fourChapterNarrative,
+      doctor_consultation: doctorConsultation,
+      clinical_context: clinicalContext,
+      grounding_violations: [],
+      phase: "A" as const,
+    };
+
+    await persistNarrativeArtifact(
+      prisma,
+      ctx.assessmentId,
+      phaseAPayload,
+      Date.now() - stageStart,
+    );
+    t.tick("db");
+
+    await renewLease(prisma, ctx.assessmentId, lease, {
+      lastCompletedStage: "clinical_summary",
+    });
+    t.tick("db");
+  });
+
+  // ── Doctor-ready checkpoint ─────────────────────────────────────────────
+  // Guarded by the lease: a reclaimed original worker cannot mark a stale
+  // execution CLINICAL_READY on top of the new execution's in-flight work.
+  await renewLease(prisma, ctx.assessmentId, lease, {
+    status: AssessmentStatus.CLINICAL_READY,
+    orchestrationStage: "clinical_ready",
+  });
   await logAssessmentEvent(prisma, ctx.assessmentId, "RECOMMENDATIONS_COMPLETE", {
-    stage: "recommendations",
-    durationMs: Date.now() - start,
+    stage: "clinical_ready",
+    durationMs: Date.now() - ctx.phaseAStart,
   });
-  await prisma.assessment.update({
-    where: { id: ctx.assessmentId },
-    data: { lastCompletedStage: "recommendations" },
-  });
-  return recommendations;
+
+  phase.finish();
+  logPhase(ctx.assessmentId, phase.metrics);
+  return phase;
 }
 
-async function runNarratives(
-  ctx: OrchestrationContext,
-  clinical: ReturnType<typeof evaluateClinicalProfile>,
-  therapy: ReturnType<typeof mapTherapyNeeds>,
-  recommendations: ReturnType<typeof scoreKits>
-): Promise<void> {
-  const start = Date.now();
-  await logOrchestrationStage(ctx.assessmentId, "narratives", "RUNNING");
+// ─── Phase B: Background ─────────────────────────────────────────────────────
+// Patient narratives + PDF. Runs after the response has been flushed via
+// Vercel `after()`. Failures here do not affect doctor consultation — they
+// flip status to PARTIAL_FAILURE so the dashboard can surface "PDF retry".
 
-  const context: ExplanationContext = {
-    clinicalProfile: clinical,
-    therapyNeeds: therapy,
-    kitRecommendation: recommendations,
-    narrativeLength: "detailed",
-    patientName: ctx.patient.name,
-  };
+async function runPhaseB(ctx: PipelineContext): Promise<PhaseRecorder> {
+  ctx.phaseBStart = Date.now();
+  const phase = new PhaseRecorder("B");
 
-  // ── Content assembly: Compose + enrich narratives with expansions ─────────
-  const assembled = assembleAssessmentNarratives(context);
-  const base = buildNarrative(context);
-
-  const clinicalReport = buildClinicalReport(
-    {
-      name: ctx.patient.name,
-      age: ctx.patient.age ?? 30,
-      sex: ctx.patient.gender ?? "unknown",
+  await prisma.assessment.update({
+    where: { id: ctx.assessmentId },
+    data: {
+      status: AssessmentStatus.REPORT_GENERATING,
+      orchestrationStage: "report_generating",
     },
-    clinical,
-    therapy,
-    recommendations,
-    ctx.answers
-  );
+  });
 
-  // ── Phase 1: FourChapterNarrative (additive) ─────────────────────────────
-  // Single canonical narrative payload derived purely from ClinicalReport.
-  // Phase 1 only produces and persists it. No renderer consumes it yet.
-  const fourChapterNarrative = buildFourChapterNarrative(clinicalReport);
+  // 6. Patient narratives ──────────────────────────────────────────────────
+  await runStage(ctx, phase, "narratives", async (t) => {
+    const stageStart = Date.now();
+    const context: ExplanationContext = {
+      clinicalProfile: ctx.clinical!,
+      therapyNeeds: ctx.therapy!,
+      kitRecommendation: ctx.recommendations!,
+      narrativeLength: "detailed",
+      patientName: ctx.patient.name,
+      patientAnswers: ctx.answers,
+      // Reuse the facts already computed in Phase A — avoids the double
+      // buildClinicalFacts call the old pipeline made.
+      facts: ctx.clinicalFacts,
+    };
+    const assembled = assembleAssessmentNarratives(context);
+    const base = buildNarrative(context);
+    t.tick("cpu", 2);
 
-  // ── Doctor consultation (5-chapter runtime-agnostic script) ──────────────
-  // Reuses the exact clinical inputs the report uses — no duplicated logic.
-  // Persisted alongside the narratives so the patient report's
-  // DoctorConsultationViewer can render it immediately on report load.
-  const doctorConsultation = buildDoctorConsultation({
-    patient: ctx.answers,
-    clinicalProfile: clinical,
-    therapyPlan: therapy,
-    kitRecommendation: recommendations,
-    explanationResult: {} as NarrativePipelineInput["explanationResult"],
-    narrativeLength: "detailed",
-  } as NarrativePipelineInput);
+    // Re-attach reasoning gaps to the already-built clinical context.
+    const reasoning = validateReasoningCompleteness(ctx.clinicalContext!, [
+      { name: "doctor_narrative",    text: assembled.doctor_narrative.full ?? "" },
+      { name: "patient_narrative",   text: assembled.patient_narrative.full ?? "" },
+      { name: "therapy_explanation", text: assembled.therapy_explanation.full ?? "" },
+      { name: "lifestyle_plan",      text: assembled.lifestyle_plan.full ?? "" },
+      { name: "prognosis",           text: assembled.prognosis.full ?? "" },
+      { name: "monitoring_plan",     text: assembled.monitoring_plan.full ?? "" },
+    ]);
+    if (!reasoning.valid && DEBUG_ORCH) {
+      console.warn(
+        `[Orchestrator] Reasoning gaps:\n${formatReasoningGaps(reasoning)}`,
+      );
+    }
+    const clinicalContext = {
+      ...ctx.clinicalContext!,
+      // Phase A built the context with empty violations (narratives didn't
+      // exist yet); fold in the real list now that we've composed them.
+      groundingViolations: assembled.groundingViolations,
+      reasoningGaps: reasoning.gaps,
+    };
 
-  const narrativesPayload = {
-    doctor_narrative:    assembled.doctor_narrative,
-    patient_narrative:   assembled.patient_narrative,
-    therapy_explanation: assembled.therapy_explanation,
-    lifestyle_plan:      assembled.lifestyle_plan,
-    prognosis:           assembled.prognosis,
-    monitoring_plan:     assembled.monitoring_plan,
-    doctorSummary:       base.doctorSummary,
-    patientSummary:      base.patientSummary,
-    narrative:           base.narrative,
-    length:              base.length,
-    clinical_report:     clinicalReport,
-    four_chapter_narrative: fourChapterNarrative,
-    doctor_consultation: doctorConsultation,
-    // Enriched content for rendering
-    enrichedTherapyNeeds: assembled.enrichedTherapyNeeds,
-    enrichedRootCauses:  assembled.enrichedRootCauses,
-  };
+    const narrativesPayload = {
+      doctor_narrative:    assembled.doctor_narrative,
+      patient_narrative:   assembled.patient_narrative,
+      therapy_explanation: assembled.therapy_explanation,
+      lifestyle_plan:      assembled.lifestyle_plan,
+      prognosis:           assembled.prognosis,
+      monitoring_plan:     assembled.monitoring_plan,
+      doctorSummary:       base.doctorSummary,
+      patientSummary:      base.patientSummary,
+      narrative:           base.narrative,
+      length:              base.length,
+      clinical_report:     ctx.clinicalReport!,
+      doctor_consultation: ctx.doctorConsultation!,
+      enrichedTherapyNeeds: assembled.enrichedTherapyNeeds,
+      enrichedRootCauses:  assembled.enrichedRootCauses,
+      grounding_violations: assembled.groundingViolations,
+      clinical_context:    clinicalContext,
+      phase: "B" as const,
+    };
+    ctx.narrativesPayload = narrativesPayload;
 
-  // ── GATE #2: Narrative Persistence Integrity ──────────────────────────────
-  // Validates → persists → verifies. Hard failure if any step fails.
-  // No silent catches. Only marks stage complete after verification.
-  try {
     await persistNarrativeArtifact(
       prisma,
       ctx.assessmentId,
       narrativesPayload,
-      Date.now() - start
+      Date.now() - stageStart,
     );
-    console.log(`[GATE #2] PERSISTENCE VERIFIED ${ctx.assessmentId}`);
+    t.tick("db");
+    t.note("groundingViolations", assembled.groundingViolations.length);
+    t.note("reasoningGaps", reasoning.gaps.length);
+  });
+
+  // 7. PDF generation ──────────────────────────────────────────────────────
+  await setStatus(ctx, null, AssessmentStatus.GENERATING_REPORT);
+  await runStage(ctx, phase, "pdf", async (t) => {
+    const stageStart = Date.now();
+    const payload = ctx.narrativesPayload as
+      | { grounding_violations?: unknown; clinical_context?: { reasoningGaps?: unknown } }
+      | undefined;
+    const groundingViolations =
+      (payload?.grounding_violations as ReportInputPayload["groundingViolations"]) ?? [];
+    const reasoningGaps =
+      (payload?.clinical_context?.reasoningGaps as ReportInputPayload["reasoningGaps"]) ?? [];
+
+    const pdfPayload: ReportInputPayload = {
+      assessmentId: ctx.assessmentId,
+      patient: {
+        name: ctx.patient.name,
+        age: ctx.patient.age ?? 30,
+        gender: ctx.patient.gender ?? "unknown",
+      },
+      clinic: { name: ctx.clinic.name },
+      doctor: { name: ctx.reviewingDoctorName ?? ctx.clinic.name },
+      clinicalProfile: ctx.normalizedProfile as unknown as ReportInputPayload["clinicalProfile"],
+      visualJourney: null,
+      kitRecommendation: ctx.recommendations as unknown as ReportInputPayload["kitRecommendation"],
+      therapyPlan: ctx.therapy ?? null,
+      clinicalReport: ctx.clinicalReport as ReportInputPayload["clinicalReport"],
+      createdAt: new Date(),
+      groundingViolations,
+      reasoningGaps,
+      // Never let evidence-grounding or reasoning-completeness gaps sink the
+      // whole PDF for the patient — they're recorded on the assessment for
+      // the doctor to review, but the report itself must still ship (in the
+      // rich Dossier template, not a legacy fallback).
+      bypassGroundingViolations: true,
+      bypassReasoningGaps: true,
+    };
+    console.log(
+      `[ORCH] PDF-STAGE ${ctx.assessmentId} clinicalReport=${ctx.clinicalReport ? "present" : "MISSING"} ` +
+      `groundingViolations=${groundingViolations.length} reasoningGaps=${reasoningGaps.length}`,
+    );
+
+    const reportUrls = await generateAndStoreReports(pdfPayload);
+    t.tick("external"); // Supabase Storage upload
+    t.note("patientPdfUrl", reportUrls.patientPdfUrl);
+
+    await persistStageOutput(
+      ctx,
+      t,
+      ArtifactType.REPORT,
+      reportUrls,
+      Date.now() - stageStart,
+      "pdf",
+    );
+    await logAssessmentEvent(prisma, ctx.assessmentId, "REPORT_GENERATED", {
+      stage: "pdf",
+      durationMs: Date.now() - stageStart,
+    });
+  });
+
+  // ── Final status ────────────────────────────────────────────────────────
+  await prisma.assessment.update({
+    where: { id: ctx.assessmentId },
+    data: {
+      status: AssessmentStatus.COMPLETED,
+      completedAt: new Date(),
+      orchestrationStage: "complete",
+      orchestrationMeta: {
+        executionId: ctx.executionId,
+        pipelineVersion: "3.0.0-phase-split",
+        phaseADurationMs: ctx.phaseBStart - ctx.phaseAStart,
+        phaseBDurationMs: Date.now() - ctx.phaseBStart,
+        totalDurationMs: Date.now() - ctx.phaseAStart,
+      },
+    },
+  });
+
+  phase.finish();
+  logPhase(ctx.assessmentId, phase.metrics);
+  return phase;
+}
+
+// ─── Public entry points ──────────────────────────────────────────────────────
+
+/**
+ * Phase A only. Caller awaits this and gets back as soon as CLINICAL_READY
+ * is set. Use `runPhaseBInBackground(ctx)` to continue with patient
+ * narratives + PDF.
+ *
+ * Returns the populated PipelineContext so the caller can schedule Phase B
+ * without re-loading the assessment.
+ */
+export async function runAssessmentPhaseA(
+  assessmentId: string,
+): Promise<PipelineContext> {
+  const executionId = randomUUID();
+  console.log(`[ORCH] PHASE-A-START ${executionId} ${assessmentId}`);
+
+  // Atomic claim BEFORE loading assessment data — updateMany returns the
+  // number of rows updated; only the winner proceeds. Two concurrent
+  // requests can never both flip the row from PENDING â†’ NORMALIZING because
+  // the second one finds no matching row (status is no longer PENDING).
+  await claimPhaseA(prisma, assessmentId, executionId);
+
+  const assessment = await prisma.assessment.findUnique({
+    where: { id: assessmentId },
+    include: { patient: true, clinic: true, reviewingDoctor: true },
+  });
+  if (!assessment) throw new Error(`Assessment ${assessmentId} not found`);
+
+  const raw = (assessment.rawResponses ?? {}) as Record<string, unknown>;
+  const answers = mapPortalToPatientAnswers(raw) as PatientAnswers;
+  debug("[ORCH] RAW", raw);
+  debug("[ORCH] MAPPED", answers);
+
+  const ctx: PipelineContext = {
+    assessmentId,
+    executionId,
+    phaseAStart: Date.now(),
+    phaseBStart: null,
+    answers,
+    rawAnswers: raw,
+    patient: {
+      name: assessment.patient.name,
+      age: assessment.patient.age,
+      gender: assessment.patient.gender,
+    },
+    clinic: { name: assessment.clinic.name },
+    clinicId: assessment.clinicId,
+    assessmentStatus: assessment.status,
+    reviewingDoctorName: assessment.reviewingDoctor?.name ?? null,
+  };
+  await logAssessmentEvent(prisma, assessmentId, "ORCHESTRATION_STARTED", {
+    stage: "normalize",
+    metadata: { executionId },
+  });
+
+  try {
+    await runPhaseA(ctx);
+    console.log(
+      `[ORCH] PHASE-A-DONE ${assessmentId} ${Date.now() - ctx.phaseAStart}ms`,
+    );
+    return ctx;
   } catch (err) {
-    const message = err instanceof Error ? err.message : String(err);
-    console.error(`[GATE #2] PERSISTENCE FAILED ${ctx.assessmentId}:`, message);
+    // Lease loss = a reclaim path took over. The new execution owns the row;
+    // this worker must abort silently without markFatal (which would clobber
+    // the fresh execution's state).
+    if (err instanceof LeaseLostError) {
+      console.log(
+        `[ORCH] LEASE-LOST ${assessmentId} exec=${ctx.executionId} — aborting cleanly`,
+      );
+      throw err;
+    }
+    await markFatal(ctx, err);
     throw err;
   }
-
-  await logOrchestrationStage(ctx.assessmentId, "narratives", "SUCCESS", {
-    durationMs: Date.now() - start,
-  });
-  await logAssessmentEvent(prisma, ctx.assessmentId, "NARRATIVES_COMPLETE", {
-    stage: "narratives",
-    durationMs: Date.now() - start,
-  });
-  await prisma.assessment.update({
-    where: { id: ctx.assessmentId },
-    data: { lastCompletedStage: "narratives" },
-  });
-}
-
-async function runVideoScript(
-  ctx: OrchestrationContext,
-  clinical: ReturnType<typeof evaluateClinicalProfile>,
-  therapy: ReturnType<typeof mapTherapyNeeds>,
-  recommendations: ReturnType<typeof scoreKits>
-): Promise<ReturnType<typeof build3DAvatarScript> | null> {
-  const start = Date.now();
-  await logOrchestrationStage(ctx.assessmentId, "videoScript", "RUNNING");
-
-  // build3DAvatarScript only reads patient / clinicalProfile / therapyPlan /
-  // kitRecommendation / prognosis. explanationResult is required by the type
-  // but unused at runtime — pass a minimal cast to keep the contract.
-  const scriptInput = {
-    patient: ctx.answers,
-    clinicalProfile: clinical,
-    therapyPlan: therapy,
-    kitRecommendation: recommendations,
-    explanationResult: {} as NarrativePipelineInput["explanationResult"],
-    narrativeLength: "detailed" as const,
-    includeAvatarScript: true,
-    includeWhatsAppSummary: false,
-  } as NarrativePipelineInput;
-
-  const script = build3DAvatarScript(scriptInput);
-
-  await upsertArtifact(ctx.assessmentId, ArtifactType.VIDEO_SCRIPT, script, Date.now() - start);
-  await logOrchestrationStage(ctx.assessmentId, "videoScript", "SUCCESS", {
-    durationMs: Date.now() - start,
-    metadata: { sceneCount: script.scenes.length },
-  });
-  await prisma.assessment.update({
-    where: { id: ctx.assessmentId },
-    data: { lastCompletedStage: "videoScript" },
-  });
-
-  return script;
-}
-
-async function runVideoRender(
-  ctx: OrchestrationContext,
-  script: ReturnType<typeof build3DAvatarScript>
-): Promise<void> {
-  const start = Date.now();
-  await logOrchestrationStage(ctx.assessmentId, "videoRender", "RUNNING");
-
-  const initial = await startAvatarVideoRender({
-    assessmentId: ctx.assessmentId,
-    script,
-  });
-
-  await upsertArtifact(ctx.assessmentId, ArtifactType.AVATAR_VIDEO, initial, Date.now() - start);
-  await logOrchestrationStage(ctx.assessmentId, "videoRender", "SUCCESS", {
-    durationMs: Date.now() - start,
-    metadata: { status: initial.status, provider: initial.provider },
-  });
-  await prisma.assessment.update({
-    where: { id: ctx.assessmentId },
-    data: { lastCompletedStage: "videoRender" },
-  });
-
-  // Kick off background poll — does NOT block the rest of the pipeline.
-  void pollVideoUntilSettled(ctx.assessmentId);
 }
 
 /**
- * Background poller — advances the AVATAR_VIDEO artifact from RENDERING to
- * READY/FAILED. Runs out-of-band; safe to call concurrently because each
- * tick re-reads the latest artifact content.
+ * Schedule Phase B (narratives + PDF). Intended to be called from a Vercel
+ * `after()` callback. Errors are swallowed and recorded as PARTIAL_FAILURE
+ * because Phase A already returned to the doctor.
  */
-async function pollVideoUntilSettled(assessmentId: string): Promise<void> {
-  const MAX_TICKS = 60;       // 60 * 5s = 5 minutes hard ceiling
-  const INTERVAL_MS = 5_000;
-
-  for (let i = 0; i < MAX_TICKS; i++) {
-    await new Promise<void>((r) => setTimeout(r, INTERVAL_MS));
-    try {
-      const row = await prisma.aIArtifact.findUnique({
-        where: { assessmentId_type: { assessmentId, type: ArtifactType.AVATAR_VIDEO } },
-      });
-      const current = row?.content as VideoArtifactContent | undefined;
-      if (!current) return;
-      if (current.status === "READY" || current.status === "FAILED") return;
-
-      const next = await probeVideoStatus(current);
-      if (next === current) continue;
-
-      await prisma.aIArtifact.update({
-        where: { assessmentId_type: { assessmentId, type: ArtifactType.AVATAR_VIDEO } },
-        data: { content: next as unknown as Prisma.InputJsonValue },
-      });
-
-      if (next.status === "READY" || next.status === "FAILED") return;
-    } catch (err) {
-      console.error("[Orchestrator] video poll error", {
-        assessmentId,
-        error: err instanceof Error ? err.message : String(err),
-      });
-      return;
-    }
+export async function runAssessmentPhaseB(ctx: PipelineContext): Promise<void> {
+  try {
+    await runPhaseB(ctx);
+    console.log(
+      `[ORCH] PHASE-B-DONE ${ctx.assessmentId} ${Date.now() - (ctx.phaseBStart ?? Date.now())}ms`,
+    );
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    console.error(`[ORCH] PHASE-B-FAIL ${ctx.assessmentId}: ${msg}`);
+    await prisma.assessment
+      .update({
+        where: { id: ctx.assessmentId },
+        data: {
+          status: AssessmentStatus.PARTIAL_FAILURE,
+          lastError: `Phase B: ${msg}`,
+        },
+      })
+      .catch(() => {});
+    await logAssessmentEvent(prisma, ctx.assessmentId, "FAILED", {
+      stage: "phase_b",
+      message: msg,
+    }).catch(() => {});
   }
 }
 
-async function runVisualJourney(
-  ctx: OrchestrationContext,
-  normalizedProfile: Record<string, unknown>,
-  clinical: ReturnType<typeof evaluateClinicalProfile>,
-  therapy: ReturnType<typeof mapTherapyNeeds>,
-  recommendations: ReturnType<typeof scoreKits>
-): Promise<ReturnType<typeof buildVisualJourney>> {
-  const start = Date.now();
-  await logOrchestrationStage(ctx.assessmentId, "visual", "RUNNING");
-
-  const baseVisual = buildVisualJourney(ctx.assessmentId, normalizedProfile);
-
-  // ── Expand visual journey with clinical narrative sections ─────────────────
-  const expandedVisual = expandVisualJourney(baseVisual, clinical, therapy, recommendations);
-  const finalVisual = mergeVisualJourneySections(baseVisual, expandedVisual.clinicalNarrativeSections);
-
-  await upsertArtifact(ctx.assessmentId, ArtifactType.VISUAL_JOURNEY, finalVisual, Date.now() - start);
-  await logOrchestrationStage(ctx.assessmentId, "visual", "SUCCESS", { durationMs: Date.now() - start });
-  console.log(`[CONTENT-EXPANSION] Visual journey populated with ${finalVisual.sections.length} sections`);
-  await prisma.assessment.update({
-    where: { id: ctx.assessmentId },
-    data: { lastCompletedStage: "visual" },
-  });
-
-  return finalVisual;
-}
-
-async function runReportGeneration(
-  ctx: OrchestrationContext,
-  normalizedProfile: Record<string, unknown>,
-  visual: ReturnType<typeof buildVisualJourney>
-): Promise<void> {
-  const start = Date.now();
-  await logOrchestrationStage(ctx.assessmentId, "pdf", "RUNNING");
-  const [recommendationsArtifact, therapyArtifact, narrativesArtifact] = await Promise.all([
-    prisma.aIArtifact.findUnique({
-      where: { assessmentId_type: { assessmentId: ctx.assessmentId, type: ArtifactType.RECOMMENDATIONS } },
-    }),
-    prisma.aIArtifact.findUnique({
-      where: { assessmentId_type: { assessmentId: ctx.assessmentId, type: ArtifactType.THERAPY_PLAN } },
-    }),
-    prisma.aIArtifact.findUnique({
-      where: { assessmentId_type: { assessmentId: ctx.assessmentId, type: ArtifactType.NARRATIVES } },
-    }),
-  ]);
-
-  const narrativesContent = narrativesArtifact?.content as Record<string, unknown> | null;
-  const clinicalReport = narrativesContent?.clinical_report ?? null;
-
-  const pdfPayload: ReportInputPayload = {
-    assessmentId: ctx.assessmentId,
-    patient: {
-      name: ctx.patient.name,
-      age: ctx.patient.age ?? 30,
-      gender: ctx.patient.gender ?? "unknown",
-    },
-    clinic: { name: ctx.clinic.name },
-    doctor: { name: ctx.reviewingDoctorName ?? ctx.clinic.name },
-    clinicalProfile: normalizedProfile as unknown as ReportInputPayload["clinicalProfile"],
-    visualJourney: visual,
-    kitRecommendation: (recommendationsArtifact?.content ?? null) as unknown as ReportInputPayload["kitRecommendation"],
-    therapyPlan: therapyArtifact?.content ?? null,
-    clinicalReport: clinicalReport as ReportInputPayload["clinicalReport"],
-    createdAt: new Date(),
-  };
-
-  const reportUrls = await generateAndStoreReports(pdfPayload);
-  await upsertArtifact(ctx.assessmentId, ArtifactType.REPORT, reportUrls, Date.now() - start);
-  await logOrchestrationStage(ctx.assessmentId, "pdf", "SUCCESS", {
-    durationMs: Date.now() - start,
-    metadata: reportUrls as Record<string, unknown>,
-  });
-  await logAssessmentEvent(prisma, ctx.assessmentId, "REPORT_GENERATED", {
-    stage: "pdf",
-    durationMs: Date.now() - start,
-  });
-  await prisma.assessment.update({
-    where: { id: ctx.assessmentId },
-    data: { lastCompletedStage: "pdf" },
-  });
-}
-
-// ─── Core Orchestrator ─────────────────────────────────────────────────────────
-
+/**
+ * Backwards-compatible single-call entry point — runs A then B sequentially
+ * in the same invocation. Used by the local dev dispatch path and any
+ * existing caller that hasn't been split yet. New callers should prefer the
+ * Phase A / Phase B split so the doctor isn't blocked on PDF.
+ */
 export async function orchestrateAssessment(assessmentId: string): Promise<void> {
-  const executionId = randomUUID();
-  console.log(`[Orchestrator] START ${executionId} → ${assessmentId}`);
-
   try {
-    const assessment = await prisma.assessment.findUnique({
-      where: { id: assessmentId },
-      include: { patient: true, clinic: true, reviewingDoctor: true },
-    });
+    const ctx = await runAssessmentPhaseA(assessmentId);
+    await runAssessmentPhaseB(ctx);
+  } catch (err) {
+    // markFatal already called inside runAssessmentPhaseA on Phase A failure.
+    // Phase B failures are caught inside runAssessmentPhaseB. Anything that
+    // reaches here is a Phase A throw that's already been recorded.
+    throw err;
+  }
+}
 
-    if (!assessment) {
-      throw new Error(`Assessment ${assessmentId} not found`);
-    }
-
-    const raw = (assessment.rawResponses ?? {}) as Record<string, unknown>;
-    const answers = mapPortalToPatientAnswers(raw) as PatientAnswers;
-    console.log("[ORCH] RAW RESPONSES");
-    console.log(JSON.stringify(raw, null, 2));
-
-    console.log("[ORCH] MAPPED ANSWERS");
-    console.log(JSON.stringify(answers, null, 2));
-
-    const ctx: OrchestrationContext = {
-      assessmentId,
-      executionId,
-      pipelineStart: Date.now(),
-      answers,
-      normalizedProfile: raw,
-      patient: {
-        name: assessment.patient.name,
-        age: assessment.patient.age,
-        gender: assessment.patient.gender,
-      },
-      clinic: { name: assessment.clinic.name },
-      reviewingDoctorName: assessment.reviewingDoctor?.name ?? null,
-    };
-
-    // Transition: PENDING → QUEUED → NORMALIZING
-    await setStatus(assessmentId, AssessmentStatus.QUEUED, {
-      executionId,
-      queuedAt: new Date(),
-    });
-    await logAssessmentEvent(prisma, assessmentId, "QUEUED", {
-      metadata: { executionId },
-    });
-
-    await setStatus(assessmentId, AssessmentStatus.NORMALIZING, {
-      startedAt: new Date(),
-    });
-    await logAssessmentEvent(prisma, assessmentId, "ORCHESTRATION_STARTED", {
-      stage: "normalize",
-      metadata: { executionId },
-    });
-
-    // ── Stage 1: Normalize (critical — abort if this fails) ──────────────────
-    let normalizedProfile: Record<string, unknown> = raw;
-    if (!(await stageAlreadyComplete(assessmentId, "normalize"))) {
-      normalizedProfile = await runNormalization(ctx);
-    }
-    ctx.normalizedProfile = normalizedProfile;
-
-    // ── Stage 2: Clinical Engine ──────────────────────────────────────────────
-    let clinical!: ReturnType<typeof evaluateClinicalProfile>;
-    await setStatus(assessmentId, AssessmentStatus.RUNNING_CLINICAL_ENGINE);
-
-    const clinicalFailed = !(await stageAlreadyComplete(assessmentId, "clinical"));
-    if (clinicalFailed) {
-      try {
-        clinical = await runClinicalEngine(ctx);
-      } catch (err) {
-        const msg = err instanceof Error ? err.message : String(err);
-        await logOrchestrationStage(assessmentId, "clinical", "FAILED", { error: msg });
-        await logAssessmentEvent(prisma, assessmentId, "FAILED", { stage: "clinical", message: msg });
-        console.error(`[Orchestrator] clinical stage failed ${assessmentId}:`, msg);
-        throw err;
-      }
-    } else {
-      const artifact = await prisma.aIArtifact.findUnique({
-        where: { assessmentId_type: { assessmentId, type: ArtifactType.SEVERITY_ANALYSIS } },
-      });
-      clinical = (artifact?.content ?? {}) as ReturnType<typeof evaluateClinicalProfile>;
-    }
-
-    // ── Stage 3: Therapy Plan ─────────────────────────────────────────────────
-    let therapy!: ReturnType<typeof mapTherapyNeeds>;
-    if (clinical) {
-      if (!(await stageAlreadyComplete(assessmentId, "therapy"))) {
-        try {
-          therapy = await runTherapy(ctx, clinical);
-        } catch (err) {
-          const msg = err instanceof Error ? err.message : String(err);
-          await logOrchestrationStage(assessmentId, "therapy", "FAILED", { error: msg });
-          await logAssessmentEvent(prisma, assessmentId, "FAILED", { stage: "therapy", message: msg });
-          console.error(`[Orchestrator] therapy stage failed ${assessmentId}:`, msg);
-        }
-      } else {
-        const artifact = await prisma.aIArtifact.findUnique({
-          where: { assessmentId_type: { assessmentId, type: ArtifactType.THERAPY_PLAN } },
-        });
-        therapy = (artifact?.content ?? {}) as ReturnType<typeof mapTherapyNeeds>;
-      }
-    }
-
-    // ── Stage 4: Recommendations ──────────────────────────────────────────────
-    await setStatus(assessmentId, AssessmentStatus.GENERATING_RECOMMENDATIONS);
-
-    let recommendations: ReturnType<typeof scoreKits> | null = null;
-    if (clinical && therapy) {
-      if (!(await stageAlreadyComplete(assessmentId, "recommendations"))) {
-        try {
-          recommendations = await runRecommendations(ctx, clinical, therapy);
-        } catch (err) {
-          const msg = err instanceof Error ? err.message : String(err);
-          await logOrchestrationStage(assessmentId, "recommendations", "FAILED", { error: msg });
-          console.error(`[Orchestrator] recommendations stage failed ${assessmentId}:`, msg);
-        }
-      } else {
-        const recArtifact = await prisma.aIArtifact.findUnique({
-          where: { assessmentId_type: { assessmentId, type: ArtifactType.RECOMMENDATIONS } },
-        });
-        recommendations = (recArtifact?.content ?? null) as ReturnType<typeof scoreKits> | null;
-      }
-    }
-
-    // ── Stage 5: Narratives ───────────────────────────────────────────────────
-    await setStatus(assessmentId, AssessmentStatus.GENERATING_NARRATIVE);
-
-    if (clinical && therapy && recommendations) {
-      if (!(await stageAlreadyComplete(assessmentId, "narratives"))) {
-        try {
-          await runNarratives(ctx, clinical, therapy, recommendations);
-        } catch (err) {
-          const msg = err instanceof Error ? err.message : String(err);
-          await logOrchestrationStage(assessmentId, "narratives", "FAILED", { error: msg });
-          await logAssessmentEvent(prisma, assessmentId, "FAILED", { stage: "narratives", message: msg });
-          console.error(`[Orchestrator] narratives stage failed ${assessmentId}:`, msg);
-        }
-      }
-    }
-
-    // ── Stage 5b: Video Script ────────────────────────────────────────────────
-    // Video is the patient's primary artifact. Script + render kick off BEFORE
-    // visual journey / PDF so the result page can hero the video as soon as
-    // possible. The render itself is async — kicked off here, completed by
-    // pollVideoUntilSettled in the background.
-    await setStatus(assessmentId, AssessmentStatus.GENERATING_VIDEO_SCRIPT);
-
-    let videoScript: ReturnType<typeof build3DAvatarScript> | null = null;
-    if (clinical && therapy && recommendations) {
-      if (!(await stageAlreadyComplete(assessmentId, "videoScript"))) {
-        try {
-          videoScript = await runVideoScript(ctx, clinical, therapy, recommendations);
-        } catch (err) {
-          const msg = err instanceof Error ? err.message : String(err);
-          await logOrchestrationStage(assessmentId, "videoScript", "FAILED", { error: msg });
-          console.error(`[Orchestrator] videoScript stage failed ${assessmentId}:`, msg);
-        }
-      } else {
-        const artifact = await prisma.aIArtifact.findUnique({
-          where: { assessmentId_type: { assessmentId, type: ArtifactType.VIDEO_SCRIPT } },
-        });
-        videoScript = (artifact?.content ?? null) as ReturnType<typeof build3DAvatarScript> | null;
-      }
-    }
-
-    // ── Stage 5c: Video Render (kick off, do NOT block visual/pdf) ────────────
-    await setStatus(assessmentId, AssessmentStatus.RENDERING_VIDEO);
-
-    if (videoScript) {
-      if (!(await stageAlreadyComplete(assessmentId, "videoRender"))) {
-        try {
-          await runVideoRender(ctx, videoScript);
-        } catch (err) {
-          const msg = err instanceof Error ? err.message : String(err);
-          await logOrchestrationStage(assessmentId, "videoRender", "FAILED", { error: msg });
-          console.error(`[Orchestrator] videoRender stage failed ${assessmentId}:`, msg);
-        }
-      } else {
-        // On resume, restart the background poller in case the artifact is
-        // still RENDERING but the previous process died.
-        void pollVideoUntilSettled(assessmentId);
-      }
-    }
-
-    // ── Stage 6: Visual Journey ───────────────────────────────────────────────
-    let visual!: ReturnType<typeof buildVisualJourney>;
-    if (!(await stageAlreadyComplete(assessmentId, "visual"))) {
-      try {
-        visual = await runVisualJourney(ctx, normalizedProfile, clinical, therapy, recommendations);
-      } catch (err) {
-        const msg = err instanceof Error ? err.message : String(err);
-        await logOrchestrationStage(assessmentId, "visual", "FAILED", { error: msg });
-        console.error(`[Orchestrator] visual stage failed ${assessmentId}:`, msg);
-      }
-    } else {
-      const artifact = await prisma.aIArtifact.findUnique({
-        where: { assessmentId_type: { assessmentId, type: ArtifactType.VISUAL_JOURNEY } },
-      });
-      visual = (artifact?.content ?? {}) as ReturnType<typeof buildVisualJourney>;
-    }
-
-    // ── Stage 7: Report Generation ────────────────────────────────────────────
-    await setStatus(assessmentId, AssessmentStatus.GENERATING_REPORT);
-
-    if (!(await stageAlreadyComplete(assessmentId, "pdf"))) {
-      try {
-        await runReportGeneration(ctx, normalizedProfile, visual);
-      } catch (err) {
-        const msg = err instanceof Error ? err.message : String(err);
-        await logOrchestrationStage(assessmentId, "pdf", "FAILED", { error: msg });
-        await logAssessmentEvent(prisma, assessmentId, "FAILED", { stage: "pdf", message: msg });
-        console.error(`[Orchestrator] pdf stage failed ${assessmentId}:`, msg);
-      }
-    }
-
-    // ── Determine final status ────────────────────────────────────────────────
-    const finalArtifacts = await prisma.aIArtifact.findMany({
-      where: { assessmentId },
-      select: { type: true },
-    });
-
-    const completedTypes = new Set(finalArtifacts.map((a) => a.type));
-    const criticalTypes = [ArtifactType.CLINICAL_REASONING, ArtifactType.SEVERITY_ANALYSIS, ArtifactType.RECOMMENDATIONS];
-    const allCriticalDone = criticalTypes.every((t) => completedTypes.has(t));
-    const finalStatus = allCriticalDone
-  ? AssessmentStatus.COMPLETED
-  : AssessmentStatus.PARTIAL_FAILURE;
-
-console.log("[ORCH] FINAL STATUS", {
-  assessmentId,
-  finalStatus,
-  completedTypes: Array.from(completedTypes),
-});
-
-await prisma.assessment.update({
-  where: { id: assessmentId },
-  data: {
-    status: finalStatus,
-    completedAt: new Date(),
-    orchestrationStage: "complete",
-    orchestrationMeta: {
-      executionId,
-      pipelineVersion: "2.0.0-production",
-      totalDurationMs: Date.now() - ctx.pipelineStart,
-      completedTypes: Array.from(completedTypes),
-    },
-  },
-});
-
-    await logAssessmentEvent(prisma, assessmentId, "RETRY_SUCCEEDED", {
-      message: `Pipeline finished with status ${finalStatus}`,
-      metadata: { executionId, totalDurationMs: Date.now() - ctx.pipelineStart },
-    });
-
-    await prisma.auditLog.create({
-      data: {
-        assessmentId,
-        action: "ORCHESTRATION_COMPLETED",
-        entityType: "Assessment",
-        entityId: assessmentId,
-        metadata: {
-          executionId,
-          finalStatus,
-          durationMs: Date.now() - ctx.pipelineStart,
-        },
-      },
-    });
-
-    console.log(`[Orchestrator] DONE ${executionId} → ${assessmentId} [${finalStatus}] ${Date.now() - ctx.pipelineStart}ms`);
-  } catch (err: unknown) {
-    const message = err instanceof Error ? err.message : String(err);
-    const stack = err instanceof Error ? err.stack : undefined;
-
-    console.error(`[Orchestrator] FATAL ${assessmentId}:`, {
-  message,
-  stack,
-});
-
-    await logAssessmentEvent(prisma, assessmentId, "FAILED", {
-      message,
-      metadata: { stack },
-    }).catch(() => {});
-
-    await prisma.assessment.update({
-      where: { id: assessmentId },
+async function markFatal(ctx: PipelineContext, err: unknown): Promise<void> {
+  const message = err instanceof Error ? err.message : String(err);
+  console.error(`[ORCH] FATAL ${ctx.assessmentId}: ${message}`);
+  await logAssessmentEvent(prisma, ctx.assessmentId, "FAILED", {
+    message,
+  }).catch(() => {});
+  await prisma.assessment
+    .update({
+      where: { id: ctx.assessmentId },
       data: {
         status: AssessmentStatus.FAILED,
         lastError: message,
-        orchestrationMeta: { error: message, executionId: undefined },
       },
-    }).catch(() => {});
-
-    await prisma.auditLog.create({
-      data: {
-        assessmentId,
-        action: "ORCHESTRATION_FAILED",
-        entityType: "Assessment",
-        entityId: assessmentId,
-        metadata: { error: message },
-      },
-    }).catch(() => {});
-  }
+    })
+    .catch(() => {});
 }
 
-// ─── Resume Orchestration (retry-safe) ────────────────────────────────────────
-// Re-enters from the last incomplete stage. Idempotent: completed stages are
-// skipped based on artifact presence, so safe to call multiple times.
+// ─── Resume ──────────────────────────────────────────────────────────────────
+// Resume re-enters from Phase A (idempotent — completed artifacts are
+// overwritten with identical content, then Phase B runs). Simpler than the
+// per-stage resume in v2 and almost always faster because clinical CPU work
+// is sub-second.
 
 export async function resumeOrchestration(assessmentId: string): Promise<void> {
   const assessment = await prisma.assessment.findUnique({
     where: { id: assessmentId },
-    select: { id: true, status: true, retryCount: true },
+    select: {
+      id: true,
+      retryCount: true,
+      status: true,
+      phaseAAttempt: true,
+      phaseALeaseExpiresAt: true,
+    },
   });
-
   if (!assessment) throw new Error(`Assessment ${assessmentId} not found`);
 
   const MAX_RETRIES = 3;
   if (assessment.retryCount >= MAX_RETRIES) {
-    console.warn(`[Orchestrator] Max retries (${MAX_RETRIES}) reached for ${assessmentId}`);
+    console.warn(`[ORCH] Max retries (${MAX_RETRIES}) reached for ${assessmentId}`);
     return;
+  }
+
+  // If the row is stuck mid-Phase-A with an expired lease, take ownership
+  // atomically before falling through to orchestrateAssessment. A live lease
+  // means another worker is actually running — leave it alone.
+  const now = new Date();
+  const stuckMidRun =
+    assessment.phaseALeaseExpiresAt &&
+    assessment.phaseALeaseExpiresAt < now &&
+    assessment.phaseAAttempt < MAX_PHASE_A_ATTEMPTS;
+  if (stuckMidRun) {
+    try {
+      const newExecutionId = randomUUID();
+      const reclaim = await reclaimStalePhaseA(prisma, assessmentId, newExecutionId, now);
+      await logAssessmentEvent(prisma, assessmentId, "PHASE_A_RECLAIMED", {
+        message: `Reclaimed stale Phase A execution ${reclaim.oldExecutionId ?? "unknown"}`,
+        metadata: {
+          oldExecutionId: reclaim.oldExecutionId,
+          newExecutionId: reclaim.newExecutionId,
+          attempt: reclaim.attempt,
+          staleMs: reclaim.staleMs,
+        },
+      });
+    } catch (err) {
+      if (err instanceof ReclaimNotEligibleError) {
+        console.log(
+          `[ORCH] RECLAIM-SKIP ${assessmentId}: ${err.reason} — falling through`,
+        );
+      } else {
+        throw err;
+      }
+    }
   }
 
   const jitter = Math.floor(Math.random() * 1000);
@@ -865,23 +766,27 @@ export async function resumeOrchestration(assessmentId: string): Promise<void> {
 
   await prisma.assessment.update({
     where: { id: assessmentId },
-    data: {
-      retryCount: { increment: 1 },
-      status: AssessmentStatus.QUEUED,
-    },
+    data: { retryCount: { increment: 1 }, status: AssessmentStatus.QUEUED },
   });
-
   await logAssessmentEvent(prisma, assessmentId, "RETRY_STARTED", {
     metadata: { retryCount: assessment.retryCount + 1, backoffMs: backoff },
   });
-
-  console.log(`[Orchestrator] RETRY #${assessment.retryCount + 1} in ${backoff}ms → ${assessmentId}`);
 
   await new Promise<void>((resolve) => setTimeout(resolve, backoff));
   await orchestrateAssessment(assessmentId);
 }
 
-// ─── Status Query ─────────────────────────────────────────────────────────────
+// ─── Feature-flag introspection (for ops dashboards / tests) ─────────────────
+
+export function getOrchestratorFeatureFlags() {
+  return {
+    visualJourney: FEATURE_VISUAL_JOURNEY,
+    videoPipeline: FEATURE_VIDEO_PIPELINE,
+    debug: DEBUG_ORCH,
+  };
+}
+
+// ─── Status query (unchanged contract) ───────────────────────────────────────
 
 export async function getOrchestrationStatus(assessmentId: string) {
   const [assessment, logs, artifacts, events] = await Promise.all([
@@ -940,7 +845,7 @@ export async function getOrchestrationStatus(assessmentId: string) {
         schemaVersion: artifact.schemaVersion,
         engineVersion: artifact.engineVersion,
       },
-    ])
+    ]),
   );
 
   return { assessment, logs, artifacts: artifactMap, events };
