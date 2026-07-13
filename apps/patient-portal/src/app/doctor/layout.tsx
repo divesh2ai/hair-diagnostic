@@ -35,6 +35,7 @@ export default async function DoctorLayout({ children }: { children: ReactNode }
         displayName={data.displayName}
         greetingName={greetingName}
         roleLabel={roleLabel}
+        productLabel="Dr FACT"
       >
         {children}
       </AppShell>

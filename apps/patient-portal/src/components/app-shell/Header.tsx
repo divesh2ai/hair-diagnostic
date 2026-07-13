@@ -45,7 +45,7 @@ export function Header({
               {roleLabel}
             </span>
             <span className="text-sm font-semibold text-foreground truncate max-w-[14rem]">
-              {t("shell.greetingHi")}, {greetingName}
+              {`${t("shell.greetingHi")}, ${greetingName}`}
             </span>
           </div>
         )}

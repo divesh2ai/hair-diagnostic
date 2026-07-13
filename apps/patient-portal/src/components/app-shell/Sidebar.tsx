@@ -17,11 +17,14 @@ export function Sidebar({
   open,
   onClose,
   badges,
+  productLabel,
 }: {
   sections: NavSection[];
   open: boolean;
   onClose: () => void;
   badges?: Partial<Record<string, number>>;
+  // Product/brand chip. Omitted -> uses the i18n appName (legacy default).
+  productLabel?: string;
 }) {
   const pathname = usePathname();
   const t = useT();
@@ -101,7 +104,7 @@ export function Sidebar({
         </nav>
 
         <div className="px-4 py-3 border-t border-sidebar-border text-[11px] text-sidebar-foreground/60">
-          {t("common.appName")} · v1
+          {productLabel ?? t("common.appName")} · v1
         </div>
       </aside>
     </>

@@ -19,6 +19,7 @@ export function AppShell({
   displayName,
   greetingName,
   roleLabel,
+  productLabel,
   unreadNotifications,
   navBadges,
   children,
@@ -28,6 +29,10 @@ export function AppShell({
   displayName?: string | null;
   greetingName?: string | null;
   roleLabel: string;
+  // Product/brand chip shown at the top of the sidebar. Doctor + Clinic
+  // surfaces send "Dr FACT"; Super Admin sends "HairOS Intelligence".
+  // Falls back to the i18n appName inside Sidebar when omitted.
+  productLabel?: string;
   unreadNotifications?: number;
   navBadges?: Record<string, number>;
   children: ReactNode;
@@ -41,6 +46,7 @@ export function AppShell({
         open={sidebarOpen}
         onClose={() => setSidebarOpen(false)}
         badges={navBadges}
+        productLabel={productLabel}
       />
       <div className="flex-1 min-w-0 flex flex-col">
         <Header

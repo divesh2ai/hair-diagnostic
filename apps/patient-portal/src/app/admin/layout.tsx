@@ -24,6 +24,7 @@ export default async function AdminLayout({ children }: { children: ReactNode })
         displayName={data.displayName}
         greetingName={greetingName}
         roleLabel="Super Admin"
+        productLabel="HairOS Intelligence"
       >
         {children}
       </AppShell>

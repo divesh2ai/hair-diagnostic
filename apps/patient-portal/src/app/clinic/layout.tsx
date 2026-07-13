@@ -5,7 +5,7 @@ import {
   loadShellData,
   firstNameOf,
 } from "@/components/app-shell/loadShellData";
-import { navForRole } from "@/lib/navigation";
+import { navForRole, filterNavForContext } from "@/lib/navigation";
 export const dynamic = "force-dynamic";
 
 // Clinic Admin console shell. Nav is pinned to CLINIC_ADMIN regardless of the
@@ -20,7 +20,9 @@ export default async function ClinicLayout({ children }: { children: ReactNode }
     redirect("/");
   }
   const greetingName = firstNameOf(data.displayName, data.email);
-  const clinicNav = navForRole("CLINIC_ADMIN");
+  const clinicNav = filterNavForContext(navForRole("CLINIC_ADMIN"), {
+    hasClinic: Boolean(data.clinicId),
+  });
   const clinicName = data.branding.clinicName;
   const roleLabel = clinicName ? `Clinic Admin · ${clinicName}` : "Clinic Admin";
 
@@ -32,6 +34,7 @@ export default async function ClinicLayout({ children }: { children: ReactNode }
         displayName={data.displayName}
         greetingName={greetingName}
         roleLabel={roleLabel}
+        productLabel="Dr FACT"
       >
         {children}
       </AppShell>

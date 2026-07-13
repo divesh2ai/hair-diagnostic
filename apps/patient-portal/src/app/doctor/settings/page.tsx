@@ -50,7 +50,7 @@ export default function DoctorSettingsPage() {
     <PageContainer className="space-y-6 max-w-3xl">
       <div>
         <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-teal-700">
-          DrFACT · Workspace
+          Dr FACT · Workspace
         </p>
         <h1 className="font-serif text-3xl font-medium tracking-tight text-slate-900">
           Doctor customization
@@ -58,6 +58,14 @@ export default function DoctorSettingsPage() {
         <p className="text-sm text-slate-500">
           Personal preferences for AI, language, branding, and consultations.
         </p>
+      </div>
+
+      <div
+        role="note"
+        className="rounded-xl border border-amber-200 bg-amber-50/70 px-4 py-3 text-sm text-amber-900"
+      >
+        <span className="font-semibold">Preview only</span> — settings
+        persistence coming soon. Selections shown here do not save yet.
       </div>
 
       <Section id="ai" icon={Sparkles} title="Doctor AI" hint="Model used for narrative + insights">
