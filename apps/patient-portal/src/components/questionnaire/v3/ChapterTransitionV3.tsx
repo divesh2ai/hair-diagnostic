@@ -1,5 +1,6 @@
 'use client';
 
+import type { CSSProperties } from 'react';
 import { ArrowRight } from 'lucide-react';
 
 import type { SectionIntroContent } from '@/components/questionnaire/v2/insightRules';
@@ -7,6 +8,48 @@ import type { SectionIntroContent } from '@/components/questionnaire/v2/insightR
 import styles from './assessment-v3.module.css';
 
 const ASSET_ROOT = '/design-preview/assessment-v3';
+
+interface ChapterArtwork {
+  /** Asset basename under /chapters, e.g. "nutrition" → nutrition-desktop.webp. */
+  slug: string;
+  alt: string;
+  /** object-position keeping the subject uncropped on desktop / mobile crops. */
+  focalDesktop?: string;
+  focalMobile?: string;
+}
+
+/**
+ * Cohesive chapter-artwork system. Every entry renders the same cinematic,
+ * full-bleed treatment as Nutrition — the approved visual benchmark: a layered
+ * <picture> (art-directed mobile + desktop, avif→webp, 1x/2x) behind the shared
+ * scrim and text negative space.
+ *
+ * Keyed by the protocol sectionId (with a content.id fallback). A section that
+ * is NOT listed here gracefully falls back to the premium plain panel, so the
+ * route never shows a broken image. To light up a chapter, add its optimized
+ * assets under public/design-preview/assessment-v3/chapters/ (see
+ * scripts/build-chapter-assets.mjs) and add its entry below.
+ *
+ * Asset contract per slug (matches Nutrition exactly):
+ *   {slug}-desktop.{avif,webp}      1440×900
+ *   {slug}-desktop@2x.{avif,webp}   2880×1800
+ *   {slug}-mobile.{avif,webp}       585×1266
+ *   {slug}-mobile@2x.{avif,webp}    1170×2532
+ */
+const CHAPTER_ARTWORK: Record<string, ChapterArtwork> = {
+  S5_NUTRITION_AND_DIET: {
+    slug: 'nutrition',
+    alt: 'Amla, pomegranate, almonds, pumpkin seeds and leafy greens arranged in a dark ceramic bowl.',
+  },
+  // Nutrition also keyed by its content.id fallback for robustness.
+  nutrition: {
+    slug: 'nutrition',
+    alt: 'Amla, pomegranate, almonds, pumpkin seeds and leafy greens arranged in a dark ceramic bowl.',
+  },
+  // Identity / Hair History / Symptoms / Lifestyle / Completion entries are
+  // added here once their approved assets land — until then they render the
+  // premium plain panel below.
+};
 
 interface ChapterTransitionV3Props {
   content: SectionIntroContent;
@@ -23,34 +66,43 @@ export function ChapterTransitionV3({
   sectionId,
   onContinue,
 }: ChapterTransitionV3Props) {
-  const isNutrition = sectionId === 'S5_NUTRITION_AND_DIET' || content.id === 'nutrition';
+  const artwork =
+    (sectionId ? CHAPTER_ARTWORK[sectionId] : undefined) ?? CHAPTER_ARTWORK[content.id];
   const indexLabel = String(sectionIndex).padStart(2, '0');
+
+  const focalStyle =
+    artwork && (artwork.focalDesktop || artwork.focalMobile)
+      ? ({
+          '--chapter-focal': artwork.focalDesktop ?? 'center',
+          '--chapter-focal-mobile': artwork.focalMobile ?? artwork.focalDesktop ?? 'center center',
+        } as CSSProperties)
+      : undefined;
 
   return (
     <section
-      className={`${styles.chapterTransition} ${isNutrition ? styles.chapterNutrition : styles.chapterPlain}`}
+      className={`${styles.chapterTransition} ${artwork ? '' : styles.chapterPlain}`}
       aria-labelledby={`v3-chapter-${sectionId ?? content.id}`}
     >
-      {isNutrition && (
-        <picture className={styles.chapterPicture}>
+      {artwork && (
+        <picture className={styles.chapterPicture} style={focalStyle}>
           <source
             media="(max-width: 700px)"
             type="image/avif"
-            srcSet={`${ASSET_ROOT}/chapters/nutrition-mobile.avif 1x, ${ASSET_ROOT}/chapters/nutrition-mobile@2x.avif 2x`}
+            srcSet={`${ASSET_ROOT}/chapters/${artwork.slug}-mobile.avif 1x, ${ASSET_ROOT}/chapters/${artwork.slug}-mobile@2x.avif 2x`}
           />
           <source
             media="(max-width: 700px)"
             type="image/webp"
-            srcSet={`${ASSET_ROOT}/chapters/nutrition-mobile.webp 1x, ${ASSET_ROOT}/chapters/nutrition-mobile@2x.webp 2x`}
+            srcSet={`${ASSET_ROOT}/chapters/${artwork.slug}-mobile.webp 1x, ${ASSET_ROOT}/chapters/${artwork.slug}-mobile@2x.webp 2x`}
           />
           <source
             type="image/avif"
-            srcSet={`${ASSET_ROOT}/chapters/nutrition-desktop.avif 1x, ${ASSET_ROOT}/chapters/nutrition-desktop@2x.avif 2x`}
+            srcSet={`${ASSET_ROOT}/chapters/${artwork.slug}-desktop.avif 1x, ${ASSET_ROOT}/chapters/${artwork.slug}-desktop@2x.avif 2x`}
           />
           <img
-            src={`${ASSET_ROOT}/chapters/nutrition-desktop.webp`}
-            srcSet={`${ASSET_ROOT}/chapters/nutrition-desktop.webp 1x, ${ASSET_ROOT}/chapters/nutrition-desktop@2x.webp 2x`}
-            alt="Amla, pomegranate, almonds, pumpkin seeds and leafy greens arranged in a dark ceramic bowl."
+            src={`${ASSET_ROOT}/chapters/${artwork.slug}-desktop.webp`}
+            srcSet={`${ASSET_ROOT}/chapters/${artwork.slug}-desktop.webp 1x, ${ASSET_ROOT}/chapters/${artwork.slug}-desktop@2x.webp 2x`}
+            alt={artwork.alt}
             width={1440}
             height={900}
           />

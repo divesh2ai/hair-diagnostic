@@ -142,8 +142,19 @@
   position: relative;
   width: min(100%, 600px);
   aspect-ratio: 2175 / 723;
-  margin-left: auto;
-  overflow: hidden;
+  /* Anchor the composition to the left so the mirrored face sits near the
+     left edge with the header's safe padding; hair then flows rightward. */
+  margin-right: auto;
+  margin-left: 0;
+  /* Horizontally mirror the approved artwork (do NOT regenerate the face):
+     head → left / facing left, hair trail → right. Because the reveal mask
+     and its gradient live inside this element, the single flip also reverses
+     the restore direction so progress fills from the head (left) toward the
+     tapered ending (right) — no JS/progress changes required. */
+  transform: scaleX(-1);
+  /* contain + matching aspect-ratio already prevents cropping; keep overflow
+     visible so the soft tapered hair end can never be clipped. */
+  overflow: visible;
 }
 
 .strandLayer,
@@ -612,7 +623,9 @@
 
 .chapterPicture img {
   object-fit: cover;
-  object-position: center;
+  /* Per-chapter focal point (set inline) keeps the subject uncropped on the
+     desktop crop; defaults to centre to preserve the Nutrition benchmark. */
+  object-position: var(--chapter-focal, center);
 }
 
 .chapterScrim {
@@ -907,7 +920,7 @@
   }
 
   .chapterPicture img {
-    object-position: center center;
+    object-position: var(--chapter-focal-mobile, center center);
   }
 
   .chapterScrim {
