@@ -1,9 +1,5 @@
 'use client';
 
-/* eslint-disable @next/next/no-img-element -- Layered strand artwork needs explicit <img> layers with fixed intrinsic sizes; next/image cannot stack the reveal mask this way. */
-
-import type { CSSProperties } from 'react';
-
 import type { ProgressState } from '@/runtime/progressEngine';
 
 import styles from './assessment-v3.module.css';
@@ -17,10 +13,6 @@ interface HairProgressV3Props {
 
 export function HairProgressV3({ progress, sectionTitle }: HairProgressV3Props) {
   const label = `Question ${progress.visiblePosition} of ${progress.visibleTotal} · ${progress.percentage}%`;
-  const visualProgress = 18 + progress.percentage * 0.82;
-  const progressStyle = {
-    '--assessment-v3-progress': `${visualProgress}%`,
-  } as CSSProperties;
 
   return (
     <section
@@ -31,29 +23,26 @@ export function HairProgressV3({ progress, sectionTitle }: HairProgressV3Props) 
       aria-valuenow={progress.percentage}
       aria-valuetext={label}
       role="progressbar"
-      style={progressStyle}
     >
       <div className={styles.progressMeta}>
         <span>{sectionTitle}</span>
         <strong aria-live="polite">{label}</strong>
       </div>
+      {/* Approved progressive-hair artwork: shown whole via object-fit: contain
+          so the face, hair tip and dark→light gradient are never cropped. It is
+          a single baked illustration (no percentage labels), not a live reveal. */}
       <div className={styles.strand} aria-hidden="true">
-        <img
-          className={styles.strandLayer}
-          src={`${ASSET_ROOT}/strand/hair-progress-base.webp`}
-          alt=""
-          width={2175}
-          height={723}
-        />
-        <span className={styles.strandReveal}>
+        <picture>
+          <source type="image/avif" srcSet={`${ASSET_ROOT}/strand/hair-progress.avif`} />
+          <source type="image/webp" srcSet={`${ASSET_ROOT}/strand/hair-progress.webp`} />
           <img
-            className={styles.strandLayer}
-            src={`${ASSET_ROOT}/strand/hair-progress-active.webp`}
+            className={styles.strandImage}
+            src={`${ASSET_ROOT}/strand/hair-progress.png`}
             alt=""
-            width={2175}
-            height={723}
+            width={1672}
+            height={475}
           />
-        </span>
+        </picture>
       </div>
     </section>
   );

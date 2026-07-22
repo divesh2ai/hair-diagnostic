@@ -13,42 +13,44 @@ interface ChapterArtwork {
   /** Asset basename under /chapters, e.g. "nutrition" → nutrition-desktop.webp. */
   slug: string;
   alt: string;
-  /** object-position keeping the subject uncropped on desktop / mobile crops. */
+  /**
+   * The artwork already has the chapter title + copy + CTA composited in
+   * (a full designed screen). Render it whole via object-fit: contain with a
+   * tap-to-advance hotspot, and suppress the live text overlay so nothing
+   * duplicates or crops. Background-only art (like Nutrition) leaves this false
+   * and gets the live, translatable text over the scrim.
+   */
+  bakedText?: boolean;
+  /** object-position for background art (bakedText: false) desktop / mobile. */
   focalDesktop?: string;
   focalMobile?: string;
 }
 
 /**
- * Cohesive chapter-artwork system. Every entry renders the same cinematic,
- * full-bleed treatment as Nutrition — the approved visual benchmark: a layered
- * <picture> (art-directed mobile + desktop, avif→webp, 1x/2x) behind the shared
- * scrim and text negative space.
+ * Cohesive chapter-artwork system, keyed by protocol sectionId (content.id
+ * fallback). Sections absent here fall back to the premium plain panel, so the
+ * route never shows a broken image.
  *
- * Keyed by the protocol sectionId (with a content.id fallback). A section that
- * is NOT listed here gracefully falls back to the premium plain panel, so the
- * route never shows a broken image. To light up a chapter, add its optimized
- * assets under public/design-preview/assessment-v3/chapters/ (see
- * scripts/build-chapter-assets.mjs) and add its entry below.
- *
- * Asset contract per slug (matches Nutrition exactly):
- *   {slug}-desktop.{avif,webp}      1440×900
- *   {slug}-desktop@2x.{avif,webp}   2880×1800
- *   {slug}-mobile.{avif,webp}       585×1266
- *   {slug}-mobile@2x.{avif,webp}    1170×2532
+ * Two treatments:
+ *  - Nutrition = background-only photo + LIVE text over the scrim (the approved
+ *    benchmark). Assets: {slug}-{desktop,mobile}{,@2x}.{avif,webp}.
+ *  - Identity / Hair History / Symptoms / Lifestyle = full designed screens with
+ *    text baked into the art (bakedText). Assets: {slug}-{desktop,mobile}.{avif,webp}.
  */
 const CHAPTER_ARTWORK: Record<string, ChapterArtwork> = {
+  S1_PATIENT_IDENTITY: { slug: 'identity-comp', alt: 'Chapter 1 — Patient Identity', bakedText: true },
+  S2_HAIR_LOSS_ASSESSMENT: { slug: 'hair-history-comp', alt: 'Chapter 2 — Hair History', bakedText: true },
+  S3_SCALP_CONDITION: { slug: 'symptoms-comp', alt: 'Chapter 3 — Symptoms', bakedText: true },
+  S4_MEDICAL_HISTORY: { slug: 'lifestyle-comp', alt: 'Chapter 4 — Lifestyle', bakedText: true },
   S5_NUTRITION_AND_DIET: {
     slug: 'nutrition',
     alt: 'Amla, pomegranate, almonds, pumpkin seeds and leafy greens arranged in a dark ceramic bowl.',
   },
-  // Nutrition also keyed by its content.id fallback for robustness.
   nutrition: {
     slug: 'nutrition',
     alt: 'Amla, pomegranate, almonds, pumpkin seeds and leafy greens arranged in a dark ceramic bowl.',
   },
-  // Identity / Hair History / Symptoms / Lifestyle / Completion entries are
-  // added here once their approved assets land — until then they render the
-  // premium plain panel below.
+  // Completion (S6_GRADE_AND_ADDITIONAL) awaits its asset — plain panel for now.
 };
 
 interface ChapterTransitionV3Props {
@@ -69,6 +71,47 @@ export function ChapterTransitionV3({
   const artwork =
     (sectionId ? CHAPTER_ARTWORK[sectionId] : undefined) ?? CHAPTER_ARTWORK[content.id];
   const indexLabel = String(sectionIndex).padStart(2, '0');
+
+  // Full designed screen: the art carries all copy + CTA. Show it whole
+  // (object-fit: contain, never cropped) with a full-area advance hotspot.
+  if (artwork?.bakedText) {
+    return (
+      <section
+        className={`${styles.chapterTransition} ${styles.chapterComp}`}
+        aria-labelledby={`v3-chapter-${sectionId ?? content.id}`}
+      >
+        <picture className={styles.chapterCompPicture}>
+          <source
+            media="(max-width: 700px)"
+            type="image/avif"
+            srcSet={`${ASSET_ROOT}/chapters/${artwork.slug}-mobile.avif`}
+          />
+          <source
+            media="(max-width: 700px)"
+            type="image/webp"
+            srcSet={`${ASSET_ROOT}/chapters/${artwork.slug}-mobile.webp`}
+          />
+          <source type="image/avif" srcSet={`${ASSET_ROOT}/chapters/${artwork.slug}-desktop.avif`} />
+          <img
+            src={`${ASSET_ROOT}/chapters/${artwork.slug}-desktop.webp`}
+            alt={artwork.alt}
+            width={1586}
+            height={992}
+          />
+        </picture>
+        <h1 id={`v3-chapter-${sectionId ?? content.id}`} className={styles.srOnly}>
+          {content.title}
+        </h1>
+        <button
+          className={styles.chapterCompHit}
+          type="button"
+          onClick={onContinue}
+          aria-label={`Begin chapter: ${content.title}`}
+          autoFocus
+        />
+      </section>
+    );
+  }
 
   const focalStyle =
     artwork && (artwork.focalDesktop || artwork.focalMobile)
