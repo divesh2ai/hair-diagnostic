@@ -144,9 +144,11 @@
    comfortable horizontal breathing room that blends seamlessly on every width. */
 .strand {
   position: relative;
-  width: min(100%, 820px);
-  margin-inline: auto;
-  aspect-ratio: 1672 / 475;
+  width: 100%;
+  /* Full-bleed band — the trimmed artwork fills the whole progress width so
+     there is no wasted cream. Its ground matches the bar, so contain never
+     shows a letterbox and nothing is cropped. */
+  aspect-ratio: 1550 / 359;
 }
 
 .strandImage {

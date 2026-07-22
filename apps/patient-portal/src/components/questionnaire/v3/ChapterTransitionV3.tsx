@@ -21,6 +21,12 @@ interface ChapterArtwork {
    * and gets the live, translatable text over the scrim.
    */
   bakedText?: boolean;
+  /**
+   * Letterbox/background colour for a bakedText screen whose aspect differs from
+   * the viewport (contain leaves margins). Set to the art's edge colour so the
+   * margins blend instead of showing a seam. Defaults to the forest ground.
+   */
+  bgColor?: string;
   /** object-position for background art (bakedText: false) desktop / mobile. */
   focalDesktop?: string;
   focalMobile?: string;
@@ -50,7 +56,13 @@ const CHAPTER_ARTWORK: Record<string, ChapterArtwork> = {
     slug: 'nutrition',
     alt: 'Amla, pomegranate, almonds, pumpkin seeds and leafy greens arranged in a dark ceramic bowl.',
   },
-  // Completion (S6_GRADE_AND_ADDITIONAL) awaits its asset — plain panel for now.
+  S6_GRADE_AND_ADDITIONAL: {
+    slug: 'completion-comp',
+    alt: 'Chapter 6 — Completion',
+    bakedText: true,
+    // Art is a wide band; blend its contain margins to the dark olive edge.
+    bgColor: '#0a1610',
+  },
 };
 
 interface ChapterTransitionV3Props {
@@ -78,6 +90,7 @@ export function ChapterTransitionV3({
     return (
       <section
         className={`${styles.chapterTransition} ${styles.chapterComp}`}
+        style={artwork.bgColor ? { background: artwork.bgColor } : undefined}
         aria-labelledby={`v3-chapter-${sectionId ?? content.id}`}
       >
         <picture className={styles.chapterCompPicture}>

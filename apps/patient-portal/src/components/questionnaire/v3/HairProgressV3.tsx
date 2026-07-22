@@ -39,8 +39,8 @@ export function HairProgressV3({ progress, sectionTitle }: HairProgressV3Props) 
             className={styles.strandImage}
             src={`${ASSET_ROOT}/strand/hair-progress.png`}
             alt=""
-            width={1672}
-            height={475}
+            width={1550}
+            height={359}
           />
         </picture>
       </div>
