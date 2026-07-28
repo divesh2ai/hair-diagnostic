@@ -44,10 +44,30 @@ interface ChapterArtwork {
  *    text baked into the art (bakedText). Assets: {slug}-{desktop,mobile}.{avif,webp}.
  */
 const CHAPTER_ARTWORK: Record<string, ChapterArtwork> = {
-  S1_PATIENT_IDENTITY: { slug: 'identity-comp', alt: 'Chapter 1 — Patient Identity', bakedText: true },
-  S2_HAIR_LOSS_ASSESSMENT: { slug: 'hair-history-comp', alt: 'Chapter 2 — Hair History', bakedText: true },
-  S3_SCALP_CONDITION: { slug: 'symptoms-comp', alt: 'Chapter 3 — Symptoms', bakedText: true },
-  S4_MEDICAL_HISTORY: { slug: 'lifestyle-comp', alt: 'Chapter 4 — Lifestyle', bakedText: true },
+  S1_PATIENT_IDENTITY: {
+    slug: 'identity-comp',
+    alt: 'Chapter 1 — Patient Identity',
+    focalDesktop: '85% 70%',
+    focalMobile: 'center bottom',
+  },
+  S2_HAIR_LOSS_ASSESSMENT: {
+    slug: 'hair-history',
+    alt: 'Chapter 2 — Hair History',
+    focalDesktop: '85% 70%',
+    focalMobile: 'center bottom',
+  },
+  S3_SCALP_CONDITION: {
+    slug: 'symptoms-comp',
+    alt: 'Chapter 3 — Symptoms',
+    focalDesktop: '85% 70%',
+    focalMobile: 'center bottom',
+  },
+  S4_MEDICAL_HISTORY: {
+    slug: 'lifestyle-comp',
+    alt: 'Chapter 4 — Lifestyle',
+    focalDesktop: '85% 70%',
+    focalMobile: 'center bottom',
+  },
   S5_NUTRITION_AND_DIET: {
     slug: 'nutrition',
     alt: 'Amla, pomegranate, almonds, pumpkin seeds and leafy greens arranged in a dark ceramic bowl.',
@@ -57,11 +77,10 @@ const CHAPTER_ARTWORK: Record<string, ChapterArtwork> = {
     alt: 'Amla, pomegranate, almonds, pumpkin seeds and leafy greens arranged in a dark ceramic bowl.',
   },
   S6_GRADE_AND_ADDITIONAL: {
-    slug: 'completion-comp',
-    alt: 'Chapter 6 — Completion',
-    bakedText: true,
-    // Art is a wide band; blend its contain margins to the dark olive edge.
-    bgColor: '#0a1610',
+    slug: 'the-final-picture',
+    alt: 'Chapter 6 — The Final Picture: an open journal beside a mirror, candle and olive branches.',
+    focalDesktop: '85% 70%',
+    focalMobile: 'center bottom',
   },
 };
 
@@ -71,14 +90,15 @@ interface ChapterTransitionV3Props {
   sectionTotal: number;
   sectionId?: string;
   onContinue: () => void;
+  isFinalChapter?: boolean;
 }
 
 export function ChapterTransitionV3({
   content,
   sectionIndex,
-  sectionTotal,
   sectionId,
   onContinue,
+  isFinalChapter = false,
 }: ChapterTransitionV3Props) {
   const artwork =
     (sectionId ? CHAPTER_ARTWORK[sectionId] : undefined) ?? CHAPTER_ARTWORK[content.id];
@@ -166,12 +186,10 @@ export function ChapterTransitionV3({
       )}
       <div className={styles.chapterScrim} aria-hidden="true" />
       <div className={styles.chapterCopy}>
-        <span>CHAPTER {indexLabel} OF {String(sectionTotal).padStart(2, '0')}</span>
         <h1 id={`v3-chapter-${sectionId ?? content.id}`}>{content.title}</h1>
         <p>{content.body}</p>
-        {content.estimateLabel && <small>{content.estimateLabel}</small>}
         <button className={styles.chapterButton} type="button" onClick={onContinue} autoFocus>
-          Begin chapter <ArrowRight size={18} aria-hidden="true" />
+          {isFinalChapter ? 'Begin final chapter' : 'Begin chapter'} <ArrowRight size={18} aria-hidden="true" />
         </button>
       </div>
       <span className={styles.chapterIndex} aria-hidden="true">{indexLabel}</span>

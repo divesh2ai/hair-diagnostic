@@ -22,16 +22,52 @@ const CHAPTERS_DIR = path.resolve('public/design-preview/assessment-v3/chapters'
 const MASTERS_DIR = path.join(CHAPTERS_DIR, '_masters');
 
 // slug → chapter (documentation only; the script processes whatever masters exist)
-const SLUGS = ['identity', 'hair-history', 'symptoms', 'lifestyle', 'nutrition', 'completion'];
+const SLUGS = [
+  'identity',
+  'identity-comp',
+  'hair-history',
+  'hair-history-comp',
+  'symptoms',
+  'symptoms-comp',
+  'lifestyle',
+  'lifestyle-comp',
+  'nutrition',
+  'the-final-picture',
+  'completion',
+];
 
-const VARIANTS = {
+// Nutrition (approved) keeps its historical 1440×900 desktop / 585×1266 mobile
+// targets. The 5 v3 chapters ship at 16:9 desktop and 9:16 mobile — those
+// aspects match the majority of real viewports so object-fit: cover produces
+// almost no crop on typical devices and never exposes the page background.
+const VARIANTS_LEGACY = {
   desktop: { w: 1440, h: 900 },
   'desktop@2x': { w: 2880, h: 1800 },
   mobile: { w: 585, h: 1266 },
   'mobile@2x': { w: 1170, h: 2532 },
 };
 
+const VARIANTS_FULLBLEED = {
+  desktop: { w: 1600, h: 900 },
+  'desktop@2x': { w: 3200, h: 1800 },
+  mobile: { w: 720, h: 1280 },
+  'mobile@2x': { w: 1440, h: 2560 },
+};
+
 const EXTS = ['png', 'jpg', 'jpeg', 'webp'];
+
+// Nutrition keeps the legacy pipeline. Everything else is full-bleed cover.
+const LEGACY_SLUGS = new Set(['nutrition']);
+
+// Subject-anchored crop for the 5 v3 chapters: subject sits on the right and
+// toward the bottom of the frame, so anchor there — sharp keeps the subject
+// intact when the source aspect differs from the target aspect.
+const FULLBLEED_POSITION = {
+  desktop: 'right',
+  'desktop@2x': 'right',
+  mobile: 'bottom',
+  'mobile@2x': 'bottom',
+};
 
 function findMaster(slug, kind) {
   for (const ext of EXTS) {
@@ -42,8 +78,11 @@ function findMaster(slug, kind) {
 }
 
 async function emit(master, slug, variantKey) {
-  const { w, h } = VARIANTS[variantKey];
-  const base = sharp(master).resize(w, h, { fit: 'cover', position: 'attention' });
+  const legacy = LEGACY_SLUGS.has(slug);
+  const variants = legacy ? VARIANTS_LEGACY : VARIANTS_FULLBLEED;
+  const { w, h } = variants[variantKey];
+  const position = legacy ? 'attention' : FULLBLEED_POSITION[variantKey];
+  const base = sharp(master).resize(w, h, { fit: 'cover', position });
   const webpOut = path.join(CHAPTERS_DIR, `${slug}-${variantKey}.webp`);
   const avifOut = path.join(CHAPTERS_DIR, `${slug}-${variantKey}.avif`);
   await base.clone().webp({ quality: 82 }).toFile(webpOut);
