@@ -83,9 +83,10 @@ export async function PATCH(req: Request) {
       where: { id: clinicId },
       data: parsed.data,
     });
-    // Landing page renders name/tagline/address from the cached loader —
-    // invalidate so the next patient visit sees the edit immediately.
-    revalidateTag(clinicCacheTag(clinic.slug), 'max');
+    // Cosmetic edit (name / tagline / address / branding). Serve stale
+    // while the next request revalidates in the background — patients keep
+    // fast TTFB and pick up the new copy on the following visit.
+    revalidateTag(clinicCacheTag(clinic.slug), 'default');
     return NextResponse.json({ clinic });
   } catch (err) {
     const resp = handleAuthError(err);

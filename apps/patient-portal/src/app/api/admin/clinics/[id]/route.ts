@@ -97,8 +97,9 @@ export async function PATCH(
       where: { id },
       data: clinicPatch,
     });
-    // Landing page renders name / tagline / address / language — invalidate.
-    revalidateTag(clinicCacheTag(clinic.slug), 'max');
+    // Super-admin cosmetic edit — SWR is fine. Lifecycle transitions
+    // (activate / suspend / archive) go through POST and use 'max'.
+    revalidateTag(clinicCacheTag(clinic.slug), 'default');
 
     if (subscription) {
       await prisma.subscription.upsert({
@@ -165,7 +166,9 @@ export async function POST(
       data: { status: nextStatus, isActive, deletedAt },
       select: { id: true, slug: true, status: true, isActive: true, deletedAt: true },
     });
-    // Activation/suspension/archive gates whether the landing page renders.
+    // Activation / suspension / archive gates whether the landing page
+    // renders at all. Immediate purge — a suspended clinic must never
+    // serve one more request from a stale entry.
     revalidateTag(clinicCacheTag(updated.slug), 'max');
 
     return NextResponse.json({

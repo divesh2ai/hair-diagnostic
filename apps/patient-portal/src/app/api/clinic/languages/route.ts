@@ -82,8 +82,9 @@ export async function PATCH(req: Request) {
       },
       select: { slug: true, supportedLanguages: true, language: true },
     });
-    // `language` seeds the assessment store on the landing — invalidate.
-    revalidateTag(clinicCacheTag(clinic.slug), 'max');
+    // `language` seeds the assessment store on the landing. Cosmetic —
+    // stale-while-revalidate is fine (a one-visit lag is acceptable).
+    revalidateTag(clinicCacheTag(clinic.slug), 'default');
 
     return NextResponse.json({
       supportedLanguages: clinic.supportedLanguages,
