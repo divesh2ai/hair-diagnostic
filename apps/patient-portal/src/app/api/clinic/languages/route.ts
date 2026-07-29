@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { revalidateTag } from "next/cache";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import {
@@ -7,6 +8,7 @@ import {
   getClinicContext,
   handleAuthError,
 } from "@/lib/auth";
+import { clinicCacheTag } from "@/lib/clinics/getClinicLandingData";
 
 export const dynamic = "force-dynamic";
 
@@ -78,10 +80,15 @@ export async function PATCH(req: Request) {
         supportedLanguages,
         ...(defaultLanguage ? { language: defaultLanguage.toLowerCase() } : {}),
       },
-      select: { supportedLanguages: true, language: true },
+      select: { slug: true, supportedLanguages: true, language: true },
     });
+    // `language` seeds the assessment store on the landing — invalidate.
+    revalidateTag(clinicCacheTag(clinic.slug), 'max');
 
-    return NextResponse.json(clinic);
+    return NextResponse.json({
+      supportedLanguages: clinic.supportedLanguages,
+      language: clinic.language,
+    });
   } catch (err) {
     const resp = handleAuthError(err);
     if (resp) return resp;

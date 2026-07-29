@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { revalidateTag } from "next/cache";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import {
@@ -7,6 +8,7 @@ import {
   getClinicContext,
   handleAuthError,
 } from "@/lib/auth";
+import { clinicCacheTag } from "@/lib/clinics/getClinicLandingData";
 
 export const dynamic = "force-dynamic";
 
@@ -81,6 +83,9 @@ export async function PATCH(req: Request) {
       where: { id: clinicId },
       data: parsed.data,
     });
+    // Landing page renders name/tagline/address from the cached loader —
+    // invalidate so the next patient visit sees the edit immediately.
+    revalidateTag(clinicCacheTag(clinic.slug), 'max');
     return NextResponse.json({ clinic });
   } catch (err) {
     const resp = handleAuthError(err);

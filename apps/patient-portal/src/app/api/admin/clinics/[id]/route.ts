@@ -1,8 +1,10 @@
 import { NextResponse } from "next/server";
+import { revalidateTag } from "next/cache";
 import { z } from "zod";
 import type { ClinicStatus } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { assertSuperAdmin, handleAuthError } from "@/lib/auth";
+import { clinicCacheTag } from "@/lib/clinics/getClinicLandingData";
 
 export const dynamic = "force-dynamic";
 
@@ -95,6 +97,8 @@ export async function PATCH(
       where: { id },
       data: clinicPatch,
     });
+    // Landing page renders name / tagline / address / language — invalidate.
+    revalidateTag(clinicCacheTag(clinic.slug), 'max');
 
     if (subscription) {
       await prisma.subscription.upsert({
@@ -159,10 +163,19 @@ export async function POST(
     const updated = await prisma.clinic.update({
       where: { id },
       data: { status: nextStatus, isActive, deletedAt },
-      select: { id: true, status: true, isActive: true, deletedAt: true },
+      select: { id: true, slug: true, status: true, isActive: true, deletedAt: true },
     });
+    // Activation/suspension/archive gates whether the landing page renders.
+    revalidateTag(clinicCacheTag(updated.slug), 'max');
 
-    return NextResponse.json({ clinic: updated });
+    return NextResponse.json({
+      clinic: {
+        id: updated.id,
+        status: updated.status,
+        isActive: updated.isActive,
+        deletedAt: updated.deletedAt,
+      },
+    });
   } catch (err) {
     const resp = handleAuthError(err);
     if (resp) return resp;
