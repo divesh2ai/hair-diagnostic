@@ -287,7 +287,14 @@ function MappingBand({ data }: { data: OnePageReportViewModel }) {
 }
 
 function MappingRow({ kit, index }: { kit: PrintTreatmentKit; index: number }) {
-  const triggers = (kit.linkedDrivers.length > 0 ? kit.linkedDrivers : [kit.mappedCondition]).slice(0, 2);
+  // Show every patient signal this kit actually addresses (up to 4 — the cap
+  // already applied upstream in patientLinkedTags). Was 2, which hid signals
+  // like Smoking / Vaping and Alcohol on the Phenotype Inflammation row when
+  // scalp signals filled both slots — the row then read like it only
+  // addressed scalp inflammation even though the kit was clinically selected
+  // for the oxidative-lifestyle load too. chip-row wraps, so extra chips
+  // flow onto a second line inside the cell.
+  const triggers = (kit.linkedDrivers.length > 0 ? kit.linkedDrivers : [kit.mappedCondition]).slice(0, 4);
   const meaning = conciseClinicalMeaning(kit);
   // Column 4 is patient-facing benefit copy — NOT the trigger and NOT the
   // "why this kit was selected" line. Cap at 2 bullets so 5-row density fits.
@@ -366,6 +373,21 @@ function benefitLinesForKit(kit: PrintTreatmentKit): string[] {
 }
 
 function conciseClinicalMeaning(kit: PrintTreatmentKit): string {
+  // Patient-specific interpretation from the clinical engine
+  // (buildClinicalReport's SIGNAL_INTERPRETATION rules, matched to this kit
+  // by interpretationLookupForKit) is the SOURCE OF TRUTH for the clinical
+  // meaning. When the engine has produced a signal-specific line for the
+  // patient (e.g. Post-menopause → "Relative androgen excess causes
+  // imbalance in the hormonal regulation…"), use it verbatim. Kit-family
+  // templates below are a fallback for when no per-signal interpretation
+  // was matched to the kit.
+  const patientSpecific = (kit.mappedInterpretation ?? "").trim();
+  if (patientSpecific.length > 0) {
+    const sentenceEnd = patientSpecific.search(/[.!?](\s|$)/);
+    const firstSentence = sentenceEnd > 0 ? patientSpecific.slice(0, sentenceEnd + 1) : patientSpecific;
+    return limitWords(firstSentence, 28);
+  }
+
   // Match by the KIT identity first (code + display name), not the trailing
   // linked-driver bag — that bag often carries broad signals like "Obesity"
   // that would mis-route TE Gold or Iron Up to the metabolic bucket. Fall
@@ -378,7 +400,7 @@ function conciseClinicalMeaning(kit: PrintTreatmentKit): string {
     return "Hormonal transition during peri-menopause can shorten the active hair-growth phase and increase shedding or pattern thinning.";
   }
   if (/post.?menopause/.test(kitIdent)) {
-    return "Post-menopausal hormonal shift can shorten the active hair-growth phase and drive pattern thinning.";
+    return "Relative androgen excess causes imbalance in the hormonal regulation of the hair cycle.";
   }
   if (/hysterectomy|\bhrt\b/.test(kitIdent)) return "Hormonal-transition support during hair-cycle recovery.";
   if (/telogen|te gold/.test(kitIdent)) return "Acute shedding phase — a large wave of hair has moved into the resting phase.";
