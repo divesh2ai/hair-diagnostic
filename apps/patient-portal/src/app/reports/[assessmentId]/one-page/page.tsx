@@ -20,16 +20,26 @@ export default async function OnePageReportRoute({
   const reviewToken = Array.isArray(rawToken) ? rawToken[0] : rawToken;
   const data = await readReportData(assessmentId, reviewToken ?? null);
 
+  // Validation output is an internal QA diagnostic. It used to render as a
+  // red banner at the top of the report, which put engineering language
+  // ("Doctor-Reviewed Result is too short (37 words)…") in front of the
+  // patient and the reviewing doctor. It stays on the view model for tests
+  // and dev tooling, and is logged server-side, but never renders here.
+  if (!data.validation.ok) {
+    console.warn(
+      `[one-page-report] validation errors for ${assessmentId}:`,
+      data.validation.errors.join(" | "),
+    );
+  }
+  if (data.validation.warnings.length > 0) {
+    console.info(
+      `[one-page-report] validation warnings for ${assessmentId}:`,
+      data.validation.warnings.join(" | "),
+    );
+  }
+
   return (
     <>
-      {!data.validation.ok ? (
-        <aside className="op-validation" aria-label="Report validation">
-          <strong>One-page validation</strong>
-          {data.validation.errors.map((error) => (
-            <div key={error}>Error: {error}</div>
-          ))}
-        </aside>
-      ) : null}
       <OnePageReportActions
         assessmentId={assessmentId}
         patientName={data.patient?.name ?? null}

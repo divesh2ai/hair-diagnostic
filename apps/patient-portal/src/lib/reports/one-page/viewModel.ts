@@ -748,12 +748,16 @@ function activeTriggerFor(
 ): ActiveTrigger | null {
   switch (family) {
     case "rwl_shield":
-      return {
-        label: ctx.hasGlp1Signal
-          ? "rapid weight change following GLP-1 therapy"
-          : "rapid weight change",
-        effect: "place sudden stress on the follicles and increase shedding",
-      };
+      // GLP-1 wording only when the patient actually selected a GLP-1 option.
+      return ctx.hasGlp1Signal
+        ? {
+            label: "rapid weight change following GLP-1 therapy",
+            effect: "place sudden stress on the follicles and increase shedding",
+          }
+        : {
+            label: "rapid weight loss and associated nutritional strain",
+            effect: "place sudden stress on the follicles and increase shedding",
+          };
     case "te_gold":
       return {
         label: "stress-driven acute shedding",
@@ -855,9 +859,14 @@ function activeTriggerFor(
   }
 }
 
-// GLP-1 detection: covers explicit GLP-1 / semaglutide / brand names and the
-// "Rapid weight loss / Crash diet" cause tag (the questionnaire's proxy for
-// this scenario when brand isn't captured).
+// GLP-1 detection — EXPLICIT SIGNALS ONLY.
+//
+// "Rapid weight loss / Crash diet" was previously treated as a proxy for this
+// scenario. It is not one: a patient who crash-dieted and never took a GLP-1
+// agonist was told their shedding followed "GLP-1 therapy", naming a
+// medication they had not reported. Rapid weight loss now maps to
+// calorie-restriction / nutritional-deficit wording, and GLP-1 language is
+// reserved for the questionnaire's own GLP-1 options.
 function hasGlp1Signal(selections: Record<string, unknown>): boolean {
   const bucket = [
     ...collectEvidenceStrings(selections.cause),
@@ -867,9 +876,7 @@ function hasGlp1Signal(selections: Record<string, unknown>): boolean {
   ]
     .map((v) => cleanText(v).toLowerCase())
     .join(" | ");
-  return /glp[-\s]?1|semaglutide|tirzepatide|ozempic|wegovy|mounjaro|rapid weight loss|crash diet/.test(
-    bucket,
-  );
+  return /glp[-\s]?1|semaglutide|tirzepatide|ozempic|wegovy|mounjaro/.test(bucket);
 }
 
 /**
@@ -1279,7 +1286,7 @@ function benefitBullets(phase: TreatmentPhase): string[] {
   if (/te gold|telogen/.test(kitText)) return ["Helps calm acute shedding.", "Supports the stress-shedding axis.", "Restores nutritional foundation for hair cycle."];
   if (/gi gold|gut/.test(kitText)) return ["Supports gut barrier function.", "Helps improve nutrient absorption.", "Reduces gut-driven inflammatory load."];
   if (/peri.?menopause|post.?menopause|hysterectomy|hrt|lacti|postpartum/.test(kitText)) return ["Supports hormonal-transition follicle health.", "Helps stabilise the hair cycle through hormonal shifts.", "Reduces transition-related shedding stress."];
-  if (/rapid weight|rwl|glp/.test(kitText)) return ["Shields follicles during rapid weight loss.", "Supports nutrient recovery.", "Helps prevent GLP-1-linked shedding."];
+  if (/rapid weight|rwl|glp/.test(kitText)) return ["Shields follicles during rapid weight loss.", "Supports nutrient recovery.", "Helps limit calorie-restriction shedding."];
   if (/night shift|frequent fly|circadian/.test(kitText)) return ["Supports circadian follicle rhythm.", "Helps counter travel / shift oxidative load.", "Restores nutritional recovery windows."];
   if (/ttm|trichotillo/.test(kitText)) return ["Supports follicle recovery from mechanical stress.", "Helps calm scalp irritation from pulling.", "Reinforces regrowth capacity."];
   if (/pregnan|healthy.?9/.test(kitText)) return ["Pregnancy-safe follicle nutrition.", "Supports maternal micronutrient balance.", "Prepares scalp for postpartum recovery."];
@@ -1350,7 +1357,11 @@ function canonicalConditionForKit(rawName: string, code: string): string | null 
   if (/HEALTHY\s*-\s*9|PREGNANCY/.test(text)) return "Pregnancy";
   if (/ALOPECIA AREATA/.test(text)) return "Alopecia areata";
   if (/LACTI/.test(text)) return "Postpartum / lactation";
-  if (/RAPID WEIGHT|RWL/.test(text)) return "Rapid weight loss / GLP-1";
+  // Kit indication must not name GLP-1: this string can surface as a trigger
+  // chip / meaning fallback for a patient who never reported a GLP-1 agonist.
+  // Genuine GLP-1 patients still get GLP-1 wording via the trigger-gated
+  // variant in clinicalCopy and the primaryActiveDriver label.
+  if (/RAPID WEIGHT|RWL/.test(text)) return "Rapid weight loss / calorie restriction";
   if (/NIGHT SHIFT/.test(text)) return "Night-shift work";
   if (/FREQUENT FLY/.test(text)) return "Frequent flying";
   if (/TRICHOTILLOMANIA|TTM/.test(text)) return "Trichotillomania (hair pulling / OCD)";
@@ -1976,23 +1987,70 @@ function validate(
       "Doctor-Reviewed Result frames pattern loss as being caused by an active trigger — pattern is underlying susceptibility, active drivers layer on top.",
     );
   }
-  // Complete-conclusion word count.
-  //   < 55       hard error — a required sentence is missing.
+  // Doctor-Reviewed Result completeness.
+  //
+  // Length is a guide, not the contract. A genuinely low-signal case — one
+  // kit, no active trigger, a single contributor — has less to say, and
+  // padding it to clear an arbitrary floor would add words that no patient
+  // answer supports. What actually has to be true is that the required
+  // ELEMENTS are present:
+  //
+  //   • the diagnosis / pattern, when one was captured
+  //   • the contributing factor(s), when any were reported
+  //   • the treatment / support strategy
+  //
+  // With those present a concise 35–55 word summary is valid.
+  //
+  //   < 35       error — too short to carry the required elements at all.
+  //   35–54      valid when every applicable element is present.
   //   55–80      preferred band.
   //   81–90      accepted for genuinely complex, multifactorial cases.
-  //   > 90       warning — the fix is to merge related selected answers into
-  //              a shared mechanism cluster (KIT_MECHANISM_CLUSTER /
-  //              buildContributorList), never to truncate clinical content.
+  //   > 90       warning — merge related answers into a shared mechanism
+  //              cluster; never truncate clinical content.
   const wordCount = conclusion.trim().length > 0
     ? conclusion.trim().split(/\s+/).filter(Boolean).length
     : 0;
-  if (wordCount > 0 && wordCount < 55) {
+
+  // "Applicable" matters: a case with no captured grade cannot be faulted for
+  // omitting a diagnosis, and one with no reported contributors cannot be
+  // faulted for omitting them.
+  const statesDiagnosis =
+    !narrative?.underlyingPattern ||
+    conclusion.includes(narrative.underlyingPattern) ||
+    /Your responses suggest a combination of/.test(conclusion);
+  const hasContributorsToState =
+    (narrative?.secondaryDrivers?.length ?? 0) > 0 || !!narrative?.primaryActiveDriver;
+  const statesContributors =
+    !hasContributorsToState ||
+    !!narrative?.primaryActiveDriver ||
+    /may contribute further to slower recovery/.test(conclusion);
+  const hasStrategyToState = (narrative?.treatmentStrategy?.length ?? 0) > 0;
+  const statesStrategy =
+    !hasStrategyToState ||
+    /Treatment begins with|addresses these factors through/.test(conclusion);
+
+  const missingElements = [
+    statesDiagnosis ? null : "diagnosis / pattern",
+    statesContributors ? null : "contributing factors",
+    statesStrategy ? null : "treatment strategy",
+  ].filter(Boolean) as string[];
+
+  if (wordCount > 0 && missingElements.length > 0) {
     errors.push(
-      `Doctor-Reviewed Result is too short (${wordCount} words) — the connected story requires diagnosis + active-trigger + contributors + strategy (interpretation target: 55–80 words).`,
+      `Doctor-Reviewed Result is missing required content: ${missingElements.join(", ")}.`,
+    );
+  } else if (wordCount > 0 && wordCount < 35) {
+    errors.push(
+      `Doctor-Reviewed Result is too short (${wordCount} words) to carry the required elements — expected at least a diagnosis and a treatment strategy.`,
     );
   } else if (wordCount > 90) {
     warnings.push(
       `Doctor-Reviewed Result runs long (${wordCount} words; preferred 55–80, accepted to 90) — collapse related contributors or kit purposes into a shared mechanism cluster rather than trimming clinical content.`,
+    );
+  } else if (wordCount > 0 && wordCount < 55) {
+    // Informational only — a concise low-signal summary is a valid outcome.
+    warnings.push(
+      `Doctor-Reviewed Result is concise (${wordCount} words; preferred 55–80) — accepted because every applicable element is present. Do not pad to reach a word count.`,
     );
   }
   // Suppressed recommendations stay out of the patient-facing plan, while the
