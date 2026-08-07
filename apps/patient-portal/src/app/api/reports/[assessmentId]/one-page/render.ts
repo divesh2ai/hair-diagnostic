@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { loadOnePageReportData } from "@/lib/reports/one-page/loadReport";
+import { loadOnePageReportData, ReportAccessError } from "@/lib/reports/one-page/loadReport";
 
 type RenderKind = "pdf" | "png";
 
@@ -86,7 +86,25 @@ export async function renderOnePageReport(
   assessmentId: string,
   kind: RenderKind,
 ): Promise<Response> {
-  const data = await loadOnePageReportData(assessmentId);
+  const reviewToken = new URL(req.url).searchParams.get("t");
+
+  let data: Awaited<ReturnType<typeof loadOnePageReportData>>;
+  try {
+    data = await loadOnePageReportData(assessmentId, { reviewToken });
+  } catch (err) {
+    // A ReportAccessError carries the status the caller should actually see
+    // (401 / 403 / 404 / 202). Letting it escape turned every one of those
+    // into an opaque 500, which made an ordinary auth failure look like a
+    // broken PDF renderer.
+    if (err instanceof ReportAccessError) {
+      return NextResponse.json(
+        { error: err.status === 202 ? "report_not_ready" : "unauthorized", message: err.message },
+        { status: err.status },
+      );
+    }
+    throw err;
+  }
+
   if (!data.validation.ok) {
     return NextResponse.json(
       { error: "one_page_validation_failed", details: data.validation.errors },
@@ -119,7 +137,13 @@ export async function renderOnePageReport(
     // `networkidle` hangs in Next.js dev because HMR keeps a WebSocket open,
     // so wait for `load` instead and then explicitly settle fonts + images
     // below. `load` is deterministic across dev and prod.
-    await page.goto(`${originFromRequest(req)}/reports/${assessmentId}/one-page`, {
+    // The headless page authenticates independently of this request, so the
+    // conference token has to travel with it — the forwarded cookie alone is
+    // empty for a token-authorised caller.
+    const pageUrl = `${originFromRequest(req)}/reports/${assessmentId}/one-page${
+      reviewToken ? `?t=${encodeURIComponent(reviewToken)}` : ""
+    }`;
+    await page.goto(pageUrl, {
       waitUntil: "load",
       timeout: 45_000,
     });

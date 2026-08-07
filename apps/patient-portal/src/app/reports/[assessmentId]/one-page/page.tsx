@@ -7,11 +7,18 @@ export const dynamic = "force-dynamic";
 
 export default async function OnePageReportRoute({
   params,
+  searchParams,
 }: {
   params: Promise<{ assessmentId: string }>;
+  searchParams?: Promise<Record<string, string | string[] | undefined>>;
 }) {
   const { assessmentId } = await params;
-  const data = await readReportData(assessmentId);
+  // `t` is the signed review token the patient preview page already appends to
+  // its "Patient Report" link. It is only honoured in conference mode — see
+  // lib/conferenceMode.
+  const rawToken = (await searchParams)?.t;
+  const reviewToken = Array.isArray(rawToken) ? rawToken[0] : rawToken;
+  const data = await readReportData(assessmentId, reviewToken ?? null);
 
   return (
     <>
@@ -34,9 +41,9 @@ export default async function OnePageReportRoute({
   );
 }
 
-async function readReportData(assessmentId: string) {
+async function readReportData(assessmentId: string, reviewToken: string | null) {
   try {
-    return await loadOnePageReportData(assessmentId);
+    return await loadOnePageReportData(assessmentId, { reviewToken });
   } catch (err) {
     if (err instanceof ReportAccessError) {
       if (err.status === 404) notFound();

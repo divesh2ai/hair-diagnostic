@@ -2,7 +2,8 @@ import { ArtifactType } from "@prisma/client";
 import { headers } from "next/headers";
 import { prisma } from "@/lib/prisma";
 import { getClinicContext, handleAuthError, isSuperAdmin } from "@/lib/auth";
-import { signReviewToken } from "@/lib/reviewToken";
+import { signReviewToken, verifyReviewToken } from "@/lib/reviewToken";
+import { isConferenceMode } from "@/lib/conferenceMode";
 import type { ClinicContext } from "@/lib/auth";
 import type { ClinicalReport } from "@hairos/packages/ai-engine/report-engine/types";
 import { buildOnePageReportViewModel, type OnePageReportViewModel } from "./viewModel";
@@ -23,9 +24,24 @@ function jsonObject(value: unknown): Record<string, unknown> {
     : {};
 }
 
-async function getReportAuthContext(): Promise<ClinicContext> {
+/**
+ * Who is asking for this report.
+ *
+ * `clinic` keeps the production rules — the cross-clinic check below applies.
+ * `conference_token` is only ever produced when CONFERENCE_MODE is on AND the
+ * caller presented a valid signed token bound to this exact assessment, so
+ * there is no clinic to compare against; the token IS the scope.
+ */
+type ReportAudience =
+  | { kind: "clinic"; ctx: ClinicContext }
+  | { kind: "conference_token" };
+
+async function getReportAuthContext(
+  assessmentId: string,
+  reviewToken?: string | null,
+): Promise<ReportAudience> {
   try {
-    return await getClinicContext();
+    return { kind: "clinic", ctx: await getClinicContext() };
   } catch (err) {
     const secret = process.env.DEV_LOGIN_SECRET;
     const localExportAllowed =
@@ -38,10 +54,22 @@ async function getReportAuthContext(): Promise<ClinicContext> {
       const h = await headers();
       if (h.get("x-dev-login-secret") === secret) {
         return {
-          userId: "local-one-page-report-export",
-          role: "SUPER_ADMIN",
-          clinicId: null,
+          kind: "clinic",
+          ctx: {
+            userId: "local-one-page-report-export",
+            role: "SUPER_ADMIN",
+            clinicId: null,
+          },
         };
+      }
+    }
+
+    // Conference / pilot only. Off by default, so production clinics reach
+    // the same 401 they always did.
+    if (isConferenceMode() && reviewToken) {
+      const result = verifyReviewToken(reviewToken);
+      if (result.ok && result.assessmentId === assessmentId) {
+        return { kind: "conference_token" };
       }
     }
 
@@ -50,8 +78,11 @@ async function getReportAuthContext(): Promise<ClinicContext> {
   }
 }
 
-export async function loadOnePageReportData(assessmentId: string): Promise<OnePageReportViewModel> {
-  const auth = await getReportAuthContext();
+export async function loadOnePageReportData(
+  assessmentId: string,
+  options?: { reviewToken?: string | null },
+): Promise<OnePageReportViewModel> {
+  const auth = await getReportAuthContext(assessmentId, options?.reviewToken);
 
   const assessment = await prisma.assessment.findUnique({
     where: { id: assessmentId },
@@ -72,7 +103,10 @@ export async function loadOnePageReportData(assessmentId: string): Promise<OnePa
     throw new ReportAccessError(404, "Assessment not found");
   }
 
-  if (!isSuperAdmin(auth.role) && auth.clinicId !== assessment.clinicId) {
+  // Cross-clinic protection applies to clinic sessions exactly as before. A
+  // conference token is already bound to this single assessmentId, so there is
+  // no other clinic's data it could reach.
+  if (auth.kind === "clinic" && !isSuperAdmin(auth.ctx.role) && auth.ctx.clinicId !== assessment.clinicId) {
     throw new ReportAccessError(403, "Cross-clinic access denied");
   }
 
