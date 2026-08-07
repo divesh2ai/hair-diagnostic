@@ -14,14 +14,18 @@ export function applyActiveSheddingRule(
   const durationTooLong = isTeGoldDurationAboveThreeMonths(ctx.flags.duration);
 
   // v39: "Just thinning, no visible fall" → TE GOLD must NEVER be recommended
-  if (hasNoVisibleFall) {
+  // Extended: regrow-goal patients (goal declares no active fall) must also
+  // strip any TE GOLD seeded by the base protocol (e.g. AGA_MALE_123). Without
+  // this, MPHL/FPHL Grade 1–3 patients with quiet-phase disease keep TE GOLD
+  // baked in from protocolSequencer even though clinically there is no shedding.
+  if (hasNoVisibleFall || isRegrowGoal) {
     const phases = ctx.phases.filter((k) => !TE_GOLD_VARIANTS.has(k));
     return {
       ...ctx,
       phases,
       appliedRules: [
         ...ctx.appliedRules,
-        'NO_VISIBLE_FALL: TE GOLD removed. Patient reports thinning only — no active shedding phase.',
+        'NO_VISIBLE_FALL: TE GOLD removed. Patient reports thinning only / regrow-quality goal — no active shedding phase.',
       ],
     };
   }
@@ -59,13 +63,13 @@ export function applyActiveSheddingRule(
 // Final-pass audit strip — confirms no TE GOLD variant survived prioritization when patient
 // reported thinning-only. Runs after prioritizeKits, before proImmuneLastRule.
 export function applyFinalNoVisibleFallRule(ctx: KitScorerContext): KitScorerContext {
-  if (!ctx.flags.hasNoVisibleFall) return ctx;
+  if (!ctx.flags.hasNoVisibleFall && !ctx.flags.isRegrowGoal) return ctx;
   return {
     ...ctx,
     phases: ctx.phases.filter((k) => !TE_GOLD_VARIANTS.has(k)),
     appliedRules: [
       ...ctx.appliedRules,
-      'FINAL_NO_VISIBLE_FALL: TE GOLD stripped on final pass — confirmed thinning-only patient.',
+      'FINAL_NO_VISIBLE_FALL: TE GOLD stripped on final pass — confirmed thinning-only / regrow-goal patient.',
     ],
   };
 }

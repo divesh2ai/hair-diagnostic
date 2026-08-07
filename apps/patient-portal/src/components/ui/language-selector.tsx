@@ -11,10 +11,8 @@ import { cn } from "@/lib/utils";
 
 export function LanguageSelector({ className }: { className?: string }) {
   const { locale, setLocale } = useI18n();
-  // Guarantee English is always the first option and always present, even if
-  // LOCALES ever ships in a different order or a stale build filters the
-  // active locale. Users must always have a one-click path back to English.
-  const orderedLocales = ["en" as Locale, ...LOCALES.filter((l) => l !== "en")];
+  const rest = LOCALES.filter((l) => l !== "en");
+  const orderedLocales: Locale[] = ["en", ...rest];
   return (
     <MenuPrimitive.Root>
       <MenuPrimitive.Trigger
@@ -38,11 +36,9 @@ export function LanguageSelector({ className }: { className?: string }) {
               >
                 <span className="flex flex-col">
                   <span>{LOCALE_LABELS[l].native}</span>
-                  {LOCALE_LABELS[l].native !== LOCALE_LABELS[l].english && (
-                    <span className="text-xs text-muted-foreground">
-                      {LOCALE_LABELS[l].english}
-                    </span>
-                  )}
+                  <span className="text-xs text-muted-foreground">
+                    {LOCALE_LABELS[l].english}
+                  </span>
                 </span>
                 {locale === l && <Check className="size-3.5" />}
               </MenuPrimitive.Item>

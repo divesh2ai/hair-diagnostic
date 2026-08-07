@@ -1,0 +1,50 @@
+{
+  "fixtureId": "glp1_late_shield_01",
+  "generatedAt": "2026-07-03T07:14:17.941Z",
+  "pipelineVersion": "1.0.0",
+  "primaryDiagnosis": "WEIGHT_LOSS",
+  "scalpStates": [
+    "NORMAL_SCALP"
+  ],
+  "rootCauses": [
+    "RAPID_WEIGHT_LOSS"
+  ],
+  "therapyNeeds": [],
+  "severity": "MILD",
+  "rankedKitIds": [
+    "RAPID WEIGHT LOSS SHIELD",
+    "PHENOTYPE INFLAMATION",
+    "FPHL"
+  ],
+  "appliedRules": [],
+  "protocolLabel": "Recovery protocol for 3 condition(s): Female pattern hair loss · Scalp / perifollicular inflammation · Rapid weight loss / GLP-1.",
+  "recommendations": [
+    "RAPID WEIGHT LOSS SHIELD",
+    "PHENOTYPE INFLAMATION",
+    "FPHL"
+  ],
+  "narratives": {
+    "narratives": {
+      "doctorHash": "{\"doctorSummary\":\"Mild Rapid weight loss-induced telogen effluvi",
+      "patientHash": "{\"doctorSummary\":\"Mild Rapid weight loss-induced telogen effluvi"
+    },
+    "orchestration": {
+      "pipelineVersion": "1.0.0",
+      "executionId": "f5694979-c4aa-454a-ac6e-a5b19d30c9c7",
+      "startedAt": "2026-07-03T07:14:17.941Z",
+      "completedAt": "2026-07-03T07:14:17.941Z",
+      "durationMs": 0,
+      "completedStages": [
+        "questionnaire",
+        "clinical",
+        "therapy",
+        "recommendations",
+        "narratives"
+      ]
+    }
+  },
+  "reportMetadata": {
+    "generatedBy": "generate-baselines.ts",
+    "version": "1.0.0"
+  }
+}

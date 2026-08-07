@@ -13,6 +13,8 @@ import type {
 } from './types';
 import type { ClinicalProfile } from '../../clinical-engine/types';
 import type { NarrativeLength } from '../types';
+import type { ClinicalFacts } from '../../clinical-facts/types';
+import { hasAllFacts } from '../../clinical-facts/buildClinicalFacts';
 
 // ─── Convenience constructors (keep template files readable) ─────────────────
 
@@ -45,6 +47,25 @@ export function cv(
   ...variants: string[]
 ): Fragment {
   return { variants: variants, condition, priority };
+}
+
+/**
+ * Fragment gated by patient-reported evidence (Rule 1 / Rule 2).
+ * Drops the fragment unless ALL listed FactKeys are true on ClinicalFacts.
+ *
+ *   vReq(['scalp.anyNonNormal'], 7,
+ *     'Seborrhoea and concurrent scalp inflammatory load compound …',
+ *   )
+ *
+ * Use vReq when the sentence makes a claim about something the patient
+ * must have actually reported — never use a static fragment for that.
+ */
+export function vReq(
+  requiredFindings: readonly import('../../clinical-facts/types').FactKey[],
+  priority: number,
+  ...variants: string[]
+): Fragment {
+  return { variants, priority, requiredFindings };
 }
 
 // ─── Deterministic hash ───────────────────────────────────────────────────────
@@ -110,15 +131,34 @@ export function resolveConditions(profile: ClinicalProfile): FragmentConditions 
 
 // ─── Fragment filtering ───────────────────────────────────────────────────────
 
-/** Returns only fragments whose condition is met (or has no condition). */
+/**
+ * Returns only fragments whose condition is met (or has no condition) AND
+ * whose `requiredFindings` (if any) are all supported by ClinicalFacts.
+ *
+ * Evidence check is skipped when `facts` is undefined (legacy callers).
+ * This makes the fragment-level evidence gate a no-op for any composer
+ * that hasn't been wired to pass facts yet, so the change is backwards-
+ * compatible with composers still in the pipeline.
+ */
 export function filterFragments(
   fragments: ReadonlyArray<Fragment>,
-  conditions: FragmentConditions
+  conditions: FragmentConditions,
+  facts?: ClinicalFacts,
 ): Fragment[] {
   return fragments.filter((f) => {
     const cond = f.condition ?? 'always';
-    if (cond === 'always') return true;
-    return conditions[cond] === true;
+    const condOk = cond === 'always' ? true : conditions[cond] === true;
+    if (!condOk) return false;
+    if (f.requiredFindings && f.requiredFindings.length > 0) {
+      if (!facts) {
+        // No facts available — drop fragments with explicit evidence requirements
+        // rather than letting them through unverified, so the fail-safe default
+        // is "no claim without evidence."
+        return false;
+      }
+      return hasAllFacts(facts, f.requiredFindings);
+    }
+    return true;
   });
 }
 
@@ -146,9 +186,10 @@ export function assembleSection(
   fragments: ReadonlyArray<Fragment>,
   conditions: FragmentConditions,
   seed: string,
-  length: NarrativeLength = 'medium'
+  length: NarrativeLength = 'medium',
+  facts?: ClinicalFacts,
 ): AssembledSection {
-  const filtered = filterFragments(fragments, conditions);
+  const filtered = filterFragments(fragments, conditions, facts);
   const sorted = [...filtered].sort((a, b) => (b.priority ?? 5) - (a.priority ?? 5));
   const limited = sorted.slice(0, LENGTH_LIMITS[length]);
 

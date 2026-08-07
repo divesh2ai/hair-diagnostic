@@ -26,14 +26,31 @@ export async function GET(req: Request) {
 
     const baseWhere = { ...scope, deletedAt: null };
 
-    const [patients, reports, pending, recent] = await Promise.all([
+    const [patients, reports, pending, kitOrders, recent] = await Promise.all([
       prisma.patient.count({ where: baseWhere }),
-      prisma.assessment.count({ where: { ...baseWhere, status: "COMPLETED" } }),
       prisma.assessment.count({
-        where: { ...baseWhere, status: { notIn: ["COMPLETED", "FAILED"] } },
+        where: {
+          ...baseWhere,
+          status: "COMPLETED",
+          reviewDecision: "APPROVED",
+        },
+      }),
+      prisma.assessment.count({
+        where: {
+          ...baseWhere,
+          status: { in: ["CLINICAL_READY", "REPORT_GENERATING", "COMPLETED"] },
+          reviewDecision: "PENDING",
+        },
+      }),
+      prisma.kitOrderIntent.count({
+        where: { ...scope, status: "READY_FOR_FULFILMENT" },
       }),
       prisma.assessment.findMany({
-        where: { ...baseWhere, status: "COMPLETED" },
+        where: {
+          ...baseWhere,
+          status: { in: ["CLINICAL_READY", "REPORT_GENERATING", "COMPLETED"] },
+          reviewDecision: "PENDING",
+        },
         take: 5,
         orderBy: { submittedAt: "desc" },
         select: {
@@ -47,7 +64,7 @@ export async function GET(req: Request) {
     ]);
 
     return NextResponse.json({
-      counts: { patients, reports, pending },
+      counts: { patients, reports, pending, kitOrders },
       recent: recent.map((r) => ({
         id: r.id,
         patientName: r.patient.name,
@@ -62,7 +79,7 @@ export async function GET(req: Request) {
     console.error("[DOCTOR STATS API]", err);
     return NextResponse.json(
       {
-        counts: { patients: 0, reports: 0, pending: 0 },
+        counts: { patients: 0, reports: 0, pending: 0, kitOrders: 0 },
         recent: [],
         error: "Internal server error",
       },

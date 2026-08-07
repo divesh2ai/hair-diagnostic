@@ -1,13 +1,23 @@
 import type { ClinicalTemplate } from '../types';
-import { v, c, cv } from '../_fragmentUtils';
+import { v, c, cv, vReq } from '../_fragmentUtils';
 
 // ─── Opening ──────────────────────────────────────────────────────────────────
 
 export const THYROID_DOCTOR_OPENING = [
-  v(9,
+  // "Thyroid-associated… identified" — requires the patient to have actually
+  // reported thyroid involvement. Defends against the case where the diagnosis
+  // engine routes a patient into the thyroid category from indirect signals
+  // alone (which would otherwise produce an opening sentence that claims a
+  // reported thyroid history when none exists).
+  vReq(['history.thyroid'], 9,
     'Thyroid-associated diffuse alopecia identified; dysthyroid state is the primary driver of follicular metabolic disruption and elevated telogen shedding.',
     'Thyroid hormone dysregulation confirmed as the primary aetiological factor in diffuse non-scarring alopecia presentation.',
-    'Thyroid-mediated alopecia: follicular cycling disruption secondary to systemic metabolic rate dysregulation from thyroid hormone insufficiency or excess.'
+    'Thyroid-mediated alopecia: follicular cycling disruption secondary to systemic metabolic rate dysregulation from thyroid hormone insufficiency or excess.',
+  ),
+  // Fallback opening when thyroid is suspected by signal but not reported by
+  // patient — describe mechanism without claiming reported history.
+  v(7,
+    'Diffuse follicular cycling disruption consistent with a metabolic-rate axis; thyroid function assessment is the gating workup before downstream protocol selection.',
   ),
 ];
 

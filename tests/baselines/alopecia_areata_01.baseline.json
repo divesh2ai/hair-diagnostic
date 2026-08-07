@@ -1,0 +1,50 @@
+{
+  "fixtureId": "alopecia_areata_01",
+  "generatedAt": "2026-07-03T07:14:17.861Z",
+  "pipelineVersion": "1.0.0",
+  "primaryDiagnosis": "ALOPECIA_AREATA",
+  "scalpStates": [
+    "NORMAL_SCALP"
+  ],
+  "rootCauses": [
+    "AUTOIMMUNE"
+  ],
+  "therapyNeeds": [],
+  "severity": "MILD",
+  "rankedKitIds": [
+    "HAIR FACT ALOPECIA AREATA",
+    "PHENOTYPE INFLAMATION",
+    "FPHL"
+  ],
+  "appliedRules": [],
+  "protocolLabel": "Recovery protocol for 3 condition(s): Female pattern hair loss · Scalp / perifollicular inflammation · Alopecia areata (autoimmune).",
+  "recommendations": [
+    "HAIR FACT ALOPECIA AREATA",
+    "PHENOTYPE INFLAMATION",
+    "FPHL"
+  ],
+  "narratives": {
+    "narratives": {
+      "doctorHash": "{\"doctorSummary\":\"Mild Alopecia areata. CD8+ T-lymphocyte-mediat",
+      "patientHash": "{\"doctorSummary\":\"Mild Alopecia areata. CD8+ T-lymphocyte-mediat"
+    },
+    "orchestration": {
+      "pipelineVersion": "1.0.0",
+      "executionId": "798df79b-80f8-42d8-9d51-965626054922",
+      "startedAt": "2026-07-03T07:14:17.861Z",
+      "completedAt": "2026-07-03T07:14:17.864Z",
+      "durationMs": 3,
+      "completedStages": [
+        "questionnaire",
+        "clinical",
+        "therapy",
+        "recommendations",
+        "narratives"
+      ]
+    }
+  },
+  "reportMetadata": {
+    "generatedBy": "generate-baselines.ts",
+    "version": "1.0.0"
+  }
+}

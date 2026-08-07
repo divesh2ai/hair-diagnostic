@@ -1,0 +1,64 @@
+.page {
+  min-height: 100vh;
+  padding: 40px;
+  background: #f2efe8;
+  color: #142238;
+  font-family: Arial, sans-serif;
+}
+
+.header {
+  max-width: 1480px;
+  margin: 0 auto 28px;
+  padding: 28px 32px;
+  border-radius: 20px;
+  background: #0b2545;
+  color: #fff;
+  display: flex;
+  justify-content: space-between;
+  gap: 30px;
+  align-items: flex-end;
+}
+
+.header h1 { margin: 4px 0 8px; font-family: Georgia, serif; font-size: 38px; font-weight: 500; }
+.header p { margin: 0; color: #d9e3ef; }
+.eyebrow { color: #f6c15b !important; text-transform: uppercase; letter-spacing: .18em; font-size: 12px; font-weight: 700; }
+.metrics { display: flex; flex-wrap: wrap; gap: 8px; justify-content: flex-end; }
+.metrics span { padding: 9px 12px; border-radius: 999px; background: rgba(255,255,255,.09); font-size: 12px; }
+.metrics b { font-size: 16px; }
+.metrics .exact { color: #a7ebce; }
+.metrics .fallback { color: #f9d690; }
+.metrics .replacement { color: #ffc0b5; }
+
+.grid {
+  max-width: 1480px;
+  margin: 0 auto;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 16px;
+}
+
+.card { background: #fff; border: 1px solid rgba(20,34,56,.12); border-radius: 16px; overflow: hidden; box-shadow: 0 5px 18px rgba(11,37,69,.06); }
+.cardTop { min-height: 142px; padding: 16px; background: #fbf8f2; display: flex; align-items: center; justify-content: space-around; gap: 14px; }
+.snapshotPreview { width: 88px; height: 88px; border-radius: 16px; border: 1px solid #e0d9cc; background: #fff; display: grid; place-items: center; }
+.triggerPreview { max-width: 156px; display: inline-flex; align-items: center; gap: 7px; padding: 5px 10px 5px 5px; border: 1px solid #d7d0c4; border-radius: 999px; background: #fff; font-size: 11px; font-weight: 700; }
+.cardTop :global(.clinical-option-icon) { display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; }
+.cardTop :global(.clinical-option-icon-snapshot) { width: 72px; height: 72px; }
+.cardTop :global(.clinical-option-icon-trigger) { width: 24px; height: 24px; }
+.cardTop :global(.clinical-option-icon img) { width: 100%; height: 100%; object-fit: contain; }
+.cardBody { padding: 16px; }
+.cardBody h2 { margin: 10px 0 7px; font-family: Georgia, serif; font-size: 19px; }
+.cardBody code { display: block; color: #114d5b; font-size: 11px; overflow-wrap: anywhere; }
+.badge { display: inline-flex; border-radius: 999px; padding: 4px 8px; text-transform: uppercase; letter-spacing: .1em; font-size: 9px; font-weight: 800; }
+.badge.exact { background: #e4f1ea; color: #12583f; }
+.badge.fallback { background: #fff1d6; color: #7f5510; }
+.badge.needs_replacement { background: #fbedeb; color: #913c32; }
+.cardBody dl { margin: 14px 0 0; display: grid; gap: 7px; }
+.cardBody dl div { display: grid; grid-template-columns: 62px 1fr; gap: 8px; }
+.cardBody dt { color: #7c899a; font-size: 10px; text-transform: uppercase; letter-spacing: .08em; }
+.cardBody dd { margin: 0; font-size: 10px; overflow-wrap: anywhere; }
+
+@media (max-width: 760px) {
+  .page { padding: 18px; }
+  .header { padding: 22px; display: block; }
+  .metrics { margin-top: 18px; justify-content: flex-start; }
+}

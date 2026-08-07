@@ -13,7 +13,7 @@ datasource db {
 //////////////////////////////////////////////////////
 
 // Single unified role enum for all system actors.
-// Controls API-level RBAC — applied in middleware, not RLS.
+// Controls API-level RBAC â€” applied in middleware, not RLS.
 enum SystemRole {
   SUPER_ADMIN
   ORG_ADMIN
@@ -90,7 +90,7 @@ enum InvitationStatus {
   EXPIRED
 }
 
-// Ordered by addendum §6 preference.
+// Ordered by addendum Â§6 preference.
 enum NotificationChannel {
   WHATSAPP
   SMS
@@ -98,7 +98,7 @@ enum NotificationChannel {
   IN_APP
 }
 
-// Subscription tiers — controls clinic-level quotas (assessments/month, doctors,
+// Subscription tiers â€” controls clinic-level quotas (assessments/month, doctors,
 // storage). Super Admin upgrades/downgrades; usage tracked separately.
 enum SubscriptionPlan {
   TRIAL
@@ -127,7 +127,7 @@ enum SupportedLanguage {
   TE
 }
 
-// Operational status for a Clinic — distinct from `isActive` (which is a
+// Operational status for a Clinic â€” distinct from `isActive` (which is a
 // legacy soft-on/off). Super Admin transitions the lifecycle here; UI shows
 // this as the canonical state.
 enum ClinicStatus {
@@ -212,7 +212,7 @@ model Organization {
 }
 
 // Admins scoped to an Organization (ORG_ADMIN, SUPER_ADMIN).
-// Doctors are scoped to Clinics — not here.
+// Doctors are scoped to Clinics â€” not here.
 model OrganizationMember {
   id             String       @id @default(cuid())
   organizationId String
@@ -222,7 +222,7 @@ model OrganizationMember {
   role           SystemRole
   name           String
   email          String     @unique
-  // Mobile = WhatsApp number (India-first). Required per addendum §4.
+  // Mobile = WhatsApp number (India-first). Required per addendum Â§4.
   phone          String
 
   isActive Boolean @default(true)
@@ -255,14 +255,14 @@ model Clinic {
   phone   String?
   email   String?
 
-  // Branding — surfaced on the public /q/[clinicSlug] landing page, doctor
+  // Branding â€” surfaced on the public /q/[clinicSlug] landing page, doctor
   // workspace chrome, PDF + WhatsApp reports. All optional; the consumer
   // falls back to HairOS chrome when unset.
   logoUrl        String?
   tagline        String?
-  primaryColor   String? // hex e.g. "#1A73E8" — workspace + report accents
-  secondaryColor String? // hex — secondary accents, header gradient
-  accentColor    String? // hex — call-to-action / highlight
+  primaryColor   String? // hex e.g. "#1A73E8" â€” workspace + report accents
+  secondaryColor String? // hex â€” secondary accents, header gradient
+  accentColor    String? // hex â€” call-to-action / highlight
   footerText     String? // report + PDF footer
   website        String?
   whatsappNumber String? // E.164, e.g. "+919876543210"
@@ -273,12 +273,12 @@ model Clinic {
   // Empty = all locales offered (platform default).
   supportedLanguages SupportedLanguage[] @default([])
 
-  // General clinic settings bag — timezone overrides, business hours,
+  // General clinic settings bag â€” timezone overrides, business hours,
   // assessment duration, auto-archive days, report approval, feature flags.
   // Shape declared in lib/clinic/settings.ts; stored as JSON to avoid
   // churning the schema as toggles evolve.
   settings         Json?
-  // WhatsApp business-cloud config — businessName, default template ids,
+  // WhatsApp business-cloud config â€” businessName, default template ids,
   // welcome/reminder copy, connectionStatus. Shape in lib/clinic/whatsapp.ts.
   whatsappSettings Json?
 
@@ -287,12 +287,14 @@ model Clinic {
 
   subscription Subscription?
 
-  doctors       Doctor[]
-  patients      Patient[]
-  assessments   Assessment[]
-  members       ClinicMember[]
-  invitations   ClinicInvitation[]
-  consultations Consultation[]
+  doctors                Doctor[]
+  patients               Patient[]
+  assessments            Assessment[]
+  members                ClinicMember[]
+  invitations            ClinicInvitation[]
+  consultations          Consultation[]
+  kitOrderIntents        KitOrderIntent[]
+  recommendationFeedback RecommendationFeedback[]
 
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
@@ -317,7 +319,7 @@ model ClinicMember {
   role           SystemRole // expected: CLINIC_ADMIN | STAFF
   name           String
   email          String
-  // Mobile = WhatsApp number. Required per addendum §4.
+  // Mobile = WhatsApp number. Required per addendum Â§4.
   phone          String
 
   isActive Boolean @default(true)
@@ -335,14 +337,14 @@ model ClinicMember {
 
 // Invitation to join either an Organization (ORG_ADMIN) or a Clinic
 // (CLINIC_ADMIN | STAFF | DOCTOR). Exactly one of clinicId/organizationId
-// is set per row — enforced at the API layer and by the CHECK constraint
+// is set per row â€” enforced at the API layer and by the CHECK constraint
 // added in the migration. The recipient receives a link containing the
 // raw token; the server hashes incoming tokens before lookup so a DB
 // leak doesn't expose redeemable invites.
 model ClinicInvitation {
   id String @id @default(cuid())
 
-  // Scope — exactly one set
+  // Scope â€” exactly one set
   clinicId String?
   clinic   Clinic? @relation(fields: [clinicId], references: [id])
 
@@ -359,7 +361,7 @@ model ClinicInvitation {
   role SystemRole
 
   // Notification channel chosen at creation. WHATSAPP is the default per
-  // addendum §6; sender falls back through SMS → EMAIL → IN_APP.
+  // addendum Â§6; sender falls back through SMS â†’ EMAIL â†’ IN_APP.
   channel   NotificationChannel @default(WHATSAPP)
   sentAt    DateTime?
   sendError String?
@@ -403,7 +405,7 @@ model Subscription {
   plan   SubscriptionPlan   @default(TRIAL)
   status SubscriptionStatus @default(ACTIVE)
 
-  // Quota limits — null = unlimited.
+  // Quota limits â€” null = unlimited.
   monthlyAssessmentLimit Int?
   doctorSeatLimit        Int?
   storageMbLimit         Int?
@@ -440,7 +442,7 @@ model Doctor {
 
   name           String
   email          String  @unique
-  // Mobile = WhatsApp number. Required per addendum §4.
+  // Mobile = WhatsApp number. Required per addendum Â§4.
   phone          String?
   specialization String?
 
@@ -457,7 +459,7 @@ model Doctor {
   preferredLanguage SupportedLanguage @default(EN)
 
   // Clinical credentials shown on reports + PDF. `bio` (legacy) and
-  // `biography` coexist — `biography` is the editable long-form used in the
+  // `biography` coexist â€” `biography` is the editable long-form used in the
   // Clinic Admin profile editor; `bio` remains the short public string.
   qualification      String?
   registrationNumber String?
@@ -466,6 +468,9 @@ model Doctor {
   reviewedAssessments Assessment[] @relation("DoctorReviewer")
 
   patients Patient[]
+
+  kitOrderIntents        KitOrderIntent[]
+  recommendationFeedback RecommendationFeedback[]
 
   isActive Boolean @default(true)
 
@@ -512,7 +517,7 @@ model Patient {
   @@index([phone])
 }
 
-// External identifier mapping — links a patient to QR tokens, WhatsApp IDs, EMR IDs, etc.
+// External identifier mapping â€” links a patient to QR tokens, WhatsApp IDs, EMR IDs, etc.
 // One patient can have multiple external identifiers across different sources.
 model PatientIdentifier {
   id String @id @default(cuid())
@@ -556,6 +561,12 @@ model Assessment {
   reviewNotes    String?
   reviewedAt     DateTime?
 
+  reviewPathway           ReviewPathway?
+  reviewPathwayReasons    String[]        @default([])
+  reviewPathwayVersion    String?
+  reviewPathwayEvaluatedAt DateTime?
+  reviewPathwaySource     Json?
+
   status AssessmentStatus @default(PENDING)
   source AssessmentSource @default(QR)
 
@@ -576,27 +587,21 @@ model Assessment {
 
   rawResponses Json?
 
-  // Shadow-mode review pathway persistence. Additive-only routing signal
-  // written before CLINICAL_READY. Never blocks the pipeline.
-  reviewPathway            ReviewPathway?
-  reviewPathwayReasons     String[]       @default([])
-  reviewPathwayVersion     String?
-  reviewPathwayEvaluatedAt DateTime?
-  reviewPathwaySource      Json?
-
   submittedAt DateTime  @default(now())
   queuedAt    DateTime?
   startedAt   DateTime?
   completedAt DateTime?
 
-  responses          AssessmentResponse[]
-  artifacts          AIArtifact[]
-  events             AssessmentEvent[]
-  orchestrationLogs  OrchestrationLog[]
-  analyticsEvents    AnalyticsEvent[]
-  whatsappDeliveries WhatsappDelivery[]
-  auditLogs          AuditLog[]
-  consultations      Consultation[]
+  responses              AssessmentResponse[]
+  artifacts              AIArtifact[]
+  events                 AssessmentEvent[]
+  orchestrationLogs      OrchestrationLog[]
+  analyticsEvents        AnalyticsEvent[]
+  whatsappDeliveries     WhatsappDelivery[]
+  auditLogs              AuditLog[]
+  consultations          Consultation[]
+  kitOrderIntents        KitOrderIntent[]
+  recommendationFeedback RecommendationFeedback[]
 
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
@@ -606,7 +611,6 @@ model Assessment {
   @@index([patientId])
   @@index([reviewingDoctorId])
   @@index([clinicId, status])
-  @@index([clinicId, reviewPathway])
   @@index([status, phaseALeaseExpiresAt])
 }
 
@@ -678,7 +682,7 @@ model OrchestrationLog {
   @@index([assessmentId, stage])
 }
 
-// Full event sourcing log — every lifecycle transition is recorded here.
+// Full event sourcing log â€” every lifecycle transition is recorded here.
 // Used for orchestration debugging, audit trails, and the viewer timeline.
 model AssessmentEvent {
   id           String     @id @default(cuid())
@@ -705,7 +709,7 @@ model AssessmentEvent {
 model AnalyticsEvent {
   id String @id @default(cuid())
 
-  // Both optional — some events are platform-level, not clinic-level
+  // Both optional â€” some events are platform-level, not clinic-level
   clinicId     String?
   assessmentId String?
   assessment   Assessment? @relation(fields: [assessmentId], references: [id])
@@ -778,7 +782,7 @@ model AuditLog {
 // PLATFORM SETTINGS (Super Admin owned, singleton)
 //////////////////////////////////////////////////////
 
-// Singleton row — enforced by `singletonKey = 'singleton'` unique. Holds
+// Singleton row â€” enforced by `singletonKey = 'singleton'` unique. Holds
 // platform-wide defaults the Super Admin tunes from /admin/settings.
 model PlatformSettings {
   id           String @id @default(cuid())
@@ -789,7 +793,7 @@ model PlatformSettings {
   defaultLanguage         SupportedLanguage @default(EN)
   defaultWhatsappTemplate String?
 
-  // AI defaults (read-only in this phase — surfaced for visibility).
+  // AI defaults (read-only in this phase â€” surfaced for visibility).
   aiModelDefault String?
   aiNotes        String?
 
@@ -801,7 +805,7 @@ model PlatformSettings {
 
 //////////////////////////////////////////////////////
 // LEGACY CHAT / WHATSAPP SESSION ENGINE
-// Keep intact — do not touch without explicit migration plan
+// Keep intact â€” do not touch without explicit migration plan
 //////////////////////////////////////////////////////
 
 model User {
@@ -889,7 +893,7 @@ model Recommendation {
 }
 
 //////////////////////////////////////////////////////
-// CONSULTATION AGGREGATE (Sprint 2 — orchestrator output)
+// CONSULTATION AGGREGATE (Sprint 2 â€” orchestrator output)
 //////////////////////////////////////////////////////
 
 // The Consultation aggregate root. One per Assessment per clinical workflow.
@@ -913,8 +917,10 @@ model Consultation {
   currentVersionId String?              @unique
   currentVersion   ConsultationVersion? @relation("CurrentVersion", fields: [currentVersionId], references: [id])
 
-  versions ConsultationVersion[] @relation("ConsultationVersions")
-  events   ConsultationEvent[]
+  versions               ConsultationVersion[]    @relation("ConsultationVersions")
+  events                 ConsultationEvent[]
+  kitOrderIntents        KitOrderIntent[]
+  recommendationFeedback RecommendationFeedback[]
 
   createdBy String
   createdAt DateTime @default(now())
@@ -934,7 +940,7 @@ model ConsultationVersion {
   consultationId String
   consultation   Consultation @relation("ConsultationVersions", fields: [consultationId], references: [id])
 
-  // Monotonic per consultation — 1, 2, 3 …
+  // Monotonic per consultation â€” 1, 2, 3 â€¦
   contentVersion Int
   schemaVersion  String @default("v1")
 
@@ -950,7 +956,7 @@ model ConsultationVersion {
   // version.
   contentHash String
 
-  // AI provenance — captured for regression testing + audit. Null on
+  // AI provenance â€” captured for regression testing + audit. Null on
   // versions produced purely by deterministic engines (no LLM in the loop).
   llmModel             String?
   promptVersion        String?
@@ -971,6 +977,9 @@ model ConsultationVersion {
 
   // Back-reference used only when this row is the current pointer.
   currentOf Consultation? @relation("CurrentVersion")
+
+  kitOrderIntents        KitOrderIntent[]
+  recommendationFeedback RecommendationFeedback[]
 
   @@unique([consultationId, contentVersion])
   @@index([consultationId])
@@ -1003,4 +1012,687 @@ model ConsultationEvent {
   @@index([consultationId])
   @@index([status, createdAt])
   @@index([type, status])
+}
+
+//////////////////////////////////////////////////////
+// DOCTOR VALIDATION LOOP â€” order intent + feedback
+//////////////////////////////////////////////////////
+
+// Canonical, minimal durable record of the doctor's approval-time intent to
+// operationalize the approved kit lineup. This is NOT billing, inventory,
+// payments, or fulfilment â€” just the least amount of state needed for ops to
+// act on the doctor's authorization.
+//
+// Idempotency is guaranteed by @@unique([consultationId, consultationVersionId]):
+// repeated "Approve & create kit order" clicks against the same approved
+// version return the same intent row.
+model KitOrderIntent {
+  id String @id @default(cuid())
+
+  consultationId String
+  consultation   Consultation @relation(fields: [consultationId], references: [id])
+
+  consultationVersionId String
+  consultationVersion   ConsultationVersion @relation(fields: [consultationVersionId], references: [id])
+
+  assessmentId String
+  assessment   Assessment @relation(fields: [assessmentId], references: [id])
+
+  clinicId String
+  clinic   Clinic @relation(fields: [clinicId], references: [id])
+
+  doctorId String
+  doctor   Doctor @relation(fields: [doctorId], references: [id])
+
+  // Kit lineup captured at approval time â€” audit-stable snapshot. `kitIds`
+  // is the doctor's final order; `quantities` is a { kitId: number } map or
+  // null when quantities aren't defined yet.
+  kitIds     String[]
+  quantities Json?
+
+  // Doctor approval IS the clinical authorization; ops picks up from here.
+  status KitOrderStatus @default(READY_FOR_FULFILMENT)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([consultationId, consultationVersionId])
+  @@index([clinicId, createdAt])
+  @@index([doctorId])
+  @@index([assessmentId])
+}
+
+enum KitOrderStatus {
+  READY_FOR_FULFILMENT
+  CANCELLED
+}
+
+// Structured doctor feedback on a specific consultation version. Never mutates
+// recommendations automatically â€” this is the pilot's learning-loop capture.
+// clinicalRationale is required at write time for SAFETY_CONCERN / INCORRECT
+// (validated in the endpoint), optional otherwise.
+model RecommendationFeedback {
+  id String @id @default(cuid())
+
+  consultationId String
+  consultation   Consultation @relation(fields: [consultationId], references: [id])
+
+  // The version the doctor was reviewing when the feedback was recorded.
+  consultationVersionId String
+  consultationVersion   ConsultationVersion @relation(fields: [consultationVersionId], references: [id])
+
+  assessmentId String
+  assessment   Assessment @relation(fields: [assessmentId], references: [id])
+
+  clinicId String
+  clinic   Clinic @relation(fields: [clinicId], references: [id])
+
+  doctorId String
+  doctor   Doctor @relation(fields: [doctorId], references: [id])
+
+  verdict           FeedbackVerdict
+  issueType         FeedbackIssueType
+  severity          FeedbackSeverity
+  expectedKitOrder  String[]
+  affectedKitIds    String[]
+  clinicalRationale String?           @db.Text
+
+  createdAt DateTime @default(now())
+
+  @@index([consultationId])
+  @@index([clinicId, createdAt])
+  @@index([doctorId])
+}
+
+enum FeedbackVerdict {
+  CORRECT
+  PARTLY_CORRECT
+  INCORRECT
+  SAFETY_CONCERN
+}
+
+// Recommendation feedback categories are strictly clinical. "Needs revision"
+// is a consultation-workflow action captured via the approve endpoint, NOT a
+// feedback category, so it does not appear here.
+enum FeedbackIssueType {
+  WRONG_KIT_INCLUDED
+  WRONG_KIT_EXCLUDED
+  WRONG_ORDER
+  MISSING_KIT
+  SAFETY_ISSUE
+  CONDITION_INTERPRETATION
+  NARRATIVE_ONLY
+  OTHER
+}
+
+enum FeedbackSeverity {
+  LOW
+  MEDIUM
+  HIGH
+}
+
+//////////////////////////////////////////////////////
+// STAGE 1 GOVERNED ASSISTANT
+//////////////////////////////////////////////////////
+
+enum KnowledgePublicationStatus {
+  DRAFT
+  MEDICAL_REVIEW
+  MEDICAL_APPROVED
+  COMMERCIAL_APPROVED
+  PUBLISHED_INTERNAL
+  PUBLISHED_PATIENT
+  RETIRED
+}
+
+model Product {
+  id            String   @id @default(cuid())
+  canonicalId   String   @unique
+  canonicalName String
+  clinicId      String?
+  status        String   @default("DRAFT")
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@index([clinicId, status])
+}
+
+model ProductAlias {
+  id              String   @id @default(cuid())
+  productId       String
+  clinicId        String?
+  alias           String
+  normalizedAlias String
+  sourceName      String?
+  matchMethod     String   @default("UNMATCHED")
+  matchConfidence Float    @default(0)
+  reviewStatus    String   @default("DRAFT")
+  provenance      Json?
+  createdAt       DateTime @default(now())
+
+  @@unique([productId, normalizedAlias])
+  @@index([clinicId, normalizedAlias])
+}
+
+model ProductPriceVersion {
+  id            String    @id @default(cuid())
+  clinicId      String?
+  version       Int
+  checksum      String
+  sourceFile    String
+  status        String
+  effectiveFrom DateTime?
+  createdAt     DateTime  @default(now())
+
+  @@unique([clinicId, checksum])
+}
+
+model ProductPrice {
+  id             String    @id @default(cuid())
+  productId      String
+  versionId      String
+  clinicId       String?
+  currency       String    @default("INR")
+  mrp            Decimal   @db.Decimal(12, 2)
+  status         String
+  effectiveFrom  DateTime?
+  effectiveUntil DateTime?
+  provenance     Json?
+  conflictStatus String    @default("NONE")
+  createdAt      DateTime  @default(now())
+
+  @@unique([productId, versionId, clinicId])
+}
+
+model Ingredient {
+  id             String   @id @default(cuid())
+  canonicalId    String   @unique
+  canonicalName  String
+  normalizedName String   @unique
+  status         String
+  createdAt      DateTime @default(now())
+}
+
+model ProductIngredient {
+  id              String   @id @default(cuid())
+  productId       String
+  ingredientId    String
+  quantity        Decimal? @db.Decimal(12, 4)
+  unit            String?
+  formulationText String?
+  sourceId        String?
+  route           String?
+  provenance      Json?
+  conflictStatus  String   @default("NONE")
+  status          String
+  createdAt       DateTime @default(now())
+
+  @@unique([productId, ingredientId, sourceId])
+}
+
+model Kit {
+  id             String   @id @default(cuid())
+  canonicalId    String   @unique
+  canonicalName  String
+  family         String?
+  clinicId       String?
+  status         String
+  currentVersion Int      @default(1)
+  medicalVersion Int      @default(1)
+  commercialVersion Int   @default(1)
+  sourceId       String?
+  approvalStatus String   @default("DRAFT")
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@index([clinicId, status])
+}
+
+model KitAlias {
+  id              String   @id @default(cuid())
+  kitId           String
+  clinicId        String?
+  alias           String
+  normalizedAlias String
+  sourceName      String?
+  matchMethod     String   @default("UNMATCHED")
+  matchConfidence Float    @default(0)
+  reviewStatus    String   @default("DRAFT")
+  provenance      Json?
+  createdAt       DateTime @default(now())
+
+  @@unique([kitId, normalizedAlias])
+  @@index([clinicId, normalizedAlias])
+}
+
+model KitVersion {
+  id            String    @id @default(cuid())
+  kitId         String
+  version       Int
+  checksum      String
+  sourceId      String?
+  status        String
+  effectiveFrom DateTime?
+  createdAt     DateTime  @default(now())
+
+  @@unique([kitId, version])
+  @@unique([kitId, checksum])
+}
+
+model KitProduct {
+  id             String   @id @default(cuid())
+  kitId          String
+  productId      String
+  kitVersionId   String
+  componentOrder Int
+  sourceRow      Int?
+  quantity       Decimal? @db.Decimal(12, 4)
+  unit           String?
+  provenance     Json?
+  conflictStatus String   @default("NONE")
+  status         String
+  createdAt      DateTime @default(now())
+
+  @@unique([kitVersionId, componentOrder])
+  @@index([kitId, kitVersionId])
+}
+
+model KitPrice {
+  id             String    @id @default(cuid())
+  kitId          String
+  clinicId       String?
+  version        Int
+  currency       String    @default("INR")
+  mrp            Decimal   @db.Decimal(12, 2)
+  sourceFile     String
+  sourceSheet    String?
+  sourceRows     String?
+  gstPercent     Decimal?  @db.Decimal(7, 4)
+  doctorPrice    Decimal?  @db.Decimal(12, 2)
+  provenance     Json?
+  conflictStatus String    @default("NONE")
+  status         String
+  effectiveFrom  DateTime?
+  effectiveUntil DateTime?
+  createdAt      DateTime  @default(now())
+
+  @@unique([kitId, clinicId, version])
+  @@index([clinicId, kitId, status, effectiveFrom])
+}
+
+model KitSchedule {
+  id             String   @id @default(cuid())
+  kitId          String
+  kitVersionId   String
+  productId      String
+  componentOrder Int
+  scheduleText   String
+  sourceRow      Int?
+  prescriptionDays Int?
+  provenance     Json?
+  conflictStatus String   @default("NONE")
+  status         String
+  createdAt      DateTime @default(now())
+
+  @@unique([kitVersionId, componentOrder])
+}
+
+model KnowledgeDocument {
+  id             String   @id @default(cuid())
+  sourceId       String   @unique
+  clinicId       String?
+  title          String
+  domain         String   @default("HAIR")
+  sourceType     String
+  sourceStatus   String   @default("ACTIVE")
+  authorityScore Int
+  status         KnowledgePublicationStatus @default(DRAFT)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+}
+
+model KnowledgeDocumentVersion {
+  id             String    @id @default(cuid())
+  documentId     String
+  version        Int
+  checksum       String
+  sourceFile     String
+  sourceStatus   String    @default("ACTIVE")
+  status         KnowledgePublicationStatus @default(DRAFT)
+  effectiveFrom  DateTime?
+  effectiveUntil DateTime?
+  createdAt      DateTime  @default(now())
+
+  @@unique([documentId, version])
+  @@unique([documentId, checksum])
+}
+
+model KnowledgeChunk {
+  id                String                 @id
+  documentVersionId String
+  clinicId          String?
+  entityType        String?
+  entityId          String?
+  domain            String
+  topic             String                 @default("GENERAL")
+  knowledgeSystem   String
+  audience          String
+  language          String                 @default("en")
+  sectionType       String
+  content           String                 @db.Text
+  approvalStatus    KnowledgePublicationStatus @default(DRAFT)
+  authorityScore    Int
+  effectiveFrom     DateTime?
+  effectiveUntil    DateTime?
+  embedding         Unsupported("vector")?
+  metadata          Json
+  createdAt         DateTime               @default(now())
+
+  @@index([clinicId, approvalStatus, language, domain])
+}
+
+model KnowledgeApproval {
+  id                String    @id @default(cuid())
+  documentVersionId String
+  chunkId           String?
+  approvalType      String
+  status            String
+  approvedBy        String?
+  notes             String?   @db.Text
+  approvedAt        DateTime?
+  createdAt         DateTime  @default(now())
+}
+
+model KnowledgeConflict {
+  id             String   @id
+  documentId     String?
+  clinicId       String?
+  entity         String
+  issue          String   @db.Text
+  conflictType   String   @default("UNSPECIFIED")
+  fieldOrClaim   String?
+  sourceA        Json?
+  sourceB        Json?
+  valueA         Json?
+  valueB         Json?
+  authorityA     Int?
+  authorityB     Int?
+  proposedCanonicalValue Json?
+  automaticResolutionAllowed Boolean @default(false)
+  reviewRequired Boolean @default(true)
+  publicationBlocked Boolean @default(true)
+  severity       String
+  owner          String?
+  requiredAction String   @db.Text
+  status         String
+  resolution     String?  @db.Text
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@index([clinicId, status, severity])
+}
+
+model IngestionRun {
+  id            String    @id @default(cuid())
+  clinicId      String?
+  sourceFile    String
+  checksum      String
+  configVersion String
+  status        String
+  startedAt     DateTime?
+  completedAt   DateTime?
+  counts        Json?
+  errors        Json?
+  createdBy     String?
+  createdAt     DateTime  @default(now())
+
+  @@unique([clinicId, checksum, configVersion])
+}
+
+model KnowledgeSourceFile {
+  id                  String   @id @default(cuid())
+  fingerprint         String   @unique
+  logicalDocumentKey  String
+  fileName            String
+  mimeType            String
+  documentType        String
+  domain              String
+  sourceType          String
+  sourceStatus        String   @default("ACTIVE")
+  version             Int
+  supersedesSourceId  String?
+  extractionMetadata  Json?
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+
+  @@unique([logicalDocumentKey, version])
+  @@index([domain, sourceStatus, sourceType])
+}
+
+model KnowledgeIngestionStage {
+  id             String   @id @default(cuid())
+  sourceFileId   String
+  stage          String
+  inputHash      String
+  outputHash     String?
+  status         String
+  details        Json?
+  startedAt      DateTime?
+  completedAt    DateTime?
+  createdAt      DateTime @default(now())
+
+  @@unique([sourceFileId, stage, inputHash])
+  @@index([sourceFileId, status])
+}
+
+model KnowledgeClaim {
+  id                    String                     @id @default(cuid())
+  claimId               String                     @unique
+  chunkId               String
+  documentVersionId     String
+  domain                String
+  subject               String
+  subjectType           String
+  subjectId             String?
+  claimType             String
+  statement             String                     @db.Text
+  sourceType            String
+  sourceId              String
+  authorityScore        Int
+  evidenceStatus        String
+  approvalStatus        KnowledgePublicationStatus @default(DRAFT)
+  audience              String
+  patientVisible        Boolean                    @default(false)
+  medicalReviewStatus   String                     @default("PENDING_REVIEW")
+  commercialReviewStatus String                    @default("DRAFT")
+  sourceLocation        Json?
+  supersessionStatus    String                     @default("ACTIVE")
+  effectiveFrom         DateTime?
+  effectiveUntil        DateTime?
+  contradictionGroup    String?
+  supersededByClaimId   String?
+  createdAt             DateTime                   @default(now())
+  updatedAt             DateTime                   @updatedAt
+
+  @@index([domain, approvalStatus, audience, effectiveFrom])
+  @@index([subjectType, subjectId, claimType])
+  @@index([contradictionGroup])
+}
+
+model ClaimEvidence {
+  id             String   @id @default(cuid())
+  claimId        String
+  sourceFileId   String?
+  evidenceType   String
+  status         String   @default("UNASSESSED")
+  sourceLocation Json
+  excerptHash    String?
+  notes          String?  @db.Text
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@index([claimId, status])
+  @@index([sourceFileId])
+}
+
+model StructuredFactRecord {
+  id                String   @id
+  sourceFileId      String
+  clinicId          String?
+  domain            String   @default("HAIR")
+  entityType        String
+  entityId          String
+  field             String
+  rawValue          Json?
+  normalizedValue   Json?
+  provenance        Json
+  formula           String?
+  formulaResult     Json?
+  formulaError      String?
+  approvalStatus    String   @default("DRAFT")
+  conflictStatus    String   @default("NONE")
+  requiresReview    Boolean  @default(true)
+  publicationStatus String   @default("DRAFT")
+  effectiveFrom     DateTime?
+  effectiveUntil    DateTime?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  @@index([entityType, entityId, field, approvalStatus])
+  @@index([clinicId, publicationStatus])
+}
+
+model KnowledgeReviewAction {
+  id            String   @id @default(cuid())
+  actorId       String
+  action        String
+  entityType    String
+  entityId      String
+  previousValue Json?
+  newValue      Json?
+  reason        String?  @db.Text
+  createdAt     DateTime @default(now())
+
+  @@index([entityType, entityId, createdAt])
+  @@index([actorId, createdAt])
+}
+
+model AssistantThread {
+  id           String     @id @default(cuid())
+  clinicId     String
+  patientId    String?
+  assessmentId String?
+  createdBy    String
+  role         SystemRole
+  language     String
+  title        String?
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+
+  @@index([clinicId, createdBy, updatedAt])
+}
+
+model AssistantMessage {
+  id              String   @id @default(cuid())
+  threadId        String
+  role            String
+  content         String   @db.Text
+  intent          String?
+  action          String?
+  language        String
+  graphPath       String[]
+  authorities     String[]
+  supportedClaims Json?
+  createdAt       DateTime @default(now())
+
+  @@index([threadId, createdAt])
+}
+
+model AssistantToolCall {
+  id             String   @id @default(cuid())
+  messageId      String
+  toolName       String
+  input          Json
+  redactedOutput Json?
+  status         String
+  durationMs     Int?
+  createdAt      DateTime @default(now())
+}
+
+model AssistantCitation {
+  id            String   @id @default(cuid())
+  messageId     String
+  claimIndex    Int
+  claimText     String   @db.Text
+  sourceType    String
+  sourceId      String
+  sourceField   String?
+  sourceLabel   String
+  sourceVersion Int?
+  createdAt     DateTime @default(now())
+
+  @@index([messageId, claimIndex])
+}
+
+model AssistantSafetyEvent {
+  id              String   @id @default(cuid())
+  threadId        String
+  messageId       String?
+  clinicId        String
+  patientId       String?
+  assessmentId    String?
+  flags           String[]
+  action          String
+  redactedSummary String?  @db.Text
+  createdAt       DateTime @default(now())
+}
+
+model AssistantFeedback {
+  id        String   @id @default(cuid())
+  threadId  String
+  messageId String?
+  clinicId  String
+  userId    String
+  rating    Int?
+  helpful   Boolean?
+  category  String?
+  comment   String?  @db.Text
+  createdAt DateTime @default(now())
+}
+
+model AssistantEscalation {
+  id               String    @id @default(cuid())
+  threadId         String?
+  clinicId         String
+  patientId        String?
+  assessmentId     String?
+  messageId        String?
+  reason           String
+  priority         String
+  status           String
+  payload          Json
+  assignedDoctorId String?
+  resolvedBy       String?
+  resolvedAt       DateTime?
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+
+  @@index([clinicId, status, priority, createdAt])
+}
+
+model AdverseEvent {
+  id           String   @id @default(cuid())
+  threadId     String?
+  clinicId     String
+  patientId    String?
+  assessmentId String?
+  productIds   String[]
+  symptoms     String   @db.Text
+  severity     String
+  status       String
+  createdBy    String
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@index([clinicId, status, createdAt])
 }

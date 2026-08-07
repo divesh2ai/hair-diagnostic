@@ -1,0 +1,97 @@
+{
+  "chapterTitles": [
+    "Scalp Condition",
+    "Medical History & Causes",
+    "Nutrition, Diet & Treatments",
+    "Hair Loss Grade & Additional Notes"
+  ],
+  "visitedQuestionCount": 17,
+  "firstQuestion": "What is your full name?",
+  "lastQuestion": "Anything else Dr. FACT should know? (optional)",
+  "multiCaptured": true,
+  "nutritionCaptured": true,
+  "finalCaptured": true,
+  "exclusiveVerified": true,
+  "progressMonotonic": true,
+  "progressStart": 5,
+  "progressEnd": 100,
+  "submittedPayloadKeys": [
+    "answers",
+    "clinicSlug"
+  ],
+  "submittedClinicSlug": "drfact-mumbai",
+  "submittedAnswerCount": 17,
+  "measurements": {
+    "1440x900-first-question": {
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "scrollWidth": 1440,
+      "clientWidth": 1440,
+      "overflowX": false,
+      "clippedText": []
+    },
+    "390x844-first-question": {
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "scrollWidth": 390,
+      "clientWidth": 390,
+      "overflowX": false,
+      "clippedText": []
+    },
+    "430x932-first-question": {
+      "viewport": {
+        "width": 430,
+        "height": 932
+      },
+      "scrollWidth": 430,
+      "clientWidth": 430,
+      "overflowX": false,
+      "clippedText": []
+    },
+    "768x1024-first-question": {
+      "viewport": {
+        "width": 768,
+        "height": 1024
+      },
+      "scrollWidth": 768,
+      "clientWidth": 768,
+      "overflowX": false,
+      "clippedText": []
+    },
+    "1440x900-nutrition-transition": {
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "scrollWidth": 1440,
+      "clientWidth": 1440,
+      "overflowX": false,
+      "clippedText": []
+    },
+    "390x844-nutrition-transition": {
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "scrollWidth": 390,
+      "clientWidth": 390,
+      "overflowX": false,
+      "clippedText": []
+    },
+    "1440x900-final-step": {
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "scrollWidth": 1440,
+      "clientWidth": 1440,
+      "overflowX": false,
+      "clippedText": []
+    }
+  },
+  "consoleErrors": []
+}

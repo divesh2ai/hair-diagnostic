@@ -28,8 +28,8 @@ export async function proxy(req: NextRequest) {
   let res = NextResponse.next({ request: req });
 
   const supabase = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    (process.env.NEXT_PUBLIC_SUPABASE_URL || "").replace(/\uFEFF/g, ""),
+    (process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "").replace(/\uFEFF/g, ""),
     {
       cookies: {
         getAll: () => req.cookies.getAll(),
@@ -84,5 +84,8 @@ export const config = {
     "/api/admin/:path*",
     "/clinic/:path*",
     "/api/clinic/:path*",
+    // Defense-in-depth: the route handler enforces auth + clinic ownership
+    // as well, but keep unauthenticated callers from ever reaching it.
+    "/api/upload",
   ],
 };

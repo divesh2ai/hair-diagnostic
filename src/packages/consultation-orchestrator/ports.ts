@@ -21,12 +21,24 @@ export interface AssessmentLoad {
     email: string | null;
   };
   reviewingDoctorId: string | null;
+  /**
+   * Orchestration lifecycle status. Approval refuses cases whose upstream
+   * pipeline hasn't produced clinical content yet, so the field is required
+   * for the approval guard. Optional for backwards-compat with older tests
+   * that seed a fake loader.
+   */
+  status?: string;
 }
 
 export interface DoctorPreferences {
   doctorId: string;
   preferredLanguage: string;
-  budgetTier: "ESSENTIAL" | "STANDARD" | "COMPREHENSIVE";
+  /**
+   * Optional. When omitted, the orchestrator falls back to
+   * OrgDefaults.defaultBudgetTier. Loaders should only set this when the
+   * doctor has explicitly chosen a tier — never as a hardcoded default.
+   */
+  budgetTier?: "ESSENTIAL" | "STANDARD" | "COMPREHENSIVE";
   notes?: string;
 }
 
@@ -73,6 +85,8 @@ export interface VersionMetadata {
 export interface StoredVersion {
   id: string;
   consultationId: string;
+  /** Owning clinic for cross-tenant access checks. Required — never omit. */
+  clinicId: string;
   contentVersion: number;
   content: Consultation;
   contentHash: string;

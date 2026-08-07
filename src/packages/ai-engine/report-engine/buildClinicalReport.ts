@@ -172,17 +172,17 @@ const ROOT_CAUSE_RELEVANCE: Record<RootCause, string> = {
 // interpretation and caps at 6.
 const SIGNAL_INTERPRETATION: Array<{ match: RegExp; group: keyof QuestionnaireSelections; condition: string; interpretation: string }> = [
   // ── Q4 — Suspected cause ─────────────────────────────────────────────────
-  { match: /Stress|Anxiety|Depression/i, group: "cause", condition: "Stress-induced TE", interpretation: "Stress releases cortisol which causes hair loss through substance \"P\", neuroendocrine mediators, raised metabolic rate, desire for low nutrient comfort foods and poor nutrient absorption due to increased gut motility contribute to nutritional deficiencies." },
-  { match: /Post[-\s]?partum.*(still\s)?feed|Post[-\s]?partum.*lactat|breastfeed/i, group: "cause", condition: "Hormonal TE", interpretation: "Feeding increases nutrient demand by priority depriving essential micro nutrients for the hair cycles." },
-  { match: /Post[-\s]?partum/i, group: "cause", condition: "Hormonal TE", interpretation: "During pregnancy the abundant growth factors and hormonal support override follicular telogen and favor the continuation of anagen. After delivery of the baby there is a sudden withdrawal of the hormones and growth factors which cause anagen release leading to acute telogen shedding. Nutrients provide support for the reinitiation of anagen." },
+  { match: /Stress|Anxiety|Depression/i, group: "cause", condition: "Stress-induced TE", interpretation: "Stress releases cortisol which causes hair loss through substance \"P\" and neuroendocrine mediators. Stress raises the metabolic rate which increases nutrient requirement. Stress creates desire for comfort foods which are low in nutrients. Stress increases gut motility leading to poor nutrient absorption, contributing to nutritional deficiencies." },
+  { match: /Post[-\s]?partum.*(still\s)?feed|Post[-\s]?partum.*lactat|breastfeed/i, group: "cause", condition: "Hormonal TE", interpretation: "Breast feeding increases nutrient demand by priority depriving essential micro nutrients for hair growth." },
+  { match: /Post[-\s]?partum/i, group: "cause", condition: "Hormonal TE", interpretation: "During pregnancy the abundant growth factors and hormonal support override follicular telogen and favor the continuation of anagen. After delivery of the baby there is a sudden withdrawal of the supportive hormones and growth factors which cause a sudden anagen release leading to shedding of the hair. Nutrients provide support for the reinitiation of anagen and induction of growth." },
   { match: /Nutritional def|Poor nutrition|Nutrition issue/i, group: "cause", condition: "Nutritional TE", interpretation: "Nutritional deficiencies directly trigger arrest of anagen and extension of telogen." },
   { match: /Family history|Genetics|Genetic/i, group: "cause", condition: "Metabolic — polygenic drivers", interpretation: "Hair loss is confirmed to be polygenic and multifactorial, not caused by a single gene but a set of genes which not only transmit genetic androgen sensitivity but are also associated with impaired metabolism of amino acids, lipids and insulin resistance which dysregulate hair growth." },
-  { match: /Medication/i, group: "cause", condition: "Systemic hair loss", interpretation: "Prolonged medication, illness & surgery divert the nutrients for healing and recovery depriving the hair follicles of resources for continuation of anagen. Inflammation and active immune response also compound the nutrient diversion, leaving inadequate energy resources for the continuation of hair growth. Certain drugs have hair loss as a side effect." },
-  { match: /Recent illness|Surgery|Illness/i, group: "cause", condition: "Post-illness shedding", interpretation: "Prolonged medication, illness & surgery divert the nutrients for healing and recovery depriving the hair follicles of resources for continuation of anagen. Inflammation and active immune response also compound the nutrient diversion, leaving inadequate energy resources for the continuation of hair growth. Certain drugs have hair loss as a side effect." },
+  { match: /Medication/i, group: "cause", condition: "Systemic hair loss", interpretation: "Prolonged medication, illness & surgery divert the nutrients for healing and recovery depriving the hair follicles of resources for continuation of anagen. Inflammation and active immune response also compound the nutrient diversion, leaving inadequate energy resources for the continuation of hair growth. Certain drugs can cause hair loss as a side effect." },
+  { match: /Recent illness|Surgery|Illness/i, group: "cause", condition: "Post-illness shedding", interpretation: "Prolonged medication, illness & surgery divert the nutrients for healing and recovery depriving the hair follicles of resources for continuation of anagen. Inflammation and active immune response also compound the nutrient diversion, leaving inadequate energy resources for the continuation of hair growth. Antibiotics and drugs used during recovery can cause hair loss as a side effect." },
   { match: /Hard water/i, group: "cause", condition: "Hair-shaft damage", interpretation: "Hard water causes sedimentation of salts on the hair shaft and scalp, blocking the pores. Minerals in hard water generate oxidative stress on exposure to sunlight and UV rays. Dual mechanism of physical blocking plus oxidative damage." },
-  { match: /GLP[-\s]?1|GLP1|Ozempic|Semaglutide|Wegovy|Mounjaro|Tirzepatide/i, group: "cause", condition: "Post GLP-1 receptor agonist", interpretation: "GLP-1 receptor agonists delay gastric emptying and intestinal motility, shift gut microbiota, impair digestion, lead to digestive problems, malabsorption, inflammation and disturb the gut-brain-skin axis. Thus affecting hair growth in many ways." },
+  { match: /GLP[-\s]?1|GLP1|Ozempic|Semaglutide|Wegovy|Mounjaro|Tirzepatide/i, group: "cause", condition: "Post GLP-1 agonist", interpretation: "GLP-1 receptor agonists delay gastric emptying and intestinal motility, shift gut microbiota, impair digestion, lead to digestive problems, malabsorption, inflammation and disturb the gut-brain-skin axis. Thus affecting hair growth in many ways." },
   { match: /Pulling|Hair pull|TTM|Trichotillomania|OCD/i, group: "cause", condition: "Trichotillomania", interpretation: "Trichotillomania is an obsessive compulsive disorder (OCD) of hair pulling and breaking arising out of anxiety which is known to benefit from well planned nutritional supplements." },
-  { match: /Crash diet|sudden weight loss/i, group: "cause", condition: "Crash Diet", interpretation: "Calorie restriction and sudden acute nutrient deficiency triggers telogen effluvium." },
+  { match: /Crash diet|sudden weight loss/i, group: "cause", condition: "Crash diet", interpretation: "Calorie restriction and sudden acute nutrient deficiency triggers telogen effluvium." },
 
   // ── Q5 — Scalp ───────────────────────────────────────────────────────────
   { match: /Dandruff.*itch|itching.*dandruff|Dandruff \+ itching|White flakes/i, group: "scalp", condition: "Seborrheic + inflammation", interpretation: "Itching indicates activity of mast cells and inflammatory cells which arrest hair growth. Inflammatory mediators promote scalp epidermal hyperplasia and cause flaking. Loss of scalp hygiene and accumulated build up of dead exfoliated cells invites microbes generating ROS and disrupting the hair cycles." },
@@ -190,26 +190,28 @@ const SIGNAL_INTERPRETATION: Array<{ match: RegExp; group: keyof QuestionnaireSe
   { match: /Oily/i, group: "scalp", condition: "DHT + seborrhoea", interpretation: "Androgens increase sebum secretion and are proinflammatory. Oily scalp invites microbes, promotes inflammation and generation of ROS which disrupts the hair cycles." },
   { match: /Dry scalp/i, group: "scalp", condition: "Scalp imbalance", interpretation: "Chronic perifollicular inflammation can shrink or destroy the sebum glands at the follicular infundibulum along with effects of inflammation on hair growth." },
   { match: /Flaking/i, group: "scalp", condition: "Inflammatory scalp", interpretation: "Inflammatory mediators promote scalp epidermal hyperplasia and cause flaking. Loss of scalp hygiene and accumulated build up of dead exfoliated cells invites microbes generating ROS and disrupting the hair cycles." },
-  { match: /Boils|Folliculitis|pimples|pustule/i, group: "scalp", condition: "Folliculitis", interpretation: "Active inflammation and infection affects follicles around the area, while multiple long standing boils affect the entire scalp. Boils indicate pro inflammatory factors, inflammation and weak immunity." },
+  { match: /Boils|Folliculitis|pimples|pustule/i, group: "scalp", condition: "Folliculitis", interpretation: "Active inflammation and infection affects follicles around the area, while multiple long standing boils affect the entire scalp. Boils indicate pro inflammatory factors, inflammation and weak immunity which are detrimental to hair growth." },
   { match: /Redness|Burning|irritation/i, group: "scalp", condition: "Scalp inflammation", interpretation: "Redness and burning result from inflammatory exudate changing the tissue pH making and converting conditions unfavorable for hair growth." },
-  { match: /Psoriasis/i, group: "scalp", condition: "Scalp psoriasis", interpretation: "Chronic scaling dermatosis with elevated systemic inflammatory load that disrupts the follicular environment." },
+  { match: /Psoriasis/i, group: "scalp", condition: "Scalp psoriasis", interpretation: "Chronic scaling dermatosis with elevated systemic inflammatory load associated with psoriasis, disrupts the follicular environment and affects hair growth." },
+  { match: /Normal scalp/i, group: "scalp", condition: "Healthy scalp", interpretation: "Healthy scalp which has no dandruff and no inflammation." },
 
   // ── Q6 — Immunity ────────────────────────────────────────────────────────
-  { match: /cough|cold|fever|Frequent infection/i, group: "immunity", condition: "Immune dysregulation", interpretation: "Indicates poor immunity can potentially extend to the follicles and compromises hair growth." },
-  { match: /Allergies|Allergy/i, group: "immunity", condition: "Immune hypersensitivity", interpretation: "Indicates altered or overactive immunity and hypersensitivity which can potentially extend to the follicles and compromises hair growth." },
-  { match: /Asthma/i, group: "immunity", condition: "Auto-immune inflammation", interpretation: "Autoimmune or altered immune response from one system can potentially extend to the thyroid, gut skin and hair follicles to compromise hair growth." },
-  { match: /Skin rash|Eczema/i, group: "immunity", condition: "Auto-immune", interpretation: "Autoimmune or altered immune response from one system can potentially extend to the thyroid, gut skin and hair follicles to compromise hair growth. Altered immunity impairs the ability to counter inflammation." },
-  { match: /Alopecia areata|Areata/i, group: "immunity", condition: "Auto-immune hair loss", interpretation: "Primary loss of immune privilege of the hair follicle generating an autoimmune response." },
-  { match: /Scarring alopecia/i, group: "immunity", condition: "Permanent follicle damage", interpretation: "There are progressively variable grades of inflammation spreading from the primary affected area into the surrounding scalp. Follicles subject to partial or intermediate damage in the surrounding scalp can recover with nutrient support." },
-  { match: /Tongue.*ulcer|mouth ulcer|Ulcer/i, group: "immunity", condition: "Immune inflammation", interpretation: "Indicates inflammation and poor immunity which can potentially extend to the follicles and compromises hair growth. Can also be an indication of stress." },
+  { match: /cough|cold|fever|Frequent infection/i, group: "immunity", condition: "Immune dysregulation", interpretation: "Indicates inflammation and poor immunity which potentially extends to the follicles and compromises hair growth." },
+  { match: /Allergies|Allergy/i, group: "immunity", condition: "Immune hypersensitivity", interpretation: "Indicates altered immunity or overactive immunity and hypersensitivity which can potentially extend to the follicles and compromises hair growth." },
+  { match: /Asthma/i, group: "immunity", condition: "Auto-immune inflammation", interpretation: "Autoimmune or altered immune response from one system can potentially extend to the thyroid, gut skin and hair follicles compromising hair growth. Altered immunity also impairs the cellular ability to counter inflammation." },
+  { match: /Skin rash|Eczema/i, group: "immunity", condition: "Auto-immune", interpretation: "Autoimmune or altered immune response from one system can potentially extend to the thyroid, gut skin and hair follicles compromising hair growth. Altered immunity also impairs the cellular ability to counter inflammation." },
+  { match: /Recurrent Acne|Acne prone|Acne/i, group: "immunity", condition: "Recurrent acne / sebaceous inflammation", interpretation: "It involves repeated cycles of clogged pores, oil buildup, and inflammation, reflecting a sebaceous-follicular inflammatory terrain that can extend to the scalp and compromise hair growth." },
+  { match: /Alopecia areata|Areata/i, group: "immunity", condition: "Auto-immune hair loss", interpretation: "Primary loss of immune privilege of the hair follicle generates an autoimmune response restricting anagen hair growth of the follicles." },
+  { match: /Scarring alopecia/i, group: "immunity", condition: "Permanent follicle damage", interpretation: "There are progressively variable grades of inflammation spreading from the primary affected area into the surrounding scalp. Follicles are subject to partial or intermediate damage in the surrounding scalp. The cellular damage can be repaired and recovered with nutrient support." },
+  { match: /Tongue.*ulcer|mouth ulcer|Ulcer/i, group: "immunity", condition: "Immune inflammation", interpretation: "Mouth ulcers indicate inflammation and poor immunity which can potentially extend to the follicles and compromises hair growth. Mouth ulcers can also be an indication of stress." },
 
   // ── Q7 — Lifestyle ───────────────────────────────────────────────────────
-  { match: /Smoking|Vaping/i, group: "lifestyle", condition: "Oxidative stress", interpretation: "Increased hepatic and oxidative load through ROS in addition to the effects of vasoconstriction reducing oxygenation of the tissues." },
-  { match: /Alcohol/i, group: "lifestyle", condition: "Oxidative stress", interpretation: "Hepatic and oxidative load along with reduced absorption of nutrients from the gut." },
-  { match: /Bodybuilding|Heavy gym|gym/i, group: "lifestyle", condition: "Hormonal / DHT", interpretation: "Exercise generates ROS and metabolic byproducts. Bodybuilding practices causes a rise in exogenous androgens and testosterone levels. High protein intake makes the blood acidic leading to calciuria. Anabolic supplements compound the negative effects on hormonal imbalance affecting skin and hair." },
-  { match: /Obesity|Struggle to lose weight|overweight/i, group: "lifestyle", condition: "Metabolic dysfunction", interpretation: "Dyslipidemia and altered lipid metabolism are inherited along with the polygenic AGA genes. Adipose tissue signals coordinate the hair cycles." },
-  { match: /Sedentary/i, group: "lifestyle", condition: "Metabolic syndrome", interpretation: "Inactivity slows down metabolic rate and cellular turnover in the tissues." },
-  { match: /Diet issue|Poor diet|Irregular meal|erratic|outside eating/i, group: "lifestyle", condition: "Metabolic hair loss", interpretation: "Dietary imbalance affects metabolic efficiency, tissues repair and growth." },
+  { match: /Smoking|Vaping/i, group: "lifestyle", condition: "Oxidative stress", interpretation: "Increased hepatic and oxidative load through ROS in addition to the effects of vasoconstriction which reduces oxygenation of the tissues." },
+  { match: /Alcohol/i, group: "lifestyle", condition: "Oxidative stress", interpretation: "Hepatic and oxidative load as well as reduced absorption of nutrients from the gut." },
+  { match: /Bodybuilding|Heavy gym|gym/i, group: "lifestyle", condition: "Hormonal / DHT", interpretation: "Exercise increases the generation of ROS and metabolic byproducts. Bodybuilding practices cause a rise in androgens and testosterone levels. High protein intake makes the blood acidic leading to calciuria. Common anabolic supplements consumed for bodybuilding add to the negative effects on hormonal imbalance, affecting skin and hair growth." },
+  { match: /Obesity|Struggle to lose weight|overweight/i, group: "lifestyle", condition: "Metabolic dysfunction", interpretation: "Dyslipidemia and altered lipid metabolism are inherited along with the polygenic AGA genes. Adipose tissue signals have been proven to directly coordinate the hair cycles." },
+  { match: /Sedentary/i, group: "lifestyle", condition: "Metabolic syndrome", interpretation: "Inactivity leads to slow down of metabolic rate and cellular activity in the tissues." },
+  { match: /Diet issue|Poor diet|Irregular meal|erratic|outside eating/i, group: "lifestyle", condition: "Metabolic hair loss", interpretation: "Dietary imbalance affects metabolic efficiency, tissue repair and growth." },
   { match: /Night shift|Poor sleep|Sleep/i, group: "lifestyle", condition: "Circadian disruption", interpretation: "Loss of circadian rhythm affects endocrine cycles and cellular metabolism and growth." },
   { match: /Sudden weight loss|Rapid weight loss/i, group: "lifestyle", condition: "Rapid telogen shedding", interpretation: "Calorie restriction and lack of nutrients arrests hair growth." },
   { match: /Frequent flying|Flying/i, group: "lifestyle", condition: "Circadian + immune stress", interpretation: "Work stress, erratic eating, sleep disturbances, exposure to cosmic radiation, low oxygen pressure in the cabin and loss of circadian rhythm disrupt the hair cycles." },
@@ -219,60 +221,79 @@ const SIGNAL_INTERPRETATION: Array<{ match: RegExp; group: keyof QuestionnaireSe
   // ── Q8 — Medical ─────────────────────────────────────────────────────────
   { match: /Chronic condition|Chronic medical|Chronic illness/i, group: "immunity", condition: "Metabolic stress", interpretation: "Continued accumulation and imbalance of ROS and toxic metabolic byproducts weaken the cells to arrest growth." },
   { match: /Autoimmune/i, group: "immunity", condition: "Auto-immune inflammation", interpretation: "Autoimmune or altered immune response from one system can potentially extend to the thyroid, gut skin and hair follicles to compromise hair growth. Altered immunity impairs the ability to counter inflammation." },
-  { match: /Pre[-\s]?diabet/i, group: "hormonal", condition: "Pre-diabetic", interpretation: "Causes metabolic imbalance, insulin resistance sluggish immune response and slow down of the metabolic rate." },
-  { match: /Diabet/i, group: "hormonal", condition: "Diabetic", interpretation: "Causes metabolic imbalance, insulin resistance sluggish immune response and slow down of the metabolic rate." },
+  { match: /Pre[-\s]?diabet/i, group: "hormonal", condition: "Pre-diabetic", interpretation: "Causes metabolic imbalance, insulin resistance, sluggish immune response, slow down of the metabolic rate and unhealthy internal cellular environment for hair growth." },
+  { match: /Diabet/i, group: "hormonal", condition: "Diabetic", interpretation: "Causes metabolic imbalance, insulin resistance, sluggish immune response and slow down of the metabolic rate." },
 
   // ── Q9 — Hormonal / Thyroid ──────────────────────────────────────────────
-  { match: /Hypothyroid|Hyperthyroid|Thyroid/i, group: "thyroid", condition: "Thyroid-related", interpretation: "Thyroid hormones directly regulate hair cycles. Both hypo and hyper thyroid states affect hair growth. Hyper thyroid condition consumes high volume of nutrients creating relative deficiencies while retarded metabolism in hypo thyroid status requires nutrient to initiate and propagate active basal metabolism." },
+  { match: /Hypothyroid|Hyperthyroid|Thyroid/i, group: "thyroid", condition: "Thyroid-related", interpretation: "Thyroid hormones directly regulate hair cycles. Both hypo and hyper thyroid states affect hair growth. Hyper thyroid condition consumes high volume of nutrients creating relative deficiencies while retarded metabolism in hypo thyroid status requires nutrients to initiate and propagate active basal metabolism." },
   { match: /PCOS.*Obesity|PCOS.*weight|PCOD.*Obesity/i, group: "hormonal", condition: "PMOS + weight", interpretation: "PCOS/PMOS is a complex condition with an interplay of insulin resistance, dyslipidemia, hormonal imbalance, impaired metabolism, inflammation and oxidative stress governed by genetic traits inherited along with the polygenic cohort of AGA genes." },
   { match: /PCOS|PCOD/i, group: "hormonal", condition: "PMOS-related", interpretation: "PCOS/PMOS is a complex condition with an interplay of insulin resistance, dyslipidemia, hormonal imbalance, impaired metabolism, inflammation and oxidative stress governed by genetic traits inherited along with the polygenic cohort of AGA genes." },
   { match: /Endometr/i, group: "hormonal", condition: "Hormonal inflammation", interpretation: "Endometriosis is primarily driven by: Hormonal, genetic, and inflammatory mechanisms with immune dysregulation, oxidative stress and fibrotic changes." },
   { match: /Pregnan/i, group: "hormonal", condition: "Pregnancy support", interpretation: "Pregnancy increases the metabolic and nutritional requirements which can deprive the hair of adequate nutrients." },
   { match: /Post[-\s]?delivery|Feeding|Lactat|Breastfeed/i, group: "hormonal", condition: "Post-natal TE", interpretation: "Feeding increases nutrient demand by priority, therefore depriving the hair cycles." },
   { match: /Peri[-\s]?menopaus/i, group: "hormonal", condition: "Peri-menopausal TE", interpretation: "Relative androgen excess causes imbalance in the hormonal regulation of the hair cycles. There can also be associated poor absorption and assimilation of nutrients from the gut." },
-  { match: /Post[-\s]?menopaus/i, group: "hormonal", condition: "Post Menopausal transition", interpretation: "Relative androgen excess causes imbalance in the hormonal regulation of the hair cycles. There can also be associated poor absorption and assimilation of nutrients from the gut." },
+  { match: /Post[-\s]?menopaus/i, group: "hormonal", condition: "Post-menopausal transition", interpretation: "Relative androgen excess causes imbalance in the hormonal regulation of the hair cycles. There can also be associated poor absorption and assimilation of nutrients from the gut." },
   { match: /Menopaus/i, group: "hormonal", condition: "Menopausal transition", interpretation: "Relative androgen excess causes imbalance in the hormonal regulation of the hair cycles. There can also be associated poor absorption and assimilation of nutrients from the gut." },
+  { match: /Hysterectomy/i, group: "hormonal", condition: "Post-hysterectomy recovery", interpretation: "It supports your body during this recovery phase by providing nutritional support. It helps meet increased healing demands while maintaining nourishment to hair, skin and bones, and also supports internal tissue repair, maintaining nutrient availability for hair, skin and overall body." },
   { match: /HRT|Hormone replacement/i, group: "hormonal", condition: "Hormonal therapy support", interpretation: "Hormones can stimulate cellular activity, however, nutritional support is essential for effective cellular function in response to the hormones." },
   { match: /Heavy bleeding|Heavy menstrual|Menorrhagia/i, group: "hormonal", condition: "Chronic iron loss", interpretation: "Heavy menstrual bleeding causes ongoing iron and ferritin depletion. Low iron stores directly arrest the hair cycle — DNA repair, T4→T3 conversion and follicular oxygenation all depend on adequate ferritin. Iron repletion is the foundational kit." },
 
   // ── Q10 — Gut ────────────────────────────────────────────────────────────
   { match: /GERD|Acid reflux|Acidity|Heartburn/i, group: "gut", condition: "Gut-hair axis disruption", interpretation: "GERD which is Gastro esophageal reflux disease or acid peptic disease is associated with acidity, digestive issues, gastritis and inflammation." },
-  { match: /IBS|Leaky gut|Crohn/i, group: "gut", condition: "Gut dysbiosis", interpretation: "Gut microbial toxins and inflammatory mediators leak across and reach into the circulation." },
-  { match: /Constipation/i, group: "gut", condition: "Gut dysbiosis", interpretation: "Associated with gut dysbiosis, causes toxin reabsorption from retained intestinal waste, rising ROS levels which also affect gut microbes, influencing hair growth in many ways." },
+  { match: /IBS|Leaky gut|Crohn/i, group: "gut", condition: "Gut dysbiosis", interpretation: "Gut microbial toxins and inflammatory mediators leak across the intestinal epithelial barrier and reach into the circulation causing inflammation and altered tissue response." },
+  { match: /Constipation/i, group: "gut", condition: "Gut dysbiosis", interpretation: "Associated with gut dysbiosis, causes toxin reabsorption from retained intestinal waste, rising ROS levels which also affect gut microbes, influencing hair growth." },
   { match: /Bloating|Gas/i, group: "gut", condition: "Gut dysfunction", interpretation: "Improper digestion, assimilation and propulsion of food causing nutritional deficiencies." },
+  { match: /Indigestion/i, group: "gut", condition: "Gut dysfunction", interpretation: "Indigestion hampers the availability of nutrients for efficient absorption and assimilation affecting hair growth." },
 
   // ── Q11 — Deficiencies ──────────────────────────────────────────────────
   { match: /Iron def|Anaem|Ferritin/i, group: "deficiency", condition: "Iron deficiency hair loss", interpretation: "In addition to oxygenation, iron is essential for DNA repair, conversion of thyroid hormone T4 to T3. Low iron directly affects hair cycles." },
-  { match: /Vitamin D/i, group: "deficiency", condition: "Nutritional", interpretation: "Vitamin D acts on dermal papilla regulates inflammation and builds immunity." },
-  { match: /B12|Vitamin B12/i, group: "deficiency", condition: "Nutritional", interpretation: "Essential for all cellular metabolic functions for utilization of proteins, carbohydrates and fats." },
+  { match: /Vitamin D/i, group: "deficiency", condition: "Nutritional deficiency", interpretation: "Vitamin D acts on the dermal papilla, regulates inflammation and builds immunity." },
+  { match: /B12|Vitamin B12/i, group: "deficiency", condition: "Nutritional deficiency", interpretation: "Essential for all cellular metabolic functions for utilization of proteins, carbohydrates and fats." },
 
   // ── Q12 — Diet ───────────────────────────────────────────────────────────
-  { match: /Vegan|Vegetarian|Jain/i, group: "diet", condition: "Veg only", interpretation: "Known to be associated with deficiencies of iron, zinc, amino acids, omega 3 and vitamin D." },
-  { match: /Pescatarian/i, group: "diet", condition: "Pescatarian", interpretation: "Fish-inclusive plant-leaning diet — generally adequate omega-3 and B12 from seafood, but iron and zinc remain at risk; absorption supports may still be required to sustain hair-cycle nutrient demand." },
-  { match: /Non[-\s]?vegetarian/i, group: "diet", condition: "Standard", interpretation: "Increases blood acidity, urea nitrogenous load and creatinine which are unfavorable for hair growth." },
+  { match: /Normal diet/i, group: "diet", condition: "Balanced diet", interpretation: "A normal (balanced) diet provides all the essential nutrients your body needs to function optimally without exceeding your daily calorie limits." },
+  { match: /Non[-\s]?vegetarian/i, group: "diet", condition: "Standard diet", interpretation: "Foods of animal origin make the body environment acidic and reduce cellular function. High intake of animal protein induces loss of calcium through the kidneys in urine." },
+  { match: /Vegan|Vegetarian|Jain/i, group: "diet", condition: "Vegetarian diet", interpretation: "Known to be associated with deficiencies of iron, zinc, amino acids, omega 3 and vitamin D." },
+  { match: /Pescatarian/i, group: "diet", condition: "Pescatarian", interpretation: "Fish-inclusive plant-leaning pescatarian diet is generally adequate in omega-3 and B12 from seafood, but low iron and zinc remain a risk; correction of nutritional imbalance is required to sustain hair growth." },
   { match: /High protein/i, group: "diet", condition: "DHT boost risk", interpretation: "Rise in amino acids makes the blood acidic and leads to calcinuria." },
   { match: /Poor diet|Irregular frequency|Irregular meal/i, group: "diet", condition: "Nutritional gap", interpretation: "Results in multiple nutrition deficiencies." },
 
   // ── Q13 — Treatments (also matched in Q7 above for safety) ──────────────
   { match: /chemical.*treat|colour.*treat|color.*treat/i, group: "treatment", condition: "Hair-shaft compromise", interpretation: "Chemical damage to the cuticle and the hair shaft with reaction and irritation of the scalp." },
-  { match: /Heat treat|Heat styling/i, group: "treatment", condition: "Hair-shaft damage", interpretation: "Heat styling and straightening damage cuticle and hair shaft." },
-  { match: /Early Grey|premature grey|grey hair/i, group: "treatment", condition: "Early Greying", interpretation: "Early greying is caused by emotional stress, acute illness, nutrient deficiencies, rising oxidative stress and premature exhaustion of melanocytes. Exposure to UV rays and pollution are external factors that cause greying." },
+  { match: /Heat treat|Heat styling/i, group: "treatment", condition: "Hair-shaft damage", interpretation: "Heat styling and straightening damage the hair cuticle and hair shaft." },
+  { match: /Early Grey|premature grey|grey hair/i, group: "treatment", condition: "Early greying", interpretation: "Early greying is caused by emotional stress, acute illness, nutrient deficiencies, rising oxidative stress and premature exhaustion of melanocytes. Exposure to UV rays and pollution are external factors that cause greying." },
 
   // ── Hair pattern (kept from prior — pattern topology insight) ───────────
-  { match: /Thinning at crown|Widening parting|Receding hairline|widening|crown|parting/i, group: "hairType", condition: "Pattern miniaturisation", interpretation: "Pattern topology consistent with androgen-driven miniaturisation." },
-  { match: /Diffuse|all over/i, group: "hairType", condition: "Diffuse telogen exit", interpretation: "Cycle-wide telogen exit — not a localised pattern process." },
+  { match: /Thinning at crown|Widening parting|Receding hairline|widening|crown|parting/i, group: "hairType", condition: "Widening or thinning", interpretation: "Gradual loss of hair growth from conversion of hair to resting phase and slow growth or miniaturization." },
+  { match: /Diffuse|all over/i, group: "hairType", condition: "Diffuse telogen exit", interpretation: "Pattern consistent with androgen-driven sensitivity as well as non androgenic factors leading to wide spread generalised miniaturisation." },
   { match: /Patchy|circular|patches|Coin[-\s]?sized/i, group: "hairType", condition: "Localised follicle attack", interpretation: "Localised follicle attack pattern — autoimmune until proven otherwise." },
   { match: /Broken|short|breakage/i, group: "hairType", condition: "Mid-shaft breakage", interpretation: "Mid-shaft damage — root architecture intact; shaft-repair layer required." },
 
-  // ── Q-Grade — severity / pattern stage ───────────────────────────────────
-  // Order matters — leading "Grade N" is the canonical anchor; patterns are
-  // ordered most-severe → least-severe so "Grade 3 — Ludwig I-1" hits the
-  // Grade 3 rule (not the Ludwig-I substring inside the Grade 1 rule).
-  { match: /Grade 5\b|Norwood VII|Advanced grade 5/i, group: "grade", condition: "Advanced pattern loss", interpretation: "Advanced pattern loss — pattern-correction leads the protocol with maximum nutrient support; recovery expectation is partial restoration of remaining viable follicles." },
-  { match: /Grade 4\b|Norwood VI|Advanced/i, group: "grade", condition: "Advanced pattern loss", interpretation: "Advanced pattern loss — pattern-correction leads the protocol with maximum nutrient support; recovery expectation is partial restoration of remaining viable follicles." },
-  { match: /Grade 3\b|Norwood IV|Norwood V/i, group: "grade", condition: "Moderate pattern loss", interpretation: "Moderate pattern loss with visible scalp through hair — full upstream-to-pattern stack required (inflammation control, metabolic correction, pattern-correction) to consolidate density." },
-  { match: /Grade 2\b|Norwood III/i, group: "grade", condition: "Mild-moderate pattern loss", interpretation: "Mild to moderate pattern loss — DHT-driven miniaturisation is establishing; pattern-correction kit added to the terrain stack to reverse follicle thinning." },
-  { match: /Grade 1\b|Norwood I\b|Norwood II\b/i, group: "grade", condition: "Early-stage pattern loss", interpretation: "Early-stage pattern loss — follicles are not yet miniaturised; terrain correction and inflammation control are sufficient to halt progression and restore density." },
+  // ── Q-Grade — Norwood scale (MPHL) ───────────────────────────────────────
+  // Ordered most-severe → least-severe; more-specific variants (IVa, IIIa, Va)
+  // must appear before their parent grade so the first match wins correctly.
+  { match: /Norwood VII/i, group: "grade", condition: "MPHL — Norwood VII", interpretation: "Complete baldness with occipital level receding below the auricular line. May be associated with retrograde baldness over the nape of the neck." },
+  { match: /Norwood VI/i, group: "grade", condition: "MPHL — Norwood VI", interpretation: "Complete baldness from frontal to crown." },
+  { match: /Norwood Va/i, group: "grade", condition: "MPHL — Norwood Va", interpretation: "Frontal baldness with crown thinning or crown baldness and a bridge of thinning hair across the mid scalp — extensive variant." },
+  { match: /Norwood V\b/i, group: "grade", condition: "MPHL — Norwood V", interpretation: "Frontal baldness with crown thinning or crown baldness and a bridge of thinning hair across the mid scalp." },
+  { match: /Norwood IVa/i, group: "grade", condition: "MPHL — Norwood IVa", interpretation: "Frontal baldness extending upto mid scalp." },
+  { match: /Norwood IV\b/i, group: "grade", condition: "MPHL — Norwood IV", interpretation: "Hairline and temporal receding beyond the level of the sideburns with advanced thinning or frontal baldness." },
+  { match: /Norwood IIIa/i, group: "grade", condition: "MPHL — Norwood IIIa", interpretation: "Hairline receding and temporal receding in line with the sideburns — anterior variant." },
+  { match: /Norwood III vertex/i, group: "grade", condition: "MPHL — Norwood III vertex", interpretation: "Isolated early thinning or baldness on the crown." },
+  { match: /Norwood III\b/i, group: "grade", condition: "MPHL — Norwood III", interpretation: "Hairline receding and temporal receding in line with the sideburns with scalp showing through the thinning hair." },
+  { match: /Norwood IIa/i, group: "grade", condition: "MPHL — Norwood IIa", interpretation: "Early receding of hairline and temporal angle — anterior variant." },
+  { match: /Norwood II\b/i, group: "grade", condition: "MPHL — Norwood II", interpretation: "Early receding of hairline, temporal angle, or early thinning of frontal forelock and mid scalp." },
+  { match: /Norwood I\b/i, group: "grade", condition: "MPHL — Norwood I", interpretation: "Hairline is intact with no significant recession." },
+  // ── Q-Grade — Ludwig scale (FPHL) ────────────────────────────────────────
+  // Negative lookahead on II and I prevents Roman-numeral substring collisions
+  // (e.g. "III" contains "II"; "II" contains "I"). Numeric aliases (1, 2) and
+  // hyphenated severity variants (I-1, II-1, III-1) are also covered.
+  { match: /Ludwig III|Ludwig III-\d|Ludwig 3\b/i, group: "grade", condition: "FPHL — Ludwig III", interpretation: "Advanced thinning of the mid scalp and thinning or receding of the temporal angle area." },
+  { match: /Ludwig II(?!I)|Ludwig II-\d|Ludwig 2\b/i, group: "grade", condition: "FPHL — Ludwig II", interpretation: "Moderate widening of the parting line and temporal thinning or receding." },
+  { match: /Ludwig I(?!I)|Ludwig I-\d|Ludwig 1\b/i, group: "grade", condition: "FPHL — Ludwig I", interpretation: "Thinning over mid scalp and temporal thinning or receding." },
+  // ── Fallback for combined / unlabelled severity grades ────────────────────
+  { match: /Grade [45]\b|Grade 4-5/i, group: "grade", condition: "Advanced pattern loss", interpretation: "Advanced pattern loss — pattern-correction leads the protocol with maximum nutrient support; recovery expectation is partial restoration of remaining viable follicles." },
+  { match: /Grade [123]\b|Grade 1-2-3/i, group: "grade", condition: "Early-moderate pattern loss", interpretation: "Early to moderate pattern loss — terrain correction, inflammation control and pattern-correction are the priorities to halt progression and restore density." },
 ];
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -570,47 +591,248 @@ function whyKitSelected(
   const reasons: string[] = [];
   const leadIn = getKitSelectionLeadIn(kitId);
 
-  if (/GI GOLD/i.test(kitId) && (ans.gut ?? []).some((g) => /IBS|GERD|Acid|Crohn/i.test(g))) {
-    reasons.push("strong gut-axis signal (IBS / GERD / Crohn's / acid reflux)");
+  // Small helpers — each `ans.<field>` is a free-form array of user-selected
+  // option strings; treat them as unknown and defensively filter to strings.
+  const asStrArr = (v: unknown): string[] =>
+    Array.isArray(v) ? v.filter((x): x is string => typeof x === "string") : [];
+  const _lifestyle = asStrArr(ans.lifestyle);
+  const _hormonal = asStrArr(ans.hormonal);
+  const _thyroid = asStrArr(ans.thyroid);
+  const _diet = asStrArr(ans.diet);
+  const _scalp = asStrArr(ans.scalp);
+  const _immunity = asStrArr(ans.immunity);
+  const _deficiency = asStrArr(ans.deficiency);
+  const _gut = asStrArr(ans.gut);
+  const _cause = asStrArr(ans.cause);
+  const _treatment = asStrArr(ans.treatment);
+  const _hairtype = asStrArr(ans.hairtype);
+  const any = (arr: string[], re: RegExp) => arr.some((x) => re.test(x));
+  const matched = (arr: string[], re: RegExp) => arr.filter((x) => re.test(x));
+
+  if (/GI GOLD/i.test(kitId)) {
+    const gutSignals = matched(_gut, /IBS|GERD|Acid|Crohn/i);
+    if (gutSignals.length > 0) {
+      reasons.push(`gut-axis signal reported (${gutSignals.slice(0, 2).join(", ")})`);
+    }
   }
-  if (/IRON UP GOLD/i.test(kitId) && (ans.deficiency ?? []).some((d) => /Iron|Anaem/i.test(d))) {
-    reasons.push("iron deficiency reported — repletion is non-negotiable");
+  if (/IRON UP GOLD/i.test(kitId)) {
+    const hasIronDef = any(_deficiency, /Iron|Anaem/i);
+    const hasHeavyBleeding = any(_hormonal, /heavy bleeding/i);
+    if (hasIronDef && hasHeavyBleeding) {
+      reasons.push(
+        "heavy menstrual bleeding with iron / anaemia declared — ferritin repletion is non-negotiable",
+      );
+    } else if (hasHeavyBleeding) {
+      reasons.push(
+        "heavy menstrual bleeding reported — chronic iron loss requires ferritin repletion",
+      );
+    } else if (hasIronDef) {
+      reasons.push("iron deficiency reported — repletion is non-negotiable");
+    }
   }
-  if (/PERI MENOPAUSE/i.test(kitId) && ans.hormonal?.some((h) => /Peri/i.test(h))) {
-    reasons.push("perimenopausal transition selected");
+  if (/PERI MENOPAUSE/i.test(kitId)) {
+    const periSignals = matched(_hormonal, /Peri[-\s]?menopause/i);
+    if (periSignals.length > 0) {
+      reasons.push(`perimenopausal transition reported (${periSignals[0]})`);
+    }
   }
-  if (/META B HYPOTHYROID/i.test(kitId) && ans.thyroid?.includes("Hypothyroidism")) {
-    reasons.push("hypothyroid axis confirmed");
+  if (/META B HYPOTHYROID/i.test(kitId)) {
+    if (any(_thyroid, /Hypothyroid/i) || any(_hormonal, /Hypothyroid/i)) {
+      reasons.push("hypothyroid axis confirmed");
+    }
   }
-  if (/META B PCOS/i.test(kitId) && ans.hormonal?.includes("PCOS")) {
-    reasons.push("PCOS with metabolic involvement");
+  if (/META B PCOS/i.test(kitId)) {
+    if (any(_hormonal, /PCOS|PCOD|PMOS/i)) {
+      reasons.push("PCOS with metabolic involvement");
+    }
   }
-  if (/^F-PCOS/i.test(kitId) && ans.hormonal?.includes("PCOS")) {
-    reasons.push("PCOS hormonal pattern reported");
+  if (/(^|\s)(PRO FACT )?META B$/i.test(kitId.trim())) {
+    // Plain META B (generic metabolic) — no PCOS / HYPO / MENO suffix.
+    // Triggered by metabolicModifierRule::detectMetabolicSignal OR by the
+    // "oxidative-only" branch in detectConditions (Alcohol / Smoking / Vaping
+    // without a visible scalp condition and no active shedding).
+    const triggers: string[] = [];
+    if (any(_thyroid, /Pre[-\s]?diabetes/i)) triggers.push("pre-diabetes");
+    else if (any(_thyroid, /Diabetes/i)) triggers.push("diabetes");
+    if (
+      any(_lifestyle, /Obesity|Struggle to lose weight|Slowly gaining weight/i) ||
+      any(_hormonal, /Obesity/i)
+    ) {
+      triggers.push("obesity / struggle to lose weight");
+    }
+    if (any(_lifestyle, /Sedentary/i)) triggers.push("sedentary lifestyle");
+    if (any(_diet, /Irregular|poor|Keto|Crash/i)) triggers.push("irregular or restrictive diet");
+    // Alcohol / Smoking / Vaping are NOT metabolic signs — they belong to
+    // Phenotype Inflammation. Do not surface them here even when META B was
+    // injected via the oxidative-only detectConditions branch; the doctor
+    // already sees them under Phenotype Inflammation's rationale.
+    if (triggers.length > 0) {
+      reasons.push(`metabolic signals reported (${triggers.slice(0, 3).join(", ")})`);
+    }
   }
-  if (/FH WELL 3/i.test(kitId) && ans.hormonal?.some((h) => /Endometr/i.test(h))) {
-    reasons.push("endometriosis reported");
+  if (/META B MENOPAUSE|META B POSTMENOPAUSE/i.test(kitId)) {
+    const menoSignals = matched(_hormonal, /menopause/i);
+    if (menoSignals.length > 0) {
+      reasons.push(`menopausal transition declared (${menoSignals.slice(0, 2).join(", ")})`);
+    }
+  }
+  if (/^F-PCOS/i.test(kitId)) {
+    if (any(_hormonal, /PCOS|PCOD|PMOS/i)) {
+      reasons.push("PCOS hormonal pattern reported");
+    }
+  }
+  if (/FH WELL 3/i.test(kitId)) {
+    if (any(_hormonal, /Endometr/i)) reasons.push("endometriosis reported");
+  }
+  if (/POST[-\s]?HYSTERECTOMY|HYSTERECTOMY RESET/i.test(kitId)) {
+    reasons.push(
+      (
+        getKitInfo("PRO FACT POST HYSTERECTOMY RESET")?.diagnosisInsight ??
+        "This kit is formulated to support your body during this recovery phase by providing nutritional support. It helps meet increased healing demands while maintaining nourishment to hair, skin, and bones. It also supports internal tissue repair and maintains nutrient availability for hair, skin, and the overall body."
+      ).replace(/[.!?]+$/, ""),
+    );
   }
   if (/LACTIHEALTH/i.test(kitId)) {
-    reasons.push("lactation period — elevated nutritional demand");
+    const lactSignals = [
+      ...matched(_cause, /Post partum|still feeding/i),
+      ...matched(_hormonal, /breastfeeding|Post-delivery/i),
+    ];
+    if (lactSignals.length > 0) {
+      reasons.push(`post-partum / lactation reported (${lactSignals[0]}) — elevated nutritional demand`);
+    } else {
+      reasons.push("post-partum / lactation phase — elevated nutritional demand");
+    }
   }
-  if (/^MPHL/i.test(kitId) && clinical.rootCauses.includes("DHT")) {
-    reasons.push("androgen-driven miniaturisation with male topology");
+  if (/^MPHL|HAIR FACT MPHL/i.test(kitId)) {
+    const gradeMatch = /Grade\s*[1-5]/i.exec(clinical.flags.grade ?? "");
+    const patternSignals = matched(_hairtype, /Thinning|widening|parting|crown/i);
+    const grade = gradeMatch ? gradeMatch[0] : null;
+    if (grade && patternSignals.length > 0) {
+      reasons.push(`androgenetic male pattern — ${grade}, with ${patternSignals[0].toLowerCase()} reported`);
+    } else if (grade) {
+      reasons.push(`androgenetic male pattern — ${grade}`);
+    } else if (patternSignals.length > 0) {
+      reasons.push(`male pattern signals reported (${patternSignals.slice(0, 2).join(", ")})`);
+    } else if (clinical.rootCauses.includes("DHT")) {
+      reasons.push("androgen-driven miniaturisation with male topology");
+    }
   }
-  if (/^FPHL/i.test(kitId)) {
-    reasons.push("female pattern topology with androgen pressure");
+  if (/^FPHL|HAIR FACT FPHL/i.test(kitId)) {
+    const gradeMatch = /Grade\s*[1-5]/i.exec(clinical.flags.grade ?? "");
+    const patternSignals = matched(_hairtype, /Thinning|widening|parting|crown/i);
+    const geneticCause = any(_cause, /Genetics|Family history|family/i);
+    const grade = gradeMatch ? gradeMatch[0] : null;
+    if (grade && patternSignals.length > 0) {
+      reasons.push(`female pattern topology — ${grade}, with ${patternSignals[0].toLowerCase()} reported`);
+    } else if (grade) {
+      reasons.push(`female pattern topology — ${grade}`);
+    } else if (patternSignals.length > 0) {
+      reasons.push(`female pattern signals reported (${patternSignals.slice(0, 2).join(", ")})`);
+    } else if (geneticCause) {
+      reasons.push("genetic / familial predisposition to female pattern loss");
+    } else {
+      reasons.push("female pattern topology with androgen pressure");
+    }
   }
   if (/ALOPECIA AREATA/i.test(kitId)) {
-    reasons.push("autoimmune follicular targeting reported");
+    const triggers: string[] = [];
+    if (any(_immunity, /Alopecia Areata/i)) triggers.push("alopecia areata declared");
+    if (any(_hairtype, /Patchy/i)) triggers.push("patchy loss reported");
+    if (any(_cause, /Autoimmune/i)) triggers.push("autoimmune cause reported");
+    reasons.push(
+      triggers.length > 0
+        ? `autoimmune trigger — ${triggers[0]}`
+        : "autoimmune follicular targeting",
+    );
   }
-  if (/PHENOTYPE INFLAM/i.test(kitId) && (ans.scalp?.length ?? 0) > 0) {
-    reasons.push(`scalp inflammation signals (${ans.scalp!.slice(0, 2).join(", ")})`);
+  if (/PHENOTYPE INFLAM/i.test(kitId)) {
+    // PHENOTYPE INFLAMATION triggers (from detectConditions.ts, SCALP_INFLAMMATION
+    // + OXIDATIVE_STRESS branches):
+    //   • Scalp: Redness / irritation / Boils / pimples / Burning / Flaking /
+    //     Dandruff / Oily
+    //   • Immunity: Allergies / Skin rash / Acne / Recurrent Acne / Alopecia Areata
+    //   • Lifestyle: Smoking / Vaping / Alcohol
+    const triggerGroups: string[] = [];
+    // "Normal scalp" (and equivalents like "No scalp issues" / "None") is a
+    // healthy state — never surface it as an inflammation trigger.
+    const scalpInflam = _scalp.filter(
+      (s) => !/normal|none|no scalp|not applicable|healthy/i.test(s),
+    );
+    if (scalpInflam.length > 0) {
+      triggerGroups.push(`scalp inflammation (${scalpInflam.slice(0, 2).join(", ")})`);
+    }
+    const immuneInflam = matched(_immunity, /Allergies|Skin rash|Recurrent Acne|Acne/i);
+    if (immuneInflam.length > 0) {
+      triggerGroups.push(`immune-inflammatory (${immuneInflam.slice(0, 2).join(", ")})`);
+    }
+    const oxidative = matched(_lifestyle, /Smoking|Vaping|Alcohol/i);
+    if (oxidative.length > 0) {
+      triggerGroups.push(`oxidative exposures (${oxidative.slice(0, 2).join(", ")})`);
+    }
+    if (triggerGroups.length > 0) {
+      reasons.push(`inflammatory terrain reported — ${triggerGroups.slice(0, 2).join("; ")}`);
+    }
   }
-  if (/OXIDATIVE STRESS/i.test(kitId) && ans.lifestyle?.some((l) => /Smoking|Alcohol|Vaping/i.test(l))) {
-    reasons.push("oxidative lifestyle exposures reported");
+  if (/OXIDATIVE STRESS/i.test(kitId)) {
+    const oxidative = matched(_lifestyle, /Smoking|Vaping|Alcohol/i);
+    const asthma = any(_immunity, /Asthma/i) ? ["asthma"] : [];
+    const all = [...oxidative, ...asthma];
+    if (all.length > 0) {
+      reasons.push(`oxidative-load signals reported (${all.slice(0, 2).join(", ")})`);
+    }
   }
   if (/PRO IMMUNE/i.test(kitId)) {
-    reasons.push("consolidation phase — lock in regrowth after upstream correction");
+    // PRO IMMUNE GOLD triggers (from detectConditions.ts, IMMUNE_DEPLETION):
+    // immunity disease OR allow-listed primary condition. Name the actual trigger
+    // so the doctor sees which immune deficit this kit addresses; only fall back
+    // to the generic "consolidation" line when no immunity signal is present.
+    const immuneDisease = matched(
+      _immunity,
+      /Frequent|Allergies|Asthma|Skin rash|Eczema|Ulcer|Mouth|Tongue/i,
+    );
+    const illnessSurgery = matched(_cause, /Recent Illness|Surgery/i);
+    const gutImmune = matched(_gut, /IBS|Crohn/i);
+    const hyperthyroid = any(_thyroid, /Hyperthyroid/i);
+    const alopeciaSignal = any(_immunity, /Alopecia Areata/i) || any(_hairtype, /Patchy/i);
+    const endometriosis = any(_hormonal, /Endometr/i);
+    const ironOrBleeding =
+      any(_deficiency, /Iron|Anaem/i) || any(_hormonal, /heavy bleeding/i);
+
+    const bits: string[] = [];
+    if (immuneDisease.length > 0) bits.push(immuneDisease[0]);
+    if (illnessSurgery.length > 0) bits.push(illnessSurgery[0].toLowerCase());
+    if (gutImmune.length > 0) bits.push(gutImmune[0]);
+    if (hyperthyroid) bits.push("hyperthyroidism");
+    if (alopeciaSignal) bits.push("alopecia areata");
+    if (endometriosis) bits.push("endometriosis");
+    if (ironOrBleeding) bits.push("iron / chronic-loss axis");
+
+    if (bits.length > 0) {
+      reasons.push(`immune-hygiene deficit reported (${bits.slice(0, 3).join(", ")})`);
+    } else {
+      reasons.push("consolidation phase — lock in regrowth after upstream correction");
+    }
+  }
+  if (/RAPID WEIGHT LOSS|RWL/i.test(kitId)) {
+    const glp1 = matched(_cause, /GLP[-\s]?1|within 6 months|after 6 months/i);
+    const crash = matched(_diet, /Crash|Keto/i);
+    const bits = [...glp1, ...crash];
+    if (bits.length > 0) {
+      reasons.push(`rapid weight-loss driver reported (${bits.slice(0, 2).join(", ")})`);
+    } else {
+      reasons.push("rapid nutritional depletion — shedding-shield support");
+    }
+  }
+  if (/TTM|TRICHOTILLOMANIA/i.test(kitId)) {
+    const ttmSignals = matched(_cause, /pulling|Trichotillomania|OCD/i);
+    if (ttmSignals.length > 0) {
+      reasons.push(`trichotillomania / OCD reported (${ttmSignals[0]})`);
+    }
+  }
+  if (/EARLY GREYING/i.test(kitId)) {
+    if (clinical.flags.hasGreyGoal) {
+      reasons.push("early greying goal declared — melanocyte protection");
+    }
   }
   if (/TE GOLD/i.test(kitId)) {
     // Phase-aware TE GOLD reasoning:
@@ -636,18 +858,38 @@ function whyKitSelected(
       reasons.push('telogen-effluvium arrest layered into the protocol');
     }
   }
-  if (/NIGHT SHIFT/i.test(kitId) && ans.lifestyle?.some((l) => /Night shift/i.test(l))) {
-    reasons.push("night-shift exposure reported");
+  if (/NIGHT SHIFT/i.test(kitId)) {
+    if (any(_lifestyle, /Night shift/i) || any(_cause, /Night shift/i)) {
+      reasons.push("night-shift exposure reported");
+    }
   }
-  if (/FREQUENT FLYERS/i.test(kitId) && ans.lifestyle?.some((l) => /Frequent flying/i.test(l))) {
-    reasons.push("frequent flying reported");
+  if (/FREQUENT FLYERS/i.test(kitId)) {
+    if (any(_lifestyle, /Frequent fly|travel/i) || any(_cause, /Frequent fly/i)) {
+      reasons.push("frequent flying reported");
+    }
   }
-  if (/HBR|HAIR BREAKAGE/i.test(kitId) && ans.hairtype?.some((h) => /breakage|broken|short/i.test(h))) {
-    reasons.push("shaft breakage reported");
+  if (/HBR|HAIR BREAKAGE/i.test(kitId)) {
+    // HBR triggers (detectConditions.ts, HAIR_BREAKAGE — standalone-only):
+    //   • Cause: Hard water / hard
+    //   • Treatment: Heat / Chemical / Straighten / Bleach / Colour / Perm / Keratin
+    const hard = matched(_cause, /Hard water|hard/i);
+    const treat = matched(
+      _treatment,
+      /Heat|Chemical|Straighten|Bleach|Colour|Perm|Keratin/i,
+    );
+    const bits = [...hard, ...treat];
+    if (bits.length > 0) {
+      reasons.push(`shaft-damage triggers reported (${bits.slice(0, 2).join(", ")})`);
+    } else if (any(_hairtype, /breakage|broken|short/i)) {
+      reasons.push("shaft breakage reported");
+    }
   }
 
   if (reasons.length === 0) {
-    const fallback = `Selected as part of the protocol for ${DIAGNOSIS_DISPLAY[clinical.primaryDiagnosis] ?? clinical.primaryDiagnosis}.`;
+    // Never impute a per-kit reason from the primary diagnosis — a global
+    // diagnosis label is not evidence that *this* kit was chosen for it.
+    // If no kit-specific trigger matched, say so honestly.
+    const fallback = "Recommended following clinical review.";
     return leadIn ? `${leadIn} ${fallback}` : fallback;
   }
   const reasonText = reasons.join("; ").replace(/^./, (c) => c.toUpperCase()) + ".";

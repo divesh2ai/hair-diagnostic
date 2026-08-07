@@ -1,0 +1,50 @@
+{
+  "fixtureId": "greying_with_hairloss_01",
+  "generatedAt": "2026-07-03T07:14:17.948Z",
+  "pipelineVersion": "1.0.0",
+  "primaryDiagnosis": "TE_STRESS",
+  "scalpStates": [
+    "NORMAL_SCALP"
+  ],
+  "rootCauses": [
+    "STRESS"
+  ],
+  "therapyNeeds": [],
+  "severity": "MILD",
+  "rankedKitIds": [
+    "PHENOTYPE INFLAMATION",
+    "EARLY GREYING CARE GOLD",
+    "FPHL"
+  ],
+  "appliedRules": [],
+  "protocolLabel": "Recovery protocol for 3 condition(s): Female pattern hair loss · Scalp / perifollicular inflammation · Early / premature greying.",
+  "recommendations": [
+    "PHENOTYPE INFLAMATION",
+    "EARLY GREYING CARE GOLD",
+    "FPHL"
+  ],
+  "narratives": {
+    "narratives": {
+      "doctorHash": "{\"doctorSummary\":\"Mild Stress-induced telogen effluvium. Cortiso",
+      "patientHash": "{\"doctorSummary\":\"Mild Stress-induced telogen effluvium. Cortiso"
+    },
+    "orchestration": {
+      "pipelineVersion": "1.0.0",
+      "executionId": "b3240f4e-251a-472e-91e4-e56cb649492d",
+      "startedAt": "2026-07-03T07:14:17.948Z",
+      "completedAt": "2026-07-03T07:14:17.949Z",
+      "durationMs": 1,
+      "completedStages": [
+        "questionnaire",
+        "clinical",
+        "therapy",
+        "recommendations",
+        "narratives"
+      ]
+    }
+  },
+  "reportMetadata": {
+    "generatedBy": "generate-baselines.ts",
+    "version": "1.0.0"
+  }
+}

@@ -34,6 +34,7 @@ export type ConditionId =
   | 'IMMUNE_DEPLETION'
   | 'PERI_MENOPAUSE'
   | 'POST_MENOPAUSE'
+  | 'POST_HYSTERECTOMY'
   | 'HAIR_BREAKAGE'
   | 'EARLY_GREYING'
   | 'OXIDATIVE_STRESS'
@@ -149,8 +150,15 @@ export const CONDITION_KIT_REGISTRY: Record<ConditionId, ConditionKitEntry> = {
       'Post-menopause declared — corrects the post-menopausal metabolic and hormonal shift.',
     therapyNeeds: ['HORMONAL_REBALANCING', 'METABOLIC_SUPPORT'],
   },
+  POST_HYSTERECTOMY: {
+    kit: 'PRO FACT POST HYSTERECTOMY RESET',
+    label: 'Post-hysterectomy / HRT hormonal reset',
+    rationale:
+      'Surgical menopause or HRT declared — treats the abrupt oestrogen withdrawal and hormonal reset with a dedicated post-hysterectomy protocol.',
+    therapyNeeds: ['HORMONAL_REBALANCING'],
+  },
   HAIR_BREAKAGE: {
-    kit: 'HAIR FACT HAIR BREAKAGE REPAIR(HBR)',
+    kit: 'HAIR FACT HAIR BREAKAGE REPAIR (HBR)',
     label: 'Hair shaft breakage',
     rationale:
       'Isolated shaft damage (chemical / heat / hard water) with no systemic driver — repairs the cuticle and strengthens the shaft.',
@@ -164,11 +172,11 @@ export const CONDITION_KIT_REGISTRY: Record<ConditionId, ConditionKitEntry> = {
     therapyNeeds: ['MELANOCYTE_PROTECTION'],
   },
   OXIDATIVE_STRESS: {
-    kit: 'OXIDATIVE STRESS',
+    kit: 'PHENOTYPE INFLAMATION',
     label: 'Oxidative stress (smoking / alcohol / vaping)',
     rationale:
-      'Multiple oxidative-load signals — neutralises free radicals and restores antioxidant enzyme systems.',
-    therapyNeeds: ['ANTIOXIDANT_SUPPORT'],
+      'Multiple oxidative-load signals (smoking / alcohol / vaping) drive perifollicular inflammation — cleared with the inflammation-phenotype kit so downstream pattern and metabolic kits can take effect.',
+    therapyNeeds: ['INFLAMMATION_CONTROL'],
   },
   ENDOMETRIOSIS: {
     kit: 'FH WELL 3',
@@ -178,7 +186,7 @@ export const CONDITION_KIT_REGISTRY: Record<ConditionId, ConditionKitEntry> = {
     therapyNeeds: ['HORMONAL_REBALANCING', 'INFLAMMATION_CONTROL', 'IMMUNE_MODULATION'],
   },
   PREGNANCY: {
-    kit: 'HEALTHY - 9',
+    kit: 'HEALTHY-9',
     label: 'Pregnancy',
     rationale:
       'Pregnancy declared — single pregnancy-safe kit; all other kits are suppressed for safety.',

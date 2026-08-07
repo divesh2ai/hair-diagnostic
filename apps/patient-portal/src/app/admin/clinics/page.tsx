@@ -225,7 +225,7 @@ export default function AdminClinicsPage() {
         <select
           value={status}
           onChange={(e) => { setStatus(e.target.value); setPage(1); }}
-          className="h-9 px-2 rounded-md border border-border bg-background text-sm"
+          className="h-9 px-3 rounded-lg border border-border bg-background text-sm font-medium focus:outline-none focus:ring-2 focus:ring-ring/40 transition-all cursor-pointer"
         >
           <option value="">All statuses</option>
           <option value="ACTIVE">Active</option>

@@ -1,0 +1,53 @@
+{
+  "fixtureId": "nutritional_te_vegetarian_01",
+  "generatedAt": "2026-07-03T07:14:18.016Z",
+  "pipelineVersion": "1.0.0",
+  "primaryDiagnosis": "TE_NUTRITION",
+  "scalpStates": [
+    "NORMAL_SCALP"
+  ],
+  "rootCauses": [
+    "POOR_NUTRITION",
+    "POOR_NUTRITION"
+  ],
+  "therapyNeeds": [],
+  "severity": "MILD",
+  "rankedKitIds": [
+    "PHENOTYPE INFLAMATION",
+    "PRO FACT META B",
+    "PRO IMMUNE VEG",
+    "FPHL"
+  ],
+  "appliedRules": [],
+  "protocolLabel": "Recovery protocol for 4 condition(s): Female pattern hair loss · Scalp / perifollicular inflammation · Metabolic dysfunction · Immune depletion / regrowth support.",
+  "recommendations": [
+    "PHENOTYPE INFLAMATION",
+    "PRO FACT META B",
+    "PRO IMMUNE VEG",
+    "FPHL"
+  ],
+  "narratives": {
+    "narratives": {
+      "doctorHash": "{\"doctorSummary\":\"Mild Nutritional telogen effluvium. Micronutri",
+      "patientHash": "{\"doctorSummary\":\"Mild Nutritional telogen effluvium. Micronutri"
+    },
+    "orchestration": {
+      "pipelineVersion": "1.0.0",
+      "executionId": "2ac9e0f3-cef6-472c-8466-37fa0ae8a2d0",
+      "startedAt": "2026-07-03T07:14:18.016Z",
+      "completedAt": "2026-07-03T07:14:18.020Z",
+      "durationMs": 5,
+      "completedStages": [
+        "questionnaire",
+        "clinical",
+        "therapy",
+        "recommendations",
+        "narratives"
+      ]
+    }
+  },
+  "reportMetadata": {
+    "generatedBy": "generate-baselines.ts",
+    "version": "1.0.0"
+  }
+}

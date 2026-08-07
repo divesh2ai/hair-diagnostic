@@ -1,0 +1,53 @@
+{
+  "fixtureId": "hypothyroid_peri_menopause_01",
+  "generatedAt": "2026-07-03T07:14:17.981Z",
+  "pipelineVersion": "1.0.0",
+  "primaryDiagnosis": "THYROID_HYPO",
+  "scalpStates": [
+    "NORMAL_SCALP"
+  ],
+  "rootCauses": [
+    "HYPOTHYROID",
+    "HORMONAL_SHIFT"
+  ],
+  "therapyNeeds": [],
+  "severity": "MILD",
+  "rankedKitIds": [
+    "PHENOTYPE INFLAMATION",
+    "HAIR FACT PERI MENOPAUSE",
+    "FPHL"
+  ],
+  "appliedRules": [
+    "HYPO_MENO: menopause kit already carries metabolic correction — hypothyroid variant dropped."
+  ],
+  "protocolLabel": "Recovery protocol for 3 condition(s): Female pattern hair loss · Scalp / perifollicular inflammation · Peri-menopause.",
+  "recommendations": [
+    "PHENOTYPE INFLAMATION",
+    "HAIR FACT PERI MENOPAUSE",
+    "FPHL"
+  ],
+  "narratives": {
+    "narratives": {
+      "doctorHash": "{\"doctorSummary\":\"Mild Hypothyroidism-associated diffuse alopeci",
+      "patientHash": "{\"doctorSummary\":\"Mild Hypothyroidism-associated diffuse alopeci"
+    },
+    "orchestration": {
+      "pipelineVersion": "1.0.0",
+      "executionId": "8a905fa7-0f3e-4589-84a4-38a86f819475",
+      "startedAt": "2026-07-03T07:14:17.981Z",
+      "completedAt": "2026-07-03T07:14:17.982Z",
+      "durationMs": 1,
+      "completedStages": [
+        "questionnaire",
+        "clinical",
+        "therapy",
+        "recommendations",
+        "narratives"
+      ]
+    }
+  },
+  "reportMetadata": {
+    "generatedBy": "generate-baselines.ts",
+    "version": "1.0.0"
+  }
+}

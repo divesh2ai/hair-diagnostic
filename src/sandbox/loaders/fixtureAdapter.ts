@@ -42,7 +42,7 @@ export function adaptLegacyFixture(fixtureId: string): ClinicalPatientFixture {
   };
 
   const expectedRecommendations: ExpectedRecommendations = {
-    topKit: raw.expected.topKit ?? raw.expected.mustIncludeKits[0] ?? "",
+    topKit: raw.expected.topKit ?? (raw.expected.mustIncludeKits || [])[0] ?? "",
     mustIncludeKits: raw.expected.mustIncludeKits,
     mustExcludeKits: raw.expected.mustExcludeKits,
     mustTriggerRules: raw.expected.mustTriggerRules,

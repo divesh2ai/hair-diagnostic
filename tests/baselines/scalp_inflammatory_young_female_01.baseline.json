@@ -1,0 +1,49 @@
+{
+  "fixtureId": "scalp_inflammatory_young_female_01",
+  "generatedAt": "2026-07-03T07:14:18.100Z",
+  "pipelineVersion": "1.0.0",
+  "primaryDiagnosis": "AGA_FEMALE_123",
+  "scalpStates": [
+    "OILY_SCALP",
+    "INFLAMED_SCALP"
+  ],
+  "rootCauses": [
+    "STRESS"
+  ],
+  "therapyNeeds": [],
+  "severity": "MILD",
+  "rankedKitIds": [
+    "PHENOTYPE INFLAMATION",
+    "FPHL"
+  ],
+  "appliedRules": [],
+  "protocolLabel": "Recovery protocol for 2 condition(s): Female pattern hair loss · Scalp / perifollicular inflammation.",
+  "recommendations": [
+    "PHENOTYPE INFLAMATION",
+    "FPHL"
+  ],
+  "narratives": {
+    "narratives": {
+      "doctorHash": "{\"doctorSummary\":\"Mild Androgenetic alopecia — female pattern, L",
+      "patientHash": "{\"doctorSummary\":\"Mild Androgenetic alopecia — female pattern, L"
+    },
+    "orchestration": {
+      "pipelineVersion": "1.0.0",
+      "executionId": "3f720b90-008a-46e5-9513-3ae733baf6dd",
+      "startedAt": "2026-07-03T07:14:18.101Z",
+      "completedAt": "2026-07-03T07:14:18.103Z",
+      "durationMs": 2,
+      "completedStages": [
+        "questionnaire",
+        "clinical",
+        "therapy",
+        "recommendations",
+        "narratives"
+      ]
+    }
+  },
+  "reportMetadata": {
+    "generatedBy": "generate-baselines.ts",
+    "version": "1.0.0"
+  }
+}

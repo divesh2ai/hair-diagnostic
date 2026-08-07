@@ -11,6 +11,7 @@ require("dotenv").config({ path: path.join(repoRoot, ".env") });
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  outputFileTracingRoot: repoRoot,
   typescript: {
     ignoreBuildErrors: true,
   },

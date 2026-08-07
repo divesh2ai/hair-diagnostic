@@ -22,6 +22,10 @@ export async function GET() {
       1,
     );
 
+    // Deployed Prisma uses pgbouncer with connection_limit=1 (see DATABASE_URL).
+    // A Promise.all of 12 independent queries starves that single connection
+    // and blows the lambda timeout. $transaction runs the whole batch inside
+    // one connection sequentially, which is what pgbouncer expects.
     const [
       clinicsTotal,
       clinicsActive,
@@ -35,7 +39,7 @@ export async function GET() {
       recentDoctors,
       recentAssessments,
       failures,
-    ] = await Promise.all([
+    ] = await prisma.$transaction([
       prisma.clinic.count({ where: { deletedAt: null } }),
       prisma.clinic.count({ where: { deletedAt: null, status: "ACTIVE" } }),
       prisma.doctor.count({ where: { deletedAt: null } }),

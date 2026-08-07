@@ -1,13 +1,11 @@
 "use client";
 
 import { Menu } from "lucide-react";
-import { SearchBox } from "@/components/ui/search-box";
 import { LanguageSelector } from "@/components/ui/language-selector";
 import { NotificationCenter } from "./NotificationCenter";
 import { UserMenu } from "./UserMenu";
 import { Breadcrumbs } from "./Breadcrumbs";
 import { useT } from "@/lib/i18n";
-import { useState } from "react";
 
 export function Header({
   onMenuClick,
@@ -25,7 +23,6 @@ export function Header({
   unreadNotifications?: number;
 }) {
   const t = useT();
-  const [q, setQ] = useState("");
 
   return (
     <header className="sticky top-0 z-30 border-b border-border bg-background/80 backdrop-blur-md">
@@ -50,13 +47,7 @@ export function Header({
           </div>
         )}
 
-        <div className="flex-1 max-w-md">
-          <SearchBox
-            value={q}
-            onChange={setQ}
-            placeholder={t("shell.searchPlaceholder")}
-          />
-        </div>
+        <div className="flex-1" />
 
         <div className="ml-auto flex items-center gap-1.5">
           <LanguageSelector />

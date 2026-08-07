@@ -2,16 +2,26 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import {
   ArrowUpRight,
+  BadgeCheck,
   ChevronRight,
   Clock,
+  EyeIcon,
   Inbox,
+  UserRound,
   Users,
 } from "lucide-react";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { composeWorkflowLabel } from "@/lib/labels/statusLabels";
 import { waitingTime } from "@/lib/format/waitingTime";
+import {
+  DEFAULT_BADGE_THEME,
+  getBadgeTheme,
+  readStoredBadgeTheme,
+  type BadgeThemeId,
+} from "@/lib/doctor/badgeThemes";
 
 // Editorial doctor dashboard.
 //
@@ -38,25 +48,47 @@ interface RecentRow {
 }
 
 interface Stats {
-  counts: { patients: number; reports: number; pending: number };
+  counts: { patients: number; reports: number; pending: number; kitOrders?: number };
   recent: RecentRow[];
+}
+
+interface DoctorMe {
+  clinic: { name: string | null } | null;
+  doctor: {
+    id: string;
+    name: string | null;
+    photoUrl: string | null;
+    specialization: string | null;
+  } | null;
+  role: string;
+  email: string | null;
 }
 
 export default function DoctorDashboardPage() {
   const [stats, setStats] = useState<Stats | null>(null);
+  const [me, setMe] = useState<DoctorMe | null>(null);
   const [loading, setLoading] = useState(true);
+  const [badgeThemeId, setBadgeThemeId] = useState<BadgeThemeId>(DEFAULT_BADGE_THEME);
 
   useEffect(() => {
+    setBadgeThemeId(readStoredBadgeTheme());
     fetch("/api/doctor/stats")
       .then((r) => r.json())
       .then(setStats)
       .catch(() => setStats(null))
       .finally(() => setLoading(false));
+    fetch("/api/doctor/me")
+      .then((r) => (r.ok ? r.json() : null))
+      .then(setMe)
+      .catch(() => setMe(null));
   }, []);
+
+  const badgeTheme = getBadgeTheme(badgeThemeId);
 
   const pendingCount = stats?.counts.pending ?? 0;
   const patientsCount = stats?.counts.patients ?? 0;
   const reportsCount = stats?.counts.reports ?? 0;
+  const kitOrdersCount = stats?.counts.kitOrders ?? 0;
 
   const heroCopy = useMemo(() => {
     if (loading) return "Preparing your workspace…";
@@ -74,6 +106,15 @@ export default function DoctorDashboardPage() {
   return (
     <div className="min-h-full bg-stone-50">
       <div className="mx-auto w-full max-w-6xl px-6 lg:px-10 py-10 lg:py-14 space-y-14">
+        {me?.role === "SUPER_ADMIN" && (
+          <div className="flex items-center gap-2 rounded-xl border border-indigo-200 bg-indigo-50 px-4 py-2.5 text-xs text-indigo-900">
+            <EyeIcon className="size-3.5 shrink-0" />
+            <span>
+              <strong>Viewing as super admin.</strong>{" "}
+              This is the doctor workspace view. All actions are audit-logged as super-admin activity — please avoid clinical decisions from this account.
+            </span>
+          </div>
+        )}
         {/* ── HERO ─────────────────────────────────────────────────────── */}
         <header className="space-y-6">
           <div className="flex items-center gap-3">
@@ -83,13 +124,63 @@ export default function DoctorDashboardPage() {
             </span>
           </div>
 
-          <div className="max-w-3xl space-y-4">
-            <h1 className="font-serif text-4xl lg:text-5xl leading-[1.05] tracking-tight text-slate-900">
-              Good to see you.
-            </h1>
-            <p className="text-lg leading-relaxed text-stone-600">
-              {heroCopy}
-            </p>
+          <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_360px] items-start pt-3">
+            <div className="max-w-3xl space-y-4">
+              <h1 className="font-serif text-4xl lg:text-5xl leading-[1.05] tracking-tight text-slate-900">
+                {me?.doctor?.name ? `Good to see you, ${me.doctor.name.split(" ")[0]}.` : "Good to see you."}
+              </h1>
+              <p className="text-lg leading-relaxed text-stone-600">
+                {heroCopy}
+              </p>
+            </div>
+
+            {/* ── DOCTOR IDENTITY CARD ─────────────────────────────────── */}
+            <Link
+              href="/doctor/profile"
+              className={`group relative flex items-center gap-5 rounded-2xl border border-stone-200 bg-gradient-to-br ${badgeTheme.cardAccent} p-5 pt-7 shadow-[0_1px_2px_rgba(15,23,42,0.04),0_8px_24px_-12px_rgba(15,23,42,0.15)] hover:shadow-[0_1px_2px_rgba(15,23,42,0.05),0_16px_40px_-16px_rgba(15,23,42,0.25)] hover:-translate-y-0.5 transition-all duration-300`}
+            >
+              <span
+                className={`absolute -top-2 left-5 inline-flex items-center gap-1 rounded-full ${badgeTheme.chipBg} px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.1em] ${badgeTheme.chipText} ring-1 ${badgeTheme.chipRing} shadow-sm`}
+              >
+                <BadgeCheck className="size-3" />
+                Your workspace
+              </span>
+
+              <div className={`relative size-20 shrink-0 overflow-hidden rounded-full bg-white ring-2 ${badgeTheme.avatarRing} shadow-md`}>
+                {me?.doctor?.photoUrl ? (
+                  <Image
+                    src={me.doctor.photoUrl}
+                    alt={me.doctor.name ?? "Doctor"}
+                    fill
+                    sizes="80px"
+                    className="object-cover"
+                    unoptimized
+                  />
+                ) : (
+                  <div className="flex h-full w-full items-center justify-center text-stone-400">
+                    <UserRound className="size-9" />
+                  </div>
+                )}
+              </div>
+
+              <div className="min-w-0 flex-1">
+                <p className="font-serif text-xl leading-tight text-slate-900 truncate">
+                  {me?.doctor?.name ?? "Add your name"}
+                </p>
+                <p className="mt-0.5 text-[10px] font-semibold uppercase tracking-[0.18em] text-stone-500 truncate">
+                  {me?.doctor?.specialization ?? "Dermatologist"}
+                </p>
+                {me?.clinic?.name && (
+                  <p className="mt-2 text-xs text-stone-600 truncate">
+                    <span className="text-stone-400">at </span>
+                    {me.clinic.name}
+                  </p>
+                )}
+                <p className={`mt-2 text-[11px] font-medium ${badgeTheme.chipText} opacity-0 group-hover:opacity-100 transition-opacity`}>
+                  {me?.doctor?.photoUrl ? "Edit profile →" : "Upload your photo →"}
+                </p>
+              </div>
+            </Link>
           </div>
 
           <div className="flex flex-wrap items-center gap-3 pt-2">
@@ -106,11 +197,17 @@ export default function DoctorDashboardPage() {
             >
               Patient registry
             </Link>
+            <Link
+              href="/doctor/profile"
+              className="inline-flex items-center gap-2 rounded-full border border-stone-300 bg-white/80 px-4 py-2.5 text-sm font-medium text-slate-700 hover:border-stone-400 hover:bg-white transition-colors"
+            >
+              Your profile
+            </Link>
           </div>
         </header>
 
         {/* ── STAT ROW ─────────────────────────────────────────────────── */}
-        <section className="grid gap-4 sm:grid-cols-3">
+        <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           <StatCard
             eyebrow="Needs review"
             value={pendingCount}
@@ -126,12 +223,20 @@ export default function DoctorDashboardPage() {
             }
           />
           <StatCard
-            eyebrow="Consultations"
+            eyebrow="Approved cases"
             value={reportsCount}
             loading={loading}
             href="/doctor/reports"
             accent="quiet"
-            hint="All completed cases"
+            hint="Total reviewed to date"
+          />
+          <StatCard
+            eyebrow="Kit orders"
+            value={kitOrdersCount}
+            loading={loading}
+            href="/doctor/orders"
+            accent="quiet"
+            hint="Ready for fulfillment"
           />
           <StatCard
             eyebrow="Patients"
@@ -139,7 +244,7 @@ export default function DoctorDashboardPage() {
             loading={loading}
             href="/doctor/patients"
             accent="quiet"
-            hint="Under your care"
+            hint="Registered in your clinic"
           />
         </section>
 

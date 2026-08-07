@@ -37,12 +37,19 @@ import type {
 // ─────────────────────────────────────────────────────────────────────────────
 
 const SECTION_TO_CATEGORY: Record<string, QuestionCategory> = {
+  // Hair protocol
   S1_PATIENT_IDENTITY: 'about_you',
   S2_HAIR_LOSS_ASSESSMENT: 'hair_health',
   S3_SCALP_CONDITION: 'scalp_assessment',
   S4_MEDICAL_HISTORY: 'medical',
   S5_NUTRITION_AND_DIET: 'nutrition',
   S6_GRADE_AND_ADDITIONAL: 'hair_health',
+  // Skin — acne branch
+  SKN_S1_ABOUT_YOU: 'skin_about_you',
+  SKN_S2_YOUR_ACNE: 'skin_acne_lesions',
+  SKN_S3_TRIGGERS: 'skin_acne_triggers',
+  SKN_S4_PREVIOUS_TREATMENT: 'skin_previous_treatment',
+  SKN_S5_SAFETY_UPLOADS: 'skin_safety_uploads',
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -94,6 +101,8 @@ function mapOperator(schemaOp: string, invert: boolean): RuntimeOperator {
     includes: 'contains',
     includesAny: 'contains',
     notIncludes: 'not_contains',
+    lessThan: 'less_than',
+    greaterThan: 'greater_than',
   };
   const inverted: Record<string, RuntimeOperator> = {
     equals: 'not_equals',
@@ -101,6 +110,11 @@ function mapOperator(schemaOp: string, invert: boolean): RuntimeOperator {
     includes: 'not_contains',
     includesAny: 'not_contains',
     notIncludes: 'contains',
+    // Note: numeric inversion requires offsetting the value by 1 (integer
+    // ages only). Handled in invertNumericCondition() below — these entries
+    // exist for completeness but the value-shift is applied separately.
+    lessThan: 'greater_than',
+    greaterThan: 'less_than',
   };
   return (invert ? inverted[schemaOp] : direct[schemaOp]) ?? (invert ? 'not_equals' : 'equals');
 }
@@ -304,16 +318,37 @@ function adaptOption(o: SchemaOption): QuestionOption {
 
 // Convert an option-level visibleOnlyIf into a hideIf LogicCondition[].
 // "show if sex equals Male" → "hide if sex not_equals Male"
+//
+// AND-semantics on the show side becomes OR-semantics on the hide side,
+// which is what the visibility engine expects (it evaluates hideIf in 'any'
+// mode). So [ruleA, ruleB] in visibleOnlyIf produces [invert(ruleA),
+// invert(ruleB)] in hideIf — the option is hidden if either show-condition
+// fails.
 function visibleOnlyIfToHideIf(
   rule: NonNullable<SchemaOption['visibleOnlyIf']>
 ): LogicCondition[] {
-  return [
-    {
-      field: rule.dependsOn,
-      operator: mapOperator(rule.operator, true),
-      value: rule.value,
-    },
-  ];
+  const rules = Array.isArray(rule) ? rule : [rule];
+  return rules.map(invertVisibilityRule);
+}
+
+function invertVisibilityRule(
+  r: { dependsOn: string; operator: string; value: string | number }
+): LogicCondition {
+  // Numeric inversions: integer fields (age) use a value offset so the
+  // comparison expresses the inverted bound exactly.
+  //   show if age < 45  →  hide if age >  44  (i.e. age >= 45)
+  //   show if age > 30  →  hide if age <  31  (i.e. age <= 30)
+  if (r.operator === 'lessThan' && typeof r.value === 'number') {
+    return { field: r.dependsOn, operator: 'greater_than', value: r.value - 1 };
+  }
+  if (r.operator === 'greaterThan' && typeof r.value === 'number') {
+    return { field: r.dependsOn, operator: 'less_than', value: r.value + 1 };
+  }
+  return {
+    field: r.dependsOn,
+    operator: mapOperator(r.operator, true),
+    value: r.value,
+  };
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -328,6 +363,8 @@ function adaptType(schemaType: string): QuestionType {
     single_select: 'single_select',
     multi_select: 'multi_select',
     image_select: 'image_select',
+    image_upload: 'image_upload',
+    scale: 'scale',
   };
   return map[schemaType] ?? 'single_select';
 }
@@ -341,6 +378,13 @@ function adaptQuestion(q: SchemaQuestion, section: SchemaSection): Question {
   const filterOptions = buildFilterOptions(q);
   const mutualExclusivityGroups = buildMutualExclusivityGroups(q.mutualExclusivityRules);
   const mutualExclusivityToast = q.mutualExclusivityRules?.toastMessage;
+  const showIf =
+    q.visibilityRules?.length === 1 && q.visibilityRules[0]?.operator === 'equals'
+      ? {
+          questionId: q.visibilityRules[0].dependsOn,
+          value: q.visibilityRules[0].value as string | string[],
+        }
+      : undefined;
 
   // Clinical mapping: use all scoring signals as protocolHints
   const clinicalMapping: Question['clinicalMapping'] = q.scoringSignals?.length
@@ -387,6 +431,7 @@ function adaptQuestion(q: SchemaQuestion, section: SchemaSection): Question {
     validation,
     uiFormat,
     skipIf: skipIf.length ? skipIf : undefined,
+    showIf,
     filterOptions,
     mutualExclusivityGroups,
     mutualExclusivityToast,

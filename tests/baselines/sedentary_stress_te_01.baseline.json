@@ -1,0 +1,51 @@
+{
+  "fixtureId": "sedentary_stress_te_01",
+  "generatedAt": "2026-07-03T07:14:18.108Z",
+  "pipelineVersion": "1.0.0",
+  "primaryDiagnosis": "TE_STRESS",
+  "scalpStates": [
+    "NORMAL_SCALP"
+  ],
+  "rootCauses": [
+    "STRESS",
+    "METABOLIC"
+  ],
+  "therapyNeeds": [],
+  "severity": "MILD",
+  "rankedKitIds": [
+    "PHENOTYPE INFLAMATION",
+    "PRO FACT META B",
+    "FPHL"
+  ],
+  "appliedRules": [],
+  "protocolLabel": "Recovery protocol for 3 condition(s): Female pattern hair loss · Scalp / perifollicular inflammation · Metabolic dysfunction.",
+  "recommendations": [
+    "PHENOTYPE INFLAMATION",
+    "PRO FACT META B",
+    "FPHL"
+  ],
+  "narratives": {
+    "narratives": {
+      "doctorHash": "{\"doctorSummary\":\"Mild Stress-induced telogen effluvium. Cortiso",
+      "patientHash": "{\"doctorSummary\":\"Mild Stress-induced telogen effluvium. Cortiso"
+    },
+    "orchestration": {
+      "pipelineVersion": "1.0.0",
+      "executionId": "69e073aa-45cb-4ce7-a8d8-e7042338fc67",
+      "startedAt": "2026-07-03T07:14:18.108Z",
+      "completedAt": "2026-07-03T07:14:18.112Z",
+      "durationMs": 4,
+      "completedStages": [
+        "questionnaire",
+        "clinical",
+        "therapy",
+        "recommendations",
+        "narratives"
+      ]
+    }
+  },
+  "reportMetadata": {
+    "generatedBy": "generate-baselines.ts",
+    "version": "1.0.0"
+  }
+}

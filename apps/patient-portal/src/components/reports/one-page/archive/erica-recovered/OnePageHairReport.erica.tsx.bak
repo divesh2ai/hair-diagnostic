@@ -1,0 +1,611 @@
+import type { ReactNode } from "react";
+import QRCode from "react-qr-code";
+import type {
+  IllustrationKey,
+  OnePageReportViewModel,
+  PrintDensityMode,
+  PrintDriverCard,
+  PrintTimelineStage,
+  PrintTopical,
+  PrintTreatmentKit,
+} from "@/lib/reports/one-page/viewModel";
+import { getConditionAsset, type ProductAsset } from "@/lib/reports/one-page/productAssets";
+import "./one-page-report.css";
+
+/* ==========================================================================
+   Dr. FACT one-page hair health assessment.
+   Layout restored from the recovered "Erica" CEO-approved reference
+   (dangling git blob; the original .tsx/.css sources were never committed).
+   Interface is unchanged: everything renders from OnePageReportViewModel.
+
+   Snapshot enhancement: every tile routes to the correct real illustration
+   for the specific condition/domain it represents (snapshotAssetFor()).
+   ========================================================================== */
+
+export function OnePageHairReport({ data }: { data: OnePageReportViewModel }) {
+  return <HairAssessmentPrintPage data={data} />;
+}
+
+export function HairAssessmentPrintPage({ data }: { data: OnePageReportViewModel }) {
+  return (
+    <main className="op-report-shell">
+      <article
+        className={`sheet op-page report-page op-mode-${data.layoutMode}`}
+        data-one-page-report
+        data-density={data.layoutMode}
+      >
+        <ReportHeader />
+        <RowA data={data} />
+        <SnapshotSection data={data} />
+        <LudwigBand data={data} />
+        <MappingTable data={data} />
+        <LowerGrid data={data} />
+        <ReportFooter data={data} />
+      </article>
+      <ReportPreflight data={data} />
+    </main>
+  );
+}
+
+/* ============================== HEADER ================================= */
+function ReportHeader() {
+  return (
+    <header className="hd">
+      <div className="hd-lockup">
+        <span className="serif">DR. FACT</span>
+        <small>AI HAIR HEALTH DIAGNOSTIC</small>
+      </div>
+      <div className="hd-title">
+        <h1 className="caps">Hair Health Assessment</h1>
+        <p className="caps">Clinical Intelligence &nbsp;&bull;&nbsp; Hair Biology &nbsp;&bull;&nbsp; Treatment Planning</p>
+      </div>
+      <div className="hd-right">
+        <SealBadge label={["DOCTOR", "REVIEWED"]} />
+        <div className="hd-meta">VERSION 2<br/>PAGE 1 OF 1</div>
+      </div>
+    </header>
+  );
+}
+
+function SealBadge({ label }: { label: [string, string] }) {
+  return (
+    <div className="seal">
+      <i><CheckSvg /></i>
+      <span>{label[0]}<br/>{label[1]}</span>
+    </div>
+  );
+}
+
+/* ==================== ROW A: PATIENT / SUMMARY / CONTRIBUTORS ========== */
+function RowA({ data }: { data: OnePageReportViewModel }) {
+  return (
+    <section className="rowA">
+      <PatientBlock data={data} />
+      <SummaryBlock data={data} />
+      <ContributorsBlock data={data} />
+    </section>
+  );
+}
+
+function PatientBlock({ data }: { data: OnePageReportViewModel }) {
+  const asset = data.patient.imageAsset;
+  const firstName = data.patient.name.split(/\s+/).filter(Boolean)[0] ?? data.patient.name;
+  return (
+    <div className="blk patient">
+      <div className="blk-label">Patient</div>
+      <div className="patient-top">
+        <img
+          src={asset.src}
+          alt={asset.alt}
+          data-asset-key={asset.key}
+          data-asset-role="patient"
+        />
+        <div>
+          <span className="serif">{firstName}</span>
+          <small>{data.patient.age.replace(" yrs", "")} &nbsp;&bull;&nbsp; {data.patient.gender}</small>
+        </div>
+      </div>
+      <dl>
+        <div><dt>Assessment</dt><dd>{data.generatedAt}</dd></div>
+        <div><dt>Doctor</dt><dd>{data.doctorApproval.approvedBy}</dd></div>
+        <div><dt>Clinic</dt><dd>{data.clinic.name}</dd></div>
+      </dl>
+    </div>
+  );
+}
+
+function SummaryBlock({ data }: { data: OnePageReportViewModel }) {
+  // Split "Female Pattern Hair Loss - Ludwig 2" so the grade is emphasised.
+  const [head, tail] = splitOnLastDash(data.clinicalResult.primary);
+  return (
+    <div className="blk summary">
+      <div className="blk-label">Clinical Summary</div>
+      <p className="pattern">
+        {head}
+        {tail ? <> &mdash; <b>{tail}</b></> : null}
+      </p>
+      <p className="act">
+        <b>Current activity:</b> {data.clinicalResult.supportingLine}
+      </p>
+      <div className="concl">
+        <span>Clinical conclusion</span>
+        <p>{data.clinicalResult.conclusion}</p>
+      </div>
+    </div>
+  );
+}
+
+function splitOnLastDash(text: string): [string, string | null] {
+  const match = text.match(/^(.*)\s+[—–-]\s+(.+)$/);
+  if (!match) return [text, null];
+  return [match[1].trim(), match[2].trim()];
+}
+
+function ContributorsBlock({ data }: { data: OnePageReportViewModel }) {
+  const rows = uniqueContributors(data).slice(0, 6);
+  return (
+    <div className="blk contrib">
+      <div className="blk-label">Main Active Contributors</div>
+      <ul>
+        {rows.map((row) => (
+          <li key={row.label}>
+            <span className="dot-ic">{contributorGlyph(row.illustration)}</span>
+            {row.label}
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
+function uniqueContributors(data: OnePageReportViewModel): Array<{ label: string; illustration: IllustrationKey }> {
+  const seen = new Set<string>();
+  const rows: Array<{ label: string; illustration: IllustrationKey }> = [];
+  const push = (label: string, illustration: IllustrationKey) => {
+    const key = label.toLowerCase().trim();
+    if (!key || seen.has(key)) return;
+    seen.add(key);
+    rows.push({ label, illustration });
+  };
+  for (const driver of data.driverStory) push(driver.title, driver.illustration);
+  for (const kit of data.treatmentPlan) push(kit.mappedCondition, illustrationFromText(kit.mappedCondition));
+  return rows;
+}
+
+function illustrationFromText(text: string): IllustrationKey {
+  const t = text.toLowerCase();
+  if (/scalp|dandruff|itch|inflam|sebum|flake|acne|seborr/.test(t)) return "scalp";
+  if (/hormon|pcos|thyroid|menopause|endometrio|iron|ferritin|bleed|blood/.test(t)) return "hormonal";
+  if (/metabol|insulin|weight|obes|diabet|prediabet/.test(t)) return "metabolic";
+  if (/nutrition|diet|deficien|gut|protein|vegetarian/.test(t)) return "nutrition";
+  if (/immune|autoimmune|areata|allerg/.test(t)) return "immune";
+  if (/stress|sleep|cortisol|shift|smok|vaping|alcohol|oxidative|anxiet|depress/.test(t)) return "stress";
+  return "follicle";
+}
+
+/* ============================== SNAPSHOT =============================== */
+function SnapshotSection({ data }: { data: OnePageReportViewModel }) {
+  const tiles = buildSnapshotTiles(data);
+  return (
+    <section className="snapwrap">
+      <div className="sec-title"><h2 className="serif">Your Clinical Snapshot</h2></div>
+      <div className="snap">
+        {tiles.map((tile) => (
+          <article key={tile.label}>
+            <span>{tile.label}</span>
+            <img
+              className="simg"
+              src={tile.asset.src}
+              alt={tile.asset.alt}
+              data-asset-key={tile.asset.key}
+              data-asset-role="snapshot"
+            />
+            <strong>{tile.value}</strong>
+          </article>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+type SnapshotTile = { label: string; value: string; asset: ProductAsset };
+
+/**
+ * Requested enhancement: every Clinical Snapshot tile must use the correct
+ * real illustration for the specific condition/domain it represents. This
+ * routes each of the six fixed labels through the existing productAssets
+ * registry to a real PNG — no invented SVG, no generic placeholder.
+ */
+function buildSnapshotTiles(data: OnePageReportViewModel): SnapshotTile[] {
+  const pick = (label: string) =>
+    data.snapshotStrip.find((c) => c.label.toLowerCase() === label.toLowerCase())?.value?.trim() || "";
+
+  const patternValue = pick("Pattern") || data.clinicalResult.primary;
+  const scalpValue = pick("Scalp");
+  const metabolicValue = pick("Metabolic");
+  const dietValue = pick("Diet");
+  const goal = pick("Goal");
+
+  const tiles: SnapshotTile[] = [
+    {
+      label: "Duration",
+      value: pick("Duration") || "Recorded",
+      asset: {
+        key: "SNAPSHOT_DURATION",
+        src: "/report-assets/snapshot/duration-months-lite.png",
+        alt: "Calendar and hair strands representing symptom duration",
+      },
+    },
+    {
+      label: "Shedding",
+      value: pick("Shedding") || "Recorded",
+      asset:
+        conditionOrFallback("TELOGEN_EFFLUVIUM") ??
+        conditionOrFallback("CHRONIC_STRESS") ??
+        FOLLICLE_FALLBACK,
+    },
+    {
+      label: "Pattern",
+      value: patternValue || "Assessed",
+      asset: patternAsset(patternValue),
+    },
+    {
+      label: "Scalp",
+      value: scalpValue || "No major concern",
+      asset:
+        conditionOrFallback("SCALP_INFLAMMATION") ??
+        FOLLICLE_FALLBACK,
+    },
+    {
+      label: "Metabolic",
+      value: metabolicValue || "Not flagged",
+      asset:
+        conditionOrFallback("METABOLIC_DYSFUNCTION") ??
+        FOLLICLE_FALLBACK,
+    },
+    {
+      label: "Diet",
+      value: dietValue || goal || "Balanced",
+      asset:
+        conditionOrFallback("NUTRITIONAL_DEFICIENCY") ??
+        FOLLICLE_FALLBACK,
+    },
+  ];
+  return tiles;
+}
+
+function conditionOrFallback(code: string): ProductAsset | null {
+  return getConditionAsset(code);
+}
+const FOLLICLE_FALLBACK: ProductAsset = {
+  key: "FOLLICLE_GENERAL",
+  src: "/report-assets/conditions/fallback-neutral-ai-lite.png",
+  alt: "General follicle illustration",
+};
+
+function patternAsset(patternValue: string): ProductAsset {
+  const t = patternValue.toLowerCase();
+  if (/norwood|male pattern|\bmphl\b/.test(t)) {
+    return conditionOrFallback("MALE_PATTERN_HAIR_LOSS") ?? FOLLICLE_FALLBACK;
+  }
+  if (/ludwig|female pattern|\bfphl\b/.test(t)) {
+    return conditionOrFallback("FEMALE_PATTERN_HAIR_LOSS") ?? FOLLICLE_FALLBACK;
+  }
+  return conditionOrFallback("GENETIC_PREDISPOSITION") ?? FOLLICLE_FALLBACK;
+}
+
+/* ============================== LUDWIG BAND ============================ */
+function LudwigBand({ data }: { data: OnePageReportViewModel }) {
+  const scale = data.patternScale;
+  if (!scale) return null;
+  const firstName = data.patient.name.split(/\s+/).filter(Boolean)[0] ?? data.patient.name;
+  const isNorwood = scale.type === "Norwood";
+  // Five compact grade labels rendered as dot-band pills. The label that
+  // matches the patient's stage is decorated with the patient's first name.
+  const grades = isNorwood
+    ? ["Norwood I", "Norwood II", "Norwood III", "Norwood IV", "Advanced"]
+    : ["Grade 1", "Grade 2", "Grade 2–3", "Grade 3", "Advanced"];
+  const patientStageLower = scale.patientStage.toLowerCase();
+  const activeIndex = pickActiveGradeIndex(grades, scale.patientStage);
+  const goal = data.snapshotStrip.find((c) => c.label.toLowerCase() === "goal")?.value?.trim()
+    || "Reduce hair fall and support quality growth";
+  return (
+    <section className="ludwig">
+      <div className="lab">Pattern staging<b>{isNorwood ? "Norwood Scale" : "Ludwig Scale"}</b></div>
+      <div className="stages">
+        {grades.map((grade, i) => (
+          <div key={grade} className={`stage${i === activeIndex ? " active" : ""}`}>
+            <em>{i === activeIndex ? `${grade} — ${firstName}` : grade}</em>
+            <div className="dots"><i/><i/><i/><i/><i/></div>
+          </div>
+        ))}
+      </div>
+      <div className="goalchip">
+        <GoalIconSvg />
+        <span>Goal &mdash; {goal.toLowerCase().replace(/^goal[\s:—-]*/, "")}</span>
+      </div>
+      <span className="visually-hidden" aria-hidden data-patient-stage={patientStageLower} />
+    </section>
+  );
+}
+
+function pickActiveGradeIndex(grades: string[], patientStage: string): number {
+  const norm = (v: string) => v.toLowerCase().replace(/[—–-]/g, " ").replace(/\s+/g, " ").trim();
+  const target = norm(patientStage);
+  const gi = grades.findIndex((g) => target.includes(norm(g)));
+  if (gi >= 0) return gi;
+  // "Grade 2" style fallback: extract the digit and match by ordinal.
+  const digit = target.match(/(?:grade|ludwig|norwood)?\s*(\d)/);
+  if (digit) {
+    const n = Number(digit[1]);
+    if (n >= 1 && n <= 4) return n - 1;
+    if (n >= 5) return 4;
+  }
+  return 1; // default to Grade 2 which is by far the most common presentation
+}
+
+/* ============================== MAPPING TABLE ========================== */
+function MappingTable({ data }: { data: OnePageReportViewModel }) {
+  const rows = data.treatmentPlan;
+  return (
+    <section className="mapwrap">
+      <div className="sec-title"><h2 className="serif">Hair Loss Drivers &amp; Treatment Mapping</h2></div>
+      <div className="thead">
+        <span>Driver (Condition)</span>
+        <span>Selected Kit</span>
+        <span>Your Assessment Signals</span>
+        <span>How This Kit Helps</span>
+      </div>
+      {rows.map((kit) => <MappingRow key={kit.id} kit={kit} data={data} />)}
+    </section>
+  );
+}
+
+function MappingRow({ kit, data }: { kit: PrintTreatmentKit; data: OnePageReportViewModel }) {
+  const driver = data.driverStory.find((d) => d.id === kit.mappedDriverId);
+  const conditionAsset = getConditionAsset(driverConditionCode(kit, driver))
+    ?? FOLLICLE_FALLBACK;
+  const meaning = kit.mappedInterpretation
+    || driver?.explanation
+    || defaultMeaningForKit(kit);
+  return (
+    <div className="trow">
+      <div className="drv">
+        <img
+          className="thumb"
+          src={conditionAsset.src}
+          alt={conditionAsset.alt}
+          data-asset-key={conditionAsset.key}
+          data-asset-role="condition"
+        />
+        <div className="body">
+          <strong>{kit.mappedCondition}</strong>
+          <p>{meaning}</p>
+        </div>
+      </div>
+      <div className="kit">
+        <div className="shot">
+          {kit.asset ? (
+            <img
+              src={kit.asset.src}
+              alt={kit.asset.alt}
+              data-asset-key={kit.asset.key}
+              data-asset-role="product"
+            />
+          ) : (
+            <span style={{ fontSize: 6, textAlign: "center" }}>{kit.name}</span>
+          )}
+        </div>
+        <b>{kit.name}</b>
+      </div>
+      <div className="sig">
+        {kit.linkedDrivers.slice(0, 4).map((tag) => <span key={tag}>{tag}</span>)}
+      </div>
+      <div className="ben">
+        <ul>
+          {kit.benefits.slice(0, 3).map((benefit) => <li key={benefit}>{benefit}</li>)}
+        </ul>
+      </div>
+    </div>
+  );
+}
+
+function driverConditionCode(kit: PrintTreatmentKit, driver: PrintDriverCard | undefined): string {
+  if (driver?.conditionCode) return driver.conditionCode;
+  const text = `${kit.kitCode} ${kit.name} ${kit.mappedCondition}`.toLowerCase();
+  if (/iron|ferritin|bleed|blood/.test(text)) return "CHRONIC_IRON_LOSS";
+  if (/inflam|scalp|dandruff|phenotype/.test(text)) return "SCALP_INFLAMMATION";
+  if (/meta[-\s]?b|metabolic|insulin|prediabet|hypothyroid/.test(text)) return "METABOLIC_DYSFUNCTION";
+  if (/immune|areata/.test(text)) return "IMMUNE_CONTRIBUTOR";
+  if (/fphl|female pattern|ludwig/.test(text)) return "FEMALE_PATTERN_HAIR_LOSS";
+  if (/mphl|male pattern|norwood/.test(text)) return "MALE_PATTERN_HAIR_LOSS";
+  if (/te gold|telogen|stress/.test(text)) return "CHRONIC_STRESS";
+  if (/nutrition|deficien|healthy.?9|pregnan/.test(text)) return "NUTRITIONAL_DEFICIENCY";
+  if (/lifestyle|shift|frequent fly|night/.test(text)) return "LIFESTYLE_MODIFIER";
+  if (/rapid weight|rwl|glp/.test(text)) return "RAPID_WEIGHT_LOSS";
+  if (/greying|melanin/.test(text)) return "OXIDATIVE_STRESS";
+  return "FOLLICLE_GENERAL";
+}
+
+function defaultMeaningForKit(kit: PrintTreatmentKit): string {
+  const t = `${kit.name} ${kit.mappedCondition}`.toLowerCase();
+  if (/iron/.test(t)) return "Heavy menstrual bleeding depletes iron and ferritin, reducing oxygen delivery to follicles.";
+  if (/inflam|scalp|phenotype/.test(t)) return "Dandruff, itching and flaking point to an inflamed scalp interfering with follicle signalling.";
+  if (/meta[-\s]?b|metabolic|hypothyroid/.test(t)) return "Prediabetes and weight factors can slow follicle recovery through insulin resistance.";
+  if (/immune|te gold|telogen/.test(t)) return "Sustained stress and cortisol signalling can push more follicles into the shedding phase.";
+  if (/fphl|female pattern|ludwig/.test(t)) return "Family history and the Ludwig pattern suggest androgen-sensitive miniaturisation.";
+  if (/mphl|male pattern|norwood/.test(t)) return "Androgen sensitivity in the Norwood pattern drives progressive follicular miniaturisation.";
+  if (/greying/.test(t)) return "Oxidative stress on melanocytes reduces melanin production and shows up as early greying.";
+  return "Contributes to the current hair-cycle pattern surfaced in your assessment.";
+}
+
+/* ============================== LOWER GRID ============================= */
+function LowerGrid({ data }: { data: OnePageReportViewModel }) {
+  return (
+    <section className="lower">
+      <TopicalPanel data={data} />
+      <TimelinePanel stages={data.recoveryJourney} />
+      <LifestylePanel data={data} />
+    </section>
+  );
+}
+
+function TopicalPanel({ data }: { data: OnePageReportViewModel }) {
+  const items = data.topicalCare.slice(0, 3);
+  return (
+    <div className="panel">
+      <div className="panel-h"><span>Topical &amp; Scalp Care Plan</span></div>
+      {items.map((item) => <TopicalItem key={item.name} item={item} />)}
+      <p className="warn">Minoxidil or prescription changes should be reconsidered only after the scalp barrier and dandruff are controlled.</p>
+    </div>
+  );
+}
+
+function TopicalItem({ item }: { item: PrintTopical }) {
+  const [purposeLine, ...rest] = item.usage.split(/(?<=\.)\s+/);
+  return (
+    <div className="top-item">
+      <div className="shot">
+        {item.asset ? (
+          <img
+            src={item.asset.src}
+            alt={item.asset.alt}
+            data-asset-key={item.asset.key}
+            data-asset-role="topical"
+          />
+        ) : (
+          <span style={{ fontSize: 6, textAlign: "center" }}>{item.name}</span>
+        )}
+      </div>
+      <div>
+        <strong>{item.name}</strong>
+        <p>{item.purpose}</p>
+        <span><b>Use:</b> {purposeLine}{rest.length ? " " + rest.join(" ") : ""}</span>
+      </div>
+    </div>
+  );
+}
+
+function TimelinePanel({ stages }: { stages: PrintTimelineStage[] }) {
+  const shown = stages.slice(0, 4);
+  return (
+    <div className="panel">
+      <div className="panel-h">
+        <span>Your Recovery Timeline</span>
+        <span className="sub">DAY BASED</span>
+      </div>
+      <div className="tl">
+        {shown.map((stage, i) => (
+          <div className="tl-step" key={stage.window}>
+            <i>{i + 1}</i>
+            <em>{stage.window}</em>
+            <strong>{stage.title}</strong>
+            <p>{stage.outcomes[0]}</p>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function LifestylePanel({ data }: { data: OnePageReportViewModel }) {
+  const supports = data.lifestyleSupport.supports.slice(0, 4);
+  const slows = data.lifestyleSupport.slows.slice(0, 4);
+  return (
+    <div className="panel">
+      <div className="panel-h"><span>Lifestyle &amp; Daily Support</span></div>
+      <div className="life">
+        <h4 className="g">Supports recovery</h4>
+        {supports.map((item) => (
+          <span className="ok" key={item}><CheckSvg />{item}</span>
+        ))}
+        <h4 className="r">May slow recovery</h4>
+        {slows.map((item) => (
+          <span className="no" key={item}><CrossSvg />{item}</span>
+        ))}
+      </div>
+      <div className="qr-row">
+        <div className="qr-box">
+          {data.guideUrl
+            ? <QRCode value={data.guideUrl} size={32} level="M" />
+            : <span style={{ fontSize: 5, color: "#8A9A8E" }}>QR unavailable</span>}
+        </div>
+        <p>Scan to view your complete<br/>diet &amp; lifestyle guide</p>
+      </div>
+    </div>
+  );
+}
+
+/* ============================== FOOTER ================================= */
+function ReportFooter({ data }: { data: OnePageReportViewModel }) {
+  const firstName = data.doctorApproval.approvedBy.split(/\s+/).filter(Boolean)[0] ?? "Doctor";
+  return (
+    <footer className="ft">
+      <div className="who">
+        <small>Reviewed &amp; Recommended By</small>
+        <div className="serif">{data.doctorApproval.approvedBy}</div>
+        <p>{data.clinician.title}</p>
+        <div className="signature">{firstName}</div>
+      </div>
+      <div className="next">
+        <small>Next Review</small>
+        <b>{data.doctorApproval.nextReviewDate}</b>
+        <p>or as advised by your doctor</p>
+      </div>
+      <p className="disc">{data.disclaimer}</p>
+      <div className="approve">
+        <i><CheckSvg /></i>
+        <span>DOCTOR<br/>{data.doctorApproval.state === "APPROVED" ? "APPROVED" : "REVIEWED"}</span>
+      </div>
+    </footer>
+  );
+}
+
+/* ============================== helpers ================================ */
+function ReportPreflight({ data }: { data: OnePageReportViewModel }) {
+  if (data.validation.ok) return null;
+  return (
+    <aside className="op-validation">
+      <strong>Pre-render validation</strong>
+      <ul>{data.validation.errors.map((error) => <li key={error}>{error}</li>)}</ul>
+    </aside>
+  );
+}
+
+/* ============================== small SVG glyphs =======================
+   Utility marks only (check / cross / bullseye / contributor micro-icons).
+   All condition, kit, topical, patient and recovery-stage visuals come
+   from the real PNG assets in productAssets.ts. */
+
+function CheckSvg() {
+  return <svg viewBox="0 0 24 24"><path d="M4 12l5 5L20 6"/></svg>;
+}
+function CrossSvg() {
+  return <svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg>;
+}
+function GoalIconSvg() {
+  return <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="4"/><circle cx="12" cy="12" r="1"/></svg>;
+}
+function contributorGlyph(illustration: IllustrationKey): ReactNode {
+  switch (illustration) {
+    case "scalp":
+      return <svg viewBox="0 0 24 24"><path d="M4 15c4-6 12-6 16 0"/><path d="M8 15c1 3 7 3 8 0"/><path d="M12 9V4"/></svg>;
+    case "hormonal":
+      return <svg viewBox="0 0 24 24"><path d="M12 3c4 5 6 8 6 11a6 6 0 0 1-12 0c0-3 2-6 6-11Z"/></svg>;
+    case "metabolic":
+      return <svg viewBox="0 0 24 24"><circle cx="12" cy="13" r="7"/><path d="M12 13l4-4"/></svg>;
+    case "nutrition":
+      return <svg viewBox="0 0 24 24"><path d="M12 4c5 3 7 8 6 14c-4 1.5-8 1.5-12 0C5 12 7 7 12 4Z"/><path d="M12 4v14"/></svg>;
+    case "immune":
+      return <svg viewBox="0 0 24 24"><path d="M12 3l7 3v6c0 5-3 8-7 9-4-1-7-4-7-9V6l7-3Z"/></svg>;
+    case "stress":
+      return <svg viewBox="0 0 24 24"><path d="M5 14c2-6 12-6 14 0"/><path d="M7 8c2-3 5-3 6 0M14 7c2-2 4-1 5 1"/></svg>;
+    case "recovery":
+      return <svg viewBox="0 0 24 24"><path d="M4 12h16"/><path d="M12 4v16"/></svg>;
+    case "follicle":
+    default:
+      return <svg viewBox="0 0 24 24"><path d="M6 4c4 2 4 6 0 8c4 2 4 6 0 8M18 4c-4 2-4 6 0 8c-4 2-4 6 0 8"/></svg>;
+  }
+}
+
+export type { PrintDensityMode };

@@ -1,5 +1,5 @@
 import type { ClinicalTemplate } from '../types';
-import { v, c, cv } from '../_fragmentUtils';
+import { v, c, cv, vReq } from '../_fragmentUtils';
 
 export const TE_PATIENT_OPENING = [
   v(9,
@@ -40,10 +40,15 @@ export const TE_PATIENT_SEVERITY_SEVERE = [
 ];
 
 export const TE_PATIENT_TREATMENT = [
+  // Generic variants — no patient-symptom claims. Safe for any TE patient.
   v(9,
     'Your treatment plan directly addresses what triggered the shedding — giving your follicles the nutritional and anti-inflammatory support they need to stop shedding and re-enter the growth phase.',
     'The most important first step is stopping the shedding by correcting the imbalance that caused it. From there, your follicles will naturally start recovering.',
-    'Your plan starts with shedding arrest, then clears any scalp inflammation that built up during the shedding phase, and then supports your immune system to help follicles grow back.'
+  ),
+  // "Clears any scalp inflammation that built up" — only valid for patients
+  // who actually reported scalp findings; otherwise it invents a symptom.
+  vReq(['scalp.anyNonNormal'], 9,
+    'Your plan starts with shedding arrest, then clears any scalp inflammation that built up during the shedding phase, and then supports your immune system to help follicles grow back.',
   ),
   c('hasGLP1Early', 'Because your shedding is related to rapid weight loss, your treatment starts with a specific protective formula designed for exactly this situation — so your follicles are shielded during the process.', 8),
   c('isPregnant', 'Your treatment during pregnancy is a single, carefully selected prenatal supplement that is completely safe for you and your baby, and supports your nutritional needs throughout.', 9),

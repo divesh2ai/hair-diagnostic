@@ -4,6 +4,7 @@ import type {
   RecommendedKitsSection,
   RecoveryOutlookSection,
 } from "@hairos/packages/ai-engine/report-engine/v3";
+import { getKitInfo } from "@hairos/packages/registries/kits/info";
 
 // ────────────────────────────────────────────────────────────────────────────
 // V3 patient narrative renderer.
@@ -83,6 +84,28 @@ function RecommendedKits({ data }: { data: RecommendedKitsSection }) {
   );
 }
 
+function patientFacingWhySelected(kit: RecommendedKitEntry): string {
+  if (/POST[-\s]?HYSTERECTOMY|HYSTERECTOMY RESET/i.test(kit.name)) {
+    return getKitInfo("PRO FACT POST HYSTERECTOMY RESET")?.diagnosisInsight ?? kit.whySelected;
+  }
+  return kit.whySelected;
+}
+
+function patientFacingKitName(name: string): string {
+  const legacyNames: Record<string, string> = {
+    "Pro Immune 5V": "Pro Immune 5",
+    "Pro Immune 5V (Veg)": "Pro Immune 5",
+    "Hair Fact MPHL": "MPHL Pro",
+    "Hair Fact MPHL Plus": "MPHL Pro",
+    "Hair Fact FPHL": "FPHL Pro",
+    "Hair Fact FPHL Plus": "FPHL Pro",
+    MPHL: "MPHL Pro",
+    FPHL: "FPHL Pro",
+  };
+
+  return legacyNames[name] ?? name;
+}
+
 function KitCard({ kit, phase }: { kit: RecommendedKitEntry; phase: number }) {
   const hasIngredients = kit.formulationGroups.length > 0;
 
@@ -95,11 +118,11 @@ function KitCard({ kit, phase }: { kit: RecommendedKitEntry; phase: number }) {
         </span>
         <div className="flex-1">
           <p className="font-serif text-xl font-semibold tracking-tight text-slate-900">
-            {kit.name}
+            {patientFacingKitName(kit.name)}
           </p>
           <p className="mt-1.5 text-sm leading-relaxed text-slate-700">
             <span className="font-medium text-teal-800">Why this kit was selected — </span>
-            {kit.whySelected}
+            {patientFacingWhySelected(kit)}
           </p>
         </div>
       </header>

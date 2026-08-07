@@ -156,7 +156,7 @@ function Input({
       value={value}
       onChange={(e) => onChange(e.target.value)}
       placeholder={placeholder}
-      className="h-9 px-3 rounded-md border border-border bg-background text-sm w-44"
+      className="h-9 px-3 rounded-lg border border-border bg-background text-sm w-44 focus:outline-none focus:ring-2 focus:ring-ring/40 transition-all"
     />
   );
 }

@@ -1,0 +1,586 @@
+{
+  "schemaVersion": "1.0.0",
+  "sourceFile": "Dr. Skin Fact - Questionnaire.md",
+  "extractedBy": "hand-authored — first production pass",
+  "extractionDate": "2026-07-24",
+  "concern": "skin_acne",
+  "sections": [
+    {
+      "sectionId": "SKN_S1_ABOUT_YOU",
+      "title": "About you",
+      "description": "A few basics so we can tailor your assessment.",
+      "questions": [
+        {
+          "id": "age",
+          "type": "number",
+          "label": "How old are you?",
+          "subtitle": null,
+          "required": true,
+          "multiSelect": false,
+          "options": [],
+          "visibilityRules": [],
+          "skipLogic": [],
+          "dependencies": [],
+          "validation": { "min": 10, "max": 100, "placeholder": "e.g. 24", "hint": "Enter a whole number between 10 and 100." },
+          "scoringSignals": [],
+          "clinicalMappings": [],
+          "uiMetadata": { "layout": "single", "voiceEnabled": false, "format": "number" },
+          "sourceCodeReference": "skin-acne.schema.json#age"
+        },
+        {
+          "id": "sex",
+          "type": "single_select",
+          "label": "What is your gender?",
+          "subtitle": null,
+          "required": true,
+          "multiSelect": false,
+          "options": [
+            { "label": "Female", "value": "Female", "icon": null, "triggers": [], "clinicalTags": [], "followUpQuestions": [] },
+            { "label": "Male", "value": "Male", "icon": null, "triggers": [], "clinicalTags": [], "followUpQuestions": [] },
+            { "label": "Prefer not to say", "value": "Prefer not to say", "icon": null, "triggers": [], "clinicalTags": [], "followUpQuestions": [] }
+          ],
+          "visibilityRules": [],
+          "skipLogic": [],
+          "dependencies": [],
+          "validation": {},
+          "scoringSignals": [],
+          "clinicalMappings": [],
+          "uiMetadata": { "layout": "grid", "voiceEnabled": false },
+          "sourceCodeReference": "skin-acne.schema.json#sex"
+        },
+        {
+          "id": "skin_type",
+          "type": "single_select",
+          "label": "How would you describe your skin type?",
+          "subtitle": "Choose one",
+          "required": true,
+          "multiSelect": false,
+          "options": [
+            { "label": "Oily", "value": "Oily", "icon": null, "triggers": [], "clinicalTags": ["seborrhea"], "followUpQuestions": [] },
+            { "label": "Dry", "value": "Dry", "icon": null, "triggers": [], "clinicalTags": [], "followUpQuestions": [] },
+            { "label": "Combination", "value": "Combination", "icon": null, "triggers": [], "clinicalTags": [], "followUpQuestions": [] }
+          ],
+          "visibilityRules": [],
+          "skipLogic": [],
+          "dependencies": [],
+          "validation": {},
+          "scoringSignals": [],
+          "clinicalMappings": [],
+          "uiMetadata": { "layout": "grid", "voiceEnabled": false },
+          "sourceCodeReference": "skin-acne.schema.json#skin_type"
+        },
+        {
+          "id": "sensitive_skin",
+          "type": "single_select",
+          "label": "Do you have sensitive skin?",
+          "subtitle": null,
+          "required": true,
+          "multiSelect": false,
+          "options": [
+            { "label": "Yes", "value": "Yes", "icon": null, "triggers": [], "clinicalTags": ["sensitivity"], "followUpQuestions": [] },
+            { "label": "No", "value": "No", "icon": null, "triggers": [], "clinicalTags": [], "followUpQuestions": [] },
+            { "label": "Not sure", "value": "Not sure", "icon": null, "triggers": [], "clinicalTags": [], "followUpQuestions": [] }
+          ],
+          "visibilityRules": [],
+          "skipLogic": [],
+          "dependencies": [],
+          "validation": {},
+          "scoringSignals": [],
+          "clinicalMappings": [],
+          "uiMetadata": { "layout": "grid", "voiceEnabled": false },
+          "sourceCodeReference": "skin-acne.schema.json#sensitive_skin"
+        }
+      ]
+    },
+    {
+      "sectionId": "SKN_S2_YOUR_ACNE",
+      "title": "Your acne",
+      "description": "Tell us where and how acne shows up for you.",
+      "questions": [
+        {
+          "id": "acne_locations",
+          "type": "multi_select",
+          "label": "Where do you have acne?",
+          "subtitle": "Select all that apply",
+          "required": true,
+          "multiSelect": true,
+          "options": [
+            { "label": "Face", "value": "Face", "icon": null, "triggers": [], "clinicalTags": [], "followUpQuestions": [] },
+            { "label": "Chest", "value": "Chest", "icon": null, "triggers": [], "clinicalTags": ["truncal_acne"], "followUpQuestions": [] },
+            { "label": "Upper back", "value": "Upper back", "icon": null, "triggers": [], "clinicalTags": ["truncal_acne"], "followUpQuestions": [] },
+            { "label": "Shoulders", "value": "Shoulders", "icon": null, "triggers": [], "clinicalTags": ["truncal_acne"], "followUpQuestions": [] }
+          ],
+          "visibilityRules": [],
+          "skipLogic": [],
+          "dependencies": [],
+          "validation": {},
+          "scoringSignals": [],
+          "clinicalMappings": [],
+          "uiMetadata": { "layout": "grid", "voiceEnabled": false, "multiSelectConfirm": true },
+          "sourceCodeReference": "skin-acne.schema.json#acne_locations"
+        },
+        {
+          "id": "acne_duration",
+          "type": "single_select",
+          "label": "How long have you had acne?",
+          "subtitle": null,
+          "required": true,
+          "multiSelect": false,
+          "options": [
+            { "label": "Less than 1 year", "value": "Less than 1 year", "icon": null, "triggers": [], "clinicalTags": [], "followUpQuestions": [] },
+            { "label": "More than 1 year", "value": "More than 1 year", "icon": null, "triggers": [], "clinicalTags": ["chronic_acne"], "followUpQuestions": [] }
+          ],
+          "visibilityRules": [],
+          "skipLogic": [],
+          "dependencies": [],
+          "validation": {},
+          "scoringSignals": [],
+          "clinicalMappings": [],
+          "uiMetadata": { "layout": "grid", "voiceEnabled": false },
+          "sourceCodeReference": "skin-acne.schema.json#acne_duration"
+        },
+        {
+          "id": "acne_types",
+          "type": "multi_select",
+          "label": "What type of acne do you notice?",
+          "subtitle": "Select all that apply",
+          "required": true,
+          "multiSelect": true,
+          "options": [
+            { "label": "Blackheads or whiteheads", "value": "Blackheads or whiteheads", "icon": null, "triggers": [], "clinicalTags": ["comedonal"], "followUpQuestions": [] },
+            { "label": "Red inflamed bumps", "value": "Red inflamed bumps", "icon": null, "triggers": [], "clinicalTags": ["papular"], "followUpQuestions": [] },
+            { "label": "Pus-filled pimples", "value": "Pus-filled pimples", "icon": null, "triggers": [], "clinicalTags": ["pustular"], "followUpQuestions": [] },
+            { "label": "Deep painful nodules or cysts", "value": "Deep painful nodules or cysts", "icon": null, "triggers": [], "clinicalTags": ["nodulocystic"], "followUpQuestions": [] },
+            { "label": "Not sure", "value": "Not sure", "icon": null, "triggers": [], "clinicalTags": [], "followUpQuestions": [] }
+          ],
+          "visibilityRules": [],
+          "skipLogic": [],
+          "dependencies": [],
+          "mutualExclusivityRules": {
+            "description": "Not sure is exclusive with any specific type selection.",
+            "toastMessage": "Cleared other selections",
+            "rules": [
+              { "selecting": "Not sure", "deselects": "Blackheads or whiteheads" },
+              { "selecting": "Not sure", "deselects": "Red inflamed bumps" },
+              { "selecting": "Not sure", "deselects": "Pus-filled pimples" },
+              { "selecting": "Not sure", "deselects": "Deep painful nodules or cysts" },
+              { "selecting": "Blackheads or whiteheads", "deselects": "Not sure" },
+              { "selecting": "Red inflamed bumps", "deselects": "Not sure" },
+              { "selecting": "Pus-filled pimples", "deselects": "Not sure" },
+              { "selecting": "Deep painful nodules or cysts", "deselects": "Not sure" }
+            ]
+          },
+          "validation": {},
+          "scoringSignals": [],
+          "clinicalMappings": [],
+          "uiMetadata": { "layout": "grid", "voiceEnabled": false, "imageSelect": true, "multiSelectConfirm": true },
+          "sourceCodeReference": "skin-acne.schema.json#acne_types"
+        },
+        {
+          "id": "acne_spot_count",
+          "type": "single_select",
+          "label": "Approximately how many active acne spots do you have?",
+          "subtitle": null,
+          "required": true,
+          "multiSelect": false,
+          "options": [
+            { "label": "Fewer than 5", "value": "Fewer than 5", "icon": null, "triggers": [], "clinicalTags": ["mild"], "followUpQuestions": [] },
+            { "label": "5 to 20", "value": "5 to 20", "icon": null, "triggers": [], "clinicalTags": ["moderate"], "followUpQuestions": [] },
+            { "label": "More than 20", "value": "More than 20", "icon": null, "triggers": [], "clinicalTags": ["severe"], "followUpQuestions": [] },
+            { "label": "Extensive or deep cystic acne", "value": "Extensive or deep cystic acne", "icon": null, "triggers": [], "clinicalTags": ["very_severe","nodulocystic"], "followUpQuestions": [] },
+            { "label": "Not sure", "value": "Not sure", "icon": null, "triggers": [], "clinicalTags": [], "followUpQuestions": [] }
+          ],
+          "visibilityRules": [],
+          "skipLogic": [],
+          "dependencies": [],
+          "validation": {},
+          "scoringSignals": [],
+          "clinicalMappings": [],
+          "uiMetadata": { "layout": "grid", "voiceEnabled": false },
+          "sourceCodeReference": "skin-acne.schema.json#acne_spot_count"
+        },
+        {
+          "id": "acne_associated_features",
+          "type": "multi_select",
+          "label": "What else do you notice?",
+          "subtitle": "Select all that apply",
+          "required": false,
+          "multiSelect": true,
+          "options": [
+            { "label": "Dark marks", "value": "Dark marks", "icon": null, "triggers": [], "clinicalTags": ["pih"], "followUpQuestions": [] },
+            { "label": "Redness", "value": "Redness", "icon": null, "triggers": [], "clinicalTags": ["erythema"], "followUpQuestions": [] },
+            { "label": "Scars", "value": "Scars", "icon": null, "triggers": [], "clinicalTags": ["scarring"], "followUpQuestions": [] },
+            { "label": "Pain or tenderness", "value": "Pain or tenderness", "icon": null, "triggers": [], "clinicalTags": ["tender"], "followUpQuestions": [] },
+            { "label": "None", "value": "None", "icon": null, "triggers": [], "clinicalTags": [], "followUpQuestions": [] }
+          ],
+          "visibilityRules": [],
+          "skipLogic": [],
+          "dependencies": [],
+          "mutualExclusivityRules": {
+            "description": "None is exclusive with any specific feature selection.",
+            "toastMessage": "Cleared other selections",
+            "rules": [
+              { "selecting": "None", "deselects": "Dark marks" },
+              { "selecting": "None", "deselects": "Redness" },
+              { "selecting": "None", "deselects": "Scars" },
+              { "selecting": "None", "deselects": "Pain or tenderness" },
+              { "selecting": "Dark marks", "deselects": "None" },
+              { "selecting": "Redness", "deselects": "None" },
+              { "selecting": "Scars", "deselects": "None" },
+              { "selecting": "Pain or tenderness", "deselects": "None" }
+            ]
+          },
+          "validation": {},
+          "scoringSignals": [],
+          "clinicalMappings": [],
+          "uiMetadata": { "layout": "grid", "voiceEnabled": false, "multiSelectConfirm": true },
+          "sourceCodeReference": "skin-acne.schema.json#acne_associated_features"
+        }
+      ]
+    },
+    {
+      "sectionId": "SKN_S3_TRIGGERS",
+      "title": "Possible triggers",
+      "description": "Medical background and lifestyle factors that can influence acne.",
+      "questions": [
+        {
+          "id": "acne_medical_conditions",
+          "type": "multi_select",
+          "label": "Do any of these medical conditions apply?",
+          "subtitle": "Select all that apply",
+          "required": false,
+          "multiSelect": true,
+          "options": [
+            { "label": "PCOS", "value": "PCOS", "icon": null, "triggers": [], "clinicalTags": ["hormonal"], "followUpQuestions": [] },
+            { "label": "Thyroid condition", "value": "Thyroid condition", "icon": null, "triggers": [], "clinicalTags": ["endocrine"], "followUpQuestions": [] },
+            { "label": "Obesity or metabolic condition", "value": "Obesity or metabolic condition", "icon": null, "triggers": [], "clinicalTags": ["metabolic"], "followUpQuestions": [] },
+            { "label": "Pregnancy or postpartum", "value": "Pregnancy or postpartum", "icon": null, "triggers": [], "clinicalTags": ["pregnancy"], "followUpQuestions": [], "visibleOnlyIf": { "dependsOn": "sex", "operator": "equals", "value": "Female" } },
+            { "label": "Other medical condition", "value": "Other medical condition", "icon": null, "triggers": [], "clinicalTags": [], "followUpQuestions": [] },
+            { "label": "None", "value": "None", "icon": null, "triggers": [], "clinicalTags": [], "followUpQuestions": [] }
+          ],
+          "visibilityRules": [],
+          "skipLogic": [],
+          "dependencies": [],
+          "mutualExclusivityRules": {
+            "description": "None is exclusive with any specific condition.",
+            "toastMessage": "Cleared other selections",
+            "rules": [
+              { "selecting": "None", "deselects": "PCOS" },
+              { "selecting": "None", "deselects": "Thyroid condition" },
+              { "selecting": "None", "deselects": "Obesity or metabolic condition" },
+              { "selecting": "None", "deselects": "Pregnancy or postpartum" },
+              { "selecting": "None", "deselects": "Other medical condition" },
+              { "selecting": "PCOS", "deselects": "None" },
+              { "selecting": "Thyroid condition", "deselects": "None" },
+              { "selecting": "Obesity or metabolic condition", "deselects": "None" },
+              { "selecting": "Pregnancy or postpartum", "deselects": "None" },
+              { "selecting": "Other medical condition", "deselects": "None" }
+            ]
+          },
+          "validation": {},
+          "scoringSignals": [],
+          "clinicalMappings": [],
+          "uiMetadata": { "layout": "grid", "voiceEnabled": false, "multiSelectConfirm": true },
+          "sourceCodeReference": "skin-acne.schema.json#acne_medical_conditions"
+        },
+        {
+          "id": "menstrual_cycle_regular",
+          "type": "single_select",
+          "label": "Is your menstrual cycle regular?",
+          "subtitle": null,
+          "required": false,
+          "multiSelect": false,
+          "options": [
+            { "label": "Yes", "value": "Yes", "icon": null, "triggers": [], "clinicalTags": [], "followUpQuestions": [] },
+            { "label": "No", "value": "No", "icon": null, "triggers": [], "clinicalTags": ["cycle_irregular"], "followUpQuestions": [] },
+            { "label": "Not sure", "value": "Not sure", "icon": null, "triggers": [], "clinicalTags": [], "followUpQuestions": [] }
+          ],
+          "visibilityRules": [
+            { "dependsOn": "sex", "operator": "equals", "value": "Female" }
+          ],
+          "skipLogic": [],
+          "dependencies": ["sex"],
+          "validation": {},
+          "scoringSignals": [],
+          "clinicalMappings": [],
+          "uiMetadata": { "layout": "grid", "voiceEnabled": false },
+          "sourceCodeReference": "skin-acne.schema.json#menstrual_cycle_regular"
+        },
+        {
+          "id": "acne_aggravators",
+          "type": "multi_select",
+          "label": "Which factors appear to worsen your acne?",
+          "subtitle": "Select all that apply",
+          "required": false,
+          "multiSelect": true,
+          "options": [
+            { "label": "Cosmetics or skincare products", "value": "Cosmetics or skincare products", "icon": null, "triggers": [], "clinicalTags": ["cosmetic_acne"], "followUpQuestions": [] },
+            { "label": "Stress", "value": "Stress", "icon": null, "triggers": [], "clinicalTags": [], "followUpQuestions": [] },
+            { "label": "Poor sleep", "value": "Poor sleep", "icon": null, "triggers": [], "clinicalTags": [], "followUpQuestions": [] },
+            { "label": "Pregnancy or hormonal changes", "value": "Pregnancy or hormonal changes", "icon": null, "triggers": [], "clinicalTags": ["hormonal"], "followUpQuestions": [] },
+            { "label": "Nicotine use", "value": "Nicotine use", "icon": null, "triggers": [], "clinicalTags": [], "followUpQuestions": [] },
+            { "label": "Not sure", "value": "Not sure", "icon": null, "triggers": [], "clinicalTags": [], "followUpQuestions": [] },
+            { "label": "None", "value": "None", "icon": null, "triggers": [], "clinicalTags": [], "followUpQuestions": [] }
+          ],
+          "visibilityRules": [],
+          "skipLogic": [],
+          "dependencies": [],
+          "mutualExclusivityRules": {
+            "description": "None and Not sure are exclusive with any specific trigger selection and with each other.",
+            "toastMessage": "Cleared other selections",
+            "rules": [
+              { "selecting": "None", "deselects": "Cosmetics or skincare products" },
+              { "selecting": "None", "deselects": "Stress" },
+              { "selecting": "None", "deselects": "Poor sleep" },
+              { "selecting": "None", "deselects": "Pregnancy or hormonal changes" },
+              { "selecting": "None", "deselects": "Nicotine use" },
+              { "selecting": "None", "deselects": "Not sure" },
+              { "selecting": "Not sure", "deselects": "Cosmetics or skincare products" },
+              { "selecting": "Not sure", "deselects": "Stress" },
+              { "selecting": "Not sure", "deselects": "Poor sleep" },
+              { "selecting": "Not sure", "deselects": "Pregnancy or hormonal changes" },
+              { "selecting": "Not sure", "deselects": "Nicotine use" },
+              { "selecting": "Not sure", "deselects": "None" },
+              { "selecting": "Cosmetics or skincare products", "deselects": "None" },
+              { "selecting": "Cosmetics or skincare products", "deselects": "Not sure" },
+              { "selecting": "Stress", "deselects": "None" },
+              { "selecting": "Stress", "deselects": "Not sure" },
+              { "selecting": "Poor sleep", "deselects": "None" },
+              { "selecting": "Poor sleep", "deselects": "Not sure" },
+              { "selecting": "Pregnancy or hormonal changes", "deselects": "None" },
+              { "selecting": "Pregnancy or hormonal changes", "deselects": "Not sure" },
+              { "selecting": "Nicotine use", "deselects": "None" },
+              { "selecting": "Nicotine use", "deselects": "Not sure" }
+            ]
+          },
+          "validation": {},
+          "scoringSignals": [],
+          "clinicalMappings": [],
+          "uiMetadata": { "layout": "grid", "voiceEnabled": false, "multiSelectConfirm": true },
+          "sourceCodeReference": "skin-acne.schema.json#acne_aggravators"
+        },
+        {
+          "id": "current_medicines",
+          "type": "single_select",
+          "label": "Are you currently taking any medicines?",
+          "subtitle": null,
+          "required": true,
+          "multiSelect": false,
+          "options": [
+            { "label": "Yes", "value": "Yes", "icon": null, "triggers": [], "clinicalTags": [], "followUpQuestions": ["current_medicines_list"] },
+            { "label": "No", "value": "No", "icon": null, "triggers": [], "clinicalTags": [], "followUpQuestions": [] }
+          ],
+          "visibilityRules": [],
+          "skipLogic": [],
+          "dependencies": [],
+          "validation": {},
+          "scoringSignals": [],
+          "clinicalMappings": [],
+          "uiMetadata": { "layout": "grid", "voiceEnabled": false },
+          "sourceCodeReference": "skin-acne.schema.json#current_medicines"
+        },
+        {
+          "id": "current_medicines_list",
+          "type": "textarea",
+          "label": "Which medicines?",
+          "subtitle": "List names and doses if you know them.",
+          "required": false,
+          "multiSelect": false,
+          "options": [],
+          "visibilityRules": [
+            { "dependsOn": "current_medicines", "operator": "equals", "value": "Yes" }
+          ],
+          "skipLogic": [],
+          "dependencies": ["current_medicines"],
+          "validation": { "maxLength": 500, "placeholder": "e.g. Metformin 500mg, Isotretinoin 20mg", "hint": "Optional — helps your doctor spot interactions." },
+          "scoringSignals": [],
+          "clinicalMappings": [],
+          "uiMetadata": { "layout": "single", "voiceEnabled": true, "format": "text" },
+          "sourceCodeReference": "skin-acne.schema.json#current_medicines_list"
+        }
+      ]
+    },
+    {
+      "sectionId": "SKN_S4_PREVIOUS_TREATMENT",
+      "title": "Previous treatment",
+      "description": "What you have tried before shapes what your doctor will recommend next.",
+      "questions": [
+        {
+          "id": "prev_treatment_taken",
+          "type": "single_select",
+          "label": "Have you taken acne treatment before?",
+          "subtitle": null,
+          "required": true,
+          "multiSelect": false,
+          "options": [
+            { "label": "Yes", "value": "Yes", "icon": null, "triggers": [], "clinicalTags": [], "followUpQuestions": ["prev_treatments_tried", "prev_treatment_prescribed", "prev_treatment_outcome"] },
+            { "label": "No", "value": "No", "icon": null, "triggers": [], "clinicalTags": [], "followUpQuestions": [] }
+          ],
+          "visibilityRules": [],
+          "skipLogic": [],
+          "dependencies": [],
+          "validation": {},
+          "scoringSignals": [],
+          "clinicalMappings": [],
+          "uiMetadata": { "layout": "grid", "voiceEnabled": false },
+          "sourceCodeReference": "skin-acne.schema.json#prev_treatment_taken"
+        },
+        {
+          "id": "prev_treatments_tried",
+          "type": "multi_select",
+          "label": "Which treatments have you tried?",
+          "subtitle": "Select all that apply",
+          "required": false,
+          "multiSelect": true,
+          "options": [
+            { "label": "Prescription medicines", "value": "Prescription medicines", "icon": null, "triggers": [], "clinicalTags": ["rx"], "followUpQuestions": [] },
+            { "label": "Creams or gels", "value": "Creams or gels", "icon": null, "triggers": [], "clinicalTags": ["topical"], "followUpQuestions": [] },
+            { "label": "Chemical peels", "value": "Chemical peels", "icon": null, "triggers": [], "clinicalTags": ["procedure"], "followUpQuestions": [] },
+            { "label": "Laser treatment", "value": "Laser treatment", "icon": null, "triggers": [], "clinicalTags": ["procedure"], "followUpQuestions": [] },
+            { "label": "Over-the-counter products", "value": "Over-the-counter products", "icon": null, "triggers": [], "clinicalTags": ["otc"], "followUpQuestions": [] },
+            { "label": "Other", "value": "Other", "icon": null, "triggers": [], "clinicalTags": [], "followUpQuestions": [] }
+          ],
+          "visibilityRules": [
+            { "dependsOn": "prev_treatment_taken", "operator": "equals", "value": "Yes" }
+          ],
+          "skipLogic": [],
+          "dependencies": ["prev_treatment_taken"],
+          "validation": {},
+          "scoringSignals": [],
+          "clinicalMappings": [],
+          "uiMetadata": { "layout": "grid", "voiceEnabled": false, "multiSelectConfirm": true },
+          "sourceCodeReference": "skin-acne.schema.json#prev_treatments_tried"
+        },
+        {
+          "id": "prev_treatment_prescribed",
+          "type": "single_select",
+          "label": "Was it prescribed by a dermatologist?",
+          "subtitle": null,
+          "required": false,
+          "multiSelect": false,
+          "options": [
+            { "label": "Yes", "value": "Yes", "icon": null, "triggers": [], "clinicalTags": [], "followUpQuestions": [] },
+            { "label": "No", "value": "No", "icon": null, "triggers": [], "clinicalTags": [], "followUpQuestions": [] },
+            { "label": "Not sure", "value": "Not sure", "icon": null, "triggers": [], "clinicalTags": [], "followUpQuestions": [] }
+          ],
+          "visibilityRules": [
+            { "dependsOn": "prev_treatment_taken", "operator": "equals", "value": "Yes" }
+          ],
+          "skipLogic": [],
+          "dependencies": ["prev_treatment_taken"],
+          "validation": {},
+          "scoringSignals": [],
+          "clinicalMappings": [],
+          "uiMetadata": { "layout": "grid", "voiceEnabled": false },
+          "sourceCodeReference": "skin-acne.schema.json#prev_treatment_prescribed"
+        },
+        {
+          "id": "prev_treatment_outcome",
+          "type": "single_select",
+          "label": "What happened after treatment?",
+          "subtitle": null,
+          "required": false,
+          "multiSelect": false,
+          "options": [
+            { "label": "Improved", "value": "Improved", "icon": null, "triggers": [], "clinicalTags": ["responder"], "followUpQuestions": [] },
+            { "label": "Improved temporarily", "value": "Improved temporarily", "icon": null, "triggers": [], "clinicalTags": ["relapse"], "followUpQuestions": [] },
+            { "label": "No improvement", "value": "No improvement", "icon": null, "triggers": [], "clinicalTags": ["non_responder"], "followUpQuestions": [] },
+            { "label": "Became worse", "value": "Became worse", "icon": null, "triggers": [], "clinicalTags": ["worsened"], "followUpQuestions": [] },
+            { "label": "Still using it", "value": "Still using it", "icon": null, "triggers": [], "clinicalTags": ["ongoing"], "followUpQuestions": [] }
+          ],
+          "visibilityRules": [
+            { "dependsOn": "prev_treatment_taken", "operator": "equals", "value": "Yes" }
+          ],
+          "skipLogic": [],
+          "dependencies": ["prev_treatment_taken"],
+          "validation": {},
+          "scoringSignals": [],
+          "clinicalMappings": [],
+          "uiMetadata": { "layout": "grid", "voiceEnabled": false },
+          "sourceCodeReference": "skin-acne.schema.json#prev_treatment_outcome"
+        }
+      ]
+    },
+    {
+      "sectionId": "SKN_S5_SAFETY_UPLOADS",
+      "title": "Safety and uploads",
+      "description": "Allergies and photos help your doctor make a safer, more accurate plan.",
+      "questions": [
+        {
+          "id": "allergies_present",
+          "type": "single_select",
+          "label": "Do you have any known allergies?",
+          "subtitle": null,
+          "required": true,
+          "multiSelect": false,
+          "options": [
+            { "label": "Yes", "value": "Yes", "icon": null, "triggers": [], "clinicalTags": [], "followUpQuestions": ["allergies_list"] },
+            { "label": "No", "value": "No", "icon": null, "triggers": [], "clinicalTags": [], "followUpQuestions": [] },
+            { "label": "Not sure", "value": "Not sure", "icon": null, "triggers": [], "clinicalTags": [], "followUpQuestions": [] }
+          ],
+          "visibilityRules": [],
+          "skipLogic": [],
+          "dependencies": [],
+          "validation": {},
+          "scoringSignals": [],
+          "clinicalMappings": [],
+          "uiMetadata": { "layout": "grid", "voiceEnabled": false },
+          "sourceCodeReference": "skin-acne.schema.json#allergies_present"
+        },
+        {
+          "id": "allergies_list",
+          "type": "textarea",
+          "label": "Which allergies?",
+          "subtitle": "Medications, foods, topicals — anything relevant.",
+          "required": false,
+          "multiSelect": false,
+          "options": [],
+          "visibilityRules": [
+            { "dependsOn": "allergies_present", "operator": "equals", "value": "Yes" }
+          ],
+          "skipLogic": [],
+          "dependencies": ["allergies_present"],
+          "validation": { "maxLength": 500, "placeholder": "e.g. Sulpha, benzoyl peroxide, peanuts", "hint": "Free-form list is fine." },
+          "scoringSignals": [],
+          "clinicalMappings": [],
+          "uiMetadata": { "layout": "single", "voiceEnabled": true, "format": "text" },
+          "sourceCodeReference": "skin-acne.schema.json#allergies_list"
+        },
+        {
+          "id": "acne_photos",
+          "type": "image_upload",
+          "label": "Upload photos of your acne",
+          "subtitle": "Front view, left side, right side — and chest/back if relevant. Recommended, but you can continue without.",
+          "required": false,
+          "multiSelect": false,
+          "options": [],
+          "visibilityRules": [],
+          "skipLogic": [],
+          "dependencies": [],
+          "validation": { "hint": "Photos help your doctor grade severity accurately." },
+          "scoringSignals": [],
+          "clinicalMappings": [],
+          "uiMetadata": { "layout": "single", "voiceEnabled": false },
+          "sourceCodeReference": "skin-acne.schema.json#acne_photos"
+        },
+        {
+          "id": "prescription_upload",
+          "type": "image_upload",
+          "label": "Upload previous prescription or investigation",
+          "subtitle": "Optional — helpful if you've been treated before.",
+          "required": false,
+          "multiSelect": false,
+          "options": [],
+          "visibilityRules": [],
+          "skipLogic": [],
+          "dependencies": [],
+          "validation": { "hint": "Photos or PDFs of past reports." },
+          "scoringSignals": [],
+          "clinicalMappings": [],
+          "uiMetadata": { "layout": "single", "voiceEnabled": false },
+          "sourceCodeReference": "skin-acne.schema.json#prescription_upload"
+        }
+      ]
+    }
+  ]
+}

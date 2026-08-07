@@ -1,19 +1,22 @@
 ﻿"use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
-import { useParams } from "next/navigation";
+import { Suspense, useCallback, useEffect, useMemo, useState } from "react";
+import { useParams, useSearchParams } from "next/navigation";
 import { motion } from "framer-motion";
 import {
   Activity,
   ArrowRight,
   Award,
+  ClipboardList,
   Compass,
   Download,
   Droplet,
+  FileText,
   FlaskConical,
   Heart,
   Leaf,
   Microscope,
+  Package,
   Play,
   RefreshCw,
   Sparkles,
@@ -26,7 +29,7 @@ import { normalizeAssessmentReportPayload } from "@/lib/adapters/assessmentAdapt
 import type { AssessmentReportPayload } from "@shared/types/assessment";
 
 /* -------------------------------------------------------------------------- */
-/* Editorial image library â€” photoreal, premium, consistent grading           */
+/* Editorial image library — photoreal, premium, consistent grading           */
 /* -------------------------------------------------------------------------- */
 const IMG = {
   cover:
@@ -74,36 +77,67 @@ function visualForDriver(name: string, index: number) {
 /* -------------------------------------------------------------------------- */
 /* Page                                                                        */
 /* -------------------------------------------------------------------------- */
+const TERMINAL_STATUSES = new Set(["COMPLETED", "FAILED", "PARTIAL_FAILURE"]);
+
+// useSearchParams requires a Suspense boundary during prerender.
 export default function ReportPage() {
+  return (
+    <Suspense fallback={null}>
+      <ReportPageInner />
+    </Suspense>
+  );
+}
+
+function ReportPageInner() {
   const { id } = useParams();
+  const searchParams = useSearchParams();
   const assessmentId = String(id ?? "");
+  // Signed patient token (?t=) — the status/pdf APIs return full artifact
+  // content only for authenticated or token-bearing callers; without it the
+  // whole dossier renders fallback placeholders.
+  const token = searchParams?.get("t") ?? "";
+  const tokenQs = token ? `&t=${encodeURIComponent(token)}` : "";
   const [report, setReport] = useState<AssessmentReportPayload | null>(null);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
+  const [tab, setTab] = useState<ReportTab>("clinical");
 
   const fetchData = useCallback(async () => {
     try {
-      const res = await fetch(`/api/assessment/status?id=${assessmentId}`, {
-        cache: "no-store",
-      });
+      const res = await fetch(
+        `/api/assessment/status?id=${assessmentId}${tokenQs}`,
+        { cache: "no-store" },
+      );
       const json = await res.json();
       const normalized = normalizeAssessmentReportPayload(json);
       setReport(normalized);
       setLoadError(normalized.processing.errors[0] ?? null);
+      return normalized;
     } catch (error) {
       console.error("[ReportPage] Error fetching assessment status:", error);
       setLoadError("We could not load the latest report data.");
+      return null;
     } finally {
       setLoading(false);
     }
-  }, [assessmentId]);
+  }, [assessmentId, tokenQs]);
 
   useEffect(() => {
-    const first = window.setTimeout(fetchData, 0);
-    const poll = setInterval(fetchData, 3000);
+    let poll: number | undefined;
+    let cancelled = false;
+    const tick = async () => {
+      const normalized = await fetchData();
+      if (cancelled) return;
+      // Keep polling only while orchestration is still running.
+      if (!normalized || !TERMINAL_STATUSES.has(normalized.processing.status)) {
+        poll = window.setTimeout(tick, 3000);
+      }
+    };
+    const first = window.setTimeout(tick, 0);
     return () => {
+      cancelled = true;
       window.clearTimeout(first);
-      clearInterval(poll);
+      if (poll !== undefined) window.clearTimeout(poll);
     };
   }, [fetchData]);
 
@@ -112,8 +146,8 @@ export default function ReportPage() {
     typeof reportContent.patientPdfUrl === "string"
       ? reportContent.patientPdfUrl
       : null;
-  const pdfRoute = `/api/assessment/pdf?id=${assessmentId}`;
-  const pdfDownloadRoute = `/api/assessment/pdf?id=${assessmentId}&download=1`;
+  const pdfRoute = `/api/assessment/pdf?id=${assessmentId}${tokenQs}`;
+  const pdfDownloadRoute = `/api/assessment/pdf?id=${assessmentId}&download=1${tokenQs}`;
 
   const derived = useMemo(() => deriveDossier(report), [report]);
   const downloadFileName = `${slugifyName(derived.patientName) || "hair-dossier"}.pdf`;
@@ -148,7 +182,7 @@ export default function ReportPage() {
     >
       <AmbientField />
 
-      {/* Floating action bar â€” minimal, unobtrusive */}
+      {/* Floating action bar — minimal, unobtrusive */}
       <div className="fixed right-6 top-6 z-50 flex items-center gap-2">
         <button
           onClick={fetchData}
@@ -169,6 +203,19 @@ export default function ReportPage() {
           <Download className="h-3.5 w-3.5" />
           {pdfUrl ? "Download PDF" : "Check PDF"}
         </a>
+        {/* Doctor-reviewed one-page summary — separate from the long-form
+            clinical PDF above. Opens the printable Dr FACT sheet. */}
+        <a
+          href={`/reports/${assessmentId}/one-page${tokenQs ? `?${tokenQs.slice(1)}` : ""}`}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="inline-flex items-center gap-2 rounded-full border border-[#F4B942]/50 bg-[#F4B942]/15 px-4 py-2 text-[12px] font-semibold text-[#F4B942] backdrop-blur-md transition-colors hover:bg-[#F4B942]/25"
+          style={{ fontFamily: "var(--font-jakarta)" }}
+          title="Open the doctor-reviewed one-page patient report"
+        >
+          <FileText className="h-3.5 w-3.5" />
+          Patient Report
+        </a>
       </div>
 
       {loadError && (
@@ -183,54 +230,75 @@ export default function ReportPage() {
         <CoverPage derived={derived} assessmentId={assessmentId} />
       </ErrorBoundary>
 
-      <ErrorBoundary title="Executive Summary">
-        <ExecutiveSummary findings={derived.findings} />
-      </ErrorBoundary>
+      <TabNav tab={tab} onChange={setTab} />
 
-      <ErrorBoundary title="Your responses">
-        <QuestionnaireResponses rows={derived.questionnaire} />
-      </ErrorBoundary>
+      {tab === "clinical" && (
+        <>
+          <ErrorBoundary title="Executive Summary">
+            <ExecutiveSummary findings={derived.findings} />
+          </ErrorBoundary>
 
-      <ErrorBoundary title="Chapter 1">
-        <ChapterOne pattern={derived.pattern} />
-      </ErrorBoundary>
+          <ErrorBoundary title="Your responses">
+            <QuestionnaireResponses rows={derived.questionnaire} />
+          </ErrorBoundary>
 
-      <ErrorBoundary title="Chapter 2">
-        <ChapterTwo
-          drivers={derived.drivers}
-          narrative={derived.whyNarrative}
-        />
-      </ErrorBoundary>
+          <ErrorBoundary title="Chapter 1">
+            <ChapterOne pattern={derived.pattern} />
+          </ErrorBoundary>
 
-      <ErrorBoundary title="Chapter 3">
-        <ChapterThree
-          interventions={derived.interventions}
-          protocolLabel={derived.protocolLabel}
-          rationale={derived.protocolRationale}
-        />
-      </ErrorBoundary>
+          <ErrorBoundary title="Chapter 2">
+            <ChapterTwo
+              drivers={derived.drivers}
+              narrative={derived.whyNarrative}
+            />
+          </ErrorBoundary>
+        </>
+      )}
 
-      <ErrorBoundary title="Chapter 4">
-        <ChapterFour milestones={derived.milestones} />
-      </ErrorBoundary>
+      {tab === "products" && (
+        <ErrorBoundary title="Chapter 3">
+          <ChapterThree
+            interventions={derived.interventions}
+            protocolLabel={derived.protocolLabel}
+            rationale={derived.protocolRationale}
+          />
+        </ErrorBoundary>
+      )}
 
-      <ErrorBoundary title="Conclusion">
-        <ConclusionPage conclusion={derived.conclusion} patientName={derived.patientName} />
-      </ErrorBoundary>
+      {tab === "recovery" && (
+        <>
+          <ErrorBoundary title="Chapter 4">
+            <ChapterFour milestones={derived.milestones} />
+          </ErrorBoundary>
+
+          <ErrorBoundary title="Conclusion">
+            <ConclusionPage
+              conclusion={derived.conclusion}
+              patientName={derived.patientName}
+              onBeginPlan={() => {
+                setTab("products");
+                document
+                  .getElementById("report-tabs")
+                  ?.scrollIntoView({ behavior: "smooth", block: "start" });
+              }}
+            />
+          </ErrorBoundary>
+        </>
+      )}
 
       <footer className="relative z-10 border-t border-[#0A2540]/8 bg-[#F8FAFC] py-10 text-center">
         <p
           className="text-[10px] uppercase tracking-[0.32em] text-[#0A2540]/45"
           style={{ fontFamily: "var(--font-jakarta)" }}
         >
-          HairOS Intelligence Dossier Â· {assessmentId}
+          HairOS Intelligence Dossier · {assessmentId}
         </p>
       </footer>
     </main>
   );
 }
 
-/* â”€â”€ PAGE 1 Â· Cover â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+/* ── PAGE 1 · Cover ─────────────────────────────────────────────────────── */
 function CoverPage({
   derived,
   assessmentId,
@@ -239,7 +307,7 @@ function CoverPage({
   assessmentId: string;
 }) {
   return (
-    <section className="relative z-10 mx-auto grid min-h-screen max-w-7xl items-center gap-16 px-8 py-24 lg:grid-cols-[1.05fr_1fr]">
+    <section className="relative z-10 mx-auto grid min-h-screen max-w-7xl items-center gap-16 px-5 py-24 sm:px-8 lg:grid-cols-[1.05fr_1fr]">
       <motion.div
         initial={{ opacity: 0, y: 28 }}
         animate={{ opacity: 1, y: 0 }}
@@ -269,7 +337,7 @@ function CoverPage({
         </h2>
 
         <h1
-          className="mt-12 text-[68px] font-bold leading-[0.98] tracking-[-0.03em] md:text-[104px]"
+          className="mt-12 text-[44px] font-bold leading-[0.98] tracking-[-0.03em] sm:text-[64px] md:text-[88px] lg:text-[104px]"
           style={{ fontFamily: "var(--font-jakarta)" }}
         >
           Your Hair
@@ -281,10 +349,10 @@ function CoverPage({
 
         <p className="mt-8 max-w-xl text-[17px] leading-[1.75] text-white/65">
           A personalized explanation of the biological factors influencing
-          your hair today â€” generated by HairOS Intelligence.
+          your hair today — generated by HairOS Intelligence.
         </p>
 
-        <div className="mt-14 grid max-w-lg grid-cols-3 gap-6 border-t border-white/10 pt-8">
+        <div className="mt-14 grid max-w-lg grid-cols-1 gap-5 border-t border-white/10 pt-8 sm:grid-cols-3 sm:gap-6">
           <Meta label="Assessment date" value={derived.date} />
           <Meta label="Analysis ID" value={derived.shortId} />
           <Meta label="Clinician" value={derived.clinician} />
@@ -319,7 +387,7 @@ function CoverPage({
               Personal intelligence
             </div>
             <div className="mt-1.5 text-[14px] font-medium leading-snug text-white">
-              Crafted from your responses Â· interpreted through clinical reasoning.
+              Crafted from your responses · interpreted through clinical reasoning.
             </div>
           </div>
         </div>
@@ -349,13 +417,13 @@ function Meta({ label, value }: { label: string; value: string }) {
   );
 }
 
-/* â”€â”€ PAGE 2 Â· Executive Summary â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+/* ── PAGE 2 · Executive Summary ─────────────────────────────────────────── */
 function ExecutiveSummary({ findings }: { findings: Finding[] }) {
   return (
-    <section className="relative z-10 mx-auto max-w-6xl px-8 py-28">
+    <section className="relative z-10 mx-auto max-w-6xl px-5 sm:px-8 py-28">
       <SectionEyebrow eyebrow="Executive Summary" />
       <h2
-        className="mt-4 max-w-3xl text-[48px] font-bold leading-[1.02] tracking-[-0.02em] text-white md:text-[72px]"
+        className="mt-4 max-w-3xl text-[34px] font-bold leading-[1.02] tracking-[-0.02em] text-white sm:text-[48px] md:text-[72px]"
         style={{ fontFamily: "var(--font-jakarta)" }}
       >
         What HairOS
@@ -363,7 +431,7 @@ function ExecutiveSummary({ findings }: { findings: Finding[] }) {
         <span className="text-white/55">Discovered.</span>
       </h2>
       <p className="mt-6 max-w-xl text-[16px] leading-[1.75] text-white/55">
-        The strongest signals across your responses â€” each one a thread we
+        The strongest signals across your responses — each one a thread we
         follow through the rest of your story.
       </p>
 
@@ -418,14 +486,14 @@ function ConfidencePill({ level }: { level: "Strong" | "Moderate" | "Emerging" }
   );
 }
 
-/* â”€â”€ Questionnaire responses â”€ raw selections, evidence cards â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+/* ── Questionnaire responses ─ raw selections, evidence cards ───────────────────── */
 function QuestionnaireResponses({ rows }: { rows: Selection[] }) {
   if (rows.length === 0) return null;
   return (
-    <section className="relative z-10 mx-auto max-w-6xl px-8 py-20">
+    <section className="relative z-10 mx-auto max-w-6xl px-5 sm:px-8 py-20">
       <SectionEyebrow eyebrow="Your responses" />
       <h2
-        className="mt-4 max-w-3xl text-[40px] font-bold leading-[1.04] tracking-[-0.02em] text-white md:text-[56px]"
+        className="mt-4 max-w-3xl text-[30px] font-bold leading-[1.04] tracking-[-0.02em] text-white sm:text-[40px] md:text-[56px]"
         style={{ fontFamily: "var(--font-jakarta)" }}
       >
         Questionnaire
@@ -433,7 +501,7 @@ function QuestionnaireResponses({ rows }: { rows: Selection[] }) {
         <span className="text-white/55">Selections.</span>
       </h2>
       <p className="mt-5 max-w-xl text-[15px] leading-[1.75] text-white/55">
-        The raw signals you shared â€” the foundation HairOS interprets through
+        The raw signals you shared — the foundation HairOS interprets through
         the rest of this dossier.
       </p>
 
@@ -459,10 +527,10 @@ function QuestionnaireResponses({ rows }: { rows: Selection[] }) {
   );
 }
 
-/* â”€â”€ CHAPTER 1 Â· What's Happening â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+/* ── CHAPTER 1 · What's Happening ───────────────────────────────────────── */
 function ChapterOne({ pattern }: { pattern: PatternProfile }) {
   return (
-    <section className="relative z-10 mx-auto max-w-7xl px-8 py-28">
+    <section className="relative z-10 mx-auto max-w-7xl px-5 sm:px-8 py-28">
       <ChapterHeader
         number="Chapter One"
         title="What's Happening"
@@ -510,7 +578,7 @@ function ChapterOne({ pattern }: { pattern: PatternProfile }) {
           <DataCard
             Icon={Compass}
             label="Affected regions"
-            value={pattern.regions.join(" Â· ") || "Diffuse"}
+            value={pattern.regions.join(" · ") || "Diffuse"}
             sub="The zones contributing most to the picture."
           />
           <DataCard
@@ -525,7 +593,7 @@ function ChapterOne({ pattern }: { pattern: PatternProfile }) {
   );
 }
 
-/* â”€â”€ CHAPTER 2 Â· Why â€” the centerpiece of the dossier â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+/* ── CHAPTER 2 · Why — the centerpiece of the dossier ───────────────────── */
 function ChapterTwo({
   drivers,
   narrative,
@@ -534,7 +602,7 @@ function ChapterTwo({
   narrative: string;
 }) {
   return (
-    <section className="relative z-10 mx-auto max-w-7xl px-8 py-28">
+    <section className="relative z-10 mx-auto max-w-7xl px-5 sm:px-8 py-28">
       <ChapterHeader
         number="Chapter Two"
         title="Why Is This"
@@ -611,7 +679,7 @@ function DriverStory({
               className="text-[10px] uppercase tracking-[0.28em] text-white/85"
               style={{ fontFamily: "var(--font-jakarta)" }}
             >
-              Driver Â· {String(index + 1).padStart(2, "0")}
+              Driver · {String(index + 1).padStart(2, "0")}
             </span>
           </div>
         </div>
@@ -626,7 +694,7 @@ function DriverStory({
           Detected driver
         </p>
         <h3
-          className="mt-3 text-[40px] font-bold leading-[1.02] tracking-[-0.02em] text-white md:text-[52px]"
+          className="mt-3 text-[30px] font-bold leading-[1.02] tracking-[-0.02em] text-white sm:text-[40px] md:text-[52px]"
           style={{ fontFamily: "var(--font-jakarta)" }}
         >
           {driver.name}
@@ -703,7 +771,7 @@ function BiologyStep({
   );
 }
 
-/* â”€â”€ CHAPTER 3 Â· How We Rebuild Growth â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+/* ── CHAPTER 3 · How We Rebuild Growth ──────────────────────────────────── */
 function ChapterThree({
   interventions,
   protocolLabel,
@@ -714,7 +782,7 @@ function ChapterThree({
   rationale: string;
 }) {
   return (
-    <section className="relative z-10 mx-auto max-w-7xl px-8 py-28">
+    <section className="relative z-10 mx-auto max-w-7xl px-5 sm:px-8 py-28">
       <ChapterHeader
         number="Chapter Three"
         title="How We"
@@ -811,10 +879,10 @@ function Block({ label, value, tone }: { label: string; value: string; tone: str
   );
 }
 
-/* â”€â”€ CHAPTER 4 Â· Future Hair Journey â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+/* ── CHAPTER 4 · Future Hair Journey ────────────────────────────────────── */
 function ChapterFour({ milestones }: { milestones: Milestone[] }) {
   return (
-    <section className="relative z-10 mx-auto max-w-7xl px-8 py-28">
+    <section className="relative z-10 mx-auto max-w-7xl px-5 sm:px-8 py-28">
       <ChapterHeader
         number="Chapter Four"
         title="Your Future"
@@ -882,7 +950,7 @@ function ChapterFour({ milestones }: { milestones: Milestone[] }) {
               className="mt-3 text-[30px] font-bold leading-tight text-white"
               style={{ fontFamily: "var(--font-jakarta)" }}
             >
-              Recovery is a continuum â€” not a destination.
+              Recovery is a continuum — not a destination.
             </h4>
             <p className="mt-3 text-[14px] leading-[1.75] text-white/75">
               Outcomes are never guaranteed. The roadmap above describes the
@@ -896,16 +964,18 @@ function ChapterFour({ milestones }: { milestones: Milestone[] }) {
   );
 }
 
-/* â”€â”€ Conclusion â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+/* ── Conclusion ─────────────────────────────────────────────────────────── */
 function ConclusionPage({
   conclusion,
   patientName,
+  onBeginPlan,
 }: {
   conclusion: string;
   patientName: string;
+  onBeginPlan: () => void;
 }) {
   return (
-    <section className="relative z-10 px-8 pb-36 pt-16">
+    <section className="relative z-10 px-5 pb-36 pt-16 sm:px-8">
       <div className="mx-auto max-w-4xl">
         <motion.div
           initial={{ opacity: 0, y: 32 }}
@@ -925,7 +995,7 @@ function ConclusionPage({
             Closing chapter
           </p>
           <h2
-            className="relative mt-5 text-[48px] font-bold leading-[1.04] tracking-[-0.02em] text-[#0A2540] md:text-[68px]"
+            className="relative mt-5 text-[34px] font-bold leading-[1.04] tracking-[-0.02em] text-[#0A2540] sm:text-[48px] md:text-[68px]"
             style={{ fontFamily: "var(--font-jakarta)" }}
           >
             Your Hair
@@ -942,20 +1012,74 @@ function ConclusionPage({
             {conclusion}
           </p>
 
-          <div
-            className="relative mt-12 inline-flex items-center gap-3 rounded-full bg-[#0A2540] px-8 py-4 text-[13.5px] font-semibold text-white"
+          <button
+            type="button"
+            onClick={onBeginPlan}
+            className="relative mt-12 inline-flex items-center gap-3 rounded-full bg-[#0A2540] px-8 py-4 text-[13.5px] font-semibold text-white transition-transform hover:scale-[1.03] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#00C2A8]"
             style={{ fontFamily: "var(--font-jakarta)" }}
           >
             <Play className="h-3.5 w-3.5 fill-white" />
             Begin the recovery plan
-          </div>
+          </button>
         </motion.div>
       </div>
     </section>
   );
 }
 
-/* â”€â”€ Shared building blocks â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+/* ── Tab navigation ─────────────────────────────────────────────────────── */
+type ReportTab = "clinical" | "products" | "recovery";
+
+function TabNav({
+  tab,
+  onChange,
+}: {
+  tab: ReportTab;
+  onChange: (t: ReportTab) => void;
+}) {
+  const items: {
+    id: ReportTab;
+    label: string;
+    Icon: React.ComponentType<{ className?: string }>;
+  }[] = [
+    { id: "clinical", label: "Questionnaire & clinical interpretation", Icon: ClipboardList },
+    { id: "products", label: "Product recommendation protocol", Icon: Package },
+    { id: "recovery", label: "Recovery, diet & lifestyle", Icon: Sparkles },
+  ];
+  return (
+    <div id="report-tabs" className="sticky top-4 z-40 mx-auto mt-6 max-w-5xl px-6 scroll-mt-4">
+      <div
+        role="tablist"
+        aria-label="Clinical output"
+        className="flex flex-wrap gap-1 rounded-full border border-white/15 bg-black/45 p-1 backdrop-blur-xl shadow-[0_20px_60px_-20px_rgba(0,0,0,0.7)]"
+      >
+        {items.map(({ id, label, Icon }) => {
+          const active = tab === id;
+          return (
+            <button
+              key={id}
+              type="button"
+              role="tab"
+              aria-selected={active}
+              onClick={() => onChange(id)}
+              className={`flex-1 min-w-[160px] inline-flex items-center justify-center gap-2 rounded-full px-4 py-2.5 text-[12px] font-semibold transition ${
+                active
+                  ? "bg-gradient-to-r from-[#00C2A8] to-[#0A2540] text-white shadow-[0_12px_30px_-12px_rgba(0,194,168,0.6)]"
+                  : "text-white/70 hover:text-white hover:bg-white/[0.06]"
+              }`}
+              style={{ fontFamily: "var(--font-jakarta)" }}
+            >
+              <Icon className="h-3.5 w-3.5" />
+              <span className="truncate">{label}</span>
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+/* ── Shared building blocks ─────────────────────────────────────────────── */
 function ChapterHeader({
   number,
   title,
@@ -981,7 +1105,7 @@ function ChapterHeader({
           {number}
         </p>
         <h2
-          className="mt-4 text-[52px] font-bold leading-[1.02] tracking-[-0.025em] text-white md:text-[80px]"
+          className="mt-4 text-[34px] font-bold leading-[1.02] tracking-[-0.025em] text-white sm:text-[52px] md:text-[80px]"
           style={{ fontFamily: "var(--font-jakarta)" }}
         >
           {title}
@@ -1055,7 +1179,7 @@ function DataCard({
   );
 }
 
-/* â”€â”€ Ambient field â€” calmer, fewer points, no dashboard noise â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+/* ── Ambient field — calmer, fewer points, no dashboard noise ──────────── */
 function AmbientField() {
   const points = Array.from({ length: 18 }, (_, i) => ({
     id: i,
@@ -1106,7 +1230,7 @@ function AmbientField() {
 }
 
 /* -------------------------------------------------------------------------- */
-/* Dossier derivation â€” translate the artifact bag into chaptered shape       */
+/* Dossier derivation — translate the artifact bag into chaptered shape       */
 /* -------------------------------------------------------------------------- */
 type Finding = {
   title: string;
@@ -1159,7 +1283,7 @@ function deriveDossier(report: AssessmentReportPayload | null) {
   const selectionRows: Array<[string, unknown]> = [
     ["Duration", selections.duration],
     ["Shedding intensity", selections.count],
-    ["Severity grade", selections.grade],
+    ["Severity grade", asString(selections.grade).replace(/^Grade\s*\d+\s*[—–-]+\s*/i, "") || undefined],
     ["Hair pattern", selections.hairType],
     ["Scalp", selections.scalp],
     ["Suspected cause", selections.cause],
@@ -1176,13 +1300,14 @@ function deriveDossier(report: AssessmentReportPayload | null) {
   const questionnaire: Selection[] = selectionRows
     .map(([label, raw]) => {
       const value = Array.isArray(raw)
-        ? raw.map((x) => asString(x)).filter(Boolean).join(" Â· ")
+        ? raw.map((x) => asString(x)).filter(Boolean).join(" · ")
         : asString(raw);
       return { label, value };
     })
     .filter((row) => row.value.trim().length > 0);
 
   const patientName =
+    asString(report?.patient?.name) ||
     asString(clinical.patientName) ||
     asString(asObject(report?.artifactByType.REPORT?.content).patientName) ||
     "Your personal dossier";
@@ -1204,7 +1329,7 @@ function deriveDossier(report: AssessmentReportPayload | null) {
     });
   })();
 
-  /* â”€ Findings â”€ */
+  /* ─ Findings ─ */
   const rawFindings = arr(clinical.keyFindings) || arr(clinical.topFindings) || [];
   const fallbackFindings: Finding[] = [
     {
@@ -1239,7 +1364,7 @@ function deriveDossier(report: AssessmentReportPayload | null) {
         }))
       : fallbackFindings;
 
-  /* â”€ Pattern â”€ */
+  /* ─ Pattern ─ */
   const sevLabel =
     asString(severity.severityLabel) ||
     asString(severity.severity) ||
@@ -1269,25 +1394,49 @@ function deriveDossier(report: AssessmentReportPayload | null) {
       "Gradual",
   };
 
-  /* â”€ Drivers â”€ */
-  const enrichedCauses = arr(narratives?.enrichedRootCauses) || arr(clinical.rootCauses) || [];
+  /* ─ Drivers ─ */
+  // Note: arr() always returns an array, so `||` chaining never falls through
+  // an empty list — pick the first source that actually has entries. The V4
+  // clinical report stores causes under rootCauseAnalysis.{primary,secondary,
+  // amplifiers} with condition/clinicalRelevance/supportingSignals fields.
+  const rootCauseAnalysis = asObject(clinicalReport.rootCauseAnalysis);
+  const flattenedCauses = [
+    ...arr(rootCauseAnalysis.primary),
+    ...arr(rootCauseAnalysis.secondary),
+    ...arr(rootCauseAnalysis.amplifiers),
+  ];
+  const enrichedCauses =
+    [
+      arr(narratives?.enrichedRootCauses),
+      arr(clinical.rootCauses),
+      flattenedCauses,
+    ].find((list) => list.length > 0) ?? [];
   const drivers: Driver[] = enrichedCauses.slice(0, 5).map((c, i) => {
     const o = asObject(c);
     return {
-      name: asString(o.name) || asString(o.cause) || `Driver ${i + 1}`,
+      name:
+        asString(o.name) ||
+        asString(o.cause) ||
+        asString(o.condition) ||
+        `Driver ${i + 1}`,
       mechanism:
         asString(o.mechanism) ||
         asString(o.explanation) ||
+        asString(o.clinicalRelevance) ||
         "A biological pathway shaping your hair cycle.",
       follicular:
         asString(o.follicularImpact) ||
-        asString(o.impact) ||
+        // rootCauseAnalysis uses `impact` as a grade word ("Low"/"High"), not
+        // prose — only surface it when it reads as a sentence.
+        (asString(o.impact).length > 16 ? asString(o.impact) : "") ||
         "Disrupts follicle function over time.",
       cycle:
         asString(o.hairCycleImpact) ||
         asString(o.cycleImpact) ||
         "Shortens the active growth phase.",
-      symptoms: (arr(o.symptoms) || []).map((s) => asString(s)).filter(Boolean),
+      symptoms: (arr(o.symptoms).length > 0 ? arr(o.symptoms) : arr(o.supportingSignals))
+        .map((s) => asString(s))
+        .filter(Boolean),
       Icon: DRIVER_ICONS[i % DRIVER_ICONS.length],
     };
   });
@@ -1303,13 +1452,15 @@ function deriveDossier(report: AssessmentReportPayload | null) {
     });
   }
 
-  /* â”€ Narrative â”€ */
+  /* ─ Narrative ─ */
   const whyNarrative =
+    asString(asObject(narratives?.patientNarrative).full) ||
+    asString(asObject(narratives?.patientNarrative).short) ||
     asString(asObject(narratives?.patientNarrative).body) ||
     asString(asObject(narratives?.patientNarrative).summary) ||
-    "Your story is being composed â€” each driver below weaves into a coherent picture of why this is happening.";
+    "Your story is being composed — each driver below weaves into a coherent picture of why this is happening.";
 
-  /* â”€ Interventions â”€ */
+  /* ─ Interventions ─ */
   const kits = arr(recs.rankedKits) || [];
   const enrichedNeeds = arr(narratives?.enrichedTherapyNeeds) || [];
   const interventions: Intervention[] = kits.slice(0, 4).map((k, i) => {
@@ -1320,7 +1471,7 @@ function deriveDossier(report: AssessmentReportPayload | null) {
       name: asString(kit.kitId) || asString(kit.name) || `Phase ${i + 1} intervention`,
       problem:
         asString(need.problem) ||
-        (arr(kit.matchedNeeds) || []).slice(0, 2).map((n) => asString(n)).join(" Â· ") ||
+        (arr(kit.matchedNeeds) || []).slice(0, 2).map((n) => asString(n)).join(" · ") ||
         "Targets a detected biological gap.",
       whyItMatters:
         asString(need.whyItMatters) ||
@@ -1345,7 +1496,7 @@ function deriveDossier(report: AssessmentReportPayload | null) {
     });
   }
 
-  /* â”€ Milestones â”€ */
+  /* ─ Milestones ─ */
   const milestones: Milestone[] = [
     {
       label: "Month 1",
@@ -1385,17 +1536,19 @@ function deriveDossier(report: AssessmentReportPayload | null) {
     },
   ];
 
-  /* â”€ Conclusion â”€ */
+  /* ─ Conclusion ─ */
   const conclusion =
+    asString(asObject(narratives?.prognosis).full) ||
+    asString(asObject(narratives?.prognosis).short) ||
     asString(asObject(narratives?.prognosis).body) ||
     asString(asObject(narratives?.prognosis).summary) ||
-    "What HairOS discovered, why it matters, and what can improve are now part of a single, clear picture. With consistency, the path forward is realistic â€” and built around the way your biology actually behaves.";
+    "What HairOS discovered, why it matters, and what can improve are now part of a single, clear picture. With consistency, the path forward is realistic — and built around the way your biology actually behaves.";
 
   return {
     patientName,
     clinician,
     date: dateStr,
-    shortId: report ? report.assessmentId?.slice(0, 8).toUpperCase?.() ?? "â€”" : "â€”",
+    shortId: report ? report.assessmentId?.slice(0, 8).toUpperCase?.() ?? "—" : "—",
     findings,
     questionnaire,
     pattern,

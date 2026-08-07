@@ -70,7 +70,7 @@ export function applyPcosStackRule(
 
   // Pattern loss (FPHL) — strong signal only
   if (hasFPHL && !phases.some((k) => k.includes('FPHL'))) {
-    const fphlKit: KitId = isGrade45 ? 'FPHL PLUS' : 'FPHL';
+    const fphlKit: KitId = 'FPHL';
     phases.push(fphlKit);
     rules.push(`PCOS_FPHL: strong pattern-loss signal detected → ${fphlKit} added.`);
   }

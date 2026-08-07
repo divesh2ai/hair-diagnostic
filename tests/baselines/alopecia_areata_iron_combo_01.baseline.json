@@ -1,0 +1,55 @@
+{
+  "fixtureId": "alopecia_areata_iron_combo_01",
+  "generatedAt": "2026-07-03T07:14:17.867Z",
+  "pipelineVersion": "1.0.0",
+  "primaryDiagnosis": "ALOPECIA_AREATA",
+  "scalpStates": [
+    "NORMAL_SCALP"
+  ],
+  "rootCauses": [
+    "IRON_DEFICIENCY",
+    "AUTOIMMUNE"
+  ],
+  "therapyNeeds": [],
+  "severity": "MILD",
+  "rankedKitIds": [
+    "HAIR FACT ALOPECIA AREATA",
+    "PHENOTYPE INFLAMATION",
+    "PRO IMMUNE GOLD",
+    "IRON UP GOLD",
+    "FPHL"
+  ],
+  "appliedRules": [],
+  "protocolLabel": "Recovery protocol for 5 condition(s): Female pattern hair loss · Scalp / perifollicular inflammation · Iron deficiency / anaemia · Alopecia areata (autoimmune) · Immune depletion / regrowth support.",
+  "recommendations": [
+    "HAIR FACT ALOPECIA AREATA",
+    "PHENOTYPE INFLAMATION",
+    "PRO IMMUNE GOLD",
+    "IRON UP GOLD",
+    "FPHL"
+  ],
+  "narratives": {
+    "narratives": {
+      "doctorHash": "{\"doctorSummary\":\"Mild Alopecia areata. CD8+ T-lymphocyte-mediat",
+      "patientHash": "{\"doctorSummary\":\"Mild Alopecia areata. CD8+ T-lymphocyte-mediat"
+    },
+    "orchestration": {
+      "pipelineVersion": "1.0.0",
+      "executionId": "a683c6a9-05c6-410e-9a81-ea9514ae912b",
+      "startedAt": "2026-07-03T07:14:17.867Z",
+      "completedAt": "2026-07-03T07:14:17.871Z",
+      "durationMs": 4,
+      "completedStages": [
+        "questionnaire",
+        "clinical",
+        "therapy",
+        "recommendations",
+        "narratives"
+      ]
+    }
+  },
+  "reportMetadata": {
+    "generatedBy": "generate-baselines.ts",
+    "version": "1.0.0"
+  }
+}

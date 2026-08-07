@@ -1,0 +1,64 @@
+{
+  "fixtureId": "ojas_glp1_stress_no_genetics_01",
+  "generatedAt": "2026-07-03T07:14:18.024Z",
+  "pipelineVersion": "1.0.0",
+  "primaryDiagnosis": "THYROID_HYPO",
+  "scalpStates": [
+    "DRY_SCALP",
+    "DANDRUFF"
+  ],
+  "rootCauses": [
+    "STRESS",
+    "POOR_NUTRITION",
+    "HYPOTHYROID",
+    "METABOLIC",
+    "OXIDATIVE_STRESS",
+    "RAPID_WEIGHT_LOSS",
+    "HORMONAL_SHIFT"
+  ],
+  "therapyNeeds": [],
+  "severity": "MODERATE",
+  "rankedKitIds": [
+    "RAPID WEIGHT LOSS SHIELD",
+    "FH WELL 3",
+    "PHENOTYPE INFLAMATION",
+    "PRO FACT META B",
+    "PRO IMMUNE GOLD"
+  ],
+  "appliedRules": [
+    "HYPO_METABOLIC: Hypothyroid + metabolic → plain PRO FACT META B (METABOLIC kit covers both).",
+    "PHENOTYPE_SUPERSEDES_OXIDATIVE: Phenotype covers the shared NAC/Resveratrol/Quercetin pathway."
+  ],
+  "protocolLabel": "Recovery protocol for 6 condition(s): Female pattern hair loss · Scalp / perifollicular inflammation · Metabolic dysfunction · Endometriosis · Rapid weight loss / GLP-1 · Immune depletion / regrowth support.",
+  "recommendations": [
+    "RAPID WEIGHT LOSS SHIELD",
+    "FH WELL 3",
+    "PHENOTYPE INFLAMATION",
+    "PRO FACT META B",
+    "PRO IMMUNE GOLD"
+  ],
+  "narratives": {
+    "narratives": {
+      "doctorHash": "{\"doctorSummary\":\"Moderate Hypothyroidism-associated diffuse alo",
+      "patientHash": "{\"doctorSummary\":\"Moderate Hypothyroidism-associated diffuse alo"
+    },
+    "orchestration": {
+      "pipelineVersion": "1.0.0",
+      "executionId": "f0e09d3d-a4d7-4290-b43d-d69b27fe6c31",
+      "startedAt": "2026-07-03T07:14:18.024Z",
+      "completedAt": "2026-07-03T07:14:18.025Z",
+      "durationMs": 1,
+      "completedStages": [
+        "questionnaire",
+        "clinical",
+        "therapy",
+        "recommendations",
+        "narratives"
+      ]
+    }
+  },
+  "reportMetadata": {
+    "generatedBy": "generate-baselines.ts",
+    "version": "1.0.0"
+  }
+}

@@ -56,4 +56,4 @@ option's `value` retains its `Grade N — …` prefix, so the Norwood/Ludwig
 labels do not change scoring behaviour — they only change the picker UX.
 
 `isGrade45` (Grade 4 or 5) triggers the AGA absolute lock at age ≥ 20
-(AGA_MALE_45 / AGA_FEMALE_45 with MPHL PLUS / FPHL PLUS variants).
+(AGA_MALE_45 / AGA_FEMALE_45 with MPHL Pro / FPHL Pro products).

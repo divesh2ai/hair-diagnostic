@@ -68,6 +68,8 @@ export type Dictionary = {
     clinicProfile: string;
     branding: string;
     whatsapp: string;
+    orders: string;
+    leads: string;
   };
   shell: {
     searchPlaceholder: string;

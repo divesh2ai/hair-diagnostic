@@ -31,6 +31,14 @@ import {
   Sparkles,
 } from "lucide-react";
 import RosField from "./RosField";
+import {
+  ManhattanPlot,
+  FollicleUnderPressure,
+  FollicleCycle,
+  ReceptorThreshold,
+  SystemicBody,
+  RestorationArc,
+} from "./SceneArt";
 
 /* ------------------------------------------------------------------ */
 /*  Shared atoms                                                       */
@@ -142,47 +150,15 @@ function ActHero({ showScrollHint }: { showScrollHint: boolean }) {
 /*  ACT 2 — Polygenic constellation                                    */
 /* ------------------------------------------------------------------ */
 
-const GENE_NODES = Array.from({ length: 26 }, (_, i) => {
-  const a = (i / 26) * Math.PI * 2 + (i % 3);
-  const rad = 30 + ((i * 37) % 60);
-  return {
-    x: 50 + Math.cos(a) * (rad / 2.4),
-    y: 50 + Math.sin(a) * (rad / 2.4),
-    d: (i % 5) * 0.12,
-    hub: i % 7 === 0,
-  };
-});
-
-function GeneNode({
-  node,
-  progress,
-}: {
-  node: (typeof GENE_NODES)[number];
-  progress: MotionValue<number>;
-}) {
-  const opacity = useTransform(progress, [0.1 + node.d, 0.5 + node.d], [0, 1]);
-  return (
-    <motion.circle
-      cx={node.x}
-      cy={node.y}
-      r={node.hub ? 2.1 : 1.1}
-      fill={node.hub ? "rgb(125,211,252)" : "rgba(186,230,253,0.7)"}
-      style={{ opacity }}
-    />
-  );
-}
-
 function ActPolygenic() {
   const ref = useRef<HTMLDivElement>(null);
   const p = useScene(ref);
   const lift = useTransform(p, [0, 0.5], [40, 0]);
   const fade = useTransform(p, [0, 0.4], [0, 1]);
-  const netOpacity = useTransform(p, [0.15, 0.7], [0, 1]);
-  const scale = useTransform(p, [0, 0.6], [0.9, 1]);
 
   return (
-    <SceneFrame innerRef={ref}>
-      <div className="grid items-center gap-12 md:grid-cols-2">
+    <SceneFrame innerRef={ref} length="h-[280vh]">
+      <div className="grid items-center gap-12 md:grid-cols-[0.9fr_1.1fr]">
         <motion.div style={{ opacity: fade, y: lift }}>
           <Eyebrow>What the GWAS data revealed</Eyebrow>
           <h2 className={`${serif} text-4xl font-light leading-tight text-white md:text-5xl`}>
@@ -197,32 +173,7 @@ function ActPolygenic() {
           </p>
         </motion.div>
 
-        <motion.div className="relative mx-auto aspect-square w-full max-w-md" style={{ scale }}>
-          <svg viewBox="0 0 100 100" className="h-full w-full">
-            <motion.g style={{ opacity: netOpacity }}>
-              {GENE_NODES.map((n, i) =>
-                GENE_NODES.slice(i + 1).map((m, j) => {
-                  const dist = Math.hypot(n.x - m.x, n.y - m.y);
-                  if (dist > 26) return null;
-                  return (
-                    <line
-                      key={`${i}-${j}`}
-                      x1={n.x}
-                      y1={n.y}
-                      x2={m.x}
-                      y2={m.y}
-                      stroke="rgba(56,189,248,0.18)"
-                      strokeWidth={0.3}
-                    />
-                  );
-                })
-              )}
-            </motion.g>
-            {GENE_NODES.map((n, i) => (
-              <GeneNode key={i} node={n} progress={p} />
-            ))}
-          </svg>
-        </motion.div>
+        <ManhattanPlot progress={p} />
       </div>
     </SceneFrame>
   );
@@ -263,9 +214,23 @@ function FactorChip({
   tone: "amber" | "sky";
 }) {
   return (
-    <span className="inline-flex items-center gap-2 rounded-xl border border-white/10 bg-white/[0.04] px-3.5 py-2.5 text-sm text-white/75 backdrop-blur-sm">
-      <Icon className={`h-4 w-4 ${tone === "amber" ? "text-amber-300/80" : "text-sky-300/80"}`} />
-      {label}
+    <span
+      className={`inline-flex w-full items-center gap-2.5 rounded-xl border px-3 py-2 text-sm text-white/75 backdrop-blur-sm transition-colors ${
+        tone === "amber"
+          ? "border-amber-300/15 bg-amber-300/[0.05] hover:border-amber-300/35"
+          : "border-sky-300/15 bg-sky-300/[0.05] hover:border-sky-300/35"
+      }`}
+    >
+      <span
+        className={`grid h-7 w-7 shrink-0 place-items-center rounded-lg ${
+          tone === "amber" ? "bg-amber-300/10" : "bg-sky-300/10"
+        }`}
+      >
+        <Icon
+          className={`h-3.5 w-3.5 ${tone === "amber" ? "text-amber-300" : "text-sky-300"}`}
+        />
+      </span>
+      <span className="leading-tight">{label}</span>
     </span>
   );
 }
@@ -291,23 +256,27 @@ function ActFactors() {
         </p>
       </motion.div>
 
-      <div className="mt-12 grid gap-10 md:grid-cols-2">
+      <div className="mt-10 grid items-center gap-8 md:grid-cols-[1fr_auto_1fr]">
         <motion.div style={{ opacity: colA }}>
-          <p className="mb-4 text-xs font-semibold uppercase tracking-[0.25em] text-amber-300/80">
+          <p className="mb-3 text-xs font-semibold uppercase tracking-[0.25em] text-amber-300/80">
             Lifestyle
           </p>
-          <div className="flex flex-wrap gap-2.5">
+          <div className="grid gap-2 sm:grid-cols-2 md:grid-cols-1 lg:grid-cols-2">
             {LIFESTYLE.map((f) => (
               <FactorChip key={f.label} icon={f.icon} label={f.label} tone="amber" />
             ))}
           </div>
         </motion.div>
 
+        <div className="order-first md:order-none">
+          <FollicleUnderPressure progress={p} />
+        </div>
+
         <motion.div style={{ opacity: colB }}>
-          <p className="mb-4 text-xs font-semibold uppercase tracking-[0.25em] text-sky-300/80">
+          <p className="mb-3 text-xs font-semibold uppercase tracking-[0.25em] text-sky-300/80">
             Environment
           </p>
-          <div className="flex flex-wrap gap-2.5">
+          <div className="grid gap-2 sm:grid-cols-2 md:grid-cols-1 lg:grid-cols-2">
             {ENVIRONMENT.map((f) => (
               <FactorChip key={f.label} icon={f.icon} label={f.label} tone="sky" />
             ))}
@@ -321,45 +290,6 @@ function ActFactors() {
 /* ------------------------------------------------------------------ */
 /*  ACT 4 — It targets the weakest first                               */
 /* ------------------------------------------------------------------ */
-
-const STRANDS = Array.from({ length: 30 }, (_, i) => ({
-  weak: i % 3 === 0,
-  h: 40 + ((i * 53) % 45),
-  d: (i % 10) * 0.05,
-}));
-
-function Strand({
-  strand,
-  progress,
-}: {
-  strand: (typeof STRANDS)[number];
-  progress: MotionValue<number>;
-}) {
-  const opacity = useTransform(
-    progress,
-    [0.2 + strand.d, 0.6 + strand.d],
-    strand.weak ? [0.9, 0.18] : [0.9, 0.95]
-  );
-  const scaleY = useTransform(
-    progress,
-    [0.2 + strand.d, 0.65 + strand.d],
-    strand.weak ? [1, 0.45] : [1, 1]
-  );
-  return (
-    <motion.div
-      className="w-1.5 rounded-full"
-      style={{
-        height: `${strand.h}%`,
-        opacity,
-        scaleY,
-        transformOrigin: "bottom",
-        background: strand.weak
-          ? "linear-gradient(to top, rgba(251,191,36,0.7), rgba(251,191,36,0.1))"
-          : "linear-gradient(to top, rgba(52,211,153,0.9), rgba(52,211,153,0.25))",
-      }}
-    />
-  );
-}
 
 function ActWeakest() {
   const ref = useRef<HTMLDivElement>(null);
@@ -391,11 +321,7 @@ function ActWeakest() {
           </div>
         </motion.div>
 
-        <div className="flex h-64 items-end justify-center gap-1.5 md:h-80">
-          {STRANDS.map((s, i) => (
-            <Strand key={i} strand={s} progress={p} />
-          ))}
-        </div>
+        <FollicleCycle progress={p} />
       </div>
     </SceneFrame>
   );
@@ -443,9 +369,6 @@ function ActROS() {
   const p = useScene(ref);
   const fade = useTransform(p, [0, 0.2], [0, 1]);
   const lift = useTransform(p, [0, 0.2], [30, 0]);
-  const thresholdY = useTransform(p, [0.3, 0.75], ["0%", "62%"]);
-  const rosGlow = useTransform(p, [0.3, 0.8], [0.15, 0.85]);
-  const dhtFlash = useTransform(p, [0.7, 0.85, 1], [0, 1, 0.7]);
 
   return (
     <SceneFrame innerRef={ref} length="h-[340vh]">
@@ -482,45 +405,7 @@ function ActROS() {
           </div>
         </motion.div>
 
-        {/* Receptor + threshold visual */}
-        <div className="relative mx-auto h-80 w-full max-w-sm">
-          <motion.div
-            className="absolute inset-0 rounded-3xl"
-            style={{
-              opacity: rosGlow,
-              background:
-                "radial-gradient(circle at 50% 60%, rgba(251,146,60,0.22), transparent 70%)",
-            }}
-          />
-          <div className="absolute inset-0 rounded-3xl border border-white/10 bg-white/[0.03] backdrop-blur-sm" />
-          <div className="relative flex h-full flex-col items-center justify-end p-6">
-            <span className="absolute left-6 top-5 text-[11px] uppercase tracking-[0.2em] text-white/40">
-              Androgen receptor
-            </span>
-
-            <motion.div
-              className="absolute left-6 right-6 flex items-center gap-2"
-              style={{ top: thresholdY }}
-            >
-              <span className="whitespace-nowrap text-[10px] font-medium uppercase tracking-wider text-amber-200/90">
-                Sensitivity threshold
-              </span>
-              <span className="h-px flex-1 bg-amber-300/60" />
-            </motion.div>
-
-            <div className="absolute left-6 right-6 top-[62%] flex items-center gap-2">
-              <motion.span
-                style={{ opacity: dhtFlash }}
-                className="whitespace-nowrap rounded bg-rose-500/20 px-2 py-0.5 text-[10px] font-semibold text-rose-200"
-              >
-                Normal DHT → now harmful
-              </motion.span>
-              <span className="h-px flex-1 border-t border-dashed border-rose-300/50" />
-            </div>
-
-            <div className="mb-2 h-24 w-24 rounded-full border border-amber-300/30 bg-gradient-to-br from-amber-400/20 to-rose-500/10" />
-          </div>
-        </div>
+        <ReceptorThreshold progress={p} />
       </div>
     </SceneFrame>
   );
@@ -553,10 +438,12 @@ function SystemCard({
   return (
     <motion.div
       style={{ opacity, y }}
-      className="rounded-2xl border border-white/10 bg-white/[0.04] p-5 backdrop-blur-sm"
+      className="flex items-center gap-3 rounded-2xl border border-white/10 bg-white/[0.04] p-4 backdrop-blur-sm"
     >
-      <Icon className="mx-auto h-6 w-6 text-rose-300/80" />
-      <p className="mt-3 text-sm font-medium text-white/80">{label}</p>
+      <span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-rose-400/10">
+        <Icon className="h-4 w-4 text-rose-300/90" />
+      </span>
+      <p className="text-sm font-medium leading-tight text-white/80">{label}</p>
     </motion.div>
   );
 }
@@ -569,30 +456,32 @@ function ActSystemic() {
 
   return (
     <SceneFrame innerRef={ref} length="h-[260vh]">
-      <div className="mx-auto max-w-3xl text-center">
-        <motion.div style={{ opacity: fade, y: lift }}>
-          <div className="flex justify-center">
+      <div className="grid items-center gap-10 md:grid-cols-[1fr_auto]">
+        <div>
+          <motion.div style={{ opacity: fade, y: lift }}>
             <Eyebrow>The same damage, beyond the scalp</Eyebrow>
-          </div>
-          <h2 className={`${serif} text-4xl font-light leading-tight text-white md:text-5xl`}>
-            Hair is the <span className="italic text-sky-300">visible</span> signal of a deeper
-            imbalance.
-          </h2>
-          <p className="mx-auto mt-6 max-w-xl text-lg leading-relaxed text-white/60">
-            The oxidative damage radiates outward — carrying an associated risk of broader metabolic
-            disease.
-          </p>
-        </motion.div>
+            <h2 className={`${serif} text-4xl font-light leading-tight text-white md:text-5xl`}>
+              Hair is the <span className="italic text-sky-300">visible</span> signal of a deeper
+              imbalance.
+            </h2>
+            <p className="mt-6 max-w-xl text-lg leading-relaxed text-white/60">
+              The oxidative damage radiates outward — carrying an associated risk of broader
+              metabolic disease.
+            </p>
+          </motion.div>
 
-        <div className="mt-12 grid grid-cols-2 gap-4 md:grid-cols-4">
-          {SYSTEMS.map((s, i) => (
-            <SystemCard key={s.label} icon={s.icon} label={s.label} index={i} progress={p} />
-          ))}
+          <div className="mt-10 grid grid-cols-2 gap-3">
+            {SYSTEMS.map((s, i) => (
+              <SystemCard key={s.label} icon={s.icon} label={s.label} index={i} progress={p} />
+            ))}
+          </div>
+          <p className="mt-7 max-w-xl text-sm italic text-white/40">
+            An association rooted in shared metabolic pathways — your hair may be the earliest place
+            it shows.
+          </p>
         </div>
-        <p className="mt-8 text-sm italic text-white/40">
-          An association rooted in shared metabolic pathways — your hair may be the earliest place
-          it shows.
-        </p>
+
+        <SystemicBody progress={p} />
       </div>
     </SceneFrame>
   );
@@ -618,7 +507,9 @@ function ActReversal({ ctaHref, ctaLabel }: { ctaHref: string; ctaLabel: string 
 
   return (
     <SceneFrame innerRef={ref} length="h-[260vh]">
-      <div className="relative mx-auto max-w-3xl text-center">
+      {/* The pinned frame clips its overflow and this scene is the tallest, so
+          on short viewports it scales down rather than losing the arc or CTA. */}
+      <div className="relative mx-auto max-w-3xl text-center [@media(min-height:601px)_and_(max-height:700px)]:scale-[0.88] [@media(max-height:600px)]:scale-[0.76]">
         <motion.div
           className="pointer-events-none absolute left-1/2 top-1/2 h-[500px] w-[500px] -translate-x-1/2 -translate-y-1/2 rounded-full"
           style={{
@@ -628,23 +519,27 @@ function ActReversal({ ctaHref, ctaLabel }: { ctaHref: string; ctaLabel: string 
         />
         <motion.div style={{ opacity: fade, y: lift }} className="relative">
           <div className="flex justify-center">
-            <span className="mb-6 inline-flex items-center gap-2 rounded-full border border-emerald-400/30 bg-emerald-400/10 px-4 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-emerald-200">
+            <span className="mb-4 inline-flex items-center gap-2 rounded-full border border-emerald-400/30 bg-emerald-400/10 px-4 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-emerald-200">
               <Leaf className="h-3.5 w-3.5" /> The reversal
             </span>
           </div>
-          <h2 className={`${serif} text-4xl font-light leading-[1.1] text-white md:text-6xl`}>
+          <h2 className={`${serif} text-4xl font-light leading-[1.1] text-white md:text-5xl`}>
             What ROS damages,{" "}
             <span className="italic text-emerald-300">nutrients can restore.</span>
           </h2>
-          <p className="mx-auto mt-7 max-w-xl text-lg leading-relaxed text-white/65">
+          <p className="mx-auto mt-5 max-w-xl text-base leading-relaxed text-white/65 md:text-lg">
             The right nutrients neutralize ROS, repair the cellular damage, and reawaken active
             metabolism — restoring hair growth alongside whole-body wellness.
           </p>
-          <p className="mx-auto mt-4 max-w-xl text-lg font-medium leading-relaxed text-white/90">
+          <p className="mx-auto mt-3 max-w-xl text-base font-medium leading-relaxed text-white/90 md:text-lg">
             Without anti-androgens. Without side effects.
           </p>
 
-          <div className="mt-10 flex flex-wrap justify-center gap-2.5">
+          <div className="mt-6">
+            <RestorationArc progress={p} />
+          </div>
+
+          <div className="mt-6 flex flex-wrap justify-center gap-2">
             {BENEFITS.map((b) => (
               <span
                 key={b}
@@ -656,7 +551,7 @@ function ActReversal({ ctaHref, ctaLabel }: { ctaHref: string; ctaLabel: string 
             ))}
           </div>
 
-          <div className="mt-12">
+          <div className="mt-7">
             <Link
               href={ctaHref}
               className="group inline-flex items-center justify-center gap-2.5 rounded-full bg-white px-9 py-4 text-base font-semibold text-[#0a0f14] shadow-[0_0_40px_-8px_rgba(52,211,153,0.6)] transition-all hover:-translate-y-0.5 hover:bg-emerald-50"
@@ -664,7 +559,7 @@ function ActReversal({ ctaHref, ctaLabel }: { ctaHref: string; ctaLabel: string 
               {ctaLabel}
               <ArrowRight className="h-5 w-5 transition-transform group-hover:translate-x-1" />
             </Link>
-            <p className="mt-5 text-sm text-white/40">
+            <p className="mt-4 text-sm text-white/40">
               Discover the root causes behind <em>your</em> hair loss — in about 3 minutes.
             </p>
           </div>

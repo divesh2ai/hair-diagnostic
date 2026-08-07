@@ -1,0 +1,55 @@
+{
+  "version": 1,
+  "status": "proposed",
+  "coordinateSystem": "source-image pixels, origin at top-left",
+  "sourceSheets": {
+    "clinical_snapshot_library": {
+      "path": "C:/Users/ERA/Downloads/ChatGPT Image Aug 1, 2026, 04_12_28 PM.png",
+      "width": 1122,
+      "height": 1402
+    },
+    "questionnaire_photo_library": {
+      "path": "C:/Users/ERA/Downloads/ChatGPT Image Aug 1, 2026, 03_44_57 PM (2).png",
+      "width": 1536,
+      "height": 1024,
+      "note": "Reference/fallback source only: most individual subjects are too small for a clean 512px exact crop."
+    },
+    "questionnaire_option_library": {
+      "path": "C:/Users/ERA/Downloads/ChatGPT Image Aug 1, 2026, 03_44_56 PM (1).png",
+      "width": 1536,
+      "height": 1024,
+      "note": "Coverage reference only: dense layout makes most cells unsuitable for clean report crops."
+    }
+  },
+  "output": {
+    "directory": "apps/patient-portal/public/report-assets/clinical-options",
+    "canvas": { "width": 512, "height": 512 },
+    "background": "#FBF8F2"
+  },
+  "crops": [
+    { "optionCode": "stress_anxiety_depression", "label": "Stress / Anxiety / Depression", "sourceSheet": "clinical_snapshot_library", "crop": { "x": 48, "y": 132, "width": 226, "height": 128 }, "targetFilename": "stress_anxiety_depression.png", "intendedUsage": ["snapshot", "trigger"], "confidence": "high", "notes": "Brain illustration; excludes number and label." },
+    { "optionCode": "smoking_vaping", "label": "Smoking / Vaping", "sourceSheet": "clinical_snapshot_library", "crop": { "x": 316, "y": 132, "width": 224, "height": 128 }, "targetFilename": "smoking_vaping.png", "intendedUsage": ["snapshot", "trigger"], "confidence": "high", "notes": "Cigarette and vape illustration." },
+    { "optionCode": "bodybuilding_heavy_gym", "label": "Bodybuilding / Heavy gym", "sourceSheet": "clinical_snapshot_library", "crop": { "x": 579, "y": 132, "width": 229, "height": 128 }, "targetFilename": "bodybuilding_heavy_gym.png", "intendedUsage": ["snapshot", "trigger"], "confidence": "high", "notes": "Dumbbell illustration." },
+    { "optionCode": "endometriosis", "label": "Endometriosis", "sourceSheet": "clinical_snapshot_library", "crop": { "x": 848, "y": 132, "width": 224, "height": 128 }, "targetFilename": "endometriosis.png", "intendedUsage": ["snapshot", "trigger"], "confidence": "high", "notes": "Uterus with endometriosis lesions." },
+    { "optionCode": "post_hysterectomy", "label": "Post-hysterectomy", "sourceSheet": "clinical_snapshot_library", "crop": { "x": 48, "y": 339, "width": 226, "height": 130 }, "targetFilename": "post_hysterectomy.png", "intendedUsage": ["snapshot", "trigger"], "confidence": "medium", "notes": "Illustration is an intact uterus and may not communicate surgery clearly; retain needs-replacement review flag." },
+    { "optionCode": "hypothyroidism", "label": "Hypothyroidism", "sourceSheet": "clinical_snapshot_library", "crop": { "x": 316, "y": 339, "width": 224, "height": 130 }, "targetFilename": "hypothyroidism.png", "intendedUsage": ["snapshot", "trigger"], "confidence": "high", "notes": "Thyroid gland illustration." },
+    { "optionCode": "recurrent_acne_acne_prone_skin", "label": "Recurrent Acne / Acne-prone skin", "sourceSheet": "clinical_snapshot_library", "crop": { "x": 579, "y": 339, "width": 229, "height": 130 }, "targetFilename": "recurrent_acne_acne_prone_skin.png", "intendedUsage": ["snapshot", "trigger"], "confidence": "high", "notes": "Face with acne illustration." },
+    { "optionCode": "indigestion", "label": "Indigestion", "sourceSheet": "clinical_snapshot_library", "crop": { "x": 848, "y": 339, "width": 224, "height": 130 }, "targetFilename": "indigestion.png", "intendedUsage": ["snapshot", "trigger"], "confidence": "high", "notes": "Stomach illustration." },
+    { "optionCode": "constipation", "label": "Constipation", "sourceSheet": "clinical_snapshot_library", "crop": { "x": 48, "y": 555, "width": 226, "height": 130 }, "targetFilename": "constipation.png", "intendedUsage": ["snapshot", "trigger"], "confidence": "high", "notes": "Intestinal illustration." },
+    { "optionCode": "high_protein_diet", "label": "High protein diet", "sourceSheet": "clinical_snapshot_library", "crop": { "x": 316, "y": 555, "width": 224, "height": 130 }, "targetFilename": "high_protein_diet.png", "intendedUsage": ["snapshot", "trigger"], "confidence": "high", "notes": "Protein meal illustration." },
+    { "optionCode": "vegetarian", "label": "Vegetarian", "sourceSheet": "clinical_snapshot_library", "crop": { "x": 579, "y": 555, "width": 229, "height": 130 }, "targetFilename": "vegetarian.png", "intendedUsage": ["snapshot", "trigger"], "confidence": "high", "notes": "Vegetable bowl illustration." },
+    { "optionCode": "chemical_treatment", "label": "Chemical treatment (colour / keratin)", "sourceSheet": "clinical_snapshot_library", "crop": { "x": 848, "y": 555, "width": 224, "height": 130 }, "targetFilename": "chemical_treatment.png", "intendedUsage": ["snapshot", "trigger"], "confidence": "high", "notes": "Colour bowl, brush, and bottle illustration." },
+    { "optionCode": "genetics_family_history", "label": "Genetics / Family history", "sourceSheet": "clinical_snapshot_library", "crop": { "x": 48, "y": 757, "width": 226, "height": 132 }, "targetFilename": "genetics_family_history.png", "intendedUsage": ["snapshot", "trigger"], "confidence": "high", "notes": "DNA and family illustration." },
+    { "optionCode": "age_above_40", "label": "Age above 40", "sourceSheet": "clinical_snapshot_library", "crop": { "x": 316, "y": 757, "width": 224, "height": 132 }, "targetFilename": "age_above_40.png", "intendedUsage": ["snapshot", "trigger"], "confidence": "high", "notes": "Derived report signal rather than questionnaire option." },
+    { "optionCode": "pre_diabetes", "label": "Pre diabetes", "sourceSheet": "clinical_snapshot_library", "crop": { "x": 579, "y": 757, "width": 229, "height": 132 }, "targetFilename": "pre_diabetes.png", "intendedUsage": ["snapshot", "trigger"], "confidence": "high", "notes": "Glucose meter and pancreas illustration; also domain fallback for metabolic dysfunction." },
+    { "optionCode": "bloating_gas", "label": "Bloating / gas", "sourceSheet": "clinical_snapshot_library", "crop": { "x": 848, "y": 757, "width": 224, "height": 132 }, "targetFilename": "bloating_gas.png", "intendedUsage": ["snapshot", "trigger"], "confidence": "high", "notes": "Abdominal bloating illustration." },
+    { "optionCode": "ibs_crohns", "label": "IBS / Crohn's", "sourceSheet": "clinical_snapshot_library", "crop": { "x": 48, "y": 964, "width": 226, "height": 130 }, "targetFilename": "ibs_crohns.png", "intendedUsage": ["snapshot", "trigger"], "confidence": "high", "notes": "Inflamed intestinal illustration." },
+    { "optionCode": "acid_reflux_gerd", "label": "Acid reflux / GERD", "sourceSheet": "clinical_snapshot_library", "crop": { "x": 316, "y": 964, "width": 224, "height": 130 }, "targetFilename": "acid_reflux_gerd.png", "intendedUsage": ["snapshot", "trigger"], "confidence": "high", "notes": "Reflux stomach illustration." },
+    { "optionCode": "hard_water", "label": "Hard water", "sourceSheet": "clinical_snapshot_library", "crop": { "x": 579, "y": 964, "width": 229, "height": 130 }, "targetFilename": "hard_water.png", "intendedUsage": ["snapshot", "trigger"], "confidence": "high", "notes": "Shower-head illustration." },
+    { "optionCode": "post_glp_1_receptor_agonist", "label": "Post GLP-1 receptor agonist", "sourceSheet": "clinical_snapshot_library", "crop": { "x": 848, "y": 964, "width": 224, "height": 130 }, "targetFilename": "post_glp_1_receptor_agonist.png", "intendedUsage": ["snapshot", "trigger"], "confidence": "high", "notes": "Injection pen illustration; alias for both questionnaire timing variants." },
+    { "optionCode": "irregular_poor_diet", "label": "Irregular / poor diet", "sourceSheet": "clinical_snapshot_library", "crop": { "x": 48, "y": 1156, "width": 226, "height": 136 }, "targetFilename": "irregular_poor_diet.png", "intendedUsage": ["snapshot", "trigger"], "confidence": "high", "notes": "Mixed healthy/fast-food illustration." },
+    { "optionCode": "obesity_sedentary_weight_concern", "label": "Obesity / Sedentary / Struggle to lose weight", "sourceSheet": "clinical_snapshot_library", "crop": { "x": 316, "y": 1156, "width": 224, "height": 136 }, "targetFilename": "obesity_sedentary_weight_concern.png", "intendedUsage": ["snapshot", "trigger"], "confidence": "high", "notes": "Body-weight scale illustration." },
+    { "optionCode": "nutritional_deficiencies", "label": "Nutritional deficiencies", "sourceSheet": "clinical_snapshot_library", "crop": { "x": 579, "y": 1156, "width": 229, "height": 136 }, "targetFilename": "nutritional_deficiencies.png", "intendedUsage": ["snapshot", "trigger"], "confidence": "high", "notes": "Iron, B12, and D3 illustration; domain fallback for individual deficiencies." },
+    { "optionCode": "redness_or_irritation", "label": "Redness or irritation", "sourceSheet": "clinical_snapshot_library", "crop": { "x": 848, "y": 1156, "width": 224, "height": 136 }, "targetFilename": "redness_or_irritation.png", "intendedUsage": ["snapshot", "trigger"], "confidence": "high", "notes": "Inflamed scalp illustration; domain fallback for dandruff and irritation variants." }
+  ]
+}

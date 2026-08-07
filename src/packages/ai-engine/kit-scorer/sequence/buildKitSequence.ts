@@ -16,8 +16,25 @@ import {
 } from '../registry/conditionKitRegistry';
 import { resolveKitInteractions } from '../resolution/resolveKitInteractions';
 import { resolveKit } from '../resolveKit';
-import { prioritizeKits } from '../ranking/kitPrioritizer';
+import { prioritizeKits, getPriorityDiagnostics } from '../ranking/kitPrioritizer';
+import { signals } from '../../clinical-engine/signals';
 import { buildAdjunctProtocol } from '../adjunctProtocolEngine';
+import { evaluateSafety } from '../../safety-evaluator';
+import { getKitInfo } from '../../../registries/kits/info';
+import type {
+  KitScoringDiagnostics,
+  KitOrderingSource,
+} from '../../recommendation-decision';
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Opt-in diagnostics option. When { trace: true } is passed, buildKitSequence
+// attaches a `diagnostics` field carrying the exact intermediate values used
+// to produce the recommendation. No clinical rule is affected by this flag.
+// ─────────────────────────────────────────────────────────────────────────────
+export interface BuildKitSequenceOptions {
+  readonly trace?: boolean;
+  readonly therapyNeeds?: import('../../therapy-engine/types').TherapyNeeds;
+}
 
 // ─────────────────────────────────────────────────────────────────────────────
 // BUILD KIT SEQUENCE — three-layer architecture
@@ -38,6 +55,7 @@ export function buildKitSequence(
   ans: PatientAnswers,
   clinicConfig: ClinicConfig,
   budgetProfile?: BudgetProfile,
+  options?: BuildKitSequenceOptions,
 ): KitRecommendation {
   const { flags } = profile;
   const { isVeg, isMale, isGrade45 } = flags;
@@ -102,7 +120,54 @@ export function buildKitSequence(
   const hasHeavyBleeding = (ans.hormonal ?? []).some(
     (v) => typeof v === 'string' && v.toLowerCase().includes('heavy bleeding'),
   );
-  const sequenced = prioritizeKits(dedupKits, teGoldKit, ans.duration, hasHeavyBleeding);
+  // Declared Iron / Anaemia deficiency lifts IRON UP GOLD to Phase 1 with the
+  // same priority as heavy bleeding (locked 2026-07-13).
+  const s = signals(ans);
+  const hasDeclaredIronDeficiency =
+    s.deficiency('Iron') || s.deficiency('Anaemia');
+  const liftIronUpToHead = hasHeavyBleeding || hasDeclaredIronDeficiency;
+  // TE GOLD stress/anxiety lift — locked clinical rule 2026-07-08.
+  // ≤3-month acute window + declared psychogenic driver (Stress OR Anxiety) →
+  // TE GOLD jumps between LACTIHEALTH and RAPID WEIGHT LOSS SHIELD, ahead of
+  // every nutrient rescue. Duration >3 months is already blocked in
+  // detectConditions (no ACUTE_SHEDDING → no TE GOLD in phases at all).
+  const durationIsAcute =
+    !!ans.duration && /1[–-]3|0[–-]3|under 3|less than 3/i.test(ans.duration);
+  const hasStressOrAnxiety = (ans.cause ?? []).some((v) => {
+    if (typeof v !== 'string') return false;
+    const lower = v.toLowerCase();
+    return lower.includes('stress') || lower.includes('anxiety');
+  });
+  const liftTeGoldForStress = durationIsAcute && hasStressOrAnxiety;
+
+  // Oxidative-only inflammation flag — locked clinical rule. When the ONLY
+  // driver behind PHENOTYPE INFLAMATION is oxidative lifestyle (smoking /
+  // vaping / alcohol) with no visible scalp condition and no active shedding,
+  // META B leads the sequence ahead of PHENOTYPE. See kitPrioritizer for the
+  // resulting order.
+  // Asthma excluded (locked 2026-07-18): immune condition, not a scalp
+  // condition — must not suppress the oxidative-only sequencing branch.
+  const hasVisibleScalpCondition =
+    s.scalp('Redness') || s.scalp('irritation') || s.scalp('Boils') ||
+    s.scalp('pimples') || s.scalp('Burning') || s.scalp('Flaking') ||
+    s.scalp('Dandruff') || s.scalp('Oily') ||
+    s.immunity('Allergies') || s.immunity('Skin rash') ||
+    s.immunity('Alopecia Areata');
+  const hasOxidativeLifestyle =
+    s.lifestyle('Smoking') || s.lifestyle('Vaping') || s.lifestyle('Alcohol');
+  const oxidativeOnlyInflammation =
+    hasOxidativeLifestyle &&
+    !hasVisibleScalpCondition &&
+    !flags.hasActiveShedding;
+
+  const sequenced = prioritizeKits(
+    dedupKits,
+    teGoldKit,
+    ans.duration,
+    liftIronUpToHead,
+    liftTeGoldForStress,
+    oxidativeOnlyInflammation,
+  );
 
   // ── Clinic substitutions (only when clinic restricts available kits) ──────
   const resolvedPhases = sequenced.map((k) => {
@@ -114,6 +179,47 @@ export function buildKitSequence(
     }
     return k;
   });
+
+  // ── Canonical safety / eligibility evaluator ───────────────────────────────
+  let safety: import('../../safety-evaluator').SafetyEvaluationResult | undefined;
+  if (options?.trace) {
+    const patientAgeNum = Number.parseInt(String(ans.age ?? profile.flags.age ?? 0), 10) || 0;
+    const patientSexRaw = String(ans.sex ?? ans.gender ?? '');
+    safety = evaluateSafety({
+      answers: ans,
+      patient: { age: patientAgeNum, sex: patientSexRaw },
+      proposedKits: resolvedPhases,
+      kitInteractionAudit: appliedRules,
+    });
+    if (safety.blockedKits.length > 0) {
+      ruleTrace.push({
+        rule: 'SAFETY_BLOCKED_KITS',
+        before: resolvedPhases,
+        after: resolvedPhases.filter((k) => !safety.blockedKits.includes(k)),
+        reason: 'Canonical safety evaluator blocked kits — see safety.findings for rule ids.',
+        signals: [...safety.blockedKits],
+      });
+    }
+  }
+
+  // ── PRO IMMUNE consolidation filler (locked clinical rule 2026-07-13) ──────
+  // When the final protocol contains only 2 kits and PRO IMMUNE is not already
+  // present, inject it as a consolidation layer. This preserves the design
+  // intent of PRO IMMUNE as the "immune-restoration finisher" for thin stacks
+  // without forcing it onto every larger protocol.
+  const proImmuneVariant: KitId = isVeg ? 'PRO IMMUNE VEG' : 'PRO IMMUNE GOLD';
+  const hasProImmune = resolvedPhases.some((k) => k.includes('PRO IMMUNE'));
+  if (resolvedPhases.length === 2 && !hasProImmune) {
+    resolvedPhases.push(proImmuneVariant);
+    appliedRules.push(
+      'PRO_IMMUNE_CONSOLIDATION_FILLER: stack had only 2 kits — PRO IMMUNE added as consolidation layer.',
+    );
+    if (!dedupRationales.has(proImmuneVariant)) {
+      dedupRationales.set(proImmuneVariant, [
+        'Consolidation layer — added because the protocol otherwise contains only two active drivers; PRO IMMUNE stabilises follicular immune signalling as the closing phase.',
+      ]);
+    }
+  }
 
   // ── Budget cap (optional) ──────────────────────────────────────────────────
   const maxKits = budgetProfile?.maxKits ?? resolvedPhases.length;
@@ -157,6 +263,98 @@ export function buildKitSequence(
   // ── Adjunct protocol (unchanged — still uses scalp states + raw answers) ───
   const adjunctProtocol = buildAdjunctProtocol(profile.scalpStates, ans);
 
+  // ── Optional diagnostics payload (opt-in via options.trace === true) ──────
+  // Threads the ALREADY-COMPUTED intermediate values forward. This is not a
+  // reconstruction — every value below was produced by the exact execution
+  // that assembled `rankedKits`. The adapter (buildDecisions / buildTrace)
+  // is forbidden from re-invoking detectConditions / resolveKitInteractions
+  // and consumes only what is placed here.
+  let diagnostics: KitScoringDiagnostics | undefined;
+  if (options?.trace) {
+    const finalOrder = rankedKits.map((s) => s.kitId);
+    const conditionKitMap: Record<string, { conditions: ConditionId[]; rationales: string[] }> = {};
+    for (const { kit } of conditionKits) {
+      // Copy dedup output verbatim.
+      const conds = dedupConditions.get(kit) ?? [];
+      const rats = dedupRationales.get(kit) ?? [];
+      conditionKitMap[kit] = { conditions: [...conds], rationales: [...rats] };
+    }
+    const orderingSources: Record<string, KitOrderingSource> = {};
+    const compositionSafety: Record<string, import('../../recommendation-decision').KitSafetyProvenance> = {};
+    const insertionIndex = new Map<string, number>();
+    dedupKits.forEach((k, i) => insertionIndex.set(k, i));
+
+    const relevantAudit = appliedRules;
+    // Universe = candidates ∪ sequence-before-safety ∪ final ∪ blocked
+    const universe = new Set<string>([
+      ...dedupKits,
+      ...resolvedPhases,
+      ...finalOrder,
+      ...safety.blockedKits,
+    ]);
+    for (const k of universe) {
+      const cls = getPriorityDiagnostics(k);
+      const cs = dedupConditions.get(k) ?? [];
+      const auditLabels = relevantAudit.filter((line) =>
+        cs.some((c) => line.includes(c)),
+      );
+      orderingSources[k] = {
+        priorityOrderIndex: cls.priorityOrderIndex,
+        inheritedInsertionIndex: insertionIndex.has(k) ? insertionIndex.get(k) : undefined,
+        ruleLabels: auditLabels.length > 0 ? auditLabels : undefined,
+        bucket: cls.bucket,
+      };
+
+      const info = getKitInfo(k);
+      const therapies = info ? info.formulationRationale.flatMap((g) => g.ingredients) : [];
+      const safetyRulesSet = new Set<string>();
+      const blockedTherapiesSet = new Set<string>();
+
+      if (safety) {
+        for (const f of safety.findings) {
+          let isApplicable = false;
+          if (f.blockedKits?.includes(k)) {
+            isApplicable = true;
+          }
+          if (f.blockedTopicals && f.blockedTopicals.length > 0) {
+            const blockedInFinding = f.blockedTopicals.filter((bt) =>
+              therapies.some((t) => t.toLowerCase() === bt.toLowerCase())
+            );
+            if (blockedInFinding.length > 0) {
+              isApplicable = true;
+              for (const bt of blockedInFinding) {
+                blockedTherapiesSet.add(bt);
+              }
+            }
+          }
+          if (isApplicable) {
+            safetyRulesSet.add(f.ruleId);
+          }
+        }
+      }
+
+      compositionSafety[k] = {
+        kitId: k,
+        therapies,
+        safetyRules: [...safetyRulesSet],
+        blockedTherapies: [...blockedTherapiesSet],
+        compositionVerifiable: !!info,
+      };
+    }
+    diagnostics = {
+      detectedConditions: [...detected],
+      therapyNeeds: [...therapyNeeds.needs],
+      interactionResolution: resolution,
+      candidateKits: [...dedupKits],
+      legacySequenceBeforeSafety: [...resolvedPhases],
+      finalSequenceAfterSafety: finalOrder,
+      safetyEvaluation: safety,
+      orderingSources,
+      conditionKitMap,
+      compositionSafety,
+    };
+  }
+
   return {
     rankedKits,
     protocolLabel,
@@ -165,22 +363,23 @@ export function buildKitSequence(
     appliedRules,
     ruleTrace,
     adjunctProtocol,
+    ...(safety ? { safety } : {}),
+    ...(diagnostics ? { diagnostics } : {}),
   };
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Grade-aware variant resolution (FPHL/MPHL → PLUS for Grade 4/5).
+// Pattern kits now use one Pro formulation for every grade.
 // Veg/gender swaps still flow through resolveKit() afterwards.
 // ─────────────────────────────────────────────────────────────────────────────
 function resolveGradeAware(
   kit: KitId,
   condition: ConditionId,
-  isMale: boolean,
-  isGrade45: boolean,
+  _isMale: boolean,
+  _isGrade45: boolean,
 ): KitId {
-  if (!isGrade45) return kit;
-  if (condition === 'AGA_PATTERN_MALE') return 'MPHL PLUS';
-  if (condition === 'AGA_PATTERN_FEMALE') return 'FPHL PLUS';
+  if (condition === 'AGA_PATTERN_MALE' || kit === 'MPHL PLUS') return 'MPHL';
+  if (condition === 'AGA_PATTERN_FEMALE' || kit === 'FPHL PLUS') return 'FPHL';
   return kit;
 }
 

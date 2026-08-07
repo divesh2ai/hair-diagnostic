@@ -1,6 +1,10 @@
 // Public surface of the consultation-orchestrator package.
 
-export { ConsultationOrchestrator, OrchestratorError } from "./orchestrator";
+export {
+  ConsultationOrchestrator,
+  OrchestratorError,
+  ReadinessBlockedError,
+} from "./orchestrator";
 export type {
   AccessContext,
   GetOrCreateInput,

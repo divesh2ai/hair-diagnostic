@@ -7,6 +7,9 @@ import type {
   VideoExperienceBlock,
 } from "@shared/types/assessment";
 import { liftNarratives } from "@/lib/narratives/liftNarratives";
+import { getClinicContext, isSuperAdmin } from "@/lib/auth";
+import { verifyReviewToken } from "@/lib/reviewToken";
+import { logLifecycleEvent } from "@/lib/observability/lifecycle";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -32,11 +35,73 @@ const CUID_PATTERN = /^c[a-z0-9]{20,30}$/;
 
 // ─── Route Handler ─────────────────────────────────────────────────────────────
 
+// ── Access model ─────────────────────────────────────────────────────────────
+//
+// The status endpoint previously returned patient PII, orchestration logs,
+// and full artifact JSON to anyone who knew the assessment id. It now
+// enforces one of three authorization branches, all of which fail closed:
+//
+//   1. Authenticated clinic user (Cookie): same-clinic only. SUPER_ADMIN
+//      may read across clinics as elsewhere in the codebase.
+//   2. Signed review token (?t=<token>): treated as a doctor-scoped
+//      credential — grants the same view as an authenticated clinician.
+//      The token is HMAC-signed by us; we verify + bind to the assessmentId
+//      it references before serving anything.
+//   3. Anonymous: returns a strictly-minimum, patient-safe subset (status,
+//      progress, artifact presence flags, video block, timing). No PII, no
+//      artifact contents, no doctor notes, no orchestration logs, no signed
+//      URLs, no consultation content, no error text.
+//
+// Denial responses use 404 rather than 403 for out-of-scope reads so
+// probing cannot map assessment ids to clinics.
+
+type AccessAudience = "clinic" | "super_admin" | "patient_token" | "anonymous";
+
+interface AccessDecision {
+  ok: boolean;
+  audience: AccessAudience;
+  clinicId: string | null;
+}
+
+async function resolveAccess(
+  req: Request,
+  assessmentId: string,
+): Promise<AccessDecision | { ok: false; audience: "denied" }> {
+  const url = new URL(req.url);
+  const tokenParam = url.searchParams.get("t");
+
+  // ── Branch 1: Cookie auth ────────────────────────────────────────────────
+  try {
+    const ctx = await getClinicContext();
+    return {
+      ok: true,
+      audience: isSuperAdmin(ctx.role) ? "super_admin" : "clinic",
+      clinicId: ctx.clinicId,
+    };
+  } catch {
+    // Fall through — not authenticated as clinic.
+  }
+
+  // ── Branch 2: Signed review token ────────────────────────────────────────
+  if (tokenParam) {
+    const tokenResult = verifyReviewToken(tokenParam);
+    if (!tokenResult.ok) {
+      return { ok: false, audience: "denied" };
+    }
+    if (tokenResult.assessmentId !== assessmentId) {
+      // Token references a different assessment. Never serve.
+      return { ok: false, audience: "denied" };
+    }
+    return { ok: true, audience: "patient_token", clinicId: null };
+  }
+
+  // ── Branch 3: Anonymous ─────────────────────────────────────────────────
+  return { ok: true, audience: "anonymous", clinicId: null };
+}
+
 export async function GET(req: Request): Promise<NextResponse> {
   const { searchParams } = new URL(req.url);
   const id = searchParams.get("id");
-
-  console.log("[STATUS] POLL", { assessmentId: id });
 
   // ── Strict ID validation ───────────────────────────────────────────────────
   if (!id || typeof id !== "string" || !CUID_PATTERN.test(id.trim())) {
@@ -47,6 +112,21 @@ export async function GET(req: Request): Promise<NextResponse> {
   }
 
   const assessmentId = id.trim();
+
+  const access = await resolveAccess(req, assessmentId);
+  if (!access.ok) {
+    logLifecycleEvent({
+      event: "status.access_denied",
+      assessmentId,
+      failureCode: "invalid_token",
+    });
+    // Do not distinguish "invalid token" from "assessment not found" so
+    // an attacker cannot enumerate valid ids by observing status codes.
+    return NextResponse.json(
+      { success: false, error: "Assessment not found" },
+      { status: 404 },
+    );
+  }
 
   try {
     // ── Fetch sequentially, NOT in parallel ────────────────────────────────
@@ -62,6 +142,7 @@ export async function GET(req: Request): Promise<NextResponse> {
       where: { id: assessmentId },
       select: {
         id: true,
+        clinicId: true,
         status: true,
         orchestrationStage: true,
         orchestrationMeta: true,
@@ -80,10 +161,37 @@ export async function GET(req: Request): Promise<NextResponse> {
     });
 
     if (!assessment) {
-      console.warn("[STATUS] NOT FOUND", { assessmentId });
+      logLifecycleEvent({
+        event: "status.access_denied",
+        assessmentId,
+        failureCode: "not_found",
+        audience: access.audience,
+      });
       return NextResponse.json(
         { success: false, error: "Assessment not found" },
         { status: 404 }
+      );
+    }
+
+    // Cross-clinic guard for the authenticated-clinic branch. Super-admin
+    // bypasses; patient-token / anonymous already carry no clinic scope.
+    if (
+      access.audience === "clinic" &&
+      access.clinicId &&
+      assessment.clinicId !== access.clinicId
+    ) {
+      logLifecycleEvent({
+        event: "status.access_denied",
+        assessmentId,
+        clinicId: access.clinicId,
+        failureCode: "cross_clinic",
+        audience: "clinic",
+      });
+      // 404, not 403 — avoid leaking that the assessment exists in some
+      // other clinic.
+      return NextResponse.json(
+        { success: false, error: "Assessment not found" },
+        { status: 404 },
       );
     }
 
@@ -140,8 +248,14 @@ export async function GET(req: Request): Promise<NextResponse> {
     };
 
     // ── Derived video block — never exposes providerJobId/internal status ────
+    // When the orchestrator has terminated without producing an AVATAR_VIDEO
+    // artifact, report UNAVAILABLE so the patient UI never strands waiting on
+    // a video stage that will never run.
     const videoArtifact = artifacts.find((a) => a.type === ArtifactType.AVATAR_VIDEO);
-    const video: VideoExperienceBlock = deriveVideoBlock(videoArtifact?.content);
+    const video: VideoExperienceBlock =
+      !videoArtifact && TERMINAL_STATUSES.has(assessment.status)
+        ? { state: "UNAVAILABLE", url: null, thumbnailUrl: null, durationSec: null }
+        : deriveVideoBlock(videoArtifact?.content);
 
     // Transform to canonical array format: never object map
     const artifactArray: AssessmentArtifact[] = artifacts.map((artifact) => ({
@@ -187,8 +301,13 @@ export async function GET(req: Request): Promise<NextResponse> {
     // ── Progress ──────────────────────────────────────────────────────────
     const progressPercent = PROGRESS_BY_STATUS[assessment.status] ?? 0;
 
-    // ── Build response with canonical array artifacts ─────────────────────────
-    const body: AssessmentStatusResponse & {
+    // ── Response shaping by audience ──────────────────────────────────────
+    // Clinic + super-admin + patient-token: full payload as before. Anonymous:
+    // strictly-minimum patient-safe subset so the public preview / processing
+    // UI can still render a progress state without leaking PII, artifact
+    // contents, orchestration logs, doctor notes, error text, or clinic
+    // identity.
+    const fullBody: AssessmentStatusResponse & {
       patient: { name: string; age: number | null; gender: string | null };
       clinic: { name: string };
     } = {
@@ -235,6 +354,30 @@ export async function GET(req: Request): Promise<NextResponse> {
       },
     };
 
+    const body =
+      access.audience === "anonymous"
+        ? buildAnonymousBody({
+            assessmentId: assessment.id,
+            status: assessment.status,
+            progressPercent,
+            isStuck,
+            startedAt: assessment.startedAt?.toISOString() ?? null,
+            updatedAt: assessment.updatedAt.toISOString(),
+            completedAt: assessment.completedAt?.toISOString() ?? null,
+            artifactPresence,
+            video,
+            timing: { queueLatencyMs, orchestrationDurationMs },
+          })
+        : fullBody;
+
+    logLifecycleEvent({
+      event: "status.access_allowed",
+      assessmentId: assessment.id,
+      clinicId: assessment.clinicId,
+      audience: access.audience,
+      statusAfter: assessment.status,
+    });
+
     console.log("[STATUS] RESPONSE", {
       assessmentId,
       status: assessment.status,
@@ -256,14 +399,45 @@ export async function GET(req: Request): Promise<NextResponse> {
       },
     });
   } catch (err) {
-    const message = err instanceof Error ? err.message : "Unknown error";
-    console.error("[STATUS] ERROR", { assessmentId, error: message });
-
+    logLifecycleEvent({
+      event: "status.access_denied",
+      assessmentId,
+      failureCode: "internal_error",
+      errorClass:
+        err && typeof err === "object" && err.constructor
+          ? err.constructor.name
+          : "UnknownError",
+    });
     return NextResponse.json(
       { success: false, error: "Failed to fetch assessment status" },
       { status: 500 }
     );
   }
+}
+
+// Patient-safe subset — no PII, no artifact content, no orchestration logs,
+// no signed URLs, no error text, no clinic identity. The public patient UI
+// (waiting screens, "your report is ready" banner) can render entirely from
+// these fields.
+interface AnonymousStatusBody {
+  success: true;
+  assessmentId: string;
+  status: string;
+  progressPercent: number;
+  isStuck: boolean;
+  startedAt: string | null;
+  updatedAt: string;
+  completedAt: string | null;
+  artifactPresence: Record<string, boolean>;
+  video: VideoExperienceBlock;
+  timing: {
+    queueLatencyMs: number | null;
+    orchestrationDurationMs: number | null;
+  };
+}
+
+function buildAnonymousBody(input: Omit<AnonymousStatusBody, "success">): AnonymousStatusBody {
+  return { success: true, ...input };
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────

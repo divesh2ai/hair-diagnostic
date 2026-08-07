@@ -1,0 +1,13 @@
+{
+  "productType": "SKIN_FACT",
+  "intakeType": "COMMON_INITIAL",
+  "protocolId": "skin-common-intake",
+  "protocolVersion": "1.0.0",
+  "screens": [
+    { "id": "COMMON_01", "title": "Let’s start with a few details", "fields": ["COMMON_NAME", "COMMON_AGE", "COMMON_GENDER"] },
+    { "id": "COMMON_02", "title": "How can the clinical team reach you?", "fields": ["COMMON_PHONE", "COMMON_EMAIL"] },
+    { "id": "COMMON_03", "title": "Where are you located?", "fields": ["COMMON_COUNTRY", "COMMON_CITY", "COMMON_ADDRESS"] },
+    { "id": "COMMON_04", "title": "Tell us about your skin", "fields": ["COMMON_SKIN_TYPE", "COMMON_SENSITIVE_SKIN"] },
+    { "id": "COMMON_05", "title": "What would you like help with?", "fields": ["COMMON_PRIMARY_CONCERN"] }
+  ]
+}

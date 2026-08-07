@@ -1,12 +1,17 @@
 import type { TreatmentPhase } from "../../../../../src/packages/ai-engine/report-engine/types";
 import { CardShell, Pill } from "./_shell";
 
+// Renders one ranked kit. `kit.kitId` is an internal engine identifier and is
+// intentionally NOT surfaced in the header — the doctor sees the clinical
+// display name and the ordering context (phase, mechanism, supporting
+// conditions), not engine internals. If a future admin/debug surface needs
+// the raw id it should render it in that surface, not here.
+
 export function RecommendationKitCard({ kit }: { kit: TreatmentPhase }) {
   return (
     <CardShell
       eyebrow={`Phase ${kit.phase}`}
       title={kit.displayName}
-      action={<Pill tone="sky">{kit.kitId}</Pill>}
     >
       <div className="space-y-3 text-sm text-slate-700">
         <p className="leading-snug">{kit.whySelected}</p>

@@ -244,6 +244,34 @@ export interface KitRecommendation {
 
   // Multi-layer adjunct protocol — scalp correction, follicular support, barrier repair
   adjunctProtocol: AdjunctProtocol;
+
+  /**
+   * Canonical safety / eligibility evaluation. Same evaluator consumed by the
+   * topical engine — pregnancy / hypertension / finasteride / age gates live
+   * ONLY here. Never rebuild these checks downstream.
+   */
+  safety?: import('../safety-evaluator').SafetyEvaluationResult;
+
+  /**
+   * OPT-IN diagnostics from the current execution. Populated ONLY when the
+   * caller passes { trace: true } to scoreKits. Additive; existing consumers
+   * ignore it. Must never be surfaced on patient-facing APIs or PDFs.
+   */
+  diagnostics?: import('../recommendation-decision').KitScoringDiagnostics;
+
+  /**
+   * OPT-IN canonical recommendation decisions — one per evaluated kit.
+   * Populated ONLY when scoreKits is called with { trace: true }.
+   * Additive; not surfaced to patient-facing outputs.
+   */
+  decisions?: import('../recommendation-decision').RecommendationDecision[];
+
+  /**
+   * OPT-IN full trace payload. Populated ONLY when scoreKits is called with
+   * { trace: true } and includes provenance + discrepancies. Development /
+   * QA / doctor-diagnostics only — never exposed to patient-facing surfaces.
+   */
+  trace?: import('../recommendation-decision').RecommendationTrace;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

@@ -1,5 +1,5 @@
 import type { ClinicalTemplate } from '../types';
-import { v, c, cv } from '../_fragmentUtils';
+import { v, c, cv, vReq } from '../_fragmentUtils';
 
 // ─── Opening ──────────────────────────────────────────────────────────────────
 
@@ -52,10 +52,17 @@ export const AGA_PATIENT_SEVERITY_SEVERE = [
 // ─── Treatment rationale ──────────────────────────────────────────────────────
 
 export const AGA_PATIENT_TREATMENT = [
+  // Generic variants — no patient-symptom claims. Safe for any AGA patient
+  // regardless of scalp state.
   v(9,
-    'Your treatment plan works in stages: first stopping the shedding, then clearing scalp inflammation, then blocking DHT, and finally stimulating your follicles to grow stronger hair.',
     'Think of your treatment as a layered approach — each phase builds on the last, so by the time you reach the growth-stimulating stage, the conditions are perfect for it to work.',
-    'The treatment addresses multiple things at once: reducing the hormone causing the problem, clearing inflammation, and giving your follicles the nutrients they need to recover.'
+    'The treatment addresses multiple things at once: reducing the hormone driving the thinning and giving your follicles the nutrients they need to recover.'
+  ),
+  // Scalp-inflammation phrasing — only valid when the patient actually
+  // reported visible scalp findings. Was previously unconditional and would
+  // claim "clearing scalp inflammation" for normal-scalp patients.
+  vReq(['scalp.anyNonNormal'], 9,
+    'Your treatment plan works in stages: first stopping the shedding, then clearing scalp inflammation, then blocking DHT, and finally stimulating your follicles to grow stronger hair.',
   ),
   c('hasActiveShedding', 'Because you are also experiencing active shedding, your treatment starts by stopping that first — which gives the rest of the plan the best possible foundation.', 8),
   c('hasNoVisibleFall', 'Since the shedding has already stabilised, your treatment focuses entirely on improving the density of the hair that is already growing, rather than stopping shed.', 8),

@@ -27,7 +27,14 @@ import type { BudgetProfile }      from '@hairos/packages/ai-engine/kit-scorer/t
 
 // ─────────────────────────────────────────────────────────────────────────────
 
+// Sandbox exposes the full clinical pipeline against fixtures with no
+// clinic/patient auth. It must never be reachable in production.
+const SANDBOX_DISABLED = process.env.NODE_ENV === "production";
+
 export async function POST(req: Request) {
+  if (SANDBOX_DISABLED) {
+    return new NextResponse(null, { status: 404 });
+  }
   try {
     const { fixtureId } = (await req.json()) as { fixtureId?: string };
     if (!fixtureId) {

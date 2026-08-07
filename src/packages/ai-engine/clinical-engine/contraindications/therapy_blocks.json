@@ -328,7 +328,7 @@
       },
       "effect": "SUPPRESSED",
       "kitsRemoved": ["HAIR FACT TE GOLD"],
-      "protocolOverride": ["RAPID WEIGHT LOSS SHIELD", "F-PCOS -1 (or VEG)", "PHENOTYPE INFLAMATION", "FPHL / FPHL PLUS"],
+      "protocolOverride": ["RAPID WEIGHT LOSS SHIELD", "F-PCOS -1 (or VEG)", "PHENOTYPE INFLAMATION", "FPHL"],
       "clinicalRationale": "Triple-condition: AGA female + PCOS + rapid weight loss. Shield covers the GLP-1/crash-diet precipitating event; PCOS kit corrects androgen axis; FPHL corrects pattern loss. TE GOLD ingredient overlaps with Shield.",
       "sourceCodeReference": "matchProtocol lines 4401-4405; getFunnelKits lines 4708-4730"
     },
@@ -348,7 +348,7 @@
         }
       },
       "effect": "PROTOCOL_OVERRIDE",
-      "kitsBlocked": ["FPHL", "FPHL PLUS"],
+      "kitsBlocked": ["FPHL"],
       "overrideTo": ["HAIR FACT TE GOLD", "PRO IMMUNE GOLD"],
       "clinicalRationale": "Female under 30 with AGA signals: follicle miniaturisation has not progressed enough for FPHL kit to be effective. TE GOLD + PRO IMMUNE GOLD for shedding arrest and follicle activation instead.",
       "sourceCodeReference": "getFunnelKits lines 3696-3699; questionnaire age clinicalMappings"
@@ -530,8 +530,8 @@
       },
       "upgradeRule": {
         "condition": "isGrade45 === true",
-        "male": "MPHL PLUS",
-        "female": "FPHL PLUS"
+        "male": "MPHL",
+        "female": "FPHL"
       },
       "clinicalRationale": "MPHL and FPHL have different active compounds targeting male vs female androgen pathways. Cross-gender prescription would be clinically inappropriate.",
       "sourceCodeReference": "resolveKit() lines 3420-3438; dynamicTransitions DT_002 and DT_003"
@@ -568,7 +568,7 @@
         ]
       },
       "effect": "PROTOCOL_OVERRIDE",
-      "kitsBlocked": ["FPHL", "FPHL PLUS"],
+      "kitsBlocked": ["FPHL"],
       "overrideTo": ["HAIR FACT TE GOLD", "PRO IMMUNE GOLD"],
       "clinicalRationale": "Female under 30 with genetics-driven AGA signals: follicle miniaturisation not yet progressed enough for the 5-alpha reductase blockade and dermal papilla compounds in FPHL to be effective. TE GOLD + PRO IMMUNE for shedding arrest and anagen re-entry.",
       "sourceCodeReference": "getFunnelKits lines 3696-3699"

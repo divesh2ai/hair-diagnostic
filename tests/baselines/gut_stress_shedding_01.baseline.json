@@ -1,0 +1,53 @@
+{
+  "fixtureId": "gut_stress_shedding_01",
+  "generatedAt": "2026-07-03T07:14:17.950Z",
+  "pipelineVersion": "1.0.0",
+  "primaryDiagnosis": "GUT_ISSUES",
+  "scalpStates": [
+    "NORMAL_SCALP"
+  ],
+  "rootCauses": [
+    "STRESS",
+    "GUT_MALABSORPTION"
+  ],
+  "therapyNeeds": [],
+  "severity": "MILD",
+  "rankedKitIds": [
+    "PRO FACT GI GOLD",
+    "PHENOTYPE INFLAMATION",
+    "PRO IMMUNE GOLD",
+    "FPHL"
+  ],
+  "appliedRules": [],
+  "protocolLabel": "Recovery protocol for 4 condition(s): Female pattern hair loss · Scalp / perifollicular inflammation · Gut dysfunction (GERD / IBS / Acid / Crohn) · Immune depletion / regrowth support.",
+  "recommendations": [
+    "PRO FACT GI GOLD",
+    "PHENOTYPE INFLAMATION",
+    "PRO IMMUNE GOLD",
+    "FPHL"
+  ],
+  "narratives": {
+    "narratives": {
+      "doctorHash": "{\"doctorSummary\":\"Mild Gut-hair axis disruption. Intestinal dysb",
+      "patientHash": "{\"doctorSummary\":\"Mild Gut-hair axis disruption. Intestinal dysb"
+    },
+    "orchestration": {
+      "pipelineVersion": "1.0.0",
+      "executionId": "de64d025-bff4-46f3-a5ac-0be842afcbdd",
+      "startedAt": "2026-07-03T07:14:17.950Z",
+      "completedAt": "2026-07-03T07:14:17.952Z",
+      "durationMs": 2,
+      "completedStages": [
+        "questionnaire",
+        "clinical",
+        "therapy",
+        "recommendations",
+        "narratives"
+      ]
+    }
+  },
+  "reportMetadata": {
+    "generatedBy": "generate-baselines.ts",
+    "version": "1.0.0"
+  }
+}

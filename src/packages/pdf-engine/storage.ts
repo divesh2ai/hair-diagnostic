@@ -11,7 +11,11 @@ export async function uploadReportToSupabase(buffer: Buffer, assessmentId: strin
     .from('clinical-reports')
     .upload(path, buffer, {
       contentType: 'application/pdf',
-      upsert: true
+      upsert: true,
+      // Supabase defaults public objects to 1-hour CDN cache. When a PDF is
+      // regenerated (e.g. dossier template fix, re-run), we want the next
+      // download to fetch the fresh upload — not the stale cached object.
+      cacheControl: '0',
     });
 
   if (error) {

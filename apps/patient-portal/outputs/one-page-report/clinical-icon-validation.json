@@ -1,0 +1,81 @@
+{
+  "generatedAt": "2026-08-01T11:16:12.053Z",
+  "questionnaireOptionCount": 109,
+  "exactCropCount": 23,
+  "questionnaireExactResolutionCount": 25,
+  "fallbackCount": 83,
+  "replacementNeeded": [
+    {
+      "optionCode": "post_hysterectomy",
+      "label": "Post-hysterectomy",
+      "reason": "Source illustration is semantically ambiguous"
+    }
+  ],
+  "missingOptions": [
+    {
+      "optionCode": "male",
+      "label": "Male"
+    },
+    {
+      "optionCode": "female",
+      "label": "Female"
+    },
+    {
+      "optionCode": "other",
+      "label": "Other"
+    },
+    {
+      "optionCode": "1_3_months",
+      "label": "1–3 months"
+    },
+    {
+      "optionCode": "3_6_months",
+      "label": "3–6 months"
+    },
+    {
+      "optionCode": "6_12_months",
+      "label": "6–12 months"
+    },
+    {
+      "optionCode": "more_than_1_year",
+      "label": "More than 1 year"
+    },
+    {
+      "optionCode": "20_50_strands_normal_range",
+      "label": "~20–50 strands (Normal range)"
+    },
+    {
+      "optionCode": "50_100_strands_noticeable",
+      "label": "~50–100 strands (Noticeable)"
+    },
+    {
+      "optionCode": "100_strands_heavy_loss",
+      "label": "100+ strands (Heavy loss)"
+    },
+    {
+      "optionCode": "none_of_the_above",
+      "label": "None of the above"
+    },
+    {
+      "optionCode": "not_sure",
+      "label": "Not sure"
+    },
+    {
+      "optionCode": "not_applicable",
+      "label": "Not Applicable"
+    },
+    {
+      "optionCode": "no_no_chronic_conditions",
+      "label": "No, no chronic conditions"
+    },
+    {
+      "optionCode": "none_not_tested",
+      "label": "None / Not tested"
+    }
+  ],
+  "duplicateCrops": [],
+  "suspiciouslyIdenticalAssets": [],
+  "invalidPaths": [],
+  "verySmallSourceCrops": [],
+  "unrelatedDomainMappings": []
+}

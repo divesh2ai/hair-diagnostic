@@ -4,19 +4,19 @@ import { getKitSelectionLeadIn } from '../src/packages/ai-engine/shared/kitSelec
 describe('getKitSelectionLeadIn', () => {
   test('returns the exact TE Gold opener', () => {
     expect(getKitSelectionLeadIn('HAIR FACT TE GOLD')).toBe(
-      'This kit is formulated to address, stress and weakness of the follicles that cause telogen effluvium. The formulation also protects from androgen sensitivity.'
+      'This kit is formulated to address stress and weakness of the follicles that cause telogen effluvium. The formulation also protects from androgen sensitivity.'
     );
   });
 
   test('returns the vegetarian TE Gold opener for the VEG variant', () => {
     expect(getKitSelectionLeadIn('HAIR FACT TE GOLD VEG')).toBe(
-      'This kit is formulated to address, stress and weakness of the follicles that cause telogen effluvium. The formulation also protects from androgen sensitivity utilizing vegetarian options.'
+      'This kit is formulated to address stress and weakness of the follicles that cause telogen effluvium. The formulation also protects from androgen sensitivity utilizing vegetarian options.'
     );
   });
 
-  test('returns the shared FPHL opener for MPHL', () => {
+  test('returns the MPHL opener', () => {
     expect(getKitSelectionLeadIn('MPHL')).toBe(
-      'This kit is formulated to address perifollicular inflammation, counter the hormonal imbalance and loss of growth seen in female pattern hair loss. The formulation also protects from androgen sensitivity.'
+      'This kit is formulated to address perifollicular inflammation, counter the hormonal imbalance and loss of growth seen in male pattern hair loss. The formulation also protects from androgen sensitivity.'
     );
   });
 

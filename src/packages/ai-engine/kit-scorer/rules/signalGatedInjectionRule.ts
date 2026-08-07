@@ -71,9 +71,12 @@ export function applySignalGatedInjectionRule(
   }
 
   // 3. PRO IMMUNE GOLD — specific clinical triggers only (NOT a default)
+  // `isRegrowGoal` alone is NOT a trigger. PRO IMMUNE targets post-depletion
+  // recovery — illness, surgery, iron loss, gut inflammation, allergy/frequent
+  // infection, or age-30+ genetic pattern. A regrow-quality goal on its own,
+  // with no depletion signal, must not inject PRO IMMUNE.
   if (!phases.some((k) => k.includes('PRO IMMUNE'))) {
     const realImmuneSignal =
-      isRegrowGoal ||
       s.deficiency('Iron') || s.deficiency('Anaemia') ||
       s.cause('Recent Illness') || s.cause('Surgery') ||
       s.cause('Medication') || s.cause('Nutritional') ||
@@ -177,10 +180,7 @@ export function applySignalGatedInjectionRule(
       s.hairtype('Thinning') || s.hairtype('widening') || s.hairtype('parting') ||
       (hasGeneticCause && age >= 30);
     if (realPatternSignal) {
-      const { isMale, isGrade45 } = ctx.flags;
-      const patternKit: KitId = isMale
-        ? (isGrade45 ? 'MPHL PLUS' : 'MPHL')
-        : (isGrade45 ? 'FPHL PLUS' : 'FPHL');
+      const patternKit: KitId = ctx.flags.isMale ? 'MPHL' : 'FPHL';
       pool.unshift(patternKit); // pattern loss has highest injection priority
     }
   }

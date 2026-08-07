@@ -71,17 +71,19 @@ export function extractFlags(ans: PatientAnswers): ClinicalFlags {
   );
   const isVeg = hasVegOption && !hasNonVegOption;
 
-  // Active shedding = not a regrow-only goal, not thinning-only, plus at least one shedding signal.
+  // Active shedding requires OBJECTIVE evidence — patient-reported daily count
+  // or a shedding duration signal. Driver causes (Stress / Anxiety / Nutritional
+  // / Medication / Illness / Surgery) are NOT sufficient on their own: a
+  // stressed patient with no fall does not have active shedding. Removing the
+  // cause-based OR-list also prevents downstream TE GOLD promotion via
+  // detectConditions.
   const hasActiveShedding =
     !isRegrowGoal &&
     !hasNoVisibleFall &&
     (count.includes('50') ||
       count.includes('100') ||
       count.includes('Noticeable') ||
-      /1[–-]3|3[–-]6/.test(duration) ||
-      s.cause('Stress') || s.cause('Anxiety') || s.cause('Depression') ||
-      s.cause('Nutritional') || s.cause('Medication') ||
-      s.cause('Illness') || s.cause('Surgery'));
+      /1\s*[–-]\s*3|3\s*[–-]\s*6/.test(duration));
 
   return {
     isRegrowGoal,

@@ -22,11 +22,7 @@ function snapshotTileFor(label: string): PrintClinicalSnapshotItem {
   return { optionCode: resolved.optionCode, label, asset: resolved.asset, assetStatus: resolved.status };
 }
 
-function buildKeyClinicalSnapshot(
-  report: ClinicalReport,
-  drivers: PrintDriverCard[],
-  kits: PrintTreatmentKit[],
-): PrintClinicalSnapshotItem[] {
+function buildKeyClinicalSnapshot(report: ClinicalReport): PrintClinicalSnapshotItem[] {
   const seen = new Set<string>();
   const rows: PrintClinicalSnapshotItem[] = [];
   const push = (raw: string) => {
@@ -34,22 +30,54 @@ function buildKeyClinicalSnapshot(
     if (!label) return;
     const key = label.toLowerCase().replace(/\s+/g, " ").trim();
     if (seen.has(key)) return;
-    // Filter out non-clinical fillers that would just be noise on the 10-tile grid.
+    // Filter out non-clinical fillers that would just be noise on the tile
+    // grid. Non-selection tags ("Not flagged", "Not recorded", "None", etc.)
+    // must never surface as tiles — the spec requires every tile to be
+    // traceable to an actual patient response or doctor-added finding.
     if (/^(yes|no|none|normal|not (recorded|applicable|flagged|sure)|female|male|assessment-linked)$/i.test(key)) return;
+    // Broad "no <anything> history / issues / concern" match — questionnaire
+    // options like "No thyroid history", "No hormonal issues", "No scalp
+    // concerns", "No gut issues" are non-selections and must not surface as
+    // clinical findings.
+    if (/^no\s+\w+/i.test(key) && /(history|issues|issue|concern|concerns|deficiencies|allergies|major|significant|visible|fall)/i.test(key)) return;
     if (isClinicalOptionExcluded(label)) return;
     seen.add(key);
     rows.push(snapshotTileFor(label));
   };
   const selections = (report.patientSummary.questionnaireSelections ?? {}) as Record<string, unknown>;
-  // Question fields most predictive of the 10-tile clinical snapshot on the
-  // Ruchi layout. Order controls tile placement: patient-selected clinical
-  // signals first (scalp/hormone/thyroid/metabolic/lifestyle), then softer
-  // context tags (diet/immunity/gut/cause).
-  const priority = ["scalp", "hormonal", "thyroid", "metabolic", "immunity", "lifestyle", "cause", "diet", "gut", "deficiency"];
+  // "From your responses" — every clinically-meaningful patient selection
+  // surfaces as a tile. Field order controls tile placement (clinical
+  // drivers first, softer context tags after). No cap so multi-signal
+  // patients (Vaer, Ravsharan) are fully represented rather than truncated.
+  // The renderer downshifts tile density when the count is high.
+  //
+  // Duration ("3–6 months") and grade ("Norwood III" / "Ludwig 2") are
+  // deliberately excluded — they're already stated in the patient card on
+  // the left and inside the Doctor-Reviewed Result diagnosis title, so a
+  // snapshot tile for either would just duplicate information and eat
+  // space that a real clinical signal could use.
+  // "count" is deliberately omitted — the ~50-100 strands / shedding figure is
+  // already rendered in the patient-details card (see PatientBlock), and
+  // duplicating it as a snapshot tile burns real estate for a driver we
+  // already show. Every other selected clinical option remains visible.
+  const priority = [
+    "hairtype",
+    "scalp",
+    "hormonal",
+    "thyroid",
+    "immunity",
+    "gut",
+    "deficiency",
+    "metabolic",
+    "cause",
+    "lifestyle",
+    "behavioural",
+    "diet",
+    "treatment",
+    "goal",
+  ];
   for (const field of priority) for (const value of collectEvidenceStrings(selections[field])) push(value);
-  for (const kit of kits) for (const linked of kit.linkedDrivers) push(linked);
-  for (const driver of drivers) push(driver.title);
-  return rows.slice(0, 10);
+  return rows;
 }
 
 function buildTopicalCareWithValidation(report: ClinicalReport): {
@@ -152,6 +180,12 @@ export type PrintTreatmentKit = {
   linkedDrivers: string[];
   benefits: string[];
   asset: ProductAsset | null;
+  /**
+   * True when the kit was approved by the doctor without a direct patient
+   * trigger. `linkedDrivers[0]` then holds a benefit-oriented fallback
+   * chip (e.g. "Improves immunity") from clinicianAddedLabelForKit().
+   */
+  clinicianAdded?: boolean;
 };
 
 export type PrintTopical = {
@@ -192,6 +226,14 @@ export type OnePageReportViewModel = {
   clinic: { name: string; address: string; phone: string; logoUrl: string | null };
   clinician: { name: string; title: string };
   clinicalResult: { primary: string; supportingLine: string; conclusion: string; reviewedBy: string };
+  /**
+   * Structured narrative used to compose the Doctor-Reviewed Result. Exposed
+   * so validation can enforce the "one connected clinical story" invariant:
+   * the underlying pattern is stated separately from the current active
+   * trigger, kit #1 is explicitly justified, and every approved kit is
+   * covered in the treatment strategy in the doctor-approved order.
+   */
+  narrative: OnePageReportNarrative;
   driverStory: PrintDriverCard[];
   snapshotStrip: Array<{ label: string; value: string; illustration: IllustrationKey }>;
   patternScale: PrintPatternScale | null;
@@ -221,8 +263,42 @@ export type OnePageReportViewModel = {
   validation: OnePageReportValidation;
 };
 
+export type OnePageReportNarrative = {
+  /** Diagnosis + stage, e.g. "Male Pattern Hair Loss at Norwood III". Empty
+   *  string if no Ludwig/Norwood grade was captured. */
+  underlyingPattern: string;
+  /** "noticeable shedding of approximately 50-100 strands over the past 3-6
+   *  months" — composed from questionnaire count + duration. */
+  activityLine: string;
+  /** The active shedding trigger linked to approved kit #1. Null only if the
+   *  approved lineup is empty or kit #1 is the pattern kit itself (in which
+   *  case the pattern IS the primary driver — no separate active trigger). */
+  primaryActiveDriver: {
+    kitCode: string;
+    /** Short label ("rapid weight change following GLP-1 therapy"). */
+    label: string;
+    /** One-line simple clinical effect ("place sudden stress on the
+     *  follicles and increase shedding"). */
+    effect: string;
+    /** Composed sentence rendered into the conclusion paragraph. */
+    sentence: string;
+    /** True when kit #1 was clinician-added (no patient signal supports it).
+     *  In that case the sentence uses "Your doctor has added <purpose> as
+     *  part of your recovery plan" and validation surfaces a warning. */
+    doctorAdded: boolean;
+  } | null;
+  /** Contributor labels for the additional-drivers sentence, in
+   *  clinical-weight order. Excludes the primary active driver so it never
+   *  double-counts. */
+  secondaryDrivers: string[];
+  /** One phrase per approved kit in doctor-approved order. Feeds the closing
+   *  "Your plan therefore begins with X, followed by Y…" sentence. */
+  treatmentStrategy: Array<{ kitCode: string; phrase: string }>;
+};
+
 export type KitValidationStatus =
   | "valid"
+  | "clinician_added"
   | "suppressed_missing_trigger"
   | "suppressed_missing_interpretation"
   | "suppressed_missing_asset"
@@ -382,10 +458,18 @@ function buildPatternScale(grade: unknown): PrintPatternScale | null {
   // a 1 / 2 / 3 strip with the patient's stage highlighted. The selected stage
   // is forced to selected=true even when the questionnaire wrote a slightly
   // different spelling (e.g. "Grade 2 - Ludwig 2").
-  const canonicalStages = stages.slice(0, 3).map((stage) => ({
+  const baseStages = stages.slice(0, 3).map((stage) => ({
     ...stage,
     selected: selectedStage ? stage.label === selectedStage.label : stage.selected,
   }));
+  // When the doctor-approved grade sits outside the canonical 1/2/3 strip
+  // (e.g. Ludwig I-1 / II-1 / III-1), append it so the snapshot chip and any
+  // downstream "selected stage" consumer read the actual approved value
+  // instead of silently falling back to stages[0] (Ludwig 1) and creating a
+  // headline↔snapshot mismatch.
+  const canonicalStages = selectedStage && !baseStages.some((s) => s.label === selectedStage.label)
+    ? [...baseStages, { ...selectedStage, selected: true }]
+    : baseStages;
   return { type, patientStage, stages: canonicalStages };
 }
 
@@ -416,8 +500,11 @@ function kitAssetCode(raw: string): string {
   if (/META[-\s]?B/.test(text)) return "PRO_FACT_META_B";
   if (/RAPID WEIGHT|RWL/.test(text)) return "RAPID_WEIGHT_LOSS_SHIELD";
   if (/FPHL.*PLUS/.test(text)) return "FPHL_PLUS";
-  if (/\bFPHL\b|FEMALE PATTERN/.test(text)) return "FPHL Pro";
+  // Asset registry keys are the short codes (FPHL / MPHL); the space-suffixed
+  // "FPHL Pro" was a typo that broke asset lookup.
+  if (/\bFPHL\b|FEMALE PATTERN/.test(text)) return "FPHL";
   if (/MPHL.*PLUS/.test(text)) return "MPHL_PLUS";
+  if (/\bMPHL\b|MALE PATTERN/.test(text)) return "MPHL";
   if (/ALOPECIA AREATA/.test(text)) return "HAIR_FACT_ALOPECIA_AREATA";
   if (/PERI MENOPAUSE/.test(text)) return "HAIR_FACT_PERI_MENOPAUSE";
   if (/GI GOLD/.test(text)) return "PRO_FACT_GI_GOLD";
@@ -459,6 +546,30 @@ function topicalAssetCode(raw: string): string {
   if (/TRICHOSILK.*FNH/.test(text)) return "F_TRICHOSILK_FNH";
   if (/TRICHOSILK/.test(text)) return "F_TRICHOSILK";
   if (/TRICHOGAIN/.test(text)) return "F_TRICHOGAIN";
+  // ── Oral combination tablets — MUST precede the generic MINOXIDIL branch ──
+  // "Oral Minoxidil + Spironolactone" / "+ Bicalutamide" are systemic tablets
+  // (Oroxidil cartons), not scalp solutions. Falling through to the block
+  // below matched them on the bare "MINOXIDIL" token and printed an F-Extend
+  // bottle for an oral prescription.
+  //
+  // The ORAL/OROXIDIL guard is load-bearing: "Minoxidil + Spironolactone
+  // Topical" is a genuine compounded topical and must NOT match here.
+  if (/ORAL|OROXIDIL/.test(text) && !/TOPICAL/.test(text)) {
+    // Match on the ingredient OR the carton brand code — the Oroxidil boxes
+    // encode the anti-androgen as a letter prefix (F-S- = Spironolactone,
+    // F-B- = Bicalutamide) and never spell the ingredient out.
+    const isBicalutamide = /BICALUTAMIDE/.test(text) || /\bF\s*-?\s*B\s*-?\s*OROXIDIL/.test(text);
+    const isSpironolactone = /SPIRONOLACTONE/.test(text) || /\bF\s*-?\s*S\s*-?\s*OROXIDIL/.test(text);
+    if (isBicalutamide) return "ORAL_MINOXIDIL_BICALUTAMIDE";
+    if (isSpironolactone) {
+      // Two strengths ship as distinct cartons; only an explicit "50" selects
+      // the 1.25-50 box. The unqualified registry name ("Oral Minoxidil +
+      // Spironolactone") is the 1.25-25.
+      return /(?<![\d.])50\b/.test(text)
+        ? "ORAL_MINOXIDIL_SPIRONOLACTONE_50"
+        : "ORAL_MINOXIDIL_SPIRONOLACTONE";
+    }
+  }
   if (/MINOXIDIL|EXTEND/.test(text)) {
     // 1. Explicit adjacency wins (MINOXIDIL 5 / EXTEND 2).
     if (/(?:MINOXIDIL|EXTEND)\s*5/.test(text)) return "F_EXTEND_5";
@@ -538,80 +649,514 @@ function buildSupportingLine(report: ClinicalReport, drivers: PrintDriverCard[])
   return shortSentence(line, "Patient-specific contributors are guiding this care plan.", 125);
 }
 
+// ─── Kit → clinical-family classifier ────────────────────────────────────────
+// Central lookup used by the narrative builder for kit-specific strategy
+// phrases and kit-specific active-trigger sentences. Pattern kits (MPHL/FPHL)
+// are classified separately so the narrative can honour the requirement that
+// pattern loss is the *underlying* diagnosis, never the *active* trigger.
+type KitFamily =
+  | "rwl_shield"
+  | "te_gold"
+  | "gi_gold"
+  | "phenotype_inflam"
+  | "iron_up"
+  | "meta_b"
+  | "thyroid_care"
+  | "pro_immune"
+  | "peri_menopause"
+  | "post_menopause"
+  | "hysterectomy"
+  | "lactihealth"
+  | "early_greying"
+  | "hbr"
+  | "pattern"
+  | "alopecia_areata"
+  | "gi_endometriosis"
+  | "healthy_9"
+  | "night_shift"
+  | "frequent_flyers"
+  | "ttm"
+  | "unknown";
+
+function classifyKit(kit: { kitCode: string; name: string }): KitFamily {
+  const text = `${kit.kitCode} ${kit.name}`.toLowerCase();
+  if (/rwl|rapid weight/.test(text)) return "rwl_shield";
+  if (/te gold|telogen/.test(text)) return "te_gold";
+  if (/gi gold|gi health/.test(text)) return "gi_gold";
+  if (/phenotype.*inflam|inflam/.test(text)) return "phenotype_inflam";
+  if (/iron up|ferritin/.test(text)) return "iron_up";
+  if (/hyperthyroid|thyroid care/.test(text)) return "thyroid_care";
+  if (/meta[ _-]?b|metabolic|hypothyroid/.test(text)) return "meta_b";
+  if (/pro immune/.test(text)) return "pro_immune";
+  if (/peri.?menopause/.test(text)) return "peri_menopause";
+  if (/post.?menopause/.test(text)) return "post_menopause";
+  if (/hysterectomy|\bhrt\b/.test(text)) return "hysterectomy";
+  if (/lacti|postpartum/.test(text)) return "lactihealth";
+  if (/early greying/.test(text)) return "early_greying";
+  if (/hbr|breakage|shaft/.test(text)) return "hbr";
+  if (/alopecia areata/.test(text)) return "alopecia_areata";
+  if (/fh well|endometrios/.test(text)) return "gi_endometriosis";
+  if (/healthy.?9|pregnan/.test(text)) return "healthy_9";
+  if (/night shift/.test(text)) return "night_shift";
+  if (/frequent fly/.test(text)) return "frequent_flyers";
+  if (/ttm|trichotillo/.test(text)) return "ttm";
+  if (/\bmphl\b|\bfphl\b|male pattern|female pattern|pattern/.test(text)) return "pattern";
+  return "unknown";
+}
+
+// One patient-facing purpose per kit family. Kept short and simple so it
+// slots directly into the "Your treatment therefore begins with X, followed
+// by Y" sentence. Each phrase is the kit's canonical purpose (not a kit-name
+// template).
+const KIT_STRATEGY_PHRASE: Record<KitFamily, string> = {
+  rwl_shield: "rapid-weight-loss follicle protection and nutrient recovery",
+  te_gold: "acute-shedding support",
+  gi_gold: "gut and absorption support",
+  phenotype_inflam: "scalp and oxidative inflammation control",
+  iron_up: "iron recovery",
+  meta_b: "metabolic support",
+  thyroid_care: "thyroid support",
+  pro_immune: "immune-linked follicle support",
+  peri_menopause: "peri-menopausal hormonal-transition support",
+  post_menopause: "post-menopausal hormonal-transition support",
+  hysterectomy: "post-hysterectomy hormonal reset",
+  lactihealth: "postpartum hormonal support",
+  early_greying: "melanocyte protection",
+  hbr: "hair-shaft repair",
+  pattern: "pattern protection",
+  alopecia_areata: "autoimmune follicle support",
+  gi_endometriosis: "endometriosis-linked hormonal support",
+  healthy_9: "pregnancy-safe follicle nutrition",
+  night_shift: "circadian follicle recovery",
+  frequent_flyers: "travel-linked follicle recovery",
+  ttm: "trichotillomania scalp recovery",
+  unknown: "targeted follicle support",
+};
+
+// Kit-family → structured active trigger. The narrative composes the
+// sentence as:
+//   "Your current hair shedding may be mainly linked to <label>,
+//    which can <effect> on top of the underlying pattern sensitivity."
+// The "on top of…" tail is appended only when a Ludwig/Norwood pattern
+// diagnosis is present. Pattern kits (MPHL/FPHL) deliberately return null —
+// pattern loss is the underlying susceptibility, never framed as the active
+// shedding trigger.
+type ActiveTrigger = { label: string; effect: string };
+function activeTriggerFor(
+  family: KitFamily,
+  ctx: { hasGlp1Signal: boolean },
+): ActiveTrigger | null {
+  switch (family) {
+    case "rwl_shield":
+      return {
+        label: ctx.hasGlp1Signal
+          ? "rapid weight change following GLP-1 therapy"
+          : "rapid weight change",
+        effect: "place sudden stress on the follicles and increase shedding",
+      };
+    case "te_gold":
+      return {
+        label: "stress-driven acute shedding",
+        effect: "push a large wave of hair into the resting phase",
+      };
+    case "gi_gold":
+      return {
+        label: "gut dysfunction",
+        effect: "limit nutrient absorption and drive current shedding",
+      };
+    case "phenotype_inflam":
+      return {
+        label: "scalp and oxidative inflammation",
+        effect: "weaken follicular support and drive current shedding",
+      };
+    case "iron_up":
+      return {
+        label: "low iron stores",
+        effect: "reduce oxygen delivery to the follicles and drive current shedding",
+      };
+    case "meta_b":
+      return {
+        label: "metabolic strain",
+        effect: "slow follicular recovery",
+      };
+    case "thyroid_care":
+      return {
+        label: "thyroid dysfunction",
+        effect: "disrupt the hair cycle",
+      };
+    case "pro_immune":
+      return {
+        label: "immune-linked follicular pressure",
+        effect: "interrupt hair growth",
+      };
+    case "peri_menopause":
+      return {
+        label: "peri-menopausal hormonal transition",
+        effect: "shorten the active growth phase and increase shedding",
+      };
+    case "post_menopause":
+      return {
+        label: "post-menopausal hormonal transition",
+        effect: "shorten the active growth phase and increase shedding",
+      };
+    case "hysterectomy":
+      return {
+        label: "post-hysterectomy hormonal transition",
+        effect: "shorten the active growth phase and increase shedding",
+      };
+    case "lactihealth":
+      return {
+        label: "postpartum hormonal transition",
+        effect: "shorten the active growth phase and increase shedding",
+      };
+    case "alopecia_areata":
+      return {
+        label: "autoimmune activity at the follicle",
+        effect: "interrupt hair growth",
+      };
+    case "hbr":
+      return {
+        label: "hair-shaft damage from chemical or heat styling",
+        effect: "drive breakage and thinning",
+      };
+    case "early_greying":
+      return {
+        label: "oxidative and neuroendocrine load",
+        effect: "pressure melanocytes and the follicle environment",
+      };
+    case "night_shift":
+      return {
+        label: "shift-work circadian disruption",
+        effect: "limit follicular recovery",
+      };
+    case "frequent_flyers":
+      return {
+        label: "frequent travel and jet-lag load",
+        effect: "limit follicular recovery",
+      };
+    case "gi_endometriosis":
+      return {
+        label: "endometriosis-linked hormonal load",
+        effect: "shorten the growth phase",
+      };
+    case "ttm":
+      return {
+        label: "mechanical follicle stress from hair-pulling",
+        effect: "slow recovery of affected areas",
+      };
+    case "healthy_9":
+      return {
+        label: "pregnancy-linked nutrient demand",
+        effect: "shift the hair cycle temporarily",
+      };
+    case "pattern":
+    case "unknown":
+      return null;
+  }
+}
+
+// GLP-1 detection: covers explicit GLP-1 / semaglutide / brand names and the
+// "Rapid weight loss / Crash diet" cause tag (the questionnaire's proxy for
+// this scenario when brand isn't captured).
+function hasGlp1Signal(selections: Record<string, unknown>): boolean {
+  const bucket = [
+    ...collectEvidenceStrings(selections.cause),
+    ...collectEvidenceStrings(selections.lifestyle),
+    ...collectEvidenceStrings(selections.treatment),
+    ...collectEvidenceStrings(selections.medical_detail as unknown),
+  ]
+    .map((v) => cleanText(v).toLowerCase())
+    .join(" | ");
+  return /glp[-\s]?1|semaglutide|tirzepatide|ozempic|wegovy|mounjaro|rapid weight loss|crash diet/.test(
+    bucket,
+  );
+}
+
 /**
- * Doctor-Reviewed Result — a single composed paragraph that must include:
- *   (1) full diagnosis name + exact grade,
- *   (2) shedding activity + duration,
- *   (3) main contributing factors (patient-facing names, not internal codes),
- *   (4) follicle mechanism composed from the contributor families present,
- *   (5) treatment strategy composed from the actual approved kits.
+ * Kit family → CLINICAL MECHANISM CLUSTER.
  *
- * Data-driven from questionnaire selections + approved treatment kits — never
- * hand-templated. Contributor labels come from patient selections (Hormonal,
- * Thyroid, Scalp, Lifestyle, Metabolic, etc.) so the paragraph reflects what
- * the doctor actually saw and approved.
+ * The closing summary sentence describes what the plan does, not how many
+ * boxes it contains. Kits that act on the same mechanism therefore collapse
+ * into one purpose before any length decision is taken — a patient on Meta B
+ * plus Thyroid Care is receiving "metabolic and thyroid support", not two
+ * separate purposes worth of prose.
+ *
+ * This clustering is what keeps the summary inside its word band. It runs
+ * BEFORE the purpose cap so length is managed by merging related clinical
+ * meaning, never by truncating clinical content.
  */
+const KIT_MECHANISM_CLUSTER: Record<KitFamily, string> = {
+  phenotype_inflam: "inflammation and oxidative-stress control",
+  meta_b: "metabolic and thyroid support",
+  thyroid_care: "metabolic and thyroid support",
+  pro_immune: "immune-linked follicle support",
+  alopecia_areata: "immune-linked follicle support",
+  peri_menopause: "hormonal-transition support",
+  post_menopause: "hormonal-transition support",
+  hysterectomy: "hormonal-transition support",
+  lactihealth: "hormonal-transition support",
+  healthy_9: "hormonal-transition support",
+  night_shift: "circadian recovery support",
+  frequent_flyers: "circadian recovery support",
+  gi_gold: "gut and absorption support",
+  gi_endometriosis: "endometriosis-linked hormonal support",
+  iron_up: "iron recovery",
+  te_gold: "acute-shedding support",
+  rwl_shield: "rapid-weight-loss follicle protection",
+  hbr: "hair-shaft repair",
+  ttm: "behavioural-stress follicle recovery",
+  early_greying: "melanocyte protection",
+  pattern: "pattern protection",
+  unknown: "targeted follicle support",
+};
+
+/**
+ * How the closing sentence frames the plan.
+ *
+ * "sequenced" — the plan carries genuine clinical phasing, so "Treatment
+ *   begins with X, followed by Y" states something true.
+ * "concurrent" — the kit order is a priority ranking with no timing attached;
+ *   the summary must not imply chronology the plan does not contain.
+ */
+export type TreatmentSequencingMode = "sequenced" | "concurrent";
+
+/**
+ * Decides whether the approved plan actually encodes clinical sequencing.
+ *
+ * `buildKitSequence` assigns `phase: i + 1` alongside `score: 100 - i * 8` —
+ * a per-kit priority index, not a chronology, and `TreatmentPhase` carries no
+ * duration or start-time field. A run of distinct phases 1..N is therefore
+ * the signature of RANKING and must render as concurrent.
+ *
+ * Genuine phasing groups multiple kits under a shared phase number ("phase 1
+ * is these three kits, phase 2 these two"). That grouping — or phase labels
+ * that do not enumerate at all — is real sequencing information and earns the
+ * "begins with / followed by" framing.
+ *
+ * The 1..N test is order-insensitive on purpose. When a doctor reorders the
+ * approved kits the phase numbers travel with them, so the values arrive as a
+ * permutation (2, 1, 3…). That is still a per-kit ranking, not chronology.
+ */
+export function detectSequencingMode(phases: readonly TreatmentPhase[]): TreatmentSequencingMode {
+  const values = phases
+    .map((phase) => (typeof phase.phase === "number" ? phase.phase : Number.NaN))
+    .filter((value) => Number.isFinite(value));
+  if (values.length < 2) return "concurrent";
+  // A repeated phase number means kits are GROUPED into a phase — real phasing.
+  if (new Set(values).size !== values.length) return "sequenced";
+  // Otherwise: distinct values that are a permutation of 1..N are a per-kit
+  // enumeration (ranking). Anything else is a deliberate phase labelling.
+  const sorted = [...values].sort((a, b) => a - b);
+  const isPerKitEnumeration = sorted.every((value, index) => value === index + 1);
+  return isPerKitEnumeration ? "concurrent" : "sequenced";
+}
+
+function buildTreatmentStrategy(
+  kits: PrintTreatmentKit[],
+): Array<{ kitCode: string; phrase: string }> {
+  const strategy: Array<{ kitCode: string; phrase: string }> = [];
+  for (const kit of kits) {
+    // Mechanism cluster, not per-kit purpose: kits acting on the same
+    // mechanism collapse to one phrase so the closing sentence describes
+    // clinical intent rather than enumerating the box count. The per-kit
+    // record is preserved so validation can still prove every approved kit
+    // is represented.
+    strategy.push({ kitCode: kit.kitCode, phrase: KIT_MECHANISM_CLUSTER[classifyKit(kit)] });
+  }
+  return strategy;
+}
+
+/**
+ * Doctor-Reviewed Result — one connected clinical story that:
+ *   (1) separates underlying pattern from active shedding trigger,
+ *   (2) explicitly justifies approved kit #1 in the second sentence,
+ *   (3) surfaces additional contributors + mechanism,
+ *   (4) closes with a treatment strategy in the exact approved kit order.
+ *
+ * Never hand-templated. The primary active-trigger sentence is derived from
+ * kit #1's family (see `activeTriggerSentenceFor`); the treatment-strategy
+ * sentence is derived from each approved kit's family in the doctor-approved
+ * order.
+ */
+function buildNarrative(
+  report: ClinicalReport,
+  drivers: PrintDriverCard[],
+  primary: string,
+  kits: PrintTreatmentKit[],
+): OnePageReportNarrative {
+  const selections = (report.patientSummary.questionnaireSelections ?? {}) as Record<string, unknown>;
+
+  // Diagnosis phrasing: prefer "at Ludwig 2" / "at Norwood III" over hyphen.
+  const primaryPhrase = primary.replace(/\s*[-–—]\s*(Ludwig|Norwood)/i, " at $1");
+  const patternDx = /(male|female) pattern hair loss|ludwig|norwood/i.test(primaryPhrase);
+  const underlyingPattern = patternDx ? primaryPhrase : "";
+
+  // Shedding count + duration. Kept compact — the 55–80 word target leaves
+  // no room for filler ("noticeable shedding of approximately …") in the
+  // opening sentence.
+  const activityRaw = shortText(selections.count, "", 40);
+  const cleanedCount = activityRaw.replace(/^~\s*/, "").replace(/\s*\(.*$/, "").trim();
+  const duration = shortText(selections.duration ?? report.patientSummary.hairLossDuration, "the current review window", 34);
+  const activityFragment = cleanedCount && !/not (recorded|applicable)/i.test(cleanedCount)
+    ? `shedding of ${cleanedCount} over ${duration}`
+    : `active shedding over ${duration}`;
+
+  // Primary active driver — linked to approved kit #1.
+  const firstKit = kits[0] ?? null;
+  const firstFamily = firstKit ? classifyKit(firstKit) : null;
+  const isDoctorAdded = !!firstKit && firstKit.clinicianAdded === true;
+  const trigger = firstFamily ? activeTriggerFor(firstFamily, { hasGlp1Signal: hasGlp1Signal(selections) }) : null;
+
+  let primaryActiveDriver: OnePageReportNarrative["primaryActiveDriver"] = null;
+  if (firstKit && firstFamily && firstFamily !== "pattern") {
+    if (isDoctorAdded) {
+      // Kit #1 has no patient-supported trigger — the doctor added it. Do
+      // not invent a cause; state that plainly. Validation surfaces a
+      // warning so the wording can be reviewed.
+      const purpose = KIT_STRATEGY_PHRASE[firstFamily];
+      primaryActiveDriver = {
+        kitCode: firstKit.kitCode,
+        label: purpose,
+        effect: "",
+        sentence: `Your doctor has added ${purpose} as part of your recovery plan.`,
+        doctorAdded: true,
+      };
+    } else if (trigger) {
+      const tail = patternDx ? " on top of the underlying pattern sensitivity" : "";
+      primaryActiveDriver = {
+        kitCode: firstKit.kitCode,
+        label: trigger.label,
+        effect: trigger.effect,
+        sentence: `Current shedding may be linked to ${trigger.label}, which can ${trigger.effect}${tail}.`,
+        doctorAdded: false,
+      };
+    }
+  }
+
+  // Secondary contributors — patient-selected labels, minus anything already
+  // covered by the primary active trigger so the paragraph doesn't double-
+  // count. Every contributor is anchored in a patient selection field
+  // (see buildContributorList), so no unsupported factor can leak in. Cap
+  // at 3 to hit the 55–80 word conclusion target.
+  const allContributors = buildContributorList(selections, drivers).slice(0, 6);
+  const primaryLabelLower = primaryActiveDriver?.label.toLowerCase() ?? "";
+  const primaryFirstWord = primaryLabelLower.split(/\s+/)[0] ?? "";
+  const secondaryDrivers = allContributors.filter((label) => {
+    const lower = label.toLowerCase();
+    // Drop contributors that would just restate the primary trigger.
+    if (primaryFirstWord && lower.startsWith(primaryFirstWord)) return false;
+    if (primaryActiveDriver?.kitCode.startsWith("RAPID_WEIGHT") && /rapid weight|crash diet/.test(lower)) return false;
+    return true;
+  }).slice(0, 3);
+
+  const treatmentStrategy = buildTreatmentStrategy(kits);
+
+  return {
+    underlyingPattern,
+    activityLine: activityFragment,
+    primaryActiveDriver,
+    secondaryDrivers,
+    treatmentStrategy,
+  };
+}
+
+// (strategyLabelForFamily removed — replaced by activeTriggerFor which
+//  returns both the short label and the one-line clinical effect used by
+//  the "may be mainly linked to X, which can Y" opener.)
+
+/**
+ * Maximum mechanism clusters named in the closing sentence.
+ *
+ * Content Master §3's template lists three purposes; the §6 doctor-reviewed
+ * exemplar (a five-kit case) lists five. Five is therefore the approved
+ * observed maximum.
+ *
+ * This is a backstop, not the length mechanism. Length is managed upstream by
+ * KIT_MECHANISM_CLUSTER, which merges kits acting on the same mechanism into
+ * one purpose before the cap is ever consulted. A plan that still exceeds five
+ * DISTINCT mechanisms is genuinely multifactorial, so the remainder is
+ * acknowledged rather than dropped, and every kit still renders in full in the
+ * care-plan band below.
+ */
+const STRATEGY_PURPOSE_CAP = 5;
+
+/** Closing phrase when a plan spans more than STRATEGY_PURPOSE_CAP mechanisms. */
+const STRATEGY_OVERFLOW_PHRASE = "additional support for other identified contributors";
+
+function composeConclusion(
+  narrative: OnePageReportNarrative,
+  sequencing: TreatmentSequencingMode,
+): string {
+  const parts: string[] = [];
+
+  // Opener. Content Master §3: lead with the diagnosis and use the approved
+  // softener ("is consistent with") — never a definitive statement of cause.
+  //
+  // When NO pattern diagnosis was captured, §3 requires the summary to open
+  // "Your responses suggest a combination of…". The previous version fell
+  // back to the top contributing driver and still said "Your assessment is
+  // consistent with <driver>", which presented a contributor (e.g. "Metabolic
+  // dysfunction") to the patient as though it were their diagnosis. The
+  // contributors are named properly in the third sentence below.
+  if (narrative.underlyingPattern) {
+    parts.push(
+      `Your assessment is consistent with ${narrative.underlyingPattern}, with ${narrative.activityLine}.`,
+    );
+  } else {
+    parts.push(
+      `Your responses suggest a combination of contributing factors, with ${narrative.activityLine}.`,
+    );
+  }
+
+  if (narrative.primaryActiveDriver) {
+    parts.push(narrative.primaryActiveDriver.sentence);
+  }
+  if (narrative.secondaryDrivers.length > 0) {
+    parts.push(
+      `${capitaliseFirst(humanJoin(narrative.secondaryDrivers))} may contribute further to slower recovery.`,
+    );
+  }
+
+  // Closing sentence: treatment PURPOSES, never kit names (Content Master §3),
+  // already collapsed into mechanism clusters by buildTreatmentStrategy.
+  //
+  // Framing depends on what the plan actually encodes. "begins with / followed
+  // by" asserts chronology, so it is used ONLY when detectSequencingMode finds
+  // genuine clinical phasing. The default kit order is a priority ranking with
+  // no timing attached, and stating it as a sequence would tell the patient
+  // something the plan does not say.
+  const uniquePhrases: string[] = [];
+  const seen = new Set<string>();
+  for (const entry of narrative.treatmentStrategy) {
+    if (seen.has(entry.phrase)) continue;
+    seen.add(entry.phrase);
+    uniquePhrases.push(entry.phrase);
+  }
+  if (uniquePhrases.length > 0) {
+    const named =
+      uniquePhrases.length > STRATEGY_PURPOSE_CAP
+        ? [...uniquePhrases.slice(0, STRATEGY_PURPOSE_CAP - 1), STRATEGY_OVERFLOW_PHRASE]
+        : uniquePhrases;
+    if (sequencing === "sequenced") {
+      const [head, ...tail] = named;
+      const tailClause = tail.length > 0 ? `, followed by ${humanJoin(tail)}` : "";
+      parts.push(`Treatment begins with ${head}${tailClause}.`);
+    } else {
+      parts.push(`Your treatment plan addresses these factors through ${humanJoin(named)}.`);
+    }
+  }
+  return normaliseWhitespace(parts.join(" "));
+}
+
 function buildConclusion(
   report: ClinicalReport,
   drivers: PrintDriverCard[],
   primary: string,
   kits: PrintTreatmentKit[] = [],
-): string {
-  const selections = (report.patientSummary.questionnaireSelections ?? {}) as Record<string, unknown>;
-  const duration = shortText(selections.duration ?? report.patientSummary.hairLossDuration, "the current review window", 34);
-
-  // ── Shedding count: strip the leading "~" so we don't say "approximately ~50-100"
-  //    and strip any trailing "(Noticeable)" qualifier — the paragraph carries
-  //    "approximately" itself, so the raw range reads naturally.
-  const activity = shortText(selections.count, "", 40);
-  const cleanedCount = activity.replace(/^~\s*/, "").replace(/\s*\(.*$/, "").trim();
-  const activityClause = cleanedCount && !/not (recorded|applicable)/i.test(cleanedCount)
-    ? `with noticeable shedding of approximately ${cleanedCount}`
-    : "with an active shedding phase";
-
-  // ── Diagnosis phrasing: prefer "at Ludwig 2" / "at Norwood III" over hyphen.
-  const primaryPhrase = primary.replace(/\s*[-–—]\s*(Ludwig|Norwood)/i, " at $1");
-
-  // ── Contributors: pull from patient-selected clinical fields, mapped to
-  //    patient-friendly labels. Cap at 5 so the sentence stays readable.
-  const contributors = buildContributorList(selections, drivers).slice(0, 5);
-  const contributorClause = contributors.length > 0
-    ? `${capitaliseFirst(humanJoin(contributors))} may be acting together`
-    : "The factors surfaced in your responses may be acting together";
-
-  // ── Mechanism composed from the contributor families present. Cap at two
-  //    clauses so it stays crisp. "weaken follicular support" is the anchor
-  //    when scalp inflammation is present so the voice mirrors the approved
-  //    clinical copy for that family.
-  const evidence = [contributors.join(" "), drivers.map((d) => `${d.title} ${d.trigger}`).join(" ")].join(" ").toLowerCase();
-  const hasScalpInflam = /scalp|inflam|dandruff|redness|acne|sebum/.test(evidence);
-  const mechBits: string[] = [];
-  if (/hormon|menopause|estrogen|androgen|thyroid|pcos|endometrio/.test(evidence)) mechBits.push("shorten the active growth phase");
-  if (hasScalpInflam) mechBits.push("weaken follicular support");
-  if (/iron|ferritin|bleed|blood|menstrual/.test(evidence)) mechBits.push("reduce the nutrient supply the follicle depends on");
-  if (/metabolic|insulin|prediabet|diabet|weight|obes/.test(evidence)) mechBits.push("slow the metabolic drive that fuels the hair cycle");
-  if (/stress|sleep|cortisol|anxiet|depress/.test(evidence)) mechBits.push("push more strands into the shedding phase");
-  if (/oxid|smok|vaping|alcohol/.test(evidence)) mechBits.push("add oxidative stress on vulnerable follicles");
-  const mechanism = mechBits.length
-    ? `to ${humanJoin(mechBits.slice(0, 2))}`
-    : "to destabilise the current hair cycle";
-
-  // ── Strategy: composed from the actual approved kits so it's never generic.
-  //    Include the primary diagnosis in the evidence so "pattern protection"
-  //    is anchored when the diagnosis is FPHL/MPHL even if no explicit pattern
-  //    kit is on the list (topicals cover it).
-  const strategyEvidence = `${evidence} ${primaryPhrase.toLowerCase()}`;
-  const strategy = buildStrategyList(kits, strategyEvidence);
-  const strategyClause = strategy.length > 0
-    ? `Your plan therefore combines ${humanJoin(strategy)}.`
-    : "Your plan therefore combines internal support for the identified drivers with topical scalp care.";
-
-  const paragraph = [
-    `Your assessment indicates ${primaryPhrase}, ${activityClause} over the past ${duration}.`,
-    `${contributorClause} ${mechanism}.`,
-    strategyClause,
-  ].join(" ");
-  return normaliseWhitespace(paragraph);
+): { text: string; narrative: OnePageReportNarrative } {
+  const narrative = buildNarrative(report, drivers, primary, kits);
+  const sequencing = detectSequencingMode(toArray<TreatmentPhase>(report.treatmentStrategy));
+  return { text: composeConclusion(narrative, sequencing), narrative };
 }
 
 // Patient-facing labels for contributing factors, derived from questionnaire
@@ -647,12 +1192,20 @@ function buildContributorList(
   const scalp = collectEvidenceStrings(selections.scalp).map((v) => cleanText(v).toLowerCase());
   if (scalp.some((v) => /dandruff|itch|flake|redness|inflam|seborr/.test(v))) push("scalp inflammation");
 
+  const gut = collectEvidenceStrings(selections.gut).map((v) => cleanText(v).toLowerCase());
+  if (gut.some((v) => /ibs|crohn|gerd|acid reflux|bloat|indigest|constipat|leaky/.test(v))) push("gut dysfunction");
+
   const cause = collectEvidenceStrings(selections.cause).map((v) => cleanText(v).toLowerCase());
   if (cause.some((v) => /stress|anxiet|depress/.test(v))) push("stress-driven shedding");
   if (cause.some((v) => /nutrition/.test(v))) push("nutritional gaps");
 
+  const deficiency = collectEvidenceStrings(selections.deficiency).map((v) => cleanText(v).toLowerCase());
+  if (deficiency.some((v) => /pre.?diabet/.test(v))) push("pre-diabetic metabolic stress");
+  else if (deficiency.some((v) => /diabet|insulin/.test(v))) push("insulin-linked metabolic stress");
+
   const immunity = collectEvidenceStrings(selections.immunity).map((v) => cleanText(v).toLowerCase());
   if (immunity.some((v) => /areata|autoimmune/.test(v))) push("autoimmune activity");
+  else if (immunity.some((v) => /allerg|hypersensitiv|asthma|skin rash|frequent/.test(v))) push("immune-related factors");
 
   // Fall back to driver titles if the questionnaire fields did not yield any
   // patient-friendly labels (defensive; the questionnaire almost always does).
@@ -745,8 +1298,11 @@ function mapKitNameForDisplay(rawName: string, code: string): string {
   if (/PHENOTYPE.*INFLAM/.test(text)) return "Phenotype Inflammation";
   // Patient-facing: expand internal MPHL/FPHL abbreviations. Internal asset
   // lookup (kitAssetCode) still uses the short codes.
-  if (/\bMPHL\b|MALE PATTERN/.test(text)) return "Male Pattern Hair Loss Pro";
-  if (/\bFPHL\b|FEMALE PATTERN/.test(text)) return "Female Pattern Hair Loss Pro";
+  // Patient-facing display keeps the short kit name (MPHL Pro / FPHL Pro) —
+  // full-form expansion is redundant on the report where the diagnosis line
+  // already spells out Male / Female Pattern Hair Loss.
+  if (/\bMPHL\b|MALE PATTERN/.test(text)) return "MPHL Pro";
+  if (/\bFPHL\b|FEMALE PATTERN/.test(text)) return "FPHL Pro";
   if (/META[-\s]?B.*PCOS/.test(text)) return "Pro Fact Meta B PCOS";
   if (/META[-\s]?B.*HYPOTHYROID/.test(text)) return "Pro Fact Meta B Hypothyroid";
   if (/META[-\s]?B.*POST/.test(text)) return "Pro Fact Meta B Postmenopause";
@@ -801,16 +1357,69 @@ function canonicalConditionForKit(rawName: string, code: string): string | null 
   if (/POST[-\s]?HYSTERECTOMY|HYSTERECTOMY|\bHRT\b/.test(text)) return "Post-hysterectomy / HRT hormonal reset";
   return null;
 }
+
+// Benefit-oriented chip shown when a kit is approved by the doctor without a
+// direct patient trigger. Replaces the generic "Clinician-added support" chip
+// so the patient sees what the kit actually does for them (e.g. "Improves
+// immunity") instead of an internal-facing sourcing label.
+function clinicianAddedLabelForKit(rawName: string, code: string): string {
+  const text = cleanText(`${code} ${rawName}`).toUpperCase().replace(/_/g, " ");
+  if (/PHENOTYPE.*INFLAM/.test(text)) return "Calms scalp inflammation";
+  if (/\bMPHL\b|MALE PATTERN/.test(text)) return "Slows pattern hair loss";
+  if (/\bFPHL\b|FEMALE PATTERN/.test(text)) return "Protects pattern-sensitive follicles";
+  if (/META[-\s]?B.*PCOS/.test(text)) return "Supports PCOS-linked hair health";
+  if (/META[-\s]?B.*HYPOTHYROID/.test(text)) return "Supports thyroid-linked hair health";
+  if (/META[-\s]?B.*POST/.test(text)) return "Supports post-menopausal balance";
+  if (/META[-\s]?B/.test(text)) return "Restores metabolic balance";
+  if (/PRO FACT THYROID CARE|HYPERTHYROID/.test(text)) return "Supports thyroid balance";
+  if (/TE GOLD/.test(text)) return "Stabilises active shedding";
+  if (/IRON UP/.test(text)) return "Restores iron stores";
+  if (/PRO FACT GI GOLD|GI GOLD/.test(text)) return "Restores gut balance";
+  if (/PRO IMMUNE/.test(text)) return "Improves immunity";
+  if (/HAIR FACT PERI MENOPAUSE|PERI[-\s]?MENOPAUSE/.test(text)) return "Eases peri-menopausal transition";
+  if (/HAIR FACT HAIR BREAKAGE REPAIR|\bHBR\b|BREAKAGE/.test(text)) return "Repairs hair breakage";
+  if (/EARLY GREYING/.test(text)) return "Slows early greying";
+  if (/OXIDATIVE STRESS/.test(text)) return "Reduces oxidative stress";
+  if (/\bFH WELL 3\b|ENDOMETRIOSIS/.test(text)) return "Supports endometriosis-linked hair health";
+  if (/HEALTHY\s*-\s*9|PREGNANCY/.test(text)) return "Pregnancy-safe hair support";
+  if (/ALOPECIA AREATA/.test(text)) return "Calms autoimmune follicle activity";
+  if (/LACTI/.test(text)) return "Supports postpartum recovery";
+  if (/RAPID WEIGHT|RWL/.test(text)) return "Buffers rapid weight-loss stress";
+  if (/NIGHT SHIFT/.test(text)) return "Restores circadian hair rhythm";
+  if (/FREQUENT FLY/.test(text)) return "Buffers travel-linked hair stress";
+  if (/TRICHOTILLOMANIA|TTM/.test(text)) return "Supports trichotillomania recovery";
+  if (/POST[-\s]?HYSTERECTOMY|HYSTERECTOMY|\bHRT\b/.test(text)) return "Supports post-hysterectomy hormonal reset";
+  return "Clinician-added support";
+}
+
 function kitTagPattern(kitText: string): RegExp | null {
   const text = kitText.toLowerCase();
   if (/iron up/.test(text)) return /iron|ferritin|blood|bleed|menstrual|anaemi|anemi/i;
-  if (/phenotype.*inflam/.test(text)) return /scalp|dandruff|itch|flake|white\s*flake|dry|normal scalp|inflam|seborr|boil|redness|irritation|oxidative|smok|vaping|alcohol|recurrent acne|acne|indigestion|constipation|bloat|sensitive|endometrio|age above 40|over 40|>\s*40/i;
+  // Phenotype Inflammation deliberately excludes `endometrio` — FH Well 3
+  // is the endometriosis-specific kit, and matching endometriosis
+  // interpretations here caused the Clinical Meaning column to reuse the
+  // hormonal-load text for the inflammation row (visible on Ruchi).
+  // `normal scalp` deliberately excluded — a healthy scalp is the *absence*
+  // of an inflammation signal and must never surface as a trigger chip or
+  // signal-interpretation feed for the Phenotype Inflammation kit. Match
+  // only concrete inflammatory / oxidative signals.
+  // `indigestion` / `constipation` / `bloat` deliberately excluded — these
+  // map to "Gut dysbiosis" / "Gut dysfunction" clinicalInterpretation
+  // entries (buildClinicalReport.ts gut-symptom rows), and matching them
+  // here caused Phenotype Inflammation's Clinical Meaning to show gut-axis
+  // text instead of its own inflammation interpretation.
+  if (/phenotype.*inflam/.test(text)) return /oily scalp|dry scalp|dandruff|itch|flake|white\s*flake|psoriasis|inflam|seborr|boil|folliculitis|redness|burning|irritation|oxidative|smok|vaping|alcohol|recurrent acne|acne prone|acne|sensitive|age above 40|over 40|>\s*40/i;
   if (/meta[-\s]?b.*hypothyroid/.test(text)) return /metabolic|obes|weight|sedentary|pre.?diabet|diabet|insulin|hypothyroid|thyroid|genetic|family|polygenic|age above 40|over 40|>\s*40/i;
   if (/meta[-\s]?b.*pcos/.test(text)) return /pcos|pcod|metabolic|obes|weight|sedentary|pre.?diabet|diabet|insulin|genetic|family|polygenic|irregular period/i;
   if (/meta[-\s]?b.*post/.test(text)) return /post.?menopause|menopause|metabolic|obes|weight|sedentary|pre.?diabet|diabet|insulin|genetic|family|polygenic/i;
   if (/meta[-\s]?b/.test(text)) return /metabolic|obes|weight|sedentary|pre.?diabet|diabet|insulin|pcos|hypothyroid|hyperthyroid|thyroid|genetic|family|polygenic|age above 40|over 40|>\s*40/i;
   if (/thyroid care|hyperthyroid/.test(text)) return /hyperthyroid|thyroid/i;
-  if (/pro immune/.test(text)) return /immune|autoimmune|allerg|infection|areata|regrowth|oxidative-immune|follic/i;
+  // Pro Immune trigger chips — include the immunity signals that now fire
+  // the PRO IMMUNE gate (Skin rash / Eczema / Mouth-Tongue ulcer added
+  // 2026-08-05) alongside the classical immune / autoimmune / infection
+  // vocabulary. Without these tokens the trigger chip fell back to
+  // "Clinician-added support" even after the gate fired.
+  if (/pro immune/.test(text)) return /immune|autoimmune|allerg|infection|frequent|asthma|areata|regrowth|oxidative-immune|follic|skin rash|eczema|mouth ulcer|tongue ulcer|ulcer/i;
   if (/\bfphl\b|female pattern/.test(text)) return /female|androgen|ludwig|pattern|bodybuild|heavy gym|gym/i;
   if (/\bmphl\b|male pattern/.test(text)) return /male|androgen|norwood|pattern|dht|receding|crown|vertex|temple|bodybuild|heavy gym|gym/i;
   if (/early greying/.test(text)) return /grey|gray|greying|melanin|melanocyte|oxidative|smok|vaping|alcohol|stress|anxiet|depress|sleep|shift|pigment/i;
@@ -881,6 +1490,16 @@ function uniqClinicalTags(values: string[]): string[] {
   });
 }
 
+// Strip legacy "Grade N — " prefixes from grade values so the trigger chip
+// carries the same short pattern-scale label the headline uses. The
+// questionnaire stores values like "Grade 3 — Ludwig I-1" but the doctor-
+// approved diagnosis reads "Female Pattern Hair Loss — Ludwig I-1"; without
+// this normalisation the mapping row shows the raw "Grade 3 — …" wording
+// that visibly conflicts with the headline.
+function normalizeGradeTag(raw: string): string {
+  return raw.replace(/^\s*Grade\s*\d+\s*[—–-]\s*/i, "").trim();
+}
+
 function questionnaireDriverOptions(report: ClinicalReport): string[] {
   const selections = (report.patientSummary.questionnaireSelections ?? {}) as Record<string, unknown>;
   // "immunity" lives here because responses like "Recurrent Acne / Acne prone
@@ -888,7 +1507,11 @@ function questionnaireDriverOptions(report: ClinicalReport): string[] {
   // though the questionnaire files them as an immune-system prompt.
   const driverFields = ["cause", "scalp", "thyroid", "hormonal", "lifestyle", "diet", "deficiency", "gut", "immunity", "metabolic", "grade"];
   const base = driverFields
-    .flatMap((field) => collectEvidenceStrings(selections[field]))
+    .flatMap((field) =>
+      collectEvidenceStrings(selections[field]).map((raw) =>
+        field === "grade" ? normalizeGradeTag(raw) : raw,
+      ),
+    )
     .map((tag) => shortText(tag, "", 42))
     .filter(meaningfulLinkedTag);
   const derived: string[] = [];
@@ -965,73 +1588,91 @@ function buildTreatmentPlan(
     tone: "mint" as const,
   }];
 
-  const built = phases.slice(0, 6).map<PrintTreatmentKit>((phase, index) => {
-    const kit = kitFromPhase(phase);
-    const ranked = [...driverPool].sort((a, b) => scoreKitForDriver(kit, b) - scoreKitForDriver(kit, a));
+  // Doctor-approval is authoritative: every approved phase produces a row in
+  // the treatment plan. No upstream slice — the renderer chooses density from
+  // the row count, but never silently drops an approved kit.
+  const built = phases.map<{ kit: PrintTreatmentKit; phase: TreatmentPhase }>((phase, index) => {
+    const source = kitFromPhase(phase);
+    const ranked = [...driverPool].sort((a, b) => scoreKitForDriver(source, b) - scoreKitForDriver(source, a));
     const driver = ranked[0] ?? driverPool[index % driverPool.length];
-    const isIronKit = /iron|ferritin|blood/i.test(`${kit.code} ${kit.name}`);
-    const linkedDrivers = patientLinkedTags(kit, report);
-    const role = roleForKit(`${kit.code} ${kit.name} ${linkedDrivers.join(" ")}`, index);
-    const interpretation = interpretationLookupForKit(`${kit.code} ${kit.name}`, report);
+    const isIronKit = /iron|ferritin|blood/i.test(`${source.code} ${source.name}`);
+    const linkedDrivers = patientLinkedTags(source, report);
+    const role = roleForKit(`${source.code} ${source.name} ${linkedDrivers.join(" ")}`, index);
+    const interpretation = interpretationLookupForKit(`${source.code} ${source.name}`, report);
     return {
-      id: `${kit.code}-${index}`,
-      sequence: String(index + 1).padStart(2, "0"),
-      role,
-      priority: isIronKit ? "Supporting Contributor" : driver.priority,
-      name: kit.name,
-      kitCode: kit.kitCode,
-      selectedBecause: shortSentence(linkedDrivers.join(", ") || driver.trigger, "This kit matches the doctor-reviewed driver pattern.", LIMITS.selectedBecause),
-      mappedDriverId: driver.id,
-      mappedCondition: interpretation.condition ?? kit.mappedCondition,
-      mappedInterpretation: interpretation.interpretation,
-      linkedDrivers,
-      benefits: kit.benefits.map((benefit) => shortSentence(benefit, "Supports the treatment plan.", LIMITS.benefit)).slice(0, 3),
-      asset: kit.asset,
+      phase,
+      kit: {
+        id: `${source.code}-${index}`,
+        sequence: String(index + 1).padStart(2, "0"),
+        role,
+        priority: isIronKit ? "Supporting Contributor" : driver.priority,
+        name: source.name,
+        kitCode: source.kitCode,
+        selectedBecause: shortSentence(linkedDrivers.join(", ") || driver.trigger, "This kit matches the doctor-reviewed driver pattern.", LIMITS.selectedBecause),
+        mappedDriverId: driver.id,
+        mappedCondition: interpretation.condition ?? source.mappedCondition,
+        mappedInterpretation: interpretation.interpretation,
+        linkedDrivers,
+        benefits: source.benefits.map((benefit) => shortSentence(benefit, "Supports the treatment plan.", LIMITS.benefit)).slice(0, 3),
+        asset: source.asset,
+      },
     };
   });
 
-  // Validation rule: a kit needs at least one real reason to appear.
-  // Allowed: patient-selected trigger (linkedDrivers) OR clinician-confirmed
-  // interpretation OR pattern/diagnosis-based rationale.
+  // Doctor approval is the final source of truth: every approved kit renders
+  // in the approved order. Kits without a direct patient-selected trigger are
+  // presented as clinician-added support (Triggered by: "Clinician-added
+  // support"; support statement derived from the approved phase's own
+  // whySelected content). Only exact code+name duplicates from the same
+  // approved list are collapsed.
   const suppressed: string[] = [];
   const kitValidation: KitValidationReport[] = [];
   const seenSupport = new Set<string>();
-  const withRationale = built.filter((kit) => {
+  const withRationale: PrintTreatmentKit[] = [];
+  for (const { kit, phase } of built) {
     const dedupeKey = `${kit.kitCode}::${kit.name.toLowerCase()}`;
-    const patternRationale = /mphl|fphl|pattern|androgen|areata/i.test(
-      `${kit.kitCode} ${kit.name} ${kit.mappedCondition}`,
-    );
     const record = (status: KitValidationStatus, reason?: string) => {
       kitValidation.push({ kitCode: kit.kitCode, name: kit.name, status, reason });
     };
     if (seenSupport.has(dedupeKey)) {
       record("duplicate_support", "Another kit with the same code was already selected");
       suppressed.push(`${kit.kitCode} (${kit.name})`);
-      return false;
-    }
-    if (kit.linkedDrivers.length === 0 && !kit.mappedInterpretation && !patternRationale) {
-      record("suppressed_missing_trigger", "No patient-selected trigger or clinician-confirmed interpretation");
-      suppressed.push(`${kit.kitCode} (${kit.name})`);
-      return false;
-    }
-    if (!kit.asset) {
-      record("suppressed_missing_asset", "Product packshot not registered");
-      suppressed.push(`${kit.kitCode} (${kit.name})`);
-      return false;
+      continue;
     }
     seenSupport.add(dedupeKey);
-    record("valid");
-    return true;
-  });
 
-  // Every doctor-approved kit must render. Shaft-repair / breakage kits go to
-  // Additional Supportive Care so the primary matrix stays focused on the
-  // drivers of hair loss, but nothing else is dropped or demoted.
-  // The primary matrix supports 1-6 kits; density is chosen downstream from
-  // the row count so 5-6 kits render at compact density.
-  const isShaftRepair = (kit: PrintTreatmentKit) => /\bhbr\b|breakage|shaft/i.test(`${kit.kitCode} ${kit.name}`);
-  const primary = withRationale.filter((kit) => !isShaftRepair(kit)).slice(0, 6);
-  const additional = withRationale.filter(isShaftRepair).slice(0, 2);
+    const patternRationale = /mphl|fphl|pattern|androgen|areata/i.test(
+      `${kit.kitCode} ${kit.name} ${kit.mappedCondition}`,
+    );
+    const hasPatientTrigger =
+      kit.linkedDrivers.length > 0 || !!kit.mappedInterpretation || patternRationale;
+
+    if (!hasPatientTrigger) {
+      const whySelected = shortSentence(
+        phase.whySelected,
+        "Added by the reviewing doctor to support the treatment plan.",
+        LIMITS.selectedBecause,
+      );
+      withRationale.push({
+        ...kit,
+        linkedDrivers: [clinicianAddedLabelForKit(kit.name, kit.kitCode)],
+        selectedBecause: whySelected,
+        clinicianAdded: true,
+      });
+      record("clinician_added", "Approved by doctor without a direct patient trigger");
+    } else {
+      withRationale.push(kit);
+      record("valid");
+    }
+  }
+
+  // Every doctor-approved kit renders in the doctor-approved order in the
+  // primary treatment matrix. `additionalCare` is retained on the view model
+  // for back-compat but no kit is ever moved into it silently; the renderer
+  // downshifts density (comfortable → compact → ultra-compact) based on the
+  // row count so 7–8 kits still fit on the sheet.
+  const primary = withRationale;
+  const additional: PrintTreatmentKit[] = [];
 
   return { primary, additional, suppressed, kitValidation };
 }
@@ -1107,7 +1748,12 @@ function resolveDoctorState(status: string | null | undefined, wasModified?: boo
   return "DRAFT";
 }
 
-function chooseLayoutMode(_data: Omit<OnePageReportViewModel, "validation" | "layoutMode">): PrintDensityMode {
+function chooseLayoutMode(data: Omit<OnePageReportViewModel, "validation" | "layoutMode">): PrintDensityMode {
+  // Density downshifts by row count so approved kits never overflow off the
+  // sheet: 1–4 comfortable, 5–6 compact, 7–8 ultra-compact.
+  const rows = data.treatmentPlan.length + data.additionalCare.length;
+  if (rows >= 7) return "compact";
+  if (rows >= 5) return "dense";
   return "standard";
 }
 
@@ -1120,27 +1766,53 @@ function validate(
   suppressedKits: string[] = [],
   kitValidation: KitValidationReport[] = [],
   topicalValidation: TopicalValidationReport[] = [],
-  approvedKitCount = 0,
+  approvedKitCodes: string[] = [],
 ): OnePageReportValidation {
   const errors: string[] = [];
   const warnings: string[] = [];
   const allText = collectReportText(data);
 
   // ── Hard-fail: every doctor-approved kit must appear on the report ───────
-  // approvedKitCount is the number of kits the doctor approved in the
-  // treatment strategy. renderedKitCount is what actually renders (primary +
-  // additional supportive care). Silent drops are a clinical-correctness
-  // failure and must block PDF generation.
-  const renderedKitCount = data.treatmentPlan.length + data.additionalCare.length;
-  if (approvedKitCount > 0 && renderedKitCount !== approvedKitCount) {
+  // Doctor approval is the source of truth. The rendered kit codes must
+  // exactly match the approved set AND appear in the approved order. Silent
+  // drops, renames, and out-of-order rows are all clinical-correctness
+  // failures that block PDF generation.
+  const renderedKitCodes = [...data.treatmentPlan, ...data.additionalCare].map((kit) => kit.kitCode);
+  if (approvedKitCodes.length > 0) {
+    const approvedCounts = new Map<string, number>();
+    for (const code of approvedKitCodes) approvedCounts.set(code, (approvedCounts.get(code) ?? 0) + 1);
+    const renderedCounts = new Map<string, number>();
+    for (const code of renderedKitCodes) renderedCounts.set(code, (renderedCounts.get(code) ?? 0) + 1);
+    const missing: string[] = [];
+    for (const [code, count] of approvedCounts) {
+      const rendered = renderedCounts.get(code) ?? 0;
+      for (let i = 0; i < count - rendered; i += 1) missing.push(code);
+    }
+    const unexpected: string[] = [];
+    for (const [code, count] of renderedCounts) {
+      const approved = approvedCounts.get(code) ?? 0;
+      for (let i = 0; i < count - approved; i += 1) unexpected.push(code);
+    }
     const suppressedDetail =
       kitValidation
-        .filter((kit) => kit.status !== "valid")
+        .filter((kit) => kit.status !== "valid" && kit.status !== "clinician_added")
         .map((kit) => `${kit.kitCode} — ${kit.reason ?? kit.status}`)
         .join("; ") || suppressedKits.join("; ");
-    errors.push(
-      `Approved kit count mismatch: doctor approved ${approvedKitCount}, report rendered ${renderedKitCount}. Suppressed: ${suppressedDetail || "unknown"}`,
-    );
+    if (missing.length > 0 || unexpected.length > 0) {
+      const parts: string[] = [];
+      if (missing.length > 0) parts.push(`missing approved codes: ${missing.join(", ")}`);
+      if (unexpected.length > 0) parts.push(`unexpected rendered codes: ${unexpected.join(", ")}`);
+      errors.push(
+        `Approved kit set mismatch — ${parts.join("; ")}. Approved: [${approvedKitCodes.join(", ")}]; Rendered: [${renderedKitCodes.join(", ")}]${suppressedDetail ? `. Suppressed: ${suppressedDetail}` : ""}`,
+      );
+    } else if (
+      approvedKitCodes.length === renderedKitCodes.length &&
+      approvedKitCodes.some((code, i) => renderedKitCodes[i] !== code)
+    ) {
+      errors.push(
+        `Approved kit order mismatch — approved: [${approvedKitCodes.join(", ")}]; rendered: [${renderedKitCodes.join(", ")}]`,
+      );
+    }
   }
 
   // ── Hard-fail: every rendered kit must be complete ───────────────────────
@@ -1152,6 +1824,13 @@ function validate(
     }
     if (!kit.mappedCondition || kit.mappedCondition.trim().length === 0) {
       errors.push(`Rendered kit has no clinical meaning: ${kit.kitCode} (${kit.name})`);
+    }
+    // Trigger / fallback rationale — the "Triggered by" column must not be
+    // blank. Either a real patient-selected trigger, a clinician-added
+    // fallback label, or the kit's canonical clinical meaning must be
+    // available for the renderer to show.
+    if (kit.linkedDrivers.length === 0 && !kit.mappedCondition) {
+      errors.push(`Rendered kit has no trigger or fallback rationale: ${kit.kitCode} (${kit.name})`);
     }
     for (const bullet of kit.benefits) {
       if (bullet && !/[.!?]$/.test(bullet.trim())) {
@@ -1171,12 +1850,161 @@ function validate(
   if (/\b(FPHL|MPHL)\b/.test(primary)) {
     errors.push("Doctor-Reviewed Result must expand FPHL/MPHL to the full patient-facing name.");
   }
+
+  // ── Narrative invariants: one connected story from diagnosis → active
+  //    trigger (kit #1) → contributors → strategy in kit order ─────────────
+  const narrative = data.narrative;
+  const renderedKits = data.treatmentPlan;
+  const firstKit = renderedKits[0] ?? null;
+  // Underlying pattern vs active-trigger distinction. Pattern kits (MPHL/
+  // FPHL) must never be described as being caused by an active trigger — the
+  // narrative expresses that by keeping `underlyingPattern` separate from
+  // `primaryActiveDriver`.
+  const patternDx = /(male|female) pattern hair loss|ludwig|norwood/i.test(primary);
+  if (patternDx && !narrative.underlyingPattern) {
+    errors.push(
+      "Narrative: pattern diagnosis (Ludwig/Norwood) is missing from `underlyingPattern`.",
+    );
+  }
+  if (narrative.primaryActiveDriver?.label) {
+    const label = narrative.primaryActiveDriver.label.toLowerCase();
+    if (/pattern hair loss|ludwig|norwood/.test(label)) {
+      errors.push(
+        `Narrative: underlying pattern (${narrative.primaryActiveDriver.label}) was placed in primaryActiveDriver — pattern loss is the underlying diagnosis, not the active shedding trigger.`,
+      );
+    }
+  }
+  // Kit #1 must be referenced in the concluding paragraph. Three acceptance
+  // paths:
+  //   (a) kit #1 is a pattern kit and the pattern is called out in the
+  //       opening diagnosis sentence,
+  //   (b) kit #1 has an active-trigger sentence anchored in patient signals
+  //       and the primaryActiveDriver.kitCode matches, or
+  //   (c) kit #1 was clinician-added with no supporting patient signal —
+  //       the narrative uses the "Your doctor has added <purpose> as part of
+  //       your recovery plan" fallback and a warning is surfaced.
+  if (firstKit) {
+    const firstFamily = classifyKit(firstKit);
+    const patternKitIsFirst = firstFamily === "pattern";
+    if (!patternKitIsFirst) {
+      if (!narrative.primaryActiveDriver) {
+        errors.push(
+          `Doctor-Reviewed Result: approved kit #1 (${firstKit.kitCode}) has no active-trigger sentence in the narrative — the conclusion cannot justify why it is first.`,
+        );
+      } else if (narrative.primaryActiveDriver.kitCode !== firstKit.kitCode) {
+        errors.push(
+          `Doctor-Reviewed Result: primaryActiveDriver.kitCode (${narrative.primaryActiveDriver.kitCode}) does not match approved kit #1 (${firstKit.kitCode}).`,
+        );
+      } else if (!conclusion.includes(narrative.primaryActiveDriver.sentence)) {
+        errors.push(
+          `Doctor-Reviewed Result: kit #1 active-trigger sentence is missing from the conclusion.`,
+        );
+      } else if (narrative.primaryActiveDriver.doctorAdded) {
+        warnings.push(
+          `Doctor-Reviewed Result: kit #1 (${firstKit.kitCode}) was clinician-added — the conclusion uses the "Your doctor has added <purpose>…" wording. Please review the wording.`,
+        );
+      }
+    }
+    // Kit #1's strategy phrase must appear in the closing strategy sentence.
+    const firstStrategyPhrase = narrative.treatmentStrategy[0]?.phrase;
+    if (firstStrategyPhrase && !conclusion.includes(firstStrategyPhrase)) {
+      errors.push(
+        `Doctor-Reviewed Result: kit #1 strategy phrase ("${firstStrategyPhrase}") is missing from the conclusion.`,
+      );
+    }
+  }
+  // Every approved kit must contribute a strategy phrase or be explicitly
+  // marked as unknown-family (the classifier's fallback). Unknown-family
+  // kits get a warning so the doctor can review, not a hard error.
+  if (narrative.treatmentStrategy.length !== renderedKits.length) {
+    errors.push(
+      `Narrative: treatmentStrategy has ${narrative.treatmentStrategy.length} entries but ${renderedKits.length} kits are approved — one strategy phrase per approved kit is required.`,
+    );
+  } else {
+    for (let i = 0; i < renderedKits.length; i += 1) {
+      const expected = renderedKits[i]!.kitCode;
+      const actual = narrative.treatmentStrategy[i]!.kitCode;
+      if (expected !== actual) {
+        errors.push(
+          `Narrative: treatmentStrategy[${i}].kitCode (${actual}) does not match approved kit #${i + 1} (${expected}) — the strategy sentence must follow the doctor-approved order.`,
+        );
+        break;
+      }
+      const family = classifyKit(renderedKits[i]!);
+      if (family === "unknown") {
+        warnings.push(
+          `Narrative: kit ${expected} did not classify into a known family — using generic "targeted follicle support" phrase.`,
+        );
+      }
+    }
+  }
+  // Ban generic conclusion phrasing — the whole point of the narrative
+  // rewrite is to eliminate lines like "the plan addresses these conditions
+  // together".
+  // The ban targets CONTENTLESS phrasing — "the plan addresses these
+  // conditions together" names nothing. The concurrent-mode closing sentence
+  // ("Your treatment plan addresses these factors THROUGH iron recovery, gut
+  // and absorption support…") uses the same stem but does enumerate the
+  // mechanism clusters, so it satisfies the rule's intent and is exempted by
+  // the lookahead rather than by weakening the rule.
+  const genericPhrases = [
+    /addresses these conditions together/i,
+    /addresses these factors together/i,
+    /addresses all of these together/i,
+    /plan addresses these(?!\s+\w+\s+through\s+\S)/i,
+  ];
+  for (const rx of genericPhrases) {
+    if (rx.test(conclusion)) {
+      errors.push("Doctor-Reviewed Result contains a generic template phrase — the conclusion must connect kit-by-kit.");
+      break;
+    }
+  }
+  // Ban certainty language and "caused by" framing — the conclusion must use
+  // tentative language ("may be mainly linked to", "may further reduce…").
+  if (/\bis caused by\b|\bare caused by\b|\bcaused by\b/i.test(conclusion)) {
+    errors.push(
+      "Doctor-Reviewed Result uses certainty phrasing (\"caused by\") — clinical language must stay tentative (\"may be mainly linked to\", \"appears to be strongly influenced by\").",
+    );
+  }
+  // Pattern-loss diagnosis must never appear as being caused by an active
+  // trigger. Guard against phrasings that would blur underlying pattern and
+  // active driver.
+  const patternCausedRx =
+    /(male pattern hair loss|female pattern hair loss|mphl|fphl|norwood|ludwig)[^.]{0,40}(caused|triggered|driven) by/i;
+  if (patternCausedRx.test(conclusion)) {
+    errors.push(
+      "Doctor-Reviewed Result frames pattern loss as being caused by an active trigger — pattern is underlying susceptibility, active drivers layer on top.",
+    );
+  }
+  // Complete-conclusion word count.
+  //   < 55       hard error — a required sentence is missing.
+  //   55–80      preferred band.
+  //   81–90      accepted for genuinely complex, multifactorial cases.
+  //   > 90       warning — the fix is to merge related selected answers into
+  //              a shared mechanism cluster (KIT_MECHANISM_CLUSTER /
+  //              buildContributorList), never to truncate clinical content.
+  const wordCount = conclusion.trim().length > 0
+    ? conclusion.trim().split(/\s+/).filter(Boolean).length
+    : 0;
+  if (wordCount > 0 && wordCount < 55) {
+    errors.push(
+      `Doctor-Reviewed Result is too short (${wordCount} words) — the connected story requires diagnosis + active-trigger + contributors + strategy (interpretation target: 55–80 words).`,
+    );
+  } else if (wordCount > 90) {
+    warnings.push(
+      `Doctor-Reviewed Result runs long (${wordCount} words; preferred 55–80, accepted to 90) — collapse related contributors or kit purposes into a shared mechanism cluster rather than trimming clinical content.`,
+    );
+  }
   // Suppressed recommendations stay out of the patient-facing plan, while the
   // structured validation output preserves the exact reason for doctor review.
   const reportedSuppressedKits = new Set<string>();
   for (const kit of kitValidation) {
     if (kit.status === "valid") continue;
     const label = `${kit.kitCode} (${kit.name})`;
+    if (kit.status === "clinician_added") {
+      warnings.push(`Kit rendered as clinician-added support (no direct patient trigger): ${label}`);
+      continue;
+    }
     reportedSuppressedKits.add(label);
     warnings.push(`Kit suppressed from patient report — ${kit.reason ?? kit.status}: ${label}`);
   }
@@ -1237,7 +2065,7 @@ export function mapClinicalReportToPrintPresentation(clinicalReport: ClinicalRep
   const treatmentPlan = treatmentBuild.primary;
   const additionalCare = treatmentBuild.additional;
   const topicalBuild = buildTopicalCareWithValidation(clinicalReport);
-  const keyClinicalSnapshot = buildKeyClinicalSnapshot(clinicalReport, drivers, treatmentPlan).slice(0, 6);
+  const keyClinicalSnapshot = buildKeyClinicalSnapshot(clinicalReport);
   const state = resolveDoctorState(context.approval?.status, context.approval?.wasModified);
   const lifestyleItems = toArray<{ condition?: unknown; recommendation?: unknown }>(clinicalReport.dietAndLifestyle)
     .map((item) => ({ label: shortText(item.condition, "Lifestyle", 24), text: shortSentence(item.recommendation, "Maintain sleep, diet and scalp-care consistency.", 78) }))
@@ -1258,6 +2086,21 @@ export function mapClinicalReportToPrintPresentation(clinicalReport: ClinicalRep
     ...metabolicEvidence,
     ...(Number.isFinite(patientAge) && patientAge > 40 ? ["Age above 40"] : []),
   ];
+
+  const clinicalResultBundle = (() => {
+    const primary = patientFriendlyResult(clinicalReport, drivers);
+    const allKits = [...treatmentPlan, ...additionalCare];
+    const built = buildConclusion(clinicalReport, drivers, primary, allKits);
+    return {
+      clinicalResult: {
+        primary,
+        supportingLine: buildSupportingLine(clinicalReport, drivers),
+        conclusion: built.text,
+        reviewedBy: `Reviewed by ${approvedBy}`,
+      },
+      narrative: built.narrative,
+    };
+  })();
 
   const dataWithoutMode: Omit<OnePageReportViewModel, "validation" | "layoutMode"> = {
     assessmentId: context.assessmentId,
@@ -1281,16 +2124,8 @@ export function mapClinicalReportToPrintPresentation(clinicalReport: ClinicalRep
       name: shortText(context.clinician?.name, "Reviewing doctor", 40),
       title: shortText(context.clinician?.title, "Doctor approved plan", 32),
     },
-    clinicalResult: (() => {
-      const primary = patientFriendlyResult(clinicalReport, drivers);
-      const allKits = [...treatmentPlan, ...additionalCare];
-      return {
-        primary,
-        supportingLine: buildSupportingLine(clinicalReport, drivers),
-        conclusion: buildConclusion(clinicalReport, drivers, primary, allKits),
-        reviewedBy: `Reviewed by ${approvedBy}`,
-      };
-    })(),
+    clinicalResult: clinicalResultBundle.clinicalResult,
+    narrative: clinicalResultBundle.narrative,
     driverStory: drivers,
     snapshotStrip: [
       // Order matters: PatientProfileBlock picks Goal/Duration/Shedding/Diet by
@@ -1330,6 +2165,9 @@ export function mapClinicalReportToPrintPresentation(clinicalReport: ClinicalRep
   };
 
   const data = { ...dataWithoutMode, layoutMode: chooseLayoutMode(dataWithoutMode) };
+  const approvedKitCodes = phases
+    .map((phase) => kitAssetCode(cleanText(phase.kitId || phase.displayName).toUpperCase()))
+    .filter((code) => code.length > 0);
   return {
     ...data,
     validation: validate(
@@ -1337,7 +2175,7 @@ export function mapClinicalReportToPrintPresentation(clinicalReport: ClinicalRep
       treatmentBuild.suppressed,
       treatmentBuild.kitValidation,
       topicalBuild.validation,
-      phases.length,
+      approvedKitCodes,
     ),
   };
 }

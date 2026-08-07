@@ -158,7 +158,7 @@
       "condition": "(scores['AGA_FEMALE_123'] OR scores['AGA_FEMALE_45']) AND (scores['PCOS_ONLY'] OR scores['PCOS_OBESITY']) AND scores['WEIGHT_LOSS']",
       "action": "Boost AGA_FEMALE key by +95",
       "teGoldSuppressed": true,
-      "protocolOverride": ["RAPID WEIGHT LOSS SHIELD", "F-PCOS -1 (or VEG)", "PHENOTYPE INFLAMATION", "FPHL / FPHL PLUS"],
+      "protocolOverride": ["RAPID WEIGHT LOSS SHIELD", "F-PCOS -1 (or VEG)", "PHENOTYPE INFLAMATION", "FPHL"],
       "sourceCodeReference": "matchProtocol lines 4401-4405; getFunnelKits lines 4708-4730"
     }
   },
@@ -398,10 +398,10 @@
     },
     {
       "id": "DT_003",
-      "name": "MPHL_FPHL_PLUS_UPGRADE",
-      "description": "MPHL/FPHL upgraded to PLUS variant when grade 4/5",
-      "trigger": "isGrade45=true",
-      "resolution": { "male": "MPHL PLUS", "female": "FPHL PLUS" },
+      "name": "MPHL_FPHL_PRO_STANDARDIZATION",
+      "description": "MPHL/FPHL use the current Pro formulation for every grade",
+      "trigger": "AGA pattern kit selected",
+      "resolution": { "male": "MPHL", "female": "FPHL" },
       "sourceCodeReference": "getFunnelKits lines 3481, 4499"
     },
     {
@@ -587,8 +587,8 @@
     { "kit": "HAIR FACT TE GOLD", "vegVariant": "HAIR FACT TE GOLD VEG", "primaryMechanism": "Amino acid mTOR activation + cortisol lowering + ferritin restoration + anagen extension via Melatonin", "trigger": "Active shedding; TE dominant protocols; Phase 1 in most TE scenarios" },
     { "kit": "PRO IMMUNE GOLD", "vegVariant": "PRO IMMUNE VEG", "primaryMechanism": "Dermal Papilla stimulation via EGF (Colostrum/Lactoferrin) + NF-kB suppression + gut-hair axis repair", "trigger": "Regrow goal; immune compromise; illness; iron deficiency; gut issues; always last phase" },
     { "kit": "PHENOTYPE INFLAMATION", "vegVariant": null, "primaryMechanism": "NF-kB/TNF-alpha/IL-6 suppression via Curcumin; glutathione restoration via NAC; terrain clearance before MPHL/FPHL", "trigger": "Scalp inflammation; smoking/vaping; AGA protocols Phase 2; must precede MPHL/FPHL" },
-    { "kit": "MPHL", "vegVariant": "MPHL PLUS (Grade 4/5)", "primaryMechanism": "5-alpha reductase inhibition via Beta-Sitosterol + Saw Palmetto; DHT reduction; microcirculation via Pine Bark", "trigger": "Male pattern hair loss Grades 1-3" },
-    { "kit": "FPHL", "vegVariant": "FPHL PLUS (Grade 4/5)", "primaryMechanism": "Spearmint anti-androgen (spares oestrogen); Brewer's Yeast biotin/silica; follicle basement membrane repair (NEM in PLUS)", "trigger": "Female pattern hair loss Grades 1-3" },
+    { "kit": "MPHL", "vegVariant": "MPHL (Grade 4/5)", "primaryMechanism": "5-alpha reductase inhibition via Beta-Sitosterol + Saw Palmetto; DHT reduction; microcirculation via Pine Bark", "trigger": "Male pattern hair loss Grades 1-3" },
+    { "kit": "FPHL", "vegVariant": "FPHL (Grade 4/5)", "primaryMechanism": "Spearmint anti-androgen (spares oestrogen); Brewer's Yeast biotin/silica; follicle basement membrane repair (NEM in PLUS)", "trigger": "Female pattern hair loss Grades 1-3" },
     { "kit": "PRO FACT META B", "vegVariant": null, "primaryMechanism": "AMPK activation via Berberine; insulin-androgen axis correction; NMN NAD+ restoration; dual target: Hypothyroid + metabolic", "trigger": "Obesity/sedentary/pre-diabetes/diabetes/Hypothyroid+metabolic; v34 dual-condition integrated kit" },
     { "kit": "PRO FACT META B PCOS", "vegVariant": null, "primaryMechanism": "Berberine AMPK/insulin + Inositol+D-Chiro+Spearmint androgen suppression; single kit for PCOS+Obesity", "trigger": "PCOS_OBESITY; NEVER combined with F-PCOS -1" },
     { "kit": "F-PCOS -1", "vegVariant": "F-PCOS VEG -1", "primaryMechanism": "Inositol+D-Chiro correct AMPK; Spearmint reduces free testosterone 51%; NAC+Vit D correct ovarian oxidative stress", "trigger": "PCOS_ONLY (no obesity); NEVER with PRO FACT META B PCOS" },

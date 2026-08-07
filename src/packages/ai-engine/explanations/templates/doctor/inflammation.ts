@@ -1,13 +1,22 @@
 import type { ClinicalTemplate } from '../types';
-import { v, c, cv } from '../_fragmentUtils';
+import { v, c, cv, vReq } from '../_fragmentUtils';
 
 // ─── Opening ──────────────────────────────────────────────────────────────────
 
 export const INFLAMMATION_DOCTOR_OPENING = [
-  v(9,
+  // Direct "scalp inflammation identified" claims require the patient to
+  // have actually reported scalp findings. The inflammation template fires
+  // whenever the engine routes a diagnosis into the inflammation category,
+  // but that routing can be triggered by indirect signals — without a
+  // reported scalp finding we should not assert visible inflammation.
+  vReq(['scalp.anyNonNormal'], 9,
     'Scalp inflammatory pathology identified as a primary driver of follicular microenvironment disruption and secondary alopecia.',
-    'Perifollicular inflammatory load confirmed; NF-kB-mediated inflammatory signalling is creating a hostile follicular microenvironment incompatible with normal anagen cycling.',
-    'Scalp inflammation identified as the primary or contributing driver; anti-inflammatory clearance is the mandatory Phase 1 intervention before any follicle-directed therapy can be effective.'
+    'Scalp inflammation identified as the primary or contributing driver; anti-inflammatory clearance is the mandatory Phase 1 intervention before any follicle-directed therapy can be effective.',
+  ),
+  // Microscopic / mechanism-level statement — does not claim visible
+  // inflammation, so safe without scalp evidence.
+  v(8,
+    'Perifollicular inflammatory load suspected; NF-kB-mediated inflammatory signalling can create a hostile follicular microenvironment incompatible with normal anagen cycling.',
   ),
 ];
 

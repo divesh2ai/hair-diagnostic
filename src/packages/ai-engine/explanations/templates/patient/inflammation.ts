@@ -1,11 +1,17 @@
 import type { ClinicalTemplate } from '../types';
-import { v, cv } from '../_fragmentUtils';
+import { v, cv, vReq } from '../_fragmentUtils';
 
 export const INFLAMMATION_PATIENT_OPENING = [
-  v(9,
+  // "Your scalp is inflamed" — requires the patient to have reported it.
+  vReq(['scalp.anyNonNormal'], 9,
     'Your assessment shows that inflammation on and around your scalp is creating a difficult environment for hair follicles, making it harder for them to grow healthy hair.',
     'The primary issue identified is scalp inflammation — your hair follicles are surrounded by an inflammatory environment that is interfering with their normal growth cycle.',
-    'Scalp inflammation is the key driver identified in your assessment. When the scalp environment is inflamed, follicles struggle to maintain their normal growth cycle, even when all other conditions are right.'
+    'Scalp inflammation is the key driver identified in your assessment. When the scalp environment is inflamed, follicles struggle to maintain their normal growth cycle, even when all other conditions are right.',
+  ),
+  // Fallback when inflammation is suspected but no visible scalp finding —
+  // describe the model without asserting a reported symptom.
+  v(7,
+    'Your assessment points to a follicle-environment factor in your hair cycle: subtle inflammatory signalling around the follicle can interfere with healthy growth even when the scalp looks normal.',
   ),
 ];
 

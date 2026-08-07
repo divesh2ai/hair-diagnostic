@@ -1,0 +1,329 @@
+/* ─────────────────────────────────────────────────────────────────────────
+   Refined Option 1 — compact panning bridge viewport.
+
+   One image (2032×774 progressive-path bridge) rendered via two stacked
+   layers on the same background-image at the same background-position:
+
+     - .layerBase    — full image, filter-dimmed, always visible
+     - .layerReveal  — same image, full colour, masked by --frontier so it
+                       paints from container-left up to progress%
+
+   As --frontier grows with each answered question, the reveal extends
+   left→right on top of the base — the bridge visibly "repairs" itself.
+   Meanwhile background-position pans horizontally with progress, so the
+   current-trigger region drifts across the viewport instead of every orb
+   being shrunk to fit at once.
+   ───────────────────────────────────────────────────────────────────────── */
+
+.band {
+  --frontier: 0%;
+  --gold: #d9bc7a;
+  --gold-soft: #f0dca8;
+  --cream: #f4efe2;
+  --forest-ink: #050d0a;
+  --forest-900: #08150f;
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  width: 100%;
+  background: linear-gradient(180deg, #08150f 0%, #050d0a 100%);
+  color: var(--cream);
+  border-bottom: 1px solid rgba(240, 220, 168, 0.16);
+  isolation: isolate;
+}
+
+.meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 10px clamp(24px, 5vw, 68px) 6px;
+}
+
+.metaLabel {
+  overflow: hidden;
+  color: rgba(240, 220, 168, 0.82);
+  font-size: 0.625rem;
+  font-weight: 800;
+  letter-spacing: 0.18em;
+  text-overflow: ellipsis;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.metaCount {
+  flex: 0 0 auto;
+  color: rgba(244, 239, 226, 0.72);
+  font-size: 0.6875rem;
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+/* ── Mobile-only vertical bridge wrapper ────────────────────────────────── */
+/* Hidden on desktop/tablet; toggled on at mobile widths below, where the
+   horizontal `.art` viewport is hidden. Nothing about the desktop/tablet
+   bridge scene changes here. */
+
+.mobileArt {
+  display: none;
+  padding: 4px clamp(12px, 4vw, 20px) 10px;
+}
+
+/* ── Viewport frame ─────────────────────────────────────────────────────── */
+
+/* Container aspect matches the revised hero's native 2996×525 (≈ 5.71 : 1)
+   — a wide banner strip that already crops out the empty sky and mossy
+   floor. On a 1366 laptop this puts the sticky band at ~239 px; on a 1024
+   tablet at ~179 px. Small enough to keep the question heading and first
+   answer row above the fold, tall enough for the orb row to read clearly. */
+.art {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 2996 / 525;
+  max-height: min(300px, 34vh);
+  overflow: hidden;
+  background: #050d0a;
+}
+
+/* Shared painting surface for both bridge layers. background-size auto <zoom>
+   keeps aspect and lets background-position pan horizontally by %.
+   background-position-Y biases toward the orb strip (image y ≈ 100–350 of
+   774 natural) so labels + orb bodies stay in-frame. */
+.layerBase,
+.layerReveal {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background-image: url('/design-preview/biological-bridge/reference-hero-revised.png');
+  background-repeat: no-repeat;
+  /* Desktop default: fill width exactly. No horizontal overflow → the pan is
+     a no-op here; progress reads through the reveal mask + glow. */
+  background-size: 100% auto;
+  /* `background-position` is set inline from JSX (Chromium won't animate a
+     var() inside <position>). It defaults to `${clamped}% 18%`. */
+  transition: background-position 620ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+/* Damaged / dim "before" layer. */
+.layerBase {
+  filter: grayscale(0.55) brightness(0.5) contrast(0.95);
+  z-index: 1;
+}
+
+/* Repaired "after" layer, revealed left → right by the frontier mask.
+   Soft 6% feather at the frontier so the reveal edge feels like light
+   spreading rather than a hard clip. */
+.layerReveal {
+  filter: saturate(1.08) contrast(1.03);
+  z-index: 2;
+  -webkit-mask-image: linear-gradient(
+    to right,
+    #000 0,
+    #000 calc(var(--frontier) - 3%),
+    transparent calc(var(--frontier) + 3%),
+    transparent 100%
+  );
+  mask-image: linear-gradient(
+    to right,
+    #000 0,
+    #000 calc(var(--frontier) - 3%),
+    transparent calc(var(--frontier) + 3%),
+    transparent 100%
+  );
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
+  transition:
+    -webkit-mask-image 620ms cubic-bezier(0.22, 1, 0.36, 1),
+    mask-image 620ms cubic-bezier(0.22, 1, 0.36, 1),
+    background-position 620ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+/* Soft top+bottom vignette, sits between the layers and the overlay. */
+.artMask {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 3;
+  background:
+    linear-gradient(
+      180deg,
+      rgba(5, 13, 10, 0.55) 0%,
+      rgba(5, 13, 10, 0) 14%,
+      rgba(5, 13, 10, 0) 82%,
+      rgba(5, 13, 10, 0.7) 100%
+    );
+}
+
+/* Active-trigger glow — pinned to the current orb's actual on-screen X.
+   Sits above the vignette, below the label. Uses mix-blend-mode: screen so
+   it lifts golds/greens without washing the darks out. `left` is set inline
+   from JSX (Chromium won't animate a var() inside <length-percentage>). */
+.activeGlow {
+  position: absolute;
+  top: 46%;
+  height: 92%;
+  aspect-ratio: 1 / 1;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+  z-index: 4;
+  background: radial-gradient(
+    circle,
+    rgba(240, 220, 168, 0.32) 0%,
+    rgba(240, 220, 168, 0.12) 35%,
+    rgba(240, 220, 168, 0) 65%
+  );
+  mix-blend-mode: screen;
+  transition: left 620ms cubic-bezier(0.22, 1, 0.36, 1);
+  animation: glowBreath 3.6s ease-in-out infinite;
+}
+
+@keyframes glowBreath {
+  0%, 100% { opacity: 0.75; }
+  50% { opacity: 1; }
+}
+
+/* ── Trigger label overlay ─────────────────────────────────────────────── */
+
+.stageOverlay {
+  position: absolute;
+  left: clamp(20px, 5vw, 68px);
+  bottom: 10px;
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  pointer-events: none;
+  z-index: 5;
+  text-shadow: 0 2px 12px rgba(0, 0, 0, 0.55);
+}
+
+.stageTitle {
+  font-family: var(--font-fraunces), Georgia, serif;
+  font-size: clamp(0.9375rem, 1.35vw, 1.15rem);
+  font-weight: 540;
+  color: var(--cream);
+  line-height: 1.15;
+  margin: 0;
+}
+
+/* ── Fallback ──────────────────────────────────────────────────────────── */
+
+.fallback {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: 8%;
+  color: rgba(244, 239, 226, 0.75);
+  text-align: center;
+  background:
+    radial-gradient(60% 60% at 82% 42%, rgba(215, 165, 90, 0.28) 0%, transparent 60%),
+    radial-gradient(50% 60% at 20% 80%, rgba(120, 50, 50, 0.28) 0%, transparent 60%),
+    linear-gradient(120deg, #0a1c15 0%, #06110d 100%);
+}
+
+.fallbackInner {
+  max-width: 380px;
+  border: 1px dashed rgba(240, 220, 168, 0.35);
+  border-radius: 12px;
+  padding: 14px 16px;
+  background: rgba(6, 15, 12, 0.55);
+}
+
+.fallbackInner strong {
+  display: block;
+  font-family: var(--font-fraunces), Georgia, serif;
+  font-size: 13px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: #f0dca8;
+  margin-bottom: 6px;
+}
+
+.fallbackInner code {
+  display: block;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 11px;
+  color: #f4efe2;
+  background: rgba(0, 0, 0, 0.35);
+  padding: 6px 8px;
+  border-radius: 6px;
+  margin-top: 8px;
+  word-break: break-all;
+}
+
+/* ── Screen-reader-only ───────────────────────────────────────────────── */
+
+.srOnly {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* ── Reduced motion ────────────────────────────────────────────────────── */
+
+.reduced .layerBase,
+.reduced .layerReveal,
+.reduced .activeGlow {
+  transition: none !important;
+  animation: none !important;
+}
+
+/* ── Compact / mobile — same behavior, tighter proportions ────────────── */
+
+/* Compact / mobile no longer needs a special height or bg-size — the same
+   aspect-ratio-locked container renders orb + bridge whole at every width. */
+
+.compact .meta {
+  padding: 8px 14px 4px;
+}
+
+.compact .metaLabel {
+  font-size: 0.5625rem;
+}
+
+.compact .metaCount {
+  font-size: 0.625rem;
+}
+
+.compact .stageOverlay {
+  left: 12px;
+  bottom: 8px;
+}
+
+.compact .stageTitle {
+  font-size: 0.8125rem;
+}
+
+@media (max-width: 720px) {
+  .meta {
+    padding: 8px 14px 4px;
+  }
+
+  .metaLabel {
+    font-size: 0.5625rem;
+  }
+
+  .stageOverlay {
+    left: 12px;
+    bottom: 8px;
+  }
+
+  .stageTitle {
+    font-size: 0.8125rem;
+  }
+
+  /* Swap the horizontal bridge for the vertical mobile viewport. */
+  .art {
+    display: none;
+  }
+
+  .mobileArt {
+    display: block;
+  }
+}

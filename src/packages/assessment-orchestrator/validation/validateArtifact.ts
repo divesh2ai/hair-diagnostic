@@ -72,8 +72,11 @@ export function validateArtifactPayload(
       }
       break;
 
-    case ArtifactType.NARRATIVES:
-      if (!data.doctor_narrative && !data.patient_narrative) {
+    case ArtifactType.NARRATIVES: {
+      // Phase A writes a slim NARRATIVES record (clinical_report + doctor
+      // consultation only); patient/doctor narratives arrive in Phase B.
+      const isPhaseA = data.phase === "A";
+      if (!isPhaseA && !data.doctor_narrative && !data.patient_narrative) {
         throw new Error(
           "[PayloadValidation] NARRATIVES missing doctor_narrative or patient_narrative"
         );
@@ -81,6 +84,7 @@ export function validateArtifactPayload(
       validateNarrativeEnvelope(data.doctor_narrative, "doctor_narrative");
       validateNarrativeEnvelope(data.patient_narrative, "patient_narrative");
       break;
+    }
 
     case ArtifactType.VISUAL_JOURNEY:
       if (keys.length === 0) {

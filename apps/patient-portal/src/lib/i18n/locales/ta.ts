@@ -46,6 +46,8 @@ export const ta: Dictionary = {
     clinicProfile: "கிளினிக் சுயவிவரம்",
     branding: "பிராண்டிங்",
     whatsapp: "வாட்ஸ்ஆப்",
+    orders: "கிட் ஆர்டர்கள்",
+    leads: "லீட்கள்",
   },
   shell: {
     searchPlaceholder: "நோயாளிகள், அறிக்கைகள், கிளினிக்குகளைத் தேடவும்…",

@@ -23,6 +23,12 @@ export interface ReportActionsProps {
   clinicName: string | null;
   /** When provided, used as the share link instead of the in-portal URL. */
   shareUrl?: string;
+  /**
+   * Server-minted signed review token (see lib/reviewToken). Appended as ?t=
+   * to the in-portal report URL so the patient link resolves with full
+   * artifact access instead of the anonymous placeholder view.
+   */
+  shareToken?: string;
   /** When provided, used as the WhatsApp recipient (E.164, no +). */
   patientWhatsapp?: string | null;
   /** When true the Approve/etc. workflow has finalized — actions enabled. */
@@ -34,16 +40,18 @@ export function ReportActions({
   patientName,
   clinicName,
   shareUrl,
+  shareToken,
   patientWhatsapp,
   enabled = true,
 }: ReportActionsProps) {
   const [copied, setCopied] = useState(false);
 
+  const tokenQs = shareToken ? `?t=${encodeURIComponent(shareToken)}` : "";
   const url =
     shareUrl ??
     (typeof window !== "undefined"
-      ? `${window.location.origin}/assessment/${assessmentId}/report`
-      : `/assessment/${assessmentId}/report`);
+      ? `${window.location.origin}/assessment/${assessmentId}/report${tokenQs}`
+      : `/assessment/${assessmentId}/report${tokenQs}`);
 
   const onPrint = () => window.print();
 

@@ -25,6 +25,7 @@ export async function GET(req: Request) {
   const clinicId = isSuperAdmin(ctx.role) ? requestedClinicId : ctx.clinicId;
   const doctorId = q.get("doctorId");
   const status = q.get("status");
+  const includeSkinPigmentationPending = q.get("includeSkinPigmentationPending") === "1";
   const diagnosis = q.get("diagnosis");
   const severity = q.get("severity");
   const assignedTo = q.get("assignedTo");
@@ -37,7 +38,19 @@ export async function GET(req: Request) {
   if (dateTo) where.push(Prisma.sql`a."submittedAt" <= ${new Date(dateTo)}`);
   if (clinicId) where.push(Prisma.sql`a."clinicId" = ${clinicId}`);
   if (doctorId) where.push(Prisma.sql`p."doctorId" = ${doctorId}`);
-  if (status) where.push(Prisma.sql`a."status"::text = ${status}`);
+  if (status) {
+    // Support comma-separated list so the doctor reports page can include
+    // CLINICAL_READY + REPORT_GENERATING + COMPLETED in one query.
+    const statuses = status.split(",").map((s) => s.trim()).filter(Boolean);
+    if (statuses.length === 1) {
+      where.push(Prisma.sql`a."status"::text = ${statuses[0]}`);
+    } else if (statuses.length > 1) {
+      where.push(Prisma.sql`a."status"::text IN (${Prisma.join(statuses)})`);
+    }
+  }
+  if (includeSkinPigmentationPending) {
+    where.push(Prisma.sql`(a.status::text <> 'PENDING' OR a."rawResponses"->'__meta'->>'concern' IN ('skin_acne', 'skin_pigmentation', 'skin_anti_ageing'))`);
+  }
   if (assignedTo) where.push(Prisma.sql`a."reviewingDoctorId" = ${assignedTo}`);
   if (decision) where.push(Prisma.sql`a."reviewDecision"::text = ${decision}`);
   if (diagnosis) where.push(Prisma.sql`sev.content->>'primaryDiagnosis' = ${diagnosis}`);
@@ -65,6 +78,17 @@ export async function GET(req: Request) {
         decisionAt: Date | null;
         primaryDiagnosis: string | null;
         severity: string | null;
+        consultationVersion: number | null;
+        consultationApprovalStatus: string | null;
+        concern: string | null;
+        skinIntakeId: string | null;
+        skinConcernCount: number;
+        consultationStatus: string | null;
+        imageCount: number;
+        previousPrescriptionUploaded: boolean;
+        medicationDeclared: boolean;
+        medicalHistoryDeclared: boolean;
+        bodyPigmentationSelected: boolean;
       }>
     >(Prisma.sql`
       SELECT
@@ -84,7 +108,18 @@ export async function GET(req: Request) {
         a."reviewerName"                               AS "decisionReviewerName",
         a."reviewedAt"                                 AS "decisionAt",
         sev.content->>'primaryDiagnosis'               AS "primaryDiagnosis",
-        sev.content->>'severity'                       AS "severity"
+        sev.content->>'severity'                       AS "severity",
+        cv."contentVersion"                            AS "consultationVersion",
+        cv."approvalStatus"::text                      AS "consultationApprovalStatus",
+        a."rawResponses"->'__meta'->>'concern'         AS "concern",
+        a."rawResponses"->'__meta'->>'skinIntakeId'    AS "skinIntakeId",
+        COALESCE((a."rawResponses"->'__meta'->>'skinConcernCount')::int, 1) AS "skinConcernCount",
+        COALESCE(a."rawResponses"->'pigmentation'->>'consultationStatus', 'REQUIRED') AS "consultationStatus",
+        (SELECT count(*)::int FROM jsonb_object_keys(CASE WHEN jsonb_typeof(a."rawResponses"->'antiAgeing'->'AA_10') = 'object' THEN a."rawResponses"->'antiAgeing'->'AA_10' WHEN jsonb_typeof(a."rawResponses"->'pigmentation'->'PIG_14') = 'object' THEN a."rawResponses"->'pigmentation'->'PIG_14' ELSE '{}'::jsonb END)) AS "imageCount",
+        (a."rawResponses"->'pigmentation' ? 'PIG_13_PRESCRIPTION') AS "previousPrescriptionUploaded",
+        (a."rawResponses"->'pigmentation'->>'PIG_07' = 'yes') AS "medicationDeclared",
+        (a."rawResponses"->'pigmentation'->>'PIG_08' = 'yes') AS "medicalHistoryDeclared",
+        (COALESCE(a."rawResponses"->'pigmentation'->'PIG_02', '[]'::jsonb) ? 'body_other') AS "bodyPigmentationSelected"
       FROM "Assessment" a
       JOIN "Patient" p   ON p.id = a."patientId"
       JOIN "Clinic" c    ON c.id = a."clinicId"
@@ -92,6 +127,8 @@ export async function GET(req: Request) {
       LEFT JOIN "Doctor" rev ON rev.id = a."reviewingDoctorId"
       LEFT JOIN "AIArtifact" sev
              ON sev."assessmentId" = a.id AND sev.type = 'SEVERITY_ANALYSIS'
+      LEFT JOIN "Consultation" cons ON cons."assessmentId" = a.id
+      LEFT JOIN "ConsultationVersion" cv ON cv.id = cons."currentVersionId"
       ${whereSql}
       ORDER BY a."submittedAt" DESC NULLS LAST
       LIMIT ${limit} OFFSET ${offset}

@@ -1,0 +1,193 @@
+{
+  "productType": "SKIN_FACT",
+  "concernType": "ANTI_AGEING",
+  "protocolId": "skin-anti-ageing",
+  "protocolVersion": "1.0.0",
+  "status": "ACTIVE",
+  "questions": [
+    {
+      "id": "AA_01",
+      "type": "multi_select",
+      "title": "What changes in your skin are you most concerned about?",
+      "instruction": "Select all that apply.",
+      "required": true,
+      "options": [
+        {"label": "Fine lines", "value": "fine_lines"},
+        {"label": "Wrinkles", "value": "wrinkles"},
+        {"label": "Loss of firmness", "value": "loss_of_firmness"},
+        {"label": "Uneven texture", "value": "uneven_texture"},
+        {"label": "Dullness", "value": "dullness"},
+        {"label": "Dryness", "value": "dryness"},
+        {"label": "Another concern", "value": "other"}
+      ]
+    },
+    {
+      "id": "AA_01A",
+      "type": "textarea",
+      "title": "Please describe the other change you have noticed.",
+      "instruction": "Share only what feels relevant.",
+      "required": true,
+      "showIf": {"field": "AA_01", "includes": "other"}
+    },
+    {
+      "id": "AA_02",
+      "type": "single_select",
+      "title": "How concerned are you about these changes?",
+      "instruction": "Choose the closest answer.",
+      "required": true,
+      "options": [
+        {"label": "Mildly concerned", "value": "mild"},
+        {"label": "Moderately concerned", "value": "moderate"},
+        {"label": "Very concerned", "value": "high"}
+      ]
+    },
+    {
+      "id": "AA_03",
+      "type": "single_select",
+      "title": "How would you describe your usual sun exposure?",
+      "instruction": "Choose the closest description.",
+      "required": true,
+      "options": [
+        {"label": "Mainly indoors", "value": "mainly_indoors"},
+        {"label": "Occasional outdoor exposure", "value": "occasional_outdoor"},
+        {"label": "Regular outdoor exposure", "value": "regular_outdoor"},
+        {"label": "Prolonged exposure through work or routine", "value": "prolonged_exposure"}
+      ]
+    },
+    {
+      "id": "AA_04",
+      "type": "multi_select",
+      "title": "Which skin-care products are you currently using?",
+      "instruction": "Select all that apply.",
+      "required": true,
+      "exclusiveValue": "none",
+      "options": [
+        {"label": "Cleanser", "value": "cleanser"},
+        {"label": "Moisturiser", "value": "moisturiser"},
+        {"label": "Sunscreen", "value": "sunscreen"},
+        {"label": "Retinol or retinoid", "value": "retinoid"},
+        {"label": "Vitamin C", "value": "vitamin_c"},
+        {"label": "Exfoliating acid", "value": "exfoliating_acid"},
+        {"label": "Another product", "value": "other_product"},
+        {"label": "None at present", "value": "none"}
+      ]
+    },
+    {
+      "id": "AA_05",
+      "type": "textarea",
+      "title": "Please list the product names you remember.",
+      "instruction": "You can include brand names and how often you use them.",
+      "required": true,
+      "showIf": {"field": "AA_04", "notOnly": "none"}
+    },
+    {
+      "id": "AA_06",
+      "type": "single_select",
+      "title": "Do you have any significant medical history?",
+      "instruction": "This helps the clinical team review your assessment safely.",
+      "required": true,
+      "options": [
+        {"label": "Yes", "value": "yes"},
+        {"label": "No", "value": "no"}
+      ]
+    },
+    {
+      "id": "AA_06A",
+      "type": "textarea",
+      "title": "Please describe the relevant medical history.",
+      "instruction": "Include any ongoing conditions or treatment that may be relevant.",
+      "required": true,
+      "showIf": {"field": "AA_06", "equals": "yes"}
+    },
+    {
+      "id": "AA_07",
+      "type": "single_select",
+      "title": "Have you previously received professional treatment for skin ageing concerns?",
+      "instruction": "Choose one.",
+      "required": true,
+      "options": [
+        {"label": "Yes", "value": "yes"},
+        {"label": "No", "value": "no"}
+      ]
+    },
+    {
+      "id": "AA_08",
+      "type": "multi_select",
+      "title": "Which professional treatments have you received?",
+      "instruction": "Select all that apply.",
+      "required": true,
+      "showIf": {"field": "AA_07", "equals": "yes"},
+      "options": [
+        {"label": "Chemical peel", "value": "chemical_peel"},
+        {"label": "Laser or light treatment", "value": "laser_or_light"},
+        {"label": "Microneedling", "value": "microneedling"},
+        {"label": "Injectable treatment", "value": "injectable"},
+        {"label": "Professional facial treatment", "value": "professional_facial"},
+        {"label": "Another treatment", "value": "other"}
+      ]
+    },
+    {
+      "id": "AA_08A",
+      "type": "textarea",
+      "title": "Please describe the other professional treatment.",
+      "instruction": "Include the treatment name if you remember it.",
+      "required": true,
+      "showIf": {"field": "AA_08", "includes": "other"}
+    },
+    {
+      "id": "AA_09",
+      "type": "document_uploads",
+      "title": "Would you like to share any previous prescriptions or treatment documents?",
+      "instruction": "Optional. Upload PDF, JPG, PNG or HEIC files only.",
+      "required": false,
+      "maxFiles": 4
+    },
+    {
+      "id": "AA_10",
+      "type": "clinical_uploads",
+      "title": "Would you like to upload clear facial images?",
+      "instruction": "Optional: front, left-side and right-side photos in even light can help the clinical team understand your concern more accurately and support the best possible outcome.",
+      "required": false,
+      "requiredViews": ["FRONT", "LEFT", "RIGHT"]
+    },
+    {
+      "id": "AA_11",
+      "type": "multi_select",
+      "title": "Which professional procedures would you like to learn more about?",
+      "instruction": "Select any topics of interest. This does not recommend a procedure.",
+      "required": true,
+      "exclusiveValue": "none",
+      "options": [
+        {"label": "Chemical peels", "value": "chemical_peels"},
+        {"label": "Laser or light treatments", "value": "laser_or_light"},
+        {"label": "Microneedling", "value": "microneedling"},
+        {"label": "Injectable treatments", "value": "injectables"},
+        {"label": "Skin-tightening procedures", "value": "skin_tightening"},
+        {"label": "None at present", "value": "none"}
+      ]
+    },
+    {
+      "id": "AA_12",
+      "type": "single_select",
+      "title": "Would you like access to educational videos about the procedures you selected?",
+      "instruction": "Educational content is general information and is not a treatment recommendation.",
+      "required": true,
+      "showIf": {"field": "AA_11", "notOnly": "none"},
+      "options": [
+        {"label": "Yes, show me after clinical review", "value": "yes"},
+        {"label": "No, not at present", "value": "no"}
+      ],
+      "confirmationCopy": "Educational video content will be available after clinical review."
+    }
+  ],
+  "review": {
+    "id": "AA_13",
+    "title": "Review your Anti-Ageing assessment",
+    "acknowledgement": "I understand that my answers and images will be reviewed by an authorised clinical team. This questionnaire does not provide a diagnosis, prescription or treatment recommendation."
+  },
+  "submission": {
+    "status": "PENDING_REVIEW",
+    "patientFacingDiagnosis": false,
+    "patientFacingRecommendations": false
+  }
+}

@@ -51,6 +51,14 @@ export interface Fragment {
   readonly variants: readonly string[];
   readonly condition?: FragmentConditionKey;
   readonly priority?: number;
+  /**
+   * Evidence requirements — ALL listed FactKeys must be true on the
+   * patient's ClinicalFacts for this fragment to be included. Designed for
+   * Rule 1 (every sentence has evidence) and Rule 2 (never mention symptoms
+   * the patient did not report). When omitted, the fragment is not gated
+   * by ClinicalFacts (legacy fragments behave as before).
+   */
+  readonly requiredFindings?: readonly import('../../clinical-facts/types').FactKey[];
 }
 
 // ─── Clinical category — maps DiagnosisKey groups to template files ───────────

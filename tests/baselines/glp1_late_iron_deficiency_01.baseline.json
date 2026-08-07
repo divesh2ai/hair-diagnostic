@@ -1,0 +1,55 @@
+{
+  "fixtureId": "glp1_late_iron_deficiency_01",
+  "generatedAt": "2026-07-03T07:14:17.938Z",
+  "pipelineVersion": "1.0.0",
+  "primaryDiagnosis": "WEIGHT_LOSS",
+  "scalpStates": [
+    "NORMAL_SCALP"
+  ],
+  "rootCauses": [
+    "IRON_DEFICIENCY",
+    "RAPID_WEIGHT_LOSS"
+  ],
+  "therapyNeeds": [],
+  "severity": "MILD",
+  "rankedKitIds": [
+    "RAPID WEIGHT LOSS SHIELD",
+    "PHENOTYPE INFLAMATION",
+    "PRO IMMUNE GOLD",
+    "IRON UP GOLD",
+    "FPHL"
+  ],
+  "appliedRules": [],
+  "protocolLabel": "Recovery protocol for 5 condition(s): Female pattern hair loss · Scalp / perifollicular inflammation · Iron deficiency / anaemia · Rapid weight loss / GLP-1 · Immune depletion / regrowth support.",
+  "recommendations": [
+    "RAPID WEIGHT LOSS SHIELD",
+    "PHENOTYPE INFLAMATION",
+    "PRO IMMUNE GOLD",
+    "IRON UP GOLD",
+    "FPHL"
+  ],
+  "narratives": {
+    "narratives": {
+      "doctorHash": "{\"doctorSummary\":\"Mild Rapid weight loss-induced telogen effluvi",
+      "patientHash": "{\"doctorSummary\":\"Mild Rapid weight loss-induced telogen effluvi"
+    },
+    "orchestration": {
+      "pipelineVersion": "1.0.0",
+      "executionId": "3d4b2310-732f-491b-a0de-cd7ccf319f45",
+      "startedAt": "2026-07-03T07:14:17.938Z",
+      "completedAt": "2026-07-03T07:14:17.940Z",
+      "durationMs": 2,
+      "completedStages": [
+        "questionnaire",
+        "clinical",
+        "therapy",
+        "recommendations",
+        "narratives"
+      ]
+    }
+  },
+  "reportMetadata": {
+    "generatedBy": "generate-baselines.ts",
+    "version": "1.0.0"
+  }
+}

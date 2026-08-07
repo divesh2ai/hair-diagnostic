@@ -29,6 +29,7 @@ import { safeArray } from '@/lib/safeData';
 interface Props {
   assessmentId: string;
   clinicSlug: string;
+  previewToken?: string | null;
 }
 
 /* ─── Phase model ─────────────────────────────────────────────────────────── */
@@ -109,7 +110,7 @@ function stageToPhase(stage: string | undefined): PhaseIndex {
 
 /* ─── Component ───────────────────────────────────────────────────────────── */
 
-export function CinematicProcessing({ assessmentId, clinicSlug }: Props) {
+export function CinematicProcessing({ assessmentId, clinicSlug, previewToken }: Props) {
   const router = useRouter();
 
   const [phase, setPhase] = useState<PhaseIndex>(0);
@@ -133,7 +134,8 @@ export function CinematicProcessing({ assessmentId, clinicSlug }: Props) {
   /* Backend polling — the single source of truth for the phase. */
   const poll = useCallback(async () => {
     try {
-      const res = await fetch(`/api/assessment/status?id=${assessmentId}`);
+      const tokenQs = previewToken ? `&t=${encodeURIComponent(previewToken)}` : '';
+      const res = await fetch(`/api/assessment/status?id=${assessmentId}${tokenQs}`);
       if (!res.ok) throw new Error('Status unavailable');
       const data = parseAssessmentStatusResponse(await res.json());
       const s = data.status ?? 'PENDING';
@@ -145,16 +147,16 @@ export function CinematicProcessing({ assessmentId, clinicSlug }: Props) {
       const stage = lastRunning?.stage ?? lastSuccess?.stage;
 
       // ── Done-gate ─────────────────────────────────────────────────────
-      // The patient should land on the result page when the doctor briefing
-      // video is ready. Falls back to status-based completion if the video
-      // pipeline never produced an artifact (UNAVAILABLE) so we never strand
-      // the user on the processing screen.
+      // Terminal status from the orchestrator is the source of truth: the
+      // run is finished, so the patient should land on the result page.
+      // The video block is incidental — if a doctor briefing video is ready
+      // we still advance, but we never wait on it (the current Phase B
+      // pipeline doesn't produce one).
       const videoState = (data as { video?: { state?: string } }).video?.state;
       const videoReady = videoState === 'READY';
-      const videoUnavailable = videoState === 'UNAVAILABLE';
       const statusCompleted = s === 'COMPLETED' || s === 'PARTIAL_FAILURE';
 
-      if (videoReady || (statusCompleted && videoUnavailable)) {
+      if (videoReady || statusCompleted) {
         setPhase(5);
         setIsDone(true);
       } else {
@@ -171,7 +173,7 @@ export function CinematicProcessing({ assessmentId, clinicSlug }: Props) {
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Connection error');
     }
-  }, [assessmentId]);
+  }, [assessmentId, previewToken]);
 
   useEffect(() => {
     poll();
@@ -184,10 +186,11 @@ export function CinematicProcessing({ assessmentId, clinicSlug }: Props) {
     if (!isDone || routedRef.current) return;
     routedRef.current = true;
     const id = window.setTimeout(() => {
-      router.push(`/q/${clinicSlug}/preview/${assessmentId}`);
+      const tokenQs = previewToken ? `?t=${encodeURIComponent(previewToken)}` : '';
+      router.push(`/q/${clinicSlug}/preview/${assessmentId}${tokenQs}`);
     }, 1100);
     return () => window.clearTimeout(id);
-  }, [isDone, router, clinicSlug, assessmentId]);
+  }, [isDone, router, clinicSlug, assessmentId, previewToken]);
 
   const retry = async () => {
     setError(null);

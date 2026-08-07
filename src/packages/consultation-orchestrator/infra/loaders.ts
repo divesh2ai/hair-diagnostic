@@ -31,6 +31,7 @@ export function prismaAssessmentLoader(prisma: PrismaClient): AssessmentLoader {
         source: a.source,
         rawAnswers: answers,
         reviewingDoctorId: a.reviewingDoctorId,
+        status: String(a.status),
         patient: {
           id: a.patient.id,
           name: a.patient.name ?? "Patient",
@@ -73,11 +74,11 @@ export function prismaDoctorPreferencesLoader(prisma: PrismaClient): DoctorPrefe
       if (!d) return null;
       // Doctor model in this repo has minimal preference fields today; the
       // loader provides safe defaults so the orchestrator can compose without
-      // optional-chaining clinical decisions later.
+      // optional-chaining clinical decisions later. budgetTier is intentionally
+      // omitted so the org default wins until the doctor explicitly chooses.
       return {
         doctorId: d.id,
         preferredLanguage: "en",
-        budgetTier: "STANDARD",
       };
     },
   };
@@ -93,7 +94,10 @@ export function prismaOrgDefaultsLoader(prisma: PrismaClient): OrgDefaultsLoader
       return {
         organizationId: c?.organizationId ?? null,
         defaultLanguage: c?.language ?? "en",
-        defaultBudgetTier: "STANDARD",
+        // Platform default. COMPREHENSIVE is a ceiling (maxKits: 7) — the kit
+        // scorer still returns only kits with valid clinical triggers, so
+        // simple cases stay small. Doctors and orgs can override.
+        defaultBudgetTier: "COMPREHENSIVE",
       };
     },
   };

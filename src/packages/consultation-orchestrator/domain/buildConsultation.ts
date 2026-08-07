@@ -19,6 +19,11 @@ import { OPEN_CLINIC } from "../../../sandbox/loaders/fixtureLoader";
 import type { PatientAnswers } from "../../types";
 import type { BudgetProfile } from "../../ai-engine/kit-scorer/types";
 import type { ClinicalProfile } from "../../ai-engine/clinical-engine/types";
+import { buildClinicalFacts, validateEvidenceGrounding } from "../../ai-engine/clinical-facts";
+import { validateReasoningCompleteness } from "../../ai-engine/clinical-context";
+import { buildClinicalContext } from "../../ai-engine/clinical-context";
+import type { KitRecommendation } from "../../ai-engine/kit-scorer/types";
+import type { ClinicalReadinessSnapshot } from "@shared/types/consultation";
 
 import type {
   Consultation,
@@ -134,6 +139,10 @@ export function buildConsultation(input: BuildConsultationInput): Consultation {
     conditionLifestyle: report.dietAndLifestyle,
   };
 
+  // ── Clinical readiness snapshot (persisted; approval + release gates
+  //    consult only this snapshot, never rerun the pipeline) ───────────────
+  const clinicalReadiness = buildReadinessSnapshot(answers, clinical, kits, report);
+
   // ── Audit + version ──────────────────────────────────────────────────────
   const now = new Date().toISOString();
   const audit: ConsultationAudit = {
@@ -166,6 +175,7 @@ export function buildConsultation(input: BuildConsultationInput): Consultation {
     attachments,
     audit,
     version,
+    clinicalReadiness,
     clinicalReport: report,
   };
 }
@@ -173,6 +183,79 @@ export function buildConsultation(input: BuildConsultationInput): Consultation {
 // ─────────────────────────────────────────────────────────────────────────────
 // Helpers
 // ─────────────────────────────────────────────────────────────────────────────
+
+// Deterministic readiness snapshot. Runs the two existing validators
+// (validateEvidenceGrounding + validateReasoningCompleteness) over the same
+// inputs the composer already produced, then serializes the result into a
+// portable, hashable snapshot that lives inside the persisted Consultation.
+// No side effects, no new engine calls at approve/release time.
+function buildReadinessSnapshot(
+  answers: PatientAnswers,
+  clinical: ClinicalProfile,
+  kits: KitRecommendation,
+  report: ReturnType<typeof buildClinicalReport>,
+): ClinicalReadinessSnapshot {
+  // buildClinicalFacts needs the ClinicalProfile because ReportedFindings.sex
+  // and reported.hasActiveShedding both derive from `profile.flags`. Passing
+  // only `answers` here throws `Cannot read properties of undefined (reading
+  // 'flags')` inside deriveSex / reported.
+  const facts = buildClinicalFacts(answers, clinical);
+
+  // Same narrative section-set the PDF engine checks against — parity of
+  // gate at approval-time and render-time is a design goal.
+  const sections = [
+    { section: "Your Hair Story", text: report.clinicalInsightStory.yourHairStory },
+    { section: "What We Found", text: report.clinicalInsightStory.whyThisMayBeHappening },
+    { section: "Your Recovery Plan", text: report.clinicalInsightStory.whyThisPlanWasRecommended },
+    {
+      section: "What Recovery Could Look Like",
+      text: report.clinicalInsightStory.whatToExpect,
+    },
+  ];
+
+  const grounding = validateEvidenceGrounding(sections, facts);
+
+  const context = buildClinicalContext({
+    assessmentId: "readiness", // The context is scoped to this composition;
+    // the id is not persisted through the snapshot.
+    facts,
+    profile: clinical,
+    kitRecommendation: kits,
+    groundingViolations: grounding.violations,
+  });
+  const narrativeForReasoning = sections.map((s) => ({ name: s.section, text: s.text }));
+  const reasoning = validateReasoningCompleteness(context, narrativeForReasoning);
+
+  const groundingViolations = grounding.violations.map((v) => ({
+    ruleId: v.ruleId,
+    section: v.section,
+    // Short doctor-readable summary — never the raw narrative text or the
+    // matched span, both of which routinely contain patient identifiers.
+    summary: v.claim,
+  }));
+  const reasoningGaps = reasoning.gaps.map((g) => ({
+    kind: g.kind,
+    subject: g.subject,
+    summary: g.message,
+  }));
+  const blockingCodes: string[] = [];
+  if (groundingViolations.length > 0) blockingCodes.push("GROUNDING_VIOLATION_PRESENT");
+  if (reasoningGaps.length > 0) blockingCodes.push("REASONING_GAP_PRESENT");
+
+  return {
+    schemaVersion: 1,
+    evaluatedAt: new Date().toISOString(),
+    sourceClinicalArtifactVersion: ENGINE_VERSIONS.report,
+    isReadyForApproval: blockingCodes.length === 0,
+    groundingViolations,
+    reasoningGaps,
+    blockingCodes,
+    summary: {
+      groundingViolationCount: groundingViolations.length,
+      reasoningGapCount: reasoningGaps.length,
+    },
+  };
+}
 
 const BUDGET_MAP: Record<string, BudgetProfile> = {
   ESSENTIAL: { tier: "ESSENTIAL", maxKits: 2 },
@@ -319,7 +402,7 @@ function buildTreatmentPlan(report: ReturnType<typeof buildClinicalReport>): Tre
     title: p.displayName,
     description: p.whySelected,
     priority: p.phase === 1 ? "HIGH" : "STANDARD",
-    duration: "3 months",
+    duration: "2 months",
     doctorEditable: true,
     doctorEdited: false,
     evidenceLevel: "EXPERT_OPINION",

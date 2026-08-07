@@ -1,0 +1,52 @@
+{
+  "fixtureId": "night_shift_oxidative_01",
+  "generatedAt": "2026-07-03T07:14:18.014Z",
+  "pipelineVersion": "1.0.0",
+  "primaryDiagnosis": "NIGHT_SHIFT",
+  "scalpStates": [
+    "NORMAL_SCALP"
+  ],
+  "rootCauses": [
+    "STRESS",
+    "OXIDATIVE_STRESS",
+    "CIRCADIAN_DISRUPTION"
+  ],
+  "therapyNeeds": [],
+  "severity": "MILD",
+  "rankedKitIds": [
+    "PHENOTYPE INFLAMATION",
+    "HAIR FACT NIGHT SHIFT",
+    "MPHL"
+  ],
+  "appliedRules": [],
+  "protocolLabel": "Recovery protocol for 3 condition(s): Male pattern hair loss · Scalp / perifollicular inflammation · Night shift / circadian disruption.",
+  "recommendations": [
+    "PHENOTYPE INFLAMATION",
+    "HAIR FACT NIGHT SHIFT",
+    "MPHL"
+  ],
+  "narratives": {
+    "narratives": {
+      "doctorHash": "{\"doctorSummary\":\"Mild Shift work-associated circadian rhythm di",
+      "patientHash": "{\"doctorSummary\":\"Mild Shift work-associated circadian rhythm di"
+    },
+    "orchestration": {
+      "pipelineVersion": "1.0.0",
+      "executionId": "1544b51a-8027-4814-9a11-6e2245726394",
+      "startedAt": "2026-07-03T07:14:18.014Z",
+      "completedAt": "2026-07-03T07:14:18.015Z",
+      "durationMs": 1,
+      "completedStages": [
+        "questionnaire",
+        "clinical",
+        "therapy",
+        "recommendations",
+        "narratives"
+      ]
+    }
+  },
+  "reportMetadata": {
+    "generatedBy": "generate-baselines.ts",
+    "version": "1.0.0"
+  }
+}

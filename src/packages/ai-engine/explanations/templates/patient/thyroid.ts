@@ -1,11 +1,17 @@
 import type { ClinicalTemplate } from '../types';
-import { v, cv } from '../_fragmentUtils';
+import { v, cv, vReq } from '../_fragmentUtils';
 
 export const THYROID_PATIENT_OPENING = [
-  v(9,
+  // Direct thyroid-driver claims require the patient to have reported a
+  // thyroid history. Defensive against indirect-signal routing.
+  vReq(['history.thyroid'], 9,
     'Your assessment shows that your thyroid — the gland that controls your body\'s energy and metabolism — is affecting your hair growth by slowing down the processes that keep follicles healthy.',
     'The primary cause of your hair concerns is your thyroid function: when your thyroid is under-performing, your body\'s metabolism slows down and your hair follicles get less energy to grow.',
-    'Your hair assessment identifies your thyroid as the main driver of your hair loss — your follicles need a well-functioning thyroid to maintain normal growth cycles, and supporting thyroid function is the priority.'
+    'Your hair assessment identifies your thyroid as the main driver of your hair loss — your follicles need a well-functioning thyroid to maintain normal growth cycles, and supporting thyroid function is the priority.',
+  ),
+  // Mechanism-only fallback when thyroid is suspected but not confirmed.
+  v(7,
+    'Your assessment points to a metabolic-rate factor in your hair cycle. A thyroid panel will confirm whether metabolic support is part of your plan.',
   ),
 ];
 

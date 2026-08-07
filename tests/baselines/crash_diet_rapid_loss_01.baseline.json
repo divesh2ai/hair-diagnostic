@@ -1,0 +1,54 @@
+{
+  "fixtureId": "crash_diet_rapid_loss_01",
+  "generatedAt": "2026-07-03T07:14:17.875Z",
+  "pipelineVersion": "1.0.0",
+  "primaryDiagnosis": "WEIGHT_LOSS",
+  "scalpStates": [
+    "NORMAL_SCALP"
+  ],
+  "rootCauses": [
+    "RAPID_WEIGHT_LOSS"
+  ],
+  "therapyNeeds": [],
+  "severity": "MILD",
+  "rankedKitIds": [
+    "RAPID WEIGHT LOSS SHIELD",
+    "HAIR FACT TE GOLD",
+    "PHENOTYPE INFLAMATION",
+    "PRO FACT META B",
+    "FPHL"
+  ],
+  "appliedRules": [],
+  "protocolLabel": "Recovery protocol for 5 condition(s): Female pattern hair loss · Scalp / perifollicular inflammation · Metabolic dysfunction · Rapid weight loss / GLP-1 · Acute telogen shedding.",
+  "recommendations": [
+    "RAPID WEIGHT LOSS SHIELD",
+    "HAIR FACT TE GOLD",
+    "PHENOTYPE INFLAMATION",
+    "PRO FACT META B",
+    "FPHL"
+  ],
+  "narratives": {
+    "narratives": {
+      "doctorHash": "{\"doctorSummary\":\"Mild Rapid weight loss-induced telogen effluvi",
+      "patientHash": "{\"doctorSummary\":\"Mild Rapid weight loss-induced telogen effluvi"
+    },
+    "orchestration": {
+      "pipelineVersion": "1.0.0",
+      "executionId": "9dc94cc5-6768-4c99-ad24-2fb8415b2458",
+      "startedAt": "2026-07-03T07:14:17.875Z",
+      "completedAt": "2026-07-03T07:14:17.876Z",
+      "durationMs": 1,
+      "completedStages": [
+        "questionnaire",
+        "clinical",
+        "therapy",
+        "recommendations",
+        "narratives"
+      ]
+    }
+  },
+  "reportMetadata": {
+    "generatedBy": "generate-baselines.ts",
+    "version": "1.0.0"
+  }
+}

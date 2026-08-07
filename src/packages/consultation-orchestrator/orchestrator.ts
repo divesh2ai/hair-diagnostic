@@ -11,6 +11,10 @@ import type { PatientAnswers } from "../types";
 import { buildConsultation } from "./domain/buildConsultation";
 import type { Consultation, DoctorNote, ConsultationAttachment } from "@shared/types/consultation";
 import { contentHash } from "./versioning/contentHash";
+import {
+  evaluateClinicalReadinessForApproval,
+  type ReadinessDecision,
+} from "@shared/clinical-readiness/evaluator";
 import type {
   ApprovalStatus,
   AssessmentLoader,
@@ -22,7 +26,6 @@ import type {
   PreviousConsultationsLoader,
   StoredVersion,
 } from "./ports";
-import type { ConsultationEvent } from "./events/types";
 
 export interface OrchestratorDeps {
   assessments: AssessmentLoader;
@@ -61,6 +64,14 @@ export interface ReviseInput {
    * recomposes from the engines first, then merges these overrides on top.
    */
   edits?: Partial<Pick<Consultation, "diagnosis" | "treatmentPlan" | "followUp" | "patientEducation">>;
+  /**
+   * When provided, the revise call fails with "invalid" if the current
+   * persisted version has advanced past this number. The doctor UI sends
+   * the version it loaded so that a colleague's concurrent edit cannot be
+   * silently overwritten by a stale draft. Optional so scripted / migration
+   * callers can still no-op recompose.
+   */
+  expectedContentVersion?: number;
 }
 
 export class ConsultationOrchestrator {
@@ -184,6 +195,16 @@ export class ConsultationOrchestrator {
     this.assertCanRead(existing, input.ctx);
     this.assertCanRevise(input.ctx);
 
+    if (
+      typeof input.expectedContentVersion === "number" &&
+      input.expectedContentVersion !== existing.contentVersion
+    ) {
+      throw new OrchestratorError(
+        "invalid",
+        `Consultation has advanced past version ${input.expectedContentVersion}; latest is ${existing.contentVersion}`,
+      );
+    }
+
     const base = existing.content;
     const next: Consultation = {
       ...base,
@@ -228,22 +249,20 @@ export class ConsultationOrchestrator {
       actorId: input.ctx.actorId,
       events: [
         {
+          // Doctor edits are edits, not approvals. Approval-only side effects
+          // (patient notify, RAG index of approved content) must be driven by
+          // CONSULTATION_APPROVED emitted from approve() and nowhere else.
           type: "CONSULTATION_UPDATED",
           consultationId: existing.consultationId,
           occurredAt: new Date().toISOString(),
           actorId: input.ctx.actorId,
           payload: {
+            kind: "DOCTOR_EDIT",
+            doctorId: input.ctx.actorId,
             previousVersion: existing.contentVersion,
             nextVersion: existing.contentVersion + 1,
             changedFields: Object.keys(input.edits ?? {}),
           },
-        },
-        {
-          type: "DOCTOR_REVIEW_COMPLETED",
-          consultationId: existing.consultationId,
-          occurredAt: new Date().toISOString(),
-          actorId: input.ctx.actorId,
-          payload: { decision: "APPROVED", doctorId: input.ctx.actorId },
         },
         {
           type: "RAG_INDEX_REQUESTED",
@@ -270,6 +289,22 @@ export class ConsultationOrchestrator {
     ctx: AccessContext;
     status: ApprovalStatus;
     notes?: string;
+    /**
+     * When provided (e.g. from the WhatsApp review-token flow, where the
+     * reviewer opened a specific snapshot of the report), we refuse to
+     * approve a later version the reviewer has never seen. Doctor-dashboard
+     * approvals omit this — they always mean "approve current latest".
+     */
+    expectedContentVersion?: number;
+    /**
+     * Senior-doctor override of the clinical-readiness gate. Accepts a typed
+     * clinical justification. STRICT LIMIT: an override may bypass reasoning
+     * gaps ONLY — never grounding violations, nor a missing/malformed
+     * snapshot. A grounding violation is a hard safety stop no clinician
+     * signs past, and a missing snapshot means the content was never
+     * validated at all. Enforced server-side here so no client can widen it.
+     */
+    readinessOverride?: { reason: string };
   }): Promise<StoredVersion> {
     const existing = await this.deps.repo.getLatestByAssessment(input.assessmentId);
     if (!existing) {
@@ -280,6 +315,82 @@ export class ConsultationOrchestrator {
     }
     this.assertCanRead(existing, input.ctx);
     this.assertCanRevise(input.ctx);
+
+    // Stale-version guard for token-scoped approvals. A newer draft exists
+    // that the reviewer never saw — surface it rather than silently blessing
+    // content the sender didn't intend.
+    if (
+      typeof input.expectedContentVersion === "number" &&
+      input.expectedContentVersion !== existing.contentVersion
+    ) {
+      throw new OrchestratorError(
+        "invalid",
+        `Consultation has advanced past version ${input.expectedContentVersion}; latest is ${existing.contentVersion}`,
+      );
+    }
+
+    // Assessment-state guard. Approval only makes sense once the clinical
+    // pipeline has produced something to approve. Reject non-terminal /
+    // still-processing / FAILED cases so a doctor can't sign off on content
+    // that doesn't exist yet or that the pipeline aborted on.
+    const a = await this.deps.assessments.load(input.assessmentId);
+    if (a && a.status && !APPROVABLE_ASSESSMENT_STATUSES.has(a.status)) {
+      throw new OrchestratorError(
+        "invalid",
+        `Assessment status ${a.status} is not eligible for approval`,
+      );
+    }
+
+    // Clinical readiness guard. Only enforced on the APPROVED transition —
+    // requesting revisions or rejecting a consultation must remain possible
+    // precisely because the readiness snapshot is non-empty. The evaluator
+    // fails closed for historical / malformed snapshots.
+    let overrideRecord: {
+      reason: string;
+      reasoningGapCount: number;
+      overriddenBy: string;
+      at: string;
+    } | null = null;
+    if (input.status === "APPROVED") {
+      const readiness = evaluateClinicalReadinessForApproval(existing.content);
+      if (!readiness.ready) {
+        // A senior doctor may sign past a reasoning gap with a typed
+        // justification — but ONLY reasoning gaps, and never via a synthetic
+        // token-reviewer identity. Grounding violations and missing/malformed
+        // snapshots are hard stops that no override widens.
+        const reasoningGapsOnly =
+          readiness.groundingViolationCount === 0 &&
+          readiness.reasoningGapCount > 0 &&
+          readiness.blockingCodes.every((c) => c === "REASONING_GAP_PRESENT");
+        const reason = input.readinessOverride?.reason?.trim() ?? "";
+        const overrideEligible =
+          reasoningGapsOnly &&
+          reason.length >= MIN_READINESS_OVERRIDE_REASON &&
+          input.ctx.role.toUpperCase() !== "TOKEN_REVIEWER";
+
+        if (!overrideEligible) {
+          throw new ReadinessBlockedError(readiness);
+        }
+        overrideRecord = {
+          reason,
+          reasoningGapCount: readiness.reasoningGapCount,
+          overriddenBy: input.ctx.actorId,
+          at: new Date().toISOString(),
+        };
+      }
+    }
+
+    // Idempotency: same status + same approver against the same version is a
+    // no-op. Prevents duplicate CONSULTATION_APPROVED on double-click / retry
+    // from the WhatsApp review link. We compare current metadata, not the
+    // request body, so a genuine status change (APPROVED → REJECTED) still
+    // goes through.
+    if (
+      existing.metadata.approvalStatus === input.status &&
+      existing.metadata.approvedBy === input.ctx.actorId
+    ) {
+      return existing;
+    }
 
     const stored = await this.deps.repo.setApproval({
       consultationId: existing.consultationId,
@@ -295,7 +406,14 @@ export class ConsultationOrchestrator {
                 consultationId: existing.consultationId,
                 occurredAt: new Date().toISOString(),
                 actorId: input.ctx.actorId,
-                payload: { approvedBy: input.ctx.actorId, notes: input.notes },
+                payload: {
+                  approvedBy: input.ctx.actorId,
+                  notes: input.notes,
+                  // When present, this approval bypassed the readiness gate
+                  // via an explicit doctor override — kept on the immutable
+                  // event so the audit trail records who signed past what.
+                  ...(overrideRecord ? { readinessOverride: overrideRecord } : {}),
+                },
               },
             ]
           : [],
@@ -309,13 +427,11 @@ export class ConsultationOrchestrator {
 
   private assertCanRead(v: StoredVersion, ctx: AccessContext) {
     if (isSuperAdmin(ctx.role)) return;
-    if (!ctx.clinicId) throw new OrchestratorError("forbidden", "Missing clinic context");
-    if (v.content.assessment.id && v.consultationId) {
-      // Clinic scope is enforced at the loader; here we double-check by
-      // requiring the cached content's stored consultation belongs to the
-      // caller's clinic (when present on the payload).
-      // No-op when the consultation is read straight from the repo without
-      // a clinic claim — assertCanReadClinic handles the new-create case.
+    if (!ctx.clinicId) {
+      throw new OrchestratorError("forbidden", "Missing clinic context");
+    }
+    if (v.clinicId !== ctx.clinicId) {
+      throw new OrchestratorError("forbidden", "Cross-clinic access denied");
     }
   }
 
@@ -333,7 +449,33 @@ export class ConsultationOrchestrator {
   }
 }
 
-const REVISE_ROLES = new Set(["SUPER_ADMIN", "ORG_ADMIN", "CLINIC_ADMIN", "DOCTOR"]);
+// TOKEN_REVIEWER is the synthetic role we mint for the signed-token WhatsApp
+// review flow (/api/review/[token]). The token itself is HMAC-signed by the
+// server, so anyone holding one has already been vouched for by us; we still
+// route approvals through the same orchestrator boundary so the audit trail,
+// event emission, and stale-version guard stay identical to dashboard
+// approvals.
+const REVISE_ROLES = new Set([
+  "SUPER_ADMIN",
+  "ORG_ADMIN",
+  "CLINIC_ADMIN",
+  "DOCTOR",
+  "TOKEN_REVIEWER",
+]);
+
+// Assessment statuses under which approving the consultation is meaningful.
+// Anything else (still-processing, failed) is refused so nobody signs off on
+// content the pipeline hasn't produced or has abandoned.
+const APPROVABLE_ASSESSMENT_STATUSES = new Set([
+  "CLINICAL_READY",
+  "REPORT_GENERATING",
+  "COMPLETED",
+  "PARTIAL_FAILURE",
+]);
+
+// A readiness override must carry a substantive clinical justification —
+// not "ok" or a stray keystroke. Mirrors the doctor-note minimum intent.
+const MIN_READINESS_OVERRIDE_REASON = 10;
 
 function isSuperAdmin(role: string): boolean {
   return role.toUpperCase() === "SUPER_ADMIN";
@@ -353,5 +495,18 @@ export class OrchestratorError extends Error {
   constructor(public readonly code: "not_found" | "forbidden" | "invalid", message: string) {
     super(message);
     this.name = "OrchestratorError";
+  }
+}
+
+// Distinct error class so route handlers can return a stable 422 and a
+// structured payload without string-matching messages. Carries the full
+// decision so the doctor UI can render violations without a second fetch;
+// callers are responsible for stripping detail before sending to a
+// patient-scoped surface (use toPatientSafeReadinessDecision).
+export class ReadinessBlockedError extends Error {
+  public readonly code = "readiness_blocked" as const;
+  constructor(public readonly decision: ReadinessDecision) {
+    super(decision.doctorSummary);
+    this.name = "ReadinessBlockedError";
   }
 }

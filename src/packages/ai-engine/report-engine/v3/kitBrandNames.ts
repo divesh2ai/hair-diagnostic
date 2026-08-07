@@ -22,15 +22,15 @@ export const KIT_BRAND_NAMES: Record<string, string> = {
   // ── Inflammation / immune ────────────────────────────────────────────
   "PHENOTYPE INFLAMATION": "Phenotype Inflammation",
   "PHENOTYPE INFLAMMATION": "Phenotype Inflammation",
-  "PRO IMMUNE GOLD": "Pro Immune 5V",
-  "PRO IMMUNE VEG": "Pro Immune 5V (Veg)",
+  "PRO IMMUNE GOLD": "Pro Immune 5",
+  "PRO IMMUNE VEG": "Pro Immune 5",
   "HAIR FACT ALOPECIA AREATA": "Hair Fact Alopecia Areata",
 
   // ── Pattern hair loss (AGA) ──────────────────────────────────────────
-  MPHL: "Hair Fact MPHL",
-  "MPHL PLUS": "Hair Fact MPHL Plus",
-  FPHL: "Hair Fact FPHL",
-  "FPHL PLUS": "Hair Fact FPHL Plus",
+  MPHL: "MPHL Pro",
+  "MPHL PLUS": "MPHL Pro",
+  FPHL: "FPHL Pro",
+  "FPHL PLUS": "FPHL Pro",
 
   // ── Metabolic / endocrine ────────────────────────────────────────────
   "PRO FACT META B": "Pro Fact Meta B",

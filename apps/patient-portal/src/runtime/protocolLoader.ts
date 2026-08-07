@@ -1,5 +1,6 @@
-import { Question } from '@/types/questionnaire';
+import { Question, Concern } from '@/types/questionnaire';
 import { masterProtocol } from '@hairos/packages/ai-engine/questionnaire-engine/protocol/masterProtocol';
+import { skinAcneProtocol } from '@hairos/packages/ai-engine/questionnaire-engine/protocol/skinAcneProtocol';
 import { adaptProtocol } from './protocolAdapter';
 
 export type ProtocolSource = 'default' | 'fixture' | 'remote';
@@ -14,21 +15,40 @@ export interface ProtocolLoadResult {
 const PROTOCOL_VERSION = masterProtocol.schemaVersion ?? '1.0.0';
 
 /**
- * The canonical runtime protocol, adapted from the DrFACT master schema.
- * Computed once at module load — zero cost on repeated access.
+ * Per-concern adapted-protocol cache. Adapting is pure and idempotent, so a
+ * one-shot memoisation keyed by concern gives zero-cost repeat access without
+ * risking cross-request state.
  */
-let _defaultProtocol: Question[] | null = null;
+const _cache = new Map<Concern, Question[]>();
 
-function getAdaptedProtocol(): Question[] {
-  if (!_defaultProtocol) {
-    _defaultProtocol = adaptProtocol(masterProtocol);
+function adaptFor(concern: Concern): Question[] {
+  const cached = _cache.get(concern);
+  if (cached) return cached;
+
+  let questions: Question[];
+  switch (concern) {
+    case 'skin_acne':
+      questions = adaptProtocol(skinAcneProtocol);
+      break;
+    case 'skin_pigmentation':
+    case 'skin_anti_ageing':
+      // Not implemented yet — surface an explicit error rather than a silent
+      // fallback so accidental wiring doesn't send a hair questionnaire to a
+      // skin patient.
+      throw new Error(`Protocol for concern "${concern}" is not implemented yet`);
+    case 'hair':
+    default:
+      questions = adaptProtocol(masterProtocol);
+      break;
   }
-  return _defaultProtocol;
+  _cache.set(concern, questions);
+  return questions;
 }
 
 export function loadProtocol(
   source: ProtocolSource = 'default',
-  fixture?: Question[]
+  fixture?: Question[],
+  concern: Concern = 'hair'
 ): ProtocolLoadResult {
   switch (source) {
     case 'fixture':
@@ -40,7 +60,7 @@ export function loadProtocol(
     case 'default':
     default:
       return {
-        questions: getAdaptedProtocol(),
+        questions: adaptFor(concern),
         source: 'default',
         version: PROTOCOL_VERSION,
         loadedAt: Date.now(),
@@ -48,6 +68,12 @@ export function loadProtocol(
   }
 }
 
+/** Backwards-compatible: returns the hair protocol (the pre-skin default). */
 export function getDefaultProtocol(): Question[] {
-  return getAdaptedProtocol();
+  return adaptFor('hair');
+}
+
+/** Returns the runtime-adapted question set for a given concern. */
+export function getProtocolForConcern(concern: Concern): Question[] {
+  return adaptFor(concern);
 }

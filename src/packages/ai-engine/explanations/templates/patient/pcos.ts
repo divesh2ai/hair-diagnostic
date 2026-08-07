@@ -1,5 +1,5 @@
 import type { ClinicalTemplate } from '../types';
-import { v, c, cv } from '../_fragmentUtils';
+import { v, c, cv, vReq } from '../_fragmentUtils';
 
 export const PCOS_PATIENT_OPENING = [
   v(9,
@@ -39,10 +39,14 @@ export const PCOS_PATIENT_SEVERITY_SEVERE = [
 ];
 
 export const PCOS_PATIENT_TREATMENT = [
+  // Generic — no patient-symptom claim. Safe for any PCOS patient.
   v(9,
     'Your treatment directly targets the hormonal imbalances at the root of your PCOS hair concerns — reducing excess androgens, improving insulin sensitivity, and then supporting your follicles to recover.',
-    'The plan works in stages: first correcting the hormonal and insulin imbalances driving the thinning, then clearing any scalp inflammation, then supporting new hair growth.',
     'Because PCOS affects both hormones and metabolism, your treatment addresses both layers simultaneously — which is what gives it the most complete and lasting result.'
+  ),
+  // "Clearing any scalp inflammation" — only valid when patient reported it.
+  vReq(['scalp.anyNonNormal'], 9,
+    'The plan works in stages: first correcting the hormonal and insulin imbalances driving the thinning, then clearing any scalp inflammation, then supporting new hair growth.',
   ),
   c('hasActiveShedding', 'Your plan also addresses the active shedding alongside the hormonal work, so you should notice the daily shed reducing within the first few weeks.', 7),
 ];

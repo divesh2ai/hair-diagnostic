@@ -1,3 +1,4 @@
+import { signReviewToken } from "@/lib/reviewToken";
 import { DoctorReviewClient } from "./DoctorReviewClient";
 
 // Doctor review workspace. Until 2026-06-26 this route just redirected to
@@ -11,5 +12,9 @@ export default async function DoctorReportDetailPage({
   params: Promise<{ assessmentId: string }>;
 }) {
   const { assessmentId } = await params;
-  return <DoctorReviewClient assessmentId={assessmentId} />;
+  // Server-minted signed token so the shared patient link resolves with full
+  // artifact access on /assessment/[id]/report (anonymous callers only get
+  // presence flags).
+  const shareToken = signReviewToken(assessmentId);
+  return <DoctorReviewClient assessmentId={assessmentId} shareToken={shareToken} />;
 }

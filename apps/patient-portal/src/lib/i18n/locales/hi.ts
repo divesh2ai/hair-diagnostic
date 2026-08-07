@@ -45,6 +45,8 @@ export const hi: Dictionary = {
     clinicProfile: "क्लीनिक प्रोफ़ाइल",
     branding: "ब्रांडिंग",
     whatsapp: "व्हाट्सऐप",
+    orders: "किट ऑर्डर",
+    leads: "लीड्स",
   },
   shell: {
     searchPlaceholder: "रोगी, रिपोर्ट, क्लीनिक खोजें…",

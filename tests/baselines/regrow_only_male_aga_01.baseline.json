@@ -1,0 +1,50 @@
+{
+  "fixtureId": "regrow_only_male_aga_01",
+  "generatedAt": "2026-07-03T07:14:18.099Z",
+  "pipelineVersion": "1.0.0",
+  "primaryDiagnosis": "AGA_MALE_123",
+  "scalpStates": [
+    "NORMAL_SCALP"
+  ],
+  "rootCauses": [
+    "GENETICS"
+  ],
+  "therapyNeeds": [],
+  "severity": "MODERATE",
+  "rankedKitIds": [
+    "PHENOTYPE INFLAMATION",
+    "PRO IMMUNE GOLD",
+    "MPHL"
+  ],
+  "appliedRules": [],
+  "protocolLabel": "Recovery protocol for 3 condition(s): Male pattern hair loss · Scalp / perifollicular inflammation · Immune depletion / regrowth support.",
+  "recommendations": [
+    "PHENOTYPE INFLAMATION",
+    "PRO IMMUNE GOLD",
+    "MPHL"
+  ],
+  "narratives": {
+    "narratives": {
+      "doctorHash": "{\"doctorSummary\":\"Moderate Androgenetic alopecia — male pattern,",
+      "patientHash": "{\"doctorSummary\":\"Moderate Androgenetic alopecia — male pattern,"
+    },
+    "orchestration": {
+      "pipelineVersion": "1.0.0",
+      "executionId": "4f6f84af-2b6a-4436-97f4-20c29df8d8b2",
+      "startedAt": "2026-07-03T07:14:18.099Z",
+      "completedAt": "2026-07-03T07:14:18.099Z",
+      "durationMs": 0,
+      "completedStages": [
+        "questionnaire",
+        "clinical",
+        "therapy",
+        "recommendations",
+        "narratives"
+      ]
+    }
+  },
+  "reportMetadata": {
+    "generatedBy": "generate-baselines.ts",
+    "version": "1.0.0"
+  }
+}

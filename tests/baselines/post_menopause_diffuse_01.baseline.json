@@ -1,0 +1,50 @@
+{
+  "fixtureId": "post_menopause_diffuse_01",
+  "generatedAt": "2026-07-03T07:14:18.080Z",
+  "pipelineVersion": "1.0.0",
+  "primaryDiagnosis": "POST_MENOPAUSE",
+  "scalpStates": [
+    "NORMAL_SCALP"
+  ],
+  "rootCauses": [
+    "HORMONAL_SHIFT"
+  ],
+  "therapyNeeds": [],
+  "severity": "MILD",
+  "rankedKitIds": [
+    "PHENOTYPE INFLAMATION",
+    "PRO FACT META B POSTMENOPAUSE",
+    "FPHL"
+  ],
+  "appliedRules": [],
+  "protocolLabel": "Recovery protocol for 3 condition(s): Female pattern hair loss · Scalp / perifollicular inflammation · Post-menopause.",
+  "recommendations": [
+    "PHENOTYPE INFLAMATION",
+    "PRO FACT META B POSTMENOPAUSE",
+    "FPHL"
+  ],
+  "narratives": {
+    "narratives": {
+      "doctorHash": "{\"doctorSummary\":\"Mild Post-menopausal androgenic alopecia with ",
+      "patientHash": "{\"doctorSummary\":\"Mild Post-menopausal androgenic alopecia with "
+    },
+    "orchestration": {
+      "pipelineVersion": "1.0.0",
+      "executionId": "0abb30aa-8815-40c3-a7de-b1a9a0a33b3d",
+      "startedAt": "2026-07-03T07:14:18.080Z",
+      "completedAt": "2026-07-03T07:14:18.081Z",
+      "durationMs": 1,
+      "completedStages": [
+        "questionnaire",
+        "clinical",
+        "therapy",
+        "recommendations",
+        "narratives"
+      ]
+    }
+  },
+  "reportMetadata": {
+    "generatedBy": "generate-baselines.ts",
+    "version": "1.0.0"
+  }
+}

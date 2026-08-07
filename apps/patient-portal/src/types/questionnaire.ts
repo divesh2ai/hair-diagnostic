@@ -6,7 +6,23 @@ export type QuestionCategory =
   | 'nutrition'
   | 'lifestyle'
   | 'hormonal'
-  | 'medical';
+  | 'medical'
+  | 'skin_about_you'
+  | 'skin_acne_lesions'
+  | 'skin_acne_triggers'
+  | 'skin_previous_treatment'
+  | 'skin_safety_uploads';
+
+/**
+ * Top-level assessment concern. Selects which protocol the runtime loads.
+ * Only `skin_acne` is implemented; the two other skin branches ship disabled
+ * on the concern picker and are placeholders here for exhaustive switches.
+ */
+export type Concern =
+  | 'hair'
+  | 'skin_acne'
+  | 'skin_pigmentation'
+  | 'skin_anti_ageing';
 
 export type QuestionType =
   | 'single_select'
@@ -160,6 +176,10 @@ export interface ProgressState {
 }
 
 export interface AssessmentState {
+  // Which top-level concern this session is answering.
+  // Drives protocol selection and downstream doctor-queue tagging.
+  concern: Concern;
+
   // Protocol
   protocol: Question[] | null;
 
@@ -198,6 +218,9 @@ export interface AssessmentState {
 
   // Protocol management
   loadProtocol: (questions: Question[]) => void;
+
+  // Switch the active concern (also swaps the loaded protocol).
+  setConcern: (concern: Concern, questions: Question[]) => void;
 
   // Answer management
   setAnswer: (questionId: string, answer: any) => void;

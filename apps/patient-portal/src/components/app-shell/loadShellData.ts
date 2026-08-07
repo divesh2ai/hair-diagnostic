@@ -3,7 +3,8 @@ import {
   getClinicContext,
   UnauthorizedError,
 } from "@/lib/auth";
-import { loadClinicBranding, PLATFORM_BRANDING } from "@/lib/branding";
+import { loadClinicBranding } from "@/lib/branding/loadBranding";
+import { PLATFORM_BRANDING } from "@/lib/branding";
 import { readServerLocale } from "@/lib/i18n/server";
 import { navForRole, type NavSection } from "@/lib/navigation";
 import { createSupabaseServerClient } from "@/lib/supabase/server";

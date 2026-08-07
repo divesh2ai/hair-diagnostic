@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
-import { AssessmentState, Question, ProgressState } from '@/types/questionnaire';
-import { getDefaultProtocol } from '@/runtime/protocolLoader';
+import { AssessmentState, Concern, Question, ProgressState } from '@/types/questionnaire';
+import { getDefaultProtocol, getProtocolForConcern } from '@/runtime/protocolLoader';
 import { getVisibleQuestionIds } from '@/runtime/visibilityEngine';
 import { getSkippedQuestionIds } from '@/runtime/skipEngine';
 import { resolveNextStep, resolvePrevStep, buildBranchingPath } from '@/runtime/stepResolver';
@@ -33,9 +33,34 @@ function computeDerivedState(
   };
 }
 
+export function resolvePersistedAssessmentSession(state: {
+  concern?: Concern;
+  answers?: Record<string, any>;
+  currentStepIndex?: number;
+}) {
+  const concern = state.concern ?? 'hair';
+  let protocol: Question[];
+  try {
+    protocol = getProtocolForConcern(concern);
+  } catch {
+    protocol = defaultProtocol;
+  }
+  const persistedIndex = state.currentStepIndex ?? 0;
+  const safeIndex =
+    persistedIndex >= 0 && persistedIndex < protocol.length ? persistedIndex : 0;
+  const answers = state.answers ?? {};
+  return {
+    concern,
+    protocol,
+    answers,
+    currentStepIndex: safeIndex,
+    ...computeDerivedState(protocol, answers, safeIndex),
+  };
+}
 export const useAssessmentStore = create<AssessmentState>()(
   persist(
     (set, get) => ({
+      concern: 'hair',
       protocol: defaultProtocol,
       currentStepIndex: 0,
       answers: {},
@@ -52,6 +77,20 @@ export const useAssessmentStore = create<AssessmentState>()(
       loadProtocol: (questions) => {
         const derived = computeDerivedState(questions, get().answers, 0);
         set({ protocol: questions, currentStepIndex: 0, answers: {}, ...derived });
+      },
+
+      setConcern: (concern, questions) => {
+        // Switching concern wipes prior answers — the two protocols share no
+        // question IDs, so keeping stale answers would break visibility rules
+        // and dump orphan keys into the submit payload.
+        const derived = computeDerivedState(questions, {}, 0);
+        set({
+          concern,
+          protocol: questions,
+          answers: {},
+          currentStepIndex: 0,
+          ...derived,
+        });
       },
 
       setAnswer: (questionId, answer) => {
@@ -120,18 +159,14 @@ export const useAssessmentStore = create<AssessmentState>()(
       name: 'drfact-assessment-storage',
       storage: createJSONStorage(() => localStorage),
       partialize: (state) => ({
+        concern: state.concern,
         answers: state.answers,
         currentStepIndex: state.currentStepIndex,
         clinicData: state.clinicData,
       }),
       onRehydrateStorage: () => (state) => {
         if (!state) return;
-        const protocol = defaultProtocol;
-        const persistedIndex = state.currentStepIndex ?? 0;
-        const safeIndex =
-          persistedIndex >= 0 && persistedIndex < protocol.length ? persistedIndex : 0;
-        const derived = computeDerivedState(protocol, state.answers ?? {}, safeIndex);
-        Object.assign(state, { protocol, currentStepIndex: safeIndex, ...derived });
+        Object.assign(state, resolvePersistedAssessmentSession(state));
       },
     }
   )

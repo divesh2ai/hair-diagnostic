@@ -1,0 +1,9 @@
+{
+  "productType": "SKIN_FACT",
+  "concernType": "ANTI_AGEING",
+  "protocolId": "skin-anti-ageing-follow-up",
+  "protocolVersion": "0.1.0",
+  "status": "INACTIVE",
+  "description": "Reserved follow-up protocol. It is intentionally not registered or reachable in the current patient journey.",
+  "questions": []
+}

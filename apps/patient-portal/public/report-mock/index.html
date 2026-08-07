@@ -1,0 +1,379 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>DR. FACT — Erica — Hair Health Assessment</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,300;9..144,400;9..144,500;9..144,600&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --paper:#FAF7EF; --card:#FFFFFF; --panel:#F4EFE2;
+    --ink:#182720; --muted:#5D6E62; --faint:#8A9A8E;
+    --emerald:#0C1B12; --emerald-2:#12291C;
+    --gold:#B9985A; --gold-deep:#9C7F45; --gold-soft:#E7D5A7; --gold-tint:#F6EFDD;
+    --line:rgba(23,54,38,.14); --gold-line:rgba(185,152,90,.38);
+    --rust:#A5533A; --good:#2F6B4F;
+  }
+  *{margin:0;padding:0;box-sizing:border-box}
+  html,body{background:#e8e4d8}
+  body{font-family:'Plus Jakarta Sans',sans-serif;color:var(--ink);-webkit-font-smoothing:antialiased}
+  .sheet{width:794px;height:1123px;margin:0 auto;background:var(--paper);display:flex;flex-direction:column;overflow:hidden}
+  .serif{font-family:'Fraunces',serif}
+  .caps{text-transform:uppercase;letter-spacing:.14em}
+
+  /* ── header band ── */
+  .hd{background:var(--emerald);color:#F2EEE3;display:flex;align-items:center;justify-content:space-between;
+      padding:0 26px;height:58px;border-bottom:2px solid var(--gold)}
+  .hd-lockup .serif{font-size:19px;font-weight:600;letter-spacing:.12em;color:#F4EFE2}
+  .hd-lockup small{display:block;font-size:6.5px;letter-spacing:.34em;color:var(--gold-soft);margin-top:1px}
+  .hd-title{text-align:center}
+  .hd-title h1{font-size:13.5px;font-weight:700;letter-spacing:.18em;color:#F2EEE3}
+  .hd-title p{font-size:7.5px;letter-spacing:.22em;color:rgba(231,213,167,.75);margin-top:3px}
+  .hd-right{display:flex;align-items:center;gap:12px}
+  .seal{display:flex;align-items:center;gap:7px;border:1px solid var(--gold);border-radius:999px;padding:5px 12px}
+  .seal i{width:14px;height:14px;border-radius:50%;background:var(--gold);display:flex;align-items:center;justify-content:center}
+  .seal i svg{width:8px;height:8px;stroke:#0C1B12;stroke-width:3;fill:none}
+  .seal span{font-size:7px;letter-spacing:.16em;color:var(--gold-soft);font-weight:700;line-height:1.5}
+  .hd-meta{font-size:7px;color:rgba(242,238,227,.55);text-align:right;line-height:1.7;letter-spacing:.08em}
+
+  /* ── row A: patient / summary / contributors ── */
+  .rowA{display:grid;grid-template-columns:196px 1fr 214px;gap:10px;padding:9px 22px 0}
+  .blk{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:10px 12px}
+  .blk-label{font-size:6.8px;font-weight:700;letter-spacing:.2em;color:var(--gold-deep);text-transform:uppercase;
+             display:flex;align-items:center;gap:6px;margin-bottom:8px}
+  .blk-label::after{content:"";flex:1;height:1px;background:var(--gold-line)}
+  .patient{display:flex;flex-direction:column}
+  .patient-top{display:flex;align-items:center;gap:10px;margin-bottom:8px}
+  .patient-top img{width:52px;height:52px;border-radius:50%;object-fit:cover;border:1.5px solid var(--gold-soft)}
+  .patient-top .serif{font-size:21px;font-weight:500}
+  .patient-top small{display:block;font-size:8.5px;color:var(--muted);margin-top:1px}
+  .patient dl{font-size:8px;line-height:1.5}
+  .patient dl div{display:flex;justify-content:space-between;padding:2.8px 0;border-top:1px dashed var(--line)}
+  .patient dt{color:var(--faint);letter-spacing:.06em;text-transform:uppercase;font-size:6.8px;padding-top:1px}
+  .patient dd{font-weight:600;text-align:right}
+  .summary p.pattern{font-family:'Fraunces',serif;font-size:13px;font-weight:500;margin-bottom:6px}
+  .summary p.pattern b{color:var(--gold-deep);font-weight:600}
+  .summary .act{font-size:8.6px;color:var(--muted);line-height:1.55;margin-bottom:7px}
+  .summary .act b{color:var(--ink);font-weight:700}
+  .concl{background:var(--gold-tint);border-left:2px solid var(--gold);border-radius:0 7px 7px 0;padding:6px 9px}
+  .concl span{font-size:6.5px;font-weight:700;letter-spacing:.18em;color:var(--gold-deep);text-transform:uppercase}
+  .concl p{font-size:8.6px;line-height:1.5;margin-top:3px}
+  .contrib ul{list-style:none}
+  .contrib li{display:flex;align-items:center;gap:8px;font-size:8.2px;font-weight:600;padding:3px 0;border-top:1px dashed var(--line)}
+  .contrib li:first-child{border-top:none}
+  .dot-ic{width:15px;height:15px;border-radius:50%;background:var(--gold-tint);border:1px solid var(--gold-line);
+          display:flex;align-items:center;justify-content:center;flex-shrink:0}
+  .dot-ic svg{width:9px;height:9px;stroke:var(--gold-deep);stroke-width:1.7;fill:none;stroke-linecap:round;stroke-linejoin:round}
+
+  /* ── snapshot ── */
+  .snapwrap{padding:8px 22px 0}
+  .sec-title{display:flex;align-items:center;gap:10px;margin-bottom:6px}
+  .sec-title h2{font-family:'Fraunces',serif;font-size:12.5px;font-weight:600;letter-spacing:.02em;white-space:nowrap}
+  .sec-title::before,.sec-title::after{content:"";flex:1;height:1px;background:var(--gold-line)}
+  .snap{display:grid;grid-template-columns:repeat(6,1fr);gap:8px}
+  .snap article{background:var(--card);border:1px solid var(--line);border-radius:9px;padding:7px 8px;text-align:center}
+  .snap span{font-size:6.4px;font-weight:700;letter-spacing:.16em;color:var(--faint);text-transform:uppercase;display:block}
+  .snap .simg{width:100%;height:38px;object-fit:cover;border-radius:7px;margin:4px 0;border:1px solid var(--line)}
+  .snap strong{font-size:8.6px;font-weight:700;line-height:1.35;display:block}
+
+  /* ── ludwig band ── */
+  .ludwig{margin:6px 22px 0;background:var(--emerald);border-radius:10px;color:#EFEAE0;
+          display:flex;align-items:center;gap:16px;padding:8px 16px}
+  .ludwig .lab{font-size:6.8px;font-weight:700;letter-spacing:.2em;color:var(--gold-soft);text-transform:uppercase;line-height:1.6;white-space:nowrap}
+  .ludwig .lab b{display:block;font-family:'Fraunces',serif;font-size:12px;font-weight:500;letter-spacing:.02em;color:#F4EFE2;text-transform:none}
+  .stages{flex:1;display:flex;align-items:center;gap:6px}
+  .stage{flex:1;position:relative;text-align:center;padding:4px 0 3px;border-radius:7px;border:1px solid rgba(231,213,167,.22)}
+  .stage em{display:block;font-style:normal;font-size:6.2px;letter-spacing:.14em;color:rgba(239,234,224,.6);text-transform:uppercase}
+  .stage .dots{display:flex;justify-content:center;gap:2.5px;margin-top:3px}
+  .stage .dots i{width:4px;height:4px;border-radius:50%;background:rgba(231,213,167,.35)}
+  .stage.s2 .dots i:nth-child(-n+2){background:rgba(231,213,167,.35)}
+  .stage.active{background:var(--gold);border-color:var(--gold)}
+  .stage.active em{color:#0C1B12;font-weight:700}
+  .stage.active .dots i{background:rgba(12,27,18,.75)}
+  .goalchip{display:flex;align-items:center;gap:8px;border:1px solid var(--gold);border-radius:8px;padding:6px 11px}
+  .goalchip svg{width:13px;height:13px;stroke:var(--gold-soft);stroke-width:1.7;fill:none}
+  .goalchip span{font-size:7.6px;line-height:1.45;color:var(--gold-soft);font-weight:600;max-width:150px}
+
+  /* ── mapping table ── */
+  .mapwrap{padding:8px 22px 0}
+  .thead{display:grid;grid-template-columns:218px 128px 176px 1fr;gap:10px;padding:6px 12px;
+         background:var(--emerald);border-radius:8px 8px 0 0}
+  .thead span{font-size:6.6px;font-weight:700;letter-spacing:.18em;color:var(--gold-soft);text-transform:uppercase}
+  .trow{display:grid;grid-template-columns:218px 128px 176px 1fr;gap:10px;padding:4px 12px;align-items:center;
+        background:var(--card);border:1px solid var(--line);border-top:none}
+  .trow:nth-child(odd){background:#FDFBF5}
+  .trow:last-child{border-radius:0 0 8px 8px}
+  .drv{display:flex;gap:9px;align-items:center}
+  .drv .thumb{width:54px;height:54px;border-radius:9px;border:1px solid var(--line);object-fit:cover;flex-shrink:0;background:#fff}
+  .drv .role{flex-shrink:0;width:52px}
+  .drv .role i{display:block;width:7px;height:7px;border-radius:50%;margin-bottom:4px}
+  .drv .role span{font-size:6px;font-weight:700;letter-spacing:.1em;color:var(--faint);text-transform:uppercase;line-height:1.5}
+  .r-primary i{background:var(--good)} .r-secondary i{background:var(--gold)} .r-contrib i{background:var(--rust)}
+  .drv .body strong{font-size:9.6px;font-weight:700;display:block}
+  .drv .body p{font-size:7.6px;color:var(--muted);line-height:1.45;margin-top:2.5px}
+  .kit{display:flex;flex-direction:column;align-items:center;gap:4px;text-align:center}
+  .kit .shot{width:64px;height:46px;background:#fff;border:1px solid var(--line);border-radius:7px;
+             display:flex;align-items:center;justify-content:center;box-shadow:0 2px 6px rgba(23,54,38,.08)}
+  .kit img{max-width:56px;max-height:40px;object-fit:contain}
+  .kit b{font-size:7.4px;font-weight:700;letter-spacing:.1em;color:var(--gold-deep);text-transform:uppercase}
+  .sig{display:flex;flex-wrap:wrap;gap:4px;align-content:center}
+  .sig span{font-size:7px;font-weight:600;border:1px solid var(--gold-line);background:var(--gold-tint);
+            color:var(--ink);border-radius:999px;padding:2.5px 7px}
+  .ben ul{list-style:none}
+  .ben li{position:relative;font-size:7.6px;color:var(--ink);line-height:1.5;padding-left:11px}
+  .ben li::before{content:"";position:absolute;left:0;top:5px;width:5px;height:5px;border-radius:50%;
+                  background:var(--gold);opacity:.85}
+
+  /* ── lower grid ── */
+  .lower{display:grid;grid-template-columns:1fr 1.25fr 1fr;gap:10px;padding:7px 22px 0;flex:1;min-height:0}
+  .panel{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:9px 12px;display:flex;flex-direction:column;min-height:0}
+  .panel-h{font-size:7px;font-weight:700;letter-spacing:.2em;color:var(--gold-deep);text-transform:uppercase;
+           padding-bottom:6px;margin-bottom:7px;border-bottom:1px solid var(--gold-line);display:flex;align-items:center;justify-content:space-between}
+  .top-item{display:flex;gap:9px;align-items:flex-start;padding:4.5px 0}
+  .top-item + .top-item{border-top:1px dashed var(--line)}
+  .top-item .shot{width:32px;height:40px;flex-shrink:0;background:#fff;border:1px solid var(--line);border-radius:6px;
+                  display:flex;align-items:center;justify-content:center}
+  .top-item img{max-width:28px;max-height:38px;object-fit:contain}
+  .top-item strong{font-size:8.4px;font-weight:700;display:block}
+  .top-item p{font-size:7.2px;color:var(--muted);line-height:1.45;margin-top:1.5px}
+  .top-item span{font-size:7px;color:var(--ink);display:block;margin-top:2px}
+  .top-item span b{color:var(--gold-deep)}
+  .warn{margin-top:auto;background:var(--gold-tint);border-radius:6px;padding:6px 9px;font-size:6.8px;line-height:1.5;color:var(--gold-deep);font-weight:600}
+
+  .tl{display:grid;grid-template-columns:1fr 1fr;gap:9px 12px;flex:1;align-content:start}
+  .tl-step{position:relative;padding:0 0 0 21px}
+  .tl-step i{position:absolute;left:0;top:0;width:15px;height:15px;border-radius:50%;background:var(--gold);
+             color:#0C1B12;font-size:7.5px;font-weight:800;font-style:normal;display:flex;align-items:center;justify-content:center}
+  .tl-step em{font-style:normal;font-size:6.6px;font-weight:700;letter-spacing:.16em;color:var(--gold-deep);text-transform:uppercase}
+  .tl-step strong{display:block;font-size:8.8px;font-weight:700;margin:1px 0 2px}
+  .tl-step p{font-size:7.3px;color:var(--muted);line-height:1.45}
+
+  .life{display:grid;grid-template-columns:1fr;gap:0;font-size:7.4px}
+  .life h4{font-size:6.6px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;margin:5px 0 4px}
+  .life h4.g{color:var(--good)} .life h4.r{color:var(--rust)}
+  .life span{display:flex;align-items:center;gap:6px;padding:1.5px 0;color:var(--ink);font-weight:500}
+  .life svg{width:8px;height:8px;flex-shrink:0;stroke-width:2.6;fill:none;stroke-linecap:round}
+  .life .ok svg{stroke:var(--good)} .life .no svg{stroke:var(--rust)}
+  .qr-row{margin-top:auto;display:flex;align-items:center;gap:9px;border-top:1px dashed var(--line);padding-top:6px}
+  .qr-box{width:40px;height:40px;background:#fff;border:1px solid var(--line);border-radius:6px;padding:4px}
+  .qr-box svg{width:100%;height:100%}
+  .qr-row p{font-size:7px;color:var(--muted);line-height:1.5}
+
+  /* ── footer ── */
+  .ft{margin-top:8px;background:var(--emerald);color:#EFEAE0;display:grid;
+      grid-template-columns:230px 150px 1fr 128px;gap:14px;align-items:center;padding:8px 26px;min-height:56px;
+      border-top:2px solid var(--gold)}
+  .ft small{display:block;font-size:6.2px;letter-spacing:.2em;color:var(--gold-soft);text-transform:uppercase;font-weight:700}
+  .ft .who .serif{font-size:13px;font-weight:500;margin-top:2px}
+  .ft .who p{font-size:7px;color:rgba(239,234,224,.6);margin-top:1px}
+  .ft .who .sig{margin-top:2px;width:120px;border-bottom:1px solid rgba(231,213,167,.5);height:9px;
+                font-family:'Fraunces',serif;font-style:italic;font-size:9px;color:var(--gold-soft)}
+  .ft .next b{display:block;font-size:11px;font-weight:700;margin-top:2px}
+  .ft .next p{font-size:6.6px;color:rgba(239,234,224,.6);margin-top:1px}
+  .ft .disc{font-size:6.4px;line-height:1.55;color:rgba(239,234,224,.62)}
+  .ft .approve{display:flex;align-items:center;gap:8px;border:1px solid var(--gold);border-radius:9px;padding:8px 11px;justify-self:end}
+  .ft .approve i{width:20px;height:20px;border-radius:50%;background:var(--gold);display:flex;align-items:center;justify-content:center}
+  .ft .approve i svg{width:11px;height:11px;stroke:#0C1B12;stroke-width:2.6;fill:none;stroke-linecap:round;stroke-linejoin:round}
+  .ft .approve span{font-size:7px;font-weight:800;letter-spacing:.14em;color:var(--gold-soft);line-height:1.5}
+</style>
+</head>
+<body>
+<div class="sheet" id="sheet">
+
+  <!-- HEADER -->
+  <header class="hd">
+    <div class="hd-lockup">
+      <span class="serif">DR. FACT</span>
+      <small>AI HAIR HEALTH DIAGNOSTIC</small>
+    </div>
+    <div class="hd-title">
+      <h1 class="caps">Hair Health Assessment</h1>
+      <p class="caps">Clinical Intelligence &nbsp;•&nbsp; Hair Biology &nbsp;•&nbsp; Treatment Planning</p>
+    </div>
+    <div class="hd-right">
+      <div class="seal"><i><svg viewBox="0 0 24 24"><path d="M4 12l5 5L20 6"/></svg></i><span>DOCTOR<br>REVIEWED</span></div>
+      <div class="hd-meta">VERSION 2<br>PAGE 1 OF 1</div>
+    </div>
+  </header>
+
+  <!-- ROW A -->
+  <section class="rowA">
+    <div class="blk patient">
+      <div class="blk-label">Patient</div>
+      <div class="patient-top">
+        <img src="/report-assets/patient/female-fallback-premium.png" alt="Erica">
+        <div><span class="serif">Erica</span><small>34 &nbsp;•&nbsp; Female</small></div>
+      </div>
+      <dl>
+        <div><dt>Assessment</dt><dd>07 Jul 2026</dd></div>
+        <div><dt>Doctor</dt><dd>Divesh (Test Doctor)</dd></div>
+        <div><dt>Clinic</dt><dd>DrFACT Mumbai</dd></div>
+      </dl>
+    </div>
+
+    <div class="blk summary">
+      <div class="blk-label">Clinical Summary</div>
+      <p class="pattern">Female Pattern Hair Loss — <b>Ludwig Grade 2</b></p>
+      <p class="act"><b>Current activity:</b> Noticeable shedding for 6–12 months, approximately 50–100 strands daily.</p>
+      <div class="concl">
+        <span>Clinical conclusion</span>
+        <p>Erica's hair loss appears to be driven by a combination of pattern sensitivity, iron depletion, scalp inflammation, stress and metabolic factors. The treatment plan addresses these conditions together.</p>
+      </div>
+    </div>
+
+    <div class="blk contrib">
+      <div class="blk-label">Main Active Contributors</div>
+      <ul>
+        <li><span class="dot-ic"><svg viewBox="0 0 24 24"><path d="M12 3c4 5 6 8 6 11a6 6 0 0 1-12 0c0-3 2-6 6-11Z"/></svg></span>Chronic iron loss (heavy bleeding)</li>
+        <li><span class="dot-ic"><svg viewBox="0 0 24 24"><path d="M4 15c4-6 12-6 16 0"/><path d="M8 15c1 3 7 3 8 0"/><path d="M12 9V4"/></svg></span>Scalp inflammation &amp; dandruff</li>
+        <li><span class="dot-ic"><svg viewBox="0 0 24 24"><path d="M6 4c4 2 4 6 0 8c4 2 4 6 0 8M18 4c-4 2-4 6 0 8c-4 2-4 6 0 8"/></svg></span>Genetic androgen sensitivity</li>
+        <li><span class="dot-ic"><svg viewBox="0 0 24 24"><path d="M5 14c2-6 12-6 14 0"/><path d="M7 8c2-3 5-3 6 0M14 7c2-2 4-1 5 1"/></svg></span>Stress-associated shedding</li>
+        <li><span class="dot-ic"><svg viewBox="0 0 24 24"><circle cx="12" cy="13" r="7"/><path d="M12 13l4-4"/></svg></span>Metabolic dysfunction / prediabetes</li>
+        <li><span class="dot-ic"><svg viewBox="0 0 24 24"><path d="M12 4c5 3 7 8 6 14c-4 1.5-8 1.5-12 0C5 12 7 7 12 4Z"/><path d="M12 4v14"/></svg></span>Vegetarian nutritional risk</li>
+      </ul>
+    </div>
+  </section>
+
+  <!-- SNAPSHOT -->
+  <section class="snapwrap">
+    <div class="sec-title"><h2>Your Clinical Snapshot</h2></div>
+    <div class="snap">
+      <article><span>Duration</span><img class="simg" src="/report-assets/snapshot/duration-months.png" alt="Duration illustration"><strong>6–12 months</strong></article>
+      <article><span>Shedding</span><img class="simg" src="/report-assets/conditions/stress-shedding-premium.png" alt="Shedding illustration"><strong>50–100 strands / day</strong></article>
+      <article><span>Pattern</span><img class="simg" src="/report-assets/conditions/female-pattern-premium.png" alt="Pattern illustration"><strong>Ludwig Grade 2</strong></article>
+      <article><span>Scalp</span><img class="simg" src="/report-assets/conditions/scalp-inflammation-premium.png" alt="Scalp illustration"><strong>Dandruff, itching &amp; dry scalp</strong></article>
+      <article><span>Metabolic</span><img class="simg" src="/report-assets/conditions/metabolic-dysfunction-premium.png" alt="Metabolic illustration"><strong>Pre-diabetes</strong></article>
+      <article><span>Diet</span><img class="simg" src="/report-assets/conditions/nutritional-risk-premium.png" alt="Diet illustration"><strong>Vegetarian</strong></article>
+    </div>
+  </section>
+
+  <!-- MAPPING TABLE -->
+  <section class="mapwrap">
+    <div class="sec-title"><h2>Hair Loss Drivers &amp; Treatment Mapping</h2></div>
+    <div class="thead"><span>Driver (Condition)</span><span>Selected Kit</span><span>Your Assessment Signals</span><span>How This Kit Helps</span></div>
+
+    <div class="trow">
+      <div class="drv"><img class="thumb" src="/report-assets/conditions/chronic-iron-loss-premium.png" alt="Chronic Iron Loss illustration">
+        <div class="body"><strong>Chronic Iron Loss</strong><p>Heavy menstrual bleeding depletes iron &amp; ferritin, reducing oxygen delivery to follicles.</p></div></div>
+      <div class="kit"><div class="shot"><img src="/product-assets/kits/pro_fact_iron_up.png" alt="Iron Up Gold"></div><b>Iron Up Gold</b></div>
+      <div class="sig"><span>Heavy bleeding</span><span>Chronic iron loss</span><span>Iron deficiency risk</span></div>
+      <div class="ben"><ul><li>Restores iron reserves &amp; bioavailability</li><li>Supports haemoglobin &amp; oxygen delivery</li><li>Supports iron-dependent hair processes</li></ul></div>
+    </div>
+
+    <div class="trow">
+      <div class="drv"><img class="thumb" src="/report-assets/conditions/scalp-inflammation-premium.png" alt="Scalp Inflammation illustration">
+        <div class="body"><strong>Scalp Inflammation</strong><p>Dandruff, itching and flaking point to an inflamed scalp interfering with follicle signalling.</p></div></div>
+      <div class="kit"><div class="shot"><img src="/product-assets/kits/phenotype_inflamation.png" alt="Phenotype Inflammation"></div><b>Phenotype Inflammation</b></div>
+      <div class="sig"><span>Scalp inflammation</span><span>Dandruff &amp; itching</span><span>Oxidative stress</span></div>
+      <div class="ben"><ul><li>Reduces inflammatory stress on follicles</li><li>Supports immune balance &amp; scalp comfort</li><li>Improves the follicular environment</li></ul></div>
+    </div>
+
+    <div class="trow">
+      <div class="drv"><img class="thumb" src="/report-assets/conditions/metabolic-dysfunction-premium.png" alt="Metabolic Dysfunction illustration">
+        <div class="body"><strong>Metabolic Dysfunction</strong><p>Prediabetes &amp; weight factors can slow follicle recovery through insulin resistance.</p></div></div>
+      <div class="kit"><div class="shot"><img src="/product-assets/kits/pro_fact_meta_b.png" alt="Pro Fact Meta B"></div><b>Pro Fact Meta-B</b></div>
+      <div class="sig"><span>Pre-diabetes</span><span>Weight concern</span><span>Metabolic dysfunction</span></div>
+      <div class="ben"><ul><li>Supports insulin sensitivity</li><li>Improves metabolic &amp; mitochondrial function</li><li>Supports endocrine balance</li></ul></div>
+    </div>
+
+    <div class="trow">
+      <div class="drv"><img class="thumb" src="/report-assets/conditions/stress-shedding-premium.png" alt="Stress-Associated Shedding illustration">
+        <div class="body"><strong>Stress-Associated Shedding</strong><p>Sustained stress and cortisol signalling can push more follicles into the shedding phase.</p></div></div>
+      <div class="kit"><div class="shot"><img src="/product-assets/kits/pro_immune_gold.png" alt="Pro Immune Gold"></div><b>Pro Immune Gold</b></div>
+      <div class="sig"><span>Stress shedding</span><span>Follicular recovery</span><span>Immune imbalance</span></div>
+      <div class="ben"><ul><li>Immune balance &amp; cytokine modulation</li><li>Protects follicles under stress load</li><li>Supports nutrient utilisation</li></ul></div>
+    </div>
+
+    <div class="trow">
+      <div class="drv"><img class="thumb" src="/report-assets/conditions/female-pattern-premium.png" alt="Genetic Pattern Sensitivity illustration">
+        <div class="body"><strong>Genetic Pattern Sensitivity</strong><p>Family history and the Ludwig 2 pattern suggest androgen-sensitive miniaturisation.</p></div></div>
+      <div class="kit"><div class="shot"><img src="/product-assets/kits/fphl_v1.png" alt="FPHL Pro"></div><b>FPHL Pro</b></div>
+      <div class="sig"><span>Female pattern (FPHL)</span><span>Ludwig Grade 2</span><span>Family history</span></div>
+      <div class="ben"><ul><li>Reduces DHT impact on follicles</li><li>Supports stronger, thicker regrowth</li><li>Improves overall hair quality</li></ul></div>
+    </div>
+  </section>
+
+  <!-- LOWER GRID -->
+  <section class="lower">
+    <div class="panel">
+      <div class="panel-h">Topical &amp; Scalp Care Plan</div>
+      <div class="top-item">
+        <div class="shot"><img src="/product-assets/kits/f_emugrow_mc_r_d.png" alt="F-Emugrow"></div>
+        <div><strong>F-Emugrow MC-R-D</strong><p>Pattern thinning support for dandruff-prone scalp.</p><span><b>Use:</b> once daily. Massage gently, do not rinse.</span></div>
+      </div>
+      <div class="top-item">
+        <div class="shot"><img src="/product-assets/kits/f_biwashplus.png" alt="F-Biwash+"></div>
+        <div><strong>F-Biwash+ Shampoo</strong><p>Anti-dandruff cleansing &amp; scalp hygiene.</p><span><b>Use:</b> 2–3× weekly, rinse after 3–5 minutes.</span></div>
+      </div>
+      <div class="top-item">
+        <div class="shot"><img src="/product-assets/kits/f_trichosilk_dandfwt.png" alt="F-Trichosilk"></div>
+        <div><strong>F-Trichosilk D&amp;F</strong><p>Fibre-protection serum for damaged hair.</p><span><b>Use:</b> apply to mid-lengths &amp; ends.</span></div>
+      </div>
+      <p class="warn">Minoxidil 2% should be reconsidered only after the scalp barrier and dandruff are controlled.</p>
+    </div>
+
+    <div class="panel">
+      <div class="panel-h">Your Recovery Timeline <span style="letter-spacing:.06em">DAY BASED</span></div>
+      <div class="tl">
+        <div class="tl-step"><i>1</i><em>Day 0–30</em><strong>Stabilise the scalp &amp; active triggers</strong><p>Dandruff and itching settle; shedding begins to stabilise.</p></div>
+        <div class="tl-step"><i>2</i><em>Day 30–60</em><strong>Reduce shedding &amp; rebuild support</strong><p>Less daily shedding as iron & metabolic support take effect.</p></div>
+        <div class="tl-step"><i>3</i><em>Day 60–120</em><strong>Early follicular recovery</strong><p>Stronger calibre and fine new hair in responsive areas.</p></div>
+        <div class="tl-step"><i>4</i><em>Beyond Day 120</em><strong>Visible improvement &amp; consolidation</strong><p>Improved coverage and density; growth consolidates.</p></div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-h">Lifestyle &amp; Daily Support</div>
+      <div class="life">
+        <h4 class="g">Supports recovery</h4>
+        <span class="ok"><svg viewBox="0 0 24 24"><path d="M4 12l5 5L20 6"/></svg>Iron-rich vegetarian nutrition</span>
+        <span class="ok"><svg viewBox="0 0 24 24"><path d="M4 12l5 5L20 6"/></svg>Adequate protein &amp; hydration</span>
+        <span class="ok"><svg viewBox="0 0 24 24"><path d="M4 12l5 5L20 6"/></svg>Consistent sleep routine</span>
+        <span class="ok"><svg viewBox="0 0 24 24"><path d="M4 12l5 5L20 6"/></svg>Stress management &amp; movement</span>
+        <h4 class="r">May slow recovery</h4>
+        <span class="no"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg>Smoking or vaping</span>
+        <span class="no"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg>Untreated heavy bleeding</span>
+        <span class="no"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg>Uncontrolled dandruff</span>
+        <span class="no"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg>Extreme diets &amp; harsh treatments</span>
+        </div>
+      <div class="qr-row">
+        <div class="qr-box">
+          <svg viewBox="0 0 29 29" shape-rendering="crispEdges" fill="#182720">
+            <rect x="0" y="0" width="7" height="7"/><rect x="1" y="1" width="5" height="5" fill="#fff"/><rect x="2" y="2" width="3" height="3"/>
+            <rect x="22" y="0" width="7" height="7"/><rect x="23" y="1" width="5" height="5" fill="#fff"/><rect x="24" y="2" width="3" height="3"/>
+            <rect x="0" y="22" width="7" height="7"/><rect x="1" y="23" width="5" height="5" fill="#fff"/><rect x="2" y="24" width="3" height="3"/>
+            <rect x="9" y="2" width="2" height="2"/><rect x="13" y="1" width="2" height="3"/><rect x="17" y="2" width="2" height="2"/>
+            <rect x="10" y="6" width="3" height="2"/><rect x="15" y="5" width="2" height="3"/><rect x="9" y="10" width="2" height="2"/>
+            <rect x="13" y="9" width="3" height="2"/><rect x="18" y="10" width="2" height="3"/><rect x="22" y="9" width="3" height="2"/>
+            <rect x="26" y="12" width="2" height="3"/><rect x="2" y="10" width="3" height="2"/><rect x="5" y="14" width="2" height="2"/>
+            <rect x="9" y="14" width="3" height="3"/><rect x="14" y="13" width="2" height="4"/><rect x="18" y="15" width="3" height="2"/>
+            <rect x="23" y="16" width="2" height="2"/><rect x="1" y="18" width="3" height="2"/><rect x="6" y="18" width="2" height="2"/>
+            <rect x="10" y="19" width="2" height="3"/><rect x="14" y="19" width="3" height="2"/><rect x="19" y="19" width="2" height="3"/>
+            <rect x="24" y="20" width="3" height="2"/><rect x="9" y="24" width="3" height="2"/><rect x="14" y="23" width="2" height="3"/>
+            <rect x="18" y="25" width="3" height="2"/><rect x="23" y="24" width="2" height="2"/><rect x="26" y="26" width="2" height="2"/>
+          </svg>
+        </div>
+        <p>Scan to view your complete<br>diet &amp; lifestyle guide</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- FOOTER -->
+  <footer class="ft">
+    <div class="who">
+      <small>Reviewed &amp; Recommended By</small>
+      <div class="serif">Divesh (Test Doctor)</div>
+      <p>Trichology &amp; Hair Medicine Specialist</p>
+      <div class="sig">Divesh</div>
+    </div>
+    <div class="next">
+      <small>Next Review</small>
+      <b>6–8 weeks</b>
+      <p>or as advised by your doctor</p>
+    </div>
+    <p class="disc">This plan is based on the information you provided and clinical interpretation by the reviewing doctor. It is not a substitute for medical evaluation, diagnosis or prescription. Individual responses vary.</p>
+    <div class="approve"><i><svg viewBox="0 0 24 24"><path d="M4 12l5 5L20 6"/></svg></i><span>DOCTOR<br>APPROVED</span></div>
+  </footer>
+</div>
+</body>
+</html>

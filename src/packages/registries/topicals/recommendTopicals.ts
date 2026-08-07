@@ -27,6 +27,10 @@
 
 import type { PatientAnswers } from "../../types";
 import { getTopicalProduct } from "./products";
+import {
+  evaluateSafety,
+  type SafetyEvaluationResult,
+} from "../../ai-engine/safety-evaluator";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Public types
@@ -49,6 +53,14 @@ export interface TopicalDecision {
   cautions: TopicalCaution[];
   /** Which decision branch fired — useful for debugging / audit. */
   branchId: string;
+  /**
+   * Canonical safety / eligibility evaluation. Same evaluator consumed by
+   * kit selection. Downstream consumers should present `doctorView` on the
+   * doctor dashboard and `patientView` on the patient report. Do not
+   * re-derive pregnancy / hypertension / finasteride / age gates outside
+   * this field.
+   */
+  safety?: SafetyEvaluationResult;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -284,23 +296,49 @@ export function recommendTopicals(
   let branchId = "FALLBACK";
 
   // ────────────────────────────────────────────────────────────────────────
-  // GLOBAL OVERRIDE 1 — Pregnancy / planning pregnancy
+  // CANONICAL SAFETY EVALUATOR — pregnancy / planning-pregnancy / hypertension /
+  // finasteride / age gates run here. This is the single source of truth,
+  // shared with kit selection. Local overrides ONLY translate evaluator
+  // outputs into TopicalRec + TopicalCaution shape; they do NOT re-derive
+  // any rule.
   // ────────────────────────────────────────────────────────────────────────
-  if (f.isPregnancy) {
+  const safetyInitial = evaluateSafety({
+    answers: ans,
+    patient,
+    proposedKits: [],
+  });
+
+  if (safetyInitial.findings.some((x) => x.ruleId === 'SAFETY_PREGNANCY_KIT_LOCK')) {
     branchId = "PREGNANCY_OVERRIDE";
-    caution(cautions, "Minoxidil / Finasteride / Dutasteride / Spironolactone topicals",
-      p.isPregnant
-        ? "Pregnancy — no standard topical safe in pregnancy. Doctor consultation required."
-        : "Planning pregnancy — all Minoxidil, Finasteride, Dutasteride and anti-androgen topicals are contraindicated.");
-    caution(cautions, "F-Emugrow MCRD",
-      "Contains Dutasteride 0.5% — avoid in pregnancy or planning to conceive.");
-    return { recommended, cautions, branchId };
+    caution(
+      cautions,
+      "Minoxidil / Finasteride / Dutasteride / Spironolactone topicals",
+      "Pregnancy — no standard topical safe in pregnancy. Doctor consultation required.",
+    );
+    caution(
+      cautions,
+      "F-Emugrow MCRD",
+      "Contains Dutasteride 0.5% — avoid in pregnancy or planning to conceive.",
+    );
+    return { recommended, cautions, branchId, safety: safetyInitial };
   }
 
-  // ────────────────────────────────────────────────────────────────────────
-  // GLOBAL OVERRIDE 2 — Hypertension (non-Minoxidil path)
-  // ────────────────────────────────────────────────────────────────────────
-  if (f.isHypertension) {
+  if (safetyInitial.findings.some((x) => x.ruleId === 'SAFETY_PLANNING_PREGNANCY_TOPICAL_BLOCK')) {
+    branchId = "PLANNING_PREGNANCY_OVERRIDE";
+    caution(
+      cautions,
+      "Minoxidil / Finasteride / Dutasteride / Spironolactone topicals",
+      "Planning pregnancy — all Minoxidil, Finasteride, Dutasteride and anti-androgen topicals are contraindicated.",
+    );
+    caution(
+      cautions,
+      "F-Emugrow MCRD",
+      "Contains Dutasteride 0.5% — avoid in pregnancy or planning to conceive.",
+    );
+    return { recommended, cautions, branchId, safety: safetyInitial };
+  }
+
+  if (safetyInitial.findings.some((x) => x.ruleId === 'SAFETY_HYPERTENSION_MINOXIDIL_BLOCK')) {
     branchId = "HYPERTENSION_OVERRIDE";
     rec(recommended, seen, "F-Emugrow MCRD",
       "Hypertension — Minoxidil is a vasodilator and is contraindicated. Non-Minoxidil pattern-loss formulation chosen.");
@@ -317,7 +355,8 @@ export function recommendTopicals(
       caution(cautions, "Oral Minoxidil 1.25mg",
         "Only if BP is currently controlled and the doctor approves. Escalate to 2.5mg only at plateau.");
     }
-    return finaliseWithAutoInjects({ recommended, cautions, branchId }, p, ans, f);
+    const decision = finaliseWithAutoInjects({ recommended, cautions, branchId }, p, ans, f);
+    return applyEvaluatorPostFilter(decision, ans, patient);
   }
 
   // ────────────────────────────────────────────────────────────────────────
@@ -343,7 +382,11 @@ export function recommendTopicals(
       caution(cautions, "Minoxidil 5%",
         "Cautious Minoxidil only under strict specialist supervision in advanced-grade pattern loss under 18.");
     }
-    return finaliseWithAutoInjects({ recommended, cautions, branchId }, p, ans, f);
+    return applyEvaluatorPostFilter(
+      finaliseWithAutoInjects({ recommended, cautions, branchId }, p, ans, f),
+      ans,
+      patient,
+    );
   }
 
   // ────────────────────────────────────────────────────────────────────────
@@ -359,7 +402,11 @@ export function recommendTopicals(
       "Male >60 — layered Dutasteride + Redensyl support alongside Minoxidil + Finasteride 2.5%.");
     caution(cautions, "Oral Minoxidil",
       "Age >60 — mandatory cardiac evaluation before initiation; high-risk cardiac patients should avoid.");
-    return finaliseWithAutoInjects({ recommended, cautions, branchId }, p, ans, f);
+    return applyEvaluatorPostFilter(
+      finaliseWithAutoInjects({ recommended, cautions, branchId }, p, ans, f),
+      ans,
+      patient,
+    );
   }
 
   // ────────────────────────────────────────────────────────────────────────
@@ -382,7 +429,11 @@ export function recommendTopicals(
         "Introduce only after scalp inflammation is controlled.");
       caution(cautions, "Topical Minoxidil 5%",
         "Avoid until psoriasis remission — risk of flare.");
-      return finaliseWithAutoInjects({ recommended, cautions, branchId }, p, ans, f);
+      return applyEvaluatorPostFilter(
+      finaliseWithAutoInjects({ recommended, cautions, branchId }, p, ans, f),
+      ans,
+      patient,
+    );
     }
 
     if (f.isDandruffItching || (p.scalpTokens.includes("dry") && p.scalpTokens.includes("dandruff"))) {
@@ -401,7 +452,11 @@ export function recommendTopicals(
         "Doctor-decision adjunct when scalp is too dry / sensitive for topical Minoxidil. Escalate to 2.5mg only at plateau.");
       caution(cautions, "Topical Minoxidil",
         "Avoid topical Minoxidil — alcohol vehicle worsens dry / dandruff scalp.");
-      return finaliseWithAutoInjects({ recommended, cautions, branchId }, p, ans, f);
+      return applyEvaluatorPostFilter(
+      finaliseWithAutoInjects({ recommended, cautions, branchId }, p, ans, f),
+      ans,
+      patient,
+    );
     }
 
     if (p.scalpTokens.includes("dry") || f.isInflamed) {
@@ -416,7 +471,11 @@ export function recommendTopicals(
         "Consider only if response plateaus and scalp is stable.");
       caution(cautions, "Topical Minoxidil",
         "Avoid until scalp barrier recovers.");
-      return finaliseWithAutoInjects({ recommended, cautions, branchId }, p, ans, f);
+      return applyEvaluatorPostFilter(
+      finaliseWithAutoInjects({ recommended, cautions, branchId }, p, ans, f),
+      ans,
+      patient,
+    );
     }
 
     // ── Topical intolerance / plateau (oral pathway) ────────────────────
@@ -433,7 +492,11 @@ export function recommendTopicals(
       }
       caution(cautions, "Oral Minoxidil 2.5mg",
         "Plateau escalation only.");
-      return finaliseWithAutoInjects({ recommended, cautions, branchId }, p, ans, f);
+      return applyEvaluatorPostFilter(
+      finaliseWithAutoInjects({ recommended, cautions, branchId }, p, ans, f),
+      ans,
+      patient,
+    );
     }
 
     if (f.hasPlateau) {
@@ -444,7 +507,11 @@ export function recommendTopicals(
         "Plateau escalation — start oral Minoxidil at 1.25mg under doctor supervision.");
       caution(cautions, "Oral Minoxidil 2.5mg",
         "Escalate to 2.5mg only if 1.25mg plateaus.");
-      return finaliseWithAutoInjects({ recommended, cautions, branchId }, p, ans, f);
+      return applyEvaluatorPostFilter(
+      finaliseWithAutoInjects({ recommended, cautions, branchId }, p, ans, f),
+      ans,
+      patient,
+    );
     }
 
     // ── Normal / oily scalp — standard branches ─────────────────────────
@@ -458,7 +525,11 @@ export function recommendTopicals(
         caution(cautions, "Oral Minoxidil 2.5mg",
           "Reserve for plateau escalation at 6 months.");
       }
-      return finaliseWithAutoInjects({ recommended, cautions, branchId }, p, ans, f);
+      return applyEvaluatorPostFilter(
+      finaliseWithAutoInjects({ recommended, cautions, branchId }, p, ans, f),
+      ans,
+      patient,
+    );
     }
 
     if (f.isAdv) {
@@ -477,7 +548,11 @@ export function recommendTopicals(
       );
       caution(cautions, "Oral Minoxidil 1.25mg",
         "Plateau escalation at 6 months — start 1.25mg, escalate to 2.5mg only if needed.");
-      return finaliseWithAutoInjects({ recommended, cautions, branchId }, p, ans, f);
+      return applyEvaluatorPostFilter(
+      finaliseWithAutoInjects({ recommended, cautions, branchId }, p, ans, f),
+      ans,
+      patient,
+    );
     }
 
     // Grade 1-2 on normal-oily scalp — standard case
@@ -492,7 +567,11 @@ export function recommendTopicals(
         : "Pair the Minoxidil activator with a low-strength topical DHT block (combo or separate).");
     caution(cautions, "Oral Minoxidil 1.25–2.5mg",
       "Switch to systemic Minoxidil only if topical intolerance is reported.");
-    return finaliseWithAutoInjects({ recommended, cautions, branchId }, p, ans, f);
+    return applyEvaluatorPostFilter(
+      finaliseWithAutoInjects({ recommended, cautions, branchId }, p, ans, f),
+      ans,
+      patient,
+    );
   }
 
   // ────────────────────────────────────────────────────────────────────────
@@ -509,7 +588,11 @@ export function recommendTopicals(
         "Menopausal continuum — layered Dutasteride + Redensyl follicle activation.");
       rec(recommended, seen, "Oral Minoxidil + Spironolactone",
         "Menopausal continuum — systemic anti-androgen + Minoxidil for advanced or refractory thinning.");
-      return finaliseWithAutoInjects({ recommended, cautions, branchId }, p, ans, f);
+      return applyEvaluatorPostFilter(
+      finaliseWithAutoInjects({ recommended, cautions, branchId }, p, ans, f),
+      ans,
+      patient,
+    );
     }
 
     // ── PCOS / facial hair tracks ─────────────────────────────────────────
@@ -525,7 +608,11 @@ export function recommendTopicals(
       }
       caution(cautions, "Minoxidil 2% + Finasteride 0.25% Topical",
         "Topical alternative when systemic anti-androgen is not chosen — doctor decision.");
-      return finaliseWithAutoInjects({ recommended, cautions, branchId }, p, ans, f);
+      return applyEvaluatorPostFilter(
+      finaliseWithAutoInjects({ recommended, cautions, branchId }, p, ans, f),
+      ans,
+      patient,
+    );
     }
 
     // ── Scalp overrides ──────────────────────────────────────────────────
@@ -543,7 +630,11 @@ export function recommendTopicals(
         caution(cautions, "Topical Minoxidil",
           "Avoid on active psoriasis — risk of flare.");
       }
-      return finaliseWithAutoInjects({ recommended, cautions, branchId }, p, ans, f);
+      return applyEvaluatorPostFilter(
+      finaliseWithAutoInjects({ recommended, cautions, branchId }, p, ans, f),
+      ans,
+      patient,
+    );
     }
 
     if (p.scalpTokens.includes("dry") || f.isInflamed) {
@@ -554,7 +645,11 @@ export function recommendTopicals(
         "Dry / inflamed scalp — replace alcohol-based Minoxidil with the non-irritant Emugrow vehicle. Avoid in pregnancy.");
       caution(cautions, "Minoxidil 2%",
         "Reintroduce once the scalp recovers.");
-      return finaliseWithAutoInjects({ recommended, cautions, branchId }, p, ans, f);
+      return applyEvaluatorPostFilter(
+      finaliseWithAutoInjects({ recommended, cautions, branchId }, p, ans, f),
+      ans,
+      patient,
+    );
     }
 
     // ── Normal / oily scalp — age + grade matrix ────────────────────────
@@ -564,7 +659,11 @@ export function recommendTopicals(
         "Female under 30 with early-grade pattern thinning on a normal/oily scalp — start with low-strength Minoxidil 2%.",
         "Apply once daily as directed. Upgrade to 5% or add Finasteride only if response is inadequate at 3 months.",
         "Doctor-choice starting strength under 30; titrate up only on inadequate response.");
-      return finaliseWithAutoInjects({ recommended, cautions, branchId }, p, ans, f);
+      return applyEvaluatorPostFilter(
+      finaliseWithAutoInjects({ recommended, cautions, branchId }, p, ans, f),
+      ans,
+      patient,
+    );
     }
 
     if (p.age >= 30) {
@@ -586,7 +685,11 @@ export function recommendTopicals(
           rec(recommended, seen, "F-Emugrow MCRD",
             "Consider Dutasteride + Redensyl if response is slow. Avoid in pregnancy.");
         }
-        return finaliseWithAutoInjects({ recommended, cautions, branchId }, p, ans, f);
+        return applyEvaluatorPostFilter(
+      finaliseWithAutoInjects({ recommended, cautions, branchId }, p, ans, f),
+      ans,
+      patient,
+    );
       }
 
       // Grade 1-2, age >=30, normal-oily
@@ -603,14 +706,49 @@ export function recommendTopicals(
         rec(recommended, seen, "Finasteride 0.1% Gel",
           "Gentler topical DHT block (0.1% gel) for non-hormonal female cases — doctor choice between 0.1% and 0.25%.");
       }
-      return finaliseWithAutoInjects({ recommended, cautions, branchId }, p, ans, f);
+      return applyEvaluatorPostFilter(
+      finaliseWithAutoInjects({ recommended, cautions, branchId }, p, ans, f),
+      ans,
+      patient,
+    );
     }
   }
 
   // ────────────────────────────────────────────────────────────────────────
   // Fallback — only auto-injects (no branch matched)
   // ────────────────────────────────────────────────────────────────────────
-  return finaliseWithAutoInjects({ recommended, cautions, branchId }, p, ans, f);
+  return applyEvaluatorPostFilter(
+    finaliseWithAutoInjects({ recommended, cautions, branchId }, p, ans, f),
+    ans,
+    patient,
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Evaluator post-filter — runs the canonical safety evaluator against the
+// proposed topical set and strips any product that appears in
+// `blockedTopicals`, then attaches the full evaluation (findings, doctor +
+// patient views) to the decision. This is the single point at which topical
+// recommendations are reconciled against pregnancy / hypertension /
+// finasteride / age gates.
+// ─────────────────────────────────────────────────────────────────────────────
+function applyEvaluatorPostFilter(
+  decision: TopicalDecision,
+  ans: PatientAnswers,
+  patient: { age: number; sex: string },
+): TopicalDecision {
+  const proposedNames = decision.recommended.map((r) => r.name);
+  const safety = evaluateSafety({
+    answers: ans,
+    patient,
+    proposedKits: proposedNames,
+  });
+  const blocked = new Set(safety.blockedTopicals);
+  if (blocked.size === 0) {
+    return { ...decision, safety };
+  }
+  const filtered = decision.recommended.filter((r) => !blocked.has(r.name));
+  return { ...decision, recommended: filtered, safety };
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

@@ -28,6 +28,13 @@
 
 import type { PatientAnswers, RootCause } from "../../types";
 import type { ClinicalProfile } from "../clinical-engine/types";
+import {
+  buildClinicalFacts,
+  hasFact,
+  validateEvidenceGrounding,
+  formatViolations,
+} from "../clinical-facts";
+import type { ClinicalFacts, FactKey } from "../clinical-facts";
 import type {
   ClinicalInsightStory,
   ClinicalInterpretation,
@@ -622,6 +629,23 @@ interface DoctorRewrite {
   match: RegExp;       // matched against `${condition} ${signal}` (lower-cased)
   paraphrase: string;  // doctor-voice sentence (no kit names, no timelines)
   topic: string;       // grouping key — dedup by topic so we never repeat the same point
+  /**
+   * Evidence keys (any one of) that must be present in ClinicalFacts for the
+   * paraphrase to fire. Omit when the rule is grounded in mechanism only and
+   * carries no patient-symptom claim. Added under the evidence-grounding
+   * refactor so a clinical-interpretation library entry that *mentions*
+   * "scalp" or "thyroid" cannot trigger a paraphrase claiming the patient
+   * reported those symptoms when they did not.
+   */
+  requires?: readonly FactKey[];
+  /**
+   * Optional named composer that builds the sentence dynamically from the
+   * patient's actual reported findings, used in place of the static
+   * `paraphrase` when facts are available. Lets the scalp / nutrition
+   * paraphrases enumerate what the patient *actually* reported instead of a
+   * hardcoded symptom list.
+   */
+  composer?: "scalp";
 }
 
 const DOCTOR_REWRITES: DoctorRewrite[] = [
@@ -670,8 +694,13 @@ const DOCTOR_REWRITES: DoctorRewrite[] = [
   {
     topic: "scalp",
     match: /scalp|seborrh|dandruff|inflam|psoriasis|folliculit|itch|flak|oily|redness|burning|boils/,
+    // The actual sentence is composed at runtime from the patient's reported
+    // scalp findings — see paraphraseScalpForFacts. This static paraphrase
+    // is only used as a fallback if scalp facts are unavailable.
     paraphrase:
-      "The scalp signs you described — dandruff, itching, oiliness or discomfort — tell me there is active inflammation at the follicle's doorstep. Mast-cell activity and microbial overgrowth alter scalp pH, generate reactive oxygen species, and arrest growth long before the hair itself looks affected. That environment has to settle for new hair to anchor properly.",
+      "There are signs of active inflammation at the follicle's doorstep. Mast-cell activity and microbial overgrowth alter scalp pH, generate reactive oxygen species, and arrest growth long before the hair itself looks affected. That environment has to settle for new hair to anchor properly.",
+    requires: ["scalp.anyNonNormal"],
+    composer: "scalp",
   },
   {
     topic: "gut",
@@ -747,12 +776,91 @@ const DOCTOR_REWRITES: DoctorRewrite[] = [
   },
 ];
 
-function paraphraseInterpretation(ci: ClinicalInterpretation): { topic: string; sentence: string } | null {
+/**
+ * Topic → evidence requirements.
+ *
+ * Each DOCTOR_REWRITES topic claims something specific about the patient.
+ * Before firing the paraphrase, ClinicalFacts must support at least one of
+ * the listed FactKeys; otherwise the rule is skipped and the next rule is
+ * considered. This is the central gate enforcing Rule 2 ("never mention
+ * symptoms the patient did not report") for Section 2 of the insight story.
+ *
+ * Topics not listed here are unrestricted (e.g. "shaft" — heat / chemical
+ * damage flagged in the patient's own hairtype answer, no symptom claim).
+ */
+const TOPIC_EVIDENCE: Record<string, readonly FactKey[]> = {
+  iron:            ["history.ironRisk", "inferred.nutritionDriver"],
+  pcos:            ["history.pcos"],
+  thyroid:         ["history.thyroid"],
+  stress:          ["history.stress", "inferred.stressDriver"],
+  postpartum:      ["history.postpartum"],
+  menopause:       ["history.menopause"],
+  aga:             ["history.family", "inferred.dhtDriver"],
+  scalp:           ["scalp.anyNonNormal"],
+  gut:             ["history.gi"],
+  glp1:            ["history.glp1"],
+  oxidative:       ["history.oxidative"],
+  metabolic:       ["history.metabolic"],
+  circadian:       ["history.circadian"],
+  weightloss:      ["history.weightLoss"],
+  immune:          ["history.autoimmune"],
+  illness:         ["history.illness"],
+  trichotillomania: ["history.pulling"],
+  nutrition:       ["diet.restricted", "inferred.nutritionDriver", "history.ironRisk"],
+};
+
+function topicSupported(topic: string, facts: ClinicalFacts | null): boolean {
+  if (!facts) return true; // permissive when facts unavailable (legacy callers)
+  const requirements = TOPIC_EVIDENCE[topic];
+  if (!requirements) return true; // unrestricted topic
+  return requirements.some((k) => hasFact(facts, k));
+}
+
+/**
+ * Builds the scalp sentence from the patient's actually-reported scalp
+ * states instead of the hardcoded "dandruff, itching, oiliness" list.
+ * Replaces the static paraphrase whenever facts are available, satisfying
+ * Rule 2 for the scalp paraphrase specifically.
+ */
+function composeScalpParaphrase(facts: ClinicalFacts): string {
+  const states = facts.reported.scalpStates;
+  if (states.length === 0) {
+    // Defensive — the gate should already have blocked the rule.
+    return "";
+  }
+  const phraseMap: Record<string, string> = {
+    DANDRUFF:        "dandruff",
+    OILY_SCALP:      "oiliness",
+    DRY_SCALP:       "dryness",
+    INFLAMED_SCALP:  "redness or irritation",
+    PSORIATIC_SCALP: "psoriatic activity",
+    SENSITIVE_SCALP: "sensitivity",
+  };
+  const phrases = states.map((s) => phraseMap[s]).filter(Boolean);
+  if (phrases.length === 0) return "";
+  const phraseList =
+    phrases.length === 1
+      ? phrases[0]
+      : phrases.length === 2
+      ? `${phrases[0]} and ${phrases[1]}`
+      : `${phrases.slice(0, -1).join(", ")}, and ${phrases[phrases.length - 1]}`;
+  return `The scalp signs you described — ${phraseList} — tell me there is active inflammation at the follicle's doorstep. Mast-cell activity and microbial overgrowth alter scalp pH, generate reactive oxygen species, and arrest growth long before the hair itself looks affected. That environment has to settle for new hair to anchor properly.`;
+}
+
+function paraphraseInterpretation(
+  ci: ClinicalInterpretation,
+  facts: ClinicalFacts | null,
+): { topic: string; sentence: string } | null {
   const corpus = `${ci.condition ?? ""} ${ci.signal}`.toLowerCase();
   for (const rule of DOCTOR_REWRITES) {
-    if (rule.match.test(corpus)) {
-      return { topic: rule.topic, sentence: rule.paraphrase };
+    if (!rule.match.test(corpus)) continue;
+    if (!topicSupported(rule.topic, facts)) continue;
+    let sentence = rule.paraphrase;
+    if (rule.composer === "scalp" && facts) {
+      const dynamic = composeScalpParaphrase(facts);
+      if (dynamic) sentence = dynamic;
     }
+    return { topic: rule.topic, sentence };
   }
   return null;
 }
@@ -767,6 +875,7 @@ function paraphraseInterpretation(ci: ClinicalInterpretation): { topic: string; 
 function composeWhatWeFound(
   drivers: RankedDriver[],
   clinicalInterpretation: ClinicalInterpretation[],
+  facts: ClinicalFacts | null,
 ): string {
   const opener =
     "Hair grows in cycles, and that rhythm depends on healthy systems working together — your hormones, your nutrition, your gut, your immunity, the scalp itself. When even one of those systems is disturbed, the follicle spends less time in active growth and more time shedding or resting. Looking at what you shared, here is how I am reading your picture.";
@@ -777,7 +886,7 @@ function composeWhatWeFound(
   const seenTopics = new Set<string>();
   for (const ci of clinicalInterpretation) {
     if (paraphrases.length >= 4) break;
-    const p = paraphraseInterpretation(ci);
+    const p = paraphraseInterpretation(ci, facts);
     if (!p) continue;
     if (seenTopics.has(p.topic)) continue;
     seenTopics.add(p.topic);
@@ -1186,6 +1295,8 @@ export function buildClinicalInsightStory(
   ans: PatientAnswers,
   clinicalInterpretation: ClinicalInterpretation[] = [],
 ): ClinicalInsightStory {
+  const facts = buildClinicalFacts(ans, clinical);
+
   const ranked = detectDrivers(clinical, analysis, ans);
   ranked.sort((a, b) => {
     const t = TIER_RANK[b.tier] - TIER_RANK[a.tier];
@@ -1197,7 +1308,7 @@ export function buildClinicalInsightStory(
 
   const story: ClinicalInsightStory = {
     yourHairStory: composeYourHairStory(ranked, clinical, ans),
-    whyThisMayBeHappening: composeWhatWeFound(ranked, clinicalInterpretation),
+    whyThisMayBeHappening: composeWhatWeFound(ranked, clinicalInterpretation, facts),
     whyThisPlanWasRecommended: composeYourRecoveryPlan(treatmentStrategy),
     whatToExpect: composeWhatRecoveryCouldLookLike(recoveryMilestones),
     drivers,
@@ -1205,5 +1316,31 @@ export function buildClinicalInsightStory(
   };
 
   assertNoForbidden(story);
+  assertEvidenceGrounded(story, facts);
   return story;
+}
+
+/**
+ * Evidence-grounding guard. Runs after composition and warns when any
+ * narrative section contains a symptom claim the patient did not report.
+ * Logged as a warning rather than thrown so a single banned phrase doesn't
+ * black-hole the entire patient report — the validator's job is to make
+ * leaks visible to the authoring loop, while the per-topic gating above
+ * is what actually prevents them at composition time.
+ */
+function assertEvidenceGrounded(story: ClinicalInsightStory, facts: ClinicalFacts): void {
+  const result = validateEvidenceGrounding(
+    [
+      { section: "Your Hair Story",            text: story.yourHairStory },
+      { section: "What We Found",              text: story.whyThisMayBeHappening },
+      { section: "Your Recovery Plan",         text: story.whyThisPlanWasRecommended },
+      { section: "What Recovery Could Look Like", text: story.whatToExpect },
+    ],
+    facts,
+  );
+  if (!result.valid) {
+    console.warn(
+      `[buildClinicalInsightStory] evidence-grounding violations:\n${formatViolations(result)}`,
+    );
+  }
 }

@@ -79,11 +79,21 @@ export function DecisionBadge({
 function statusTone(s: string) {
   if (s === "COMPLETED" || s === "PUBLISHED_TO_PATIENT")
     return "bg-emerald-50 text-emerald-700 border-emerald-200";
+  if (s === "CLINICAL_READY")
+    return "bg-violet-50 text-violet-700 border-violet-200";
+  if (s === "REPORT_GENERATING")
+    return "bg-amber-50 text-amber-700 border-amber-200";
   if (s === "FAILED" || s === "PARTIAL_FAILURE" || s === "REJECTED")
     return "bg-rose-50 text-rose-700 border-rose-200";
   if (s === "PENDING" || s === "QUEUED")
     return "bg-slate-50 text-slate-600 border-slate-200";
   return "bg-sky-50 text-sky-700 border-sky-200";
+}
+
+function statusLabel(s: string) {
+  if (s === "CLINICAL_READY") return "ready for consultation";
+  if (s === "REPORT_GENERATING") return "pdf generating";
+  return s.replaceAll("_", " ").toLowerCase();
 }
 
 export function StatusBadge({
@@ -96,7 +106,7 @@ export function StatusBadge({
   if (!status) return <span className="text-slate-400 text-xs">—</span>;
   return (
     <span className={classNames(BASE, statusTone(status), className)}>
-      {status.replaceAll("_", " ").toLowerCase()}
+      {statusLabel(status)}
     </span>
   );
 }

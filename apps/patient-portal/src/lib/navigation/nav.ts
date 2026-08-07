@@ -48,6 +48,7 @@ const NAV_SUPER_ADMIN: NavSection[] = [
     items: [
       { href: "/admin", labelKey: "nav.dashboard", icon: "dashboard" },
       { href: "/admin/clinics", labelKey: "nav.clinics", icon: "clinics" },
+      { href: "/admin/knowledge-review", labelKey: "nav.reviewQueue", icon: "audit" },
       { href: "/admin/audit", labelKey: "nav.audit", icon: "audit" },
       {
         href: "/admin/settings",
@@ -65,7 +66,9 @@ const NAV_CLINIC_ADMIN: NavSection[] = [
       { href: "/clinic", labelKey: "nav.dashboard", icon: "dashboard" },
       { href: "/clinic/doctors", labelKey: "nav.doctors", icon: "doctors" },
       { href: "/clinic/patients", labelKey: "nav.patients", icon: "patients" },
+      { href: "/clinic/leads", labelKey: "nav.leads", icon: "patients" },
       { href: "/doctor/reports", labelKey: "nav.reports", icon: "reports" },
+      { href: "/clinic/orders", labelKey: "nav.orders", icon: "reports" },
       {
         href: "/clinic/profile",
         labelKey: "nav.clinicProfile",
@@ -93,6 +96,8 @@ const NAV_DOCTOR: NavSection[] = [
         badgeChannel: "pendingReviews",
       },
       { href: "/doctor/patients", labelKey: "nav.patients", icon: "patients" },
+      { href: "/doctor/orders", labelKey: "nav.orders", icon: "reports" },
+      { href: "/doctor/profile", labelKey: "common.profile", icon: "profile" },
       { href: "/doctor/settings", labelKey: "common.settings", icon: "settings" },
     ],
   },

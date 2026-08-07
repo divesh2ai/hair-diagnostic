@@ -1,0 +1,121 @@
+/* Compact vertical viewport for the mobile-only progressive bridge.
+
+   The source asset (mobile-progress.png, 941×1672) is a tall stack of seven
+   orbs above a bridge scene. We render it at natural width-scaled size and
+   translate it vertically so the active orb sits at ~46% of the viewport.
+   Only one orb is centred at a time; the previous and next orbs remain
+   partially visible to communicate continuity. */
+
+.viewport {
+  position: relative;
+  width: 100%;
+  height: 172px;
+  overflow: hidden;
+  border-radius: 16px;
+  background: #050d0a;
+  isolation: isolate;
+  contain: paint;
+}
+
+.artwork {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  display: flex;
+  justify-content: center;
+  will-change: transform;
+  transition: transform 700ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+/* Natural width, proportional height. `object-fit: contain` is implicit for
+   an <img> rendered at its intrinsic aspect ratio; we never stretch, squash
+   or crop the asset permanently — clipping only comes from viewport
+   overflow. */
+.image {
+  display: block;
+  width: 100%;
+  height: auto;
+  object-fit: contain;
+  user-select: none;
+  -webkit-user-drag: none;
+  pointer-events: none;
+}
+
+/* Soft dim above the active orb — completed stages read as "brighter" only
+   in relative terms; we keep them mostly untouched and just lightly ground
+   the top edge into the panel. */
+.pastShade {
+  position: absolute;
+  inset: 0 0 auto 0;
+  height: 24%;
+  background: linear-gradient(
+    180deg,
+    rgba(5, 13, 10, 0.55) 0%,
+    rgba(5, 13, 10, 0) 100%
+  );
+  pointer-events: none;
+  z-index: 2;
+}
+
+/* Future stages below the active orb are darkened by a subtle gradient. */
+.futureShade {
+  position: absolute;
+  inset: auto 0 0 0;
+  height: 46%;
+  background: linear-gradient(
+    180deg,
+    rgba(5, 13, 10, 0) 0%,
+    rgba(5, 13, 10, 0.5) 55%,
+    rgba(5, 13, 10, 0.72) 100%
+  );
+  pointer-events: none;
+  z-index: 2;
+}
+
+/* Radial bloom pinned to the on-screen centre of the active orb. */
+.activeGlow {
+  position: absolute;
+  top: 46%;
+  left: 50%;
+  width: 42%;
+  aspect-ratio: 1 / 1;
+  transform: translate(-50%, -50%);
+  background: radial-gradient(
+    circle,
+    rgba(240, 220, 168, 0.3) 0%,
+    rgba(240, 220, 168, 0.12) 42%,
+    rgba(240, 220, 168, 0) 72%
+  );
+  mix-blend-mode: screen;
+  pointer-events: none;
+  z-index: 3;
+  animation: mobileGlowBreath 3.6s ease-in-out infinite;
+}
+
+@keyframes mobileGlowBreath {
+  0%,
+  100% {
+    opacity: 0.78;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+.reduced .artwork {
+  transition: none;
+}
+
+.reduced .activeGlow {
+  animation: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .artwork {
+    transition: none;
+  }
+  .activeGlow {
+    animation: none;
+  }
+}

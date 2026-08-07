@@ -1,0 +1,46 @@
+{
+  "fixtureId": "pregnancy_lock_01",
+  "generatedAt": "2026-07-03T07:14:18.090Z",
+  "pipelineVersion": "1.0.0",
+  "primaryDiagnosis": "PREGNANCY",
+  "scalpStates": [
+    "NORMAL_SCALP"
+  ],
+  "rootCauses": [],
+  "therapyNeeds": [],
+  "severity": "MILD",
+  "rankedKitIds": [
+    "HEALTHY - 9"
+  ],
+  "appliedRules": [
+    "PREGNANCY_LOCK: pregnancy is exclusive — all other kits suppressed."
+  ],
+  "protocolLabel": "Recovery protocol for Pregnancy.",
+  "recommendations": [
+    "HEALTHY - 9"
+  ],
+  "narratives": {
+    "narratives": {
+      "doctorHash": "{\"doctorSummary\":\"Mild Active pregnancy state. Absolute protocol",
+      "patientHash": "{\"doctorSummary\":\"Mild Active pregnancy state. Absolute protocol"
+    },
+    "orchestration": {
+      "pipelineVersion": "1.0.0",
+      "executionId": "e8d4fa4e-b884-417d-9c37-ad6ba7d63eb6",
+      "startedAt": "2026-07-03T07:14:18.091Z",
+      "completedAt": "2026-07-03T07:14:18.091Z",
+      "durationMs": 0,
+      "completedStages": [
+        "questionnaire",
+        "clinical",
+        "therapy",
+        "recommendations",
+        "narratives"
+      ]
+    }
+  },
+  "reportMetadata": {
+    "generatedBy": "generate-baselines.ts",
+    "version": "1.0.0"
+  }
+}

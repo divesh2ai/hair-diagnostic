@@ -46,6 +46,8 @@ export const te: Dictionary = {
     clinicProfile: "క్లినిక్ ప్రొఫైల్",
     branding: "బ్రాండింగ్",
     whatsapp: "వాట్సాప్",
+    orders: "కిట్ ఆర్డర్లు",
+    leads: "లీడ్స్",
   },
   shell: {
     searchPlaceholder: "రోగులు, నివేదికలు, క్లినిక్‌లను వెతకండి…",

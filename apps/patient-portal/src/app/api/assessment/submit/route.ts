@@ -1,8 +1,13 @@
-import { NextResponse } from 'next/server';
+import { NextResponse, after } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { rateLimit } from '@/lib/rate-limit';
 import { safeDispatchOrchestration } from '@/lib/orchestration/dispatch';
+import { signReviewToken } from '@/lib/reviewToken';
 import { AssessmentSource, AssessmentStatus, Prisma } from '@prisma/client';
+import {
+  buildAssessmentResponseRows,
+  withConcernMetadata,
+} from './persistence';
 
 // ─── Patient name + age normalisation ────────────────────────────────────────
 // Names must be letters/spaces/.'- only and stored in Proper Case.
@@ -42,9 +47,23 @@ function normaliseAge(raw: unknown): { value: number | null; error: string | nul
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
+// Accepted concern values. Doctor queue filters/badges read from this list.
+// Kept in sync with `Concern` in apps/patient-portal/src/types/questionnaire.ts —
+// duplicated here as a plain literal set because the API route deliberately
+// avoids importing browser-runtime modules.
+const CONCERN_VALUES = ['hair', 'skin_acne', 'skin_pigmentation', 'skin_anti_ageing'] as const;
+type Concern = (typeof CONCERN_VALUES)[number];
+
+function normaliseConcern(raw: unknown): Concern | null {
+  return typeof raw === 'string' && (CONCERN_VALUES as readonly string[]).includes(raw)
+    ? (raw as Concern)
+    : null;
+}
+
 interface SubmitBody {
   clinicSlug: string;
   answers: Record<string, unknown>;
+  concern?: Concern;
   patientInfo?: {
     name?: string;
     phone?: string;
@@ -74,7 +93,13 @@ function getSubmitErrorResponse(err: unknown) {
 
   return {
     status: 500,
-    body: { success: false, error: 'Internal server error' },
+    body: {
+      success: false,
+      error:
+        process.env.NODE_ENV === 'production'
+          ? 'Internal server error'
+          : `Internal server error: ${message}`,
+    },
   };
 }
 
@@ -98,11 +123,19 @@ export async function POST(req: Request) {
 
   console.log('[SUBMIT] BODY', {
     clinicSlug: body.clinicSlug,
+    concern: body.concern,
     answerCount: Object.keys(body.answers ?? {}).length,
     patientInfo: body.patientInfo,
   });
 
   const { clinicSlug, answers, patientInfo = {} } = body;
+  const concern = normaliseConcern(body.concern);
+  if (!concern) {
+    return NextResponse.json(
+      { success: false, error: 'A valid assessment concern is required.' },
+      { status: 400 },
+    );
+  }
 
   if (!clinicSlug || typeof clinicSlug !== 'string' || clinicSlug.trim() === '') {
     return NextResponse.json(
@@ -183,31 +216,53 @@ export async function POST(req: Request) {
 
     // Mirror the normalised values into the answers payload so downstream
     // engines (clinical, narrative, report) see the cleaned versions.
-    const normalisedAnswers: Record<string, unknown> = {
+    // `__meta` is a reserved key for cross-cutting session metadata that lives
+    // alongside the answer keys but is NOT a question. It is filtered out
+    // before persisting per-question AssessmentResponse rows below.
+    const normalisedAnswers = withConcernMetadata({
       ...answers,
       name: patientName,
       ...(patientAge !== null ? { age: patientAge } : {}),
-    };
+    }, concern);
 
     const patientGender =
       (answers.sex as string | undefined) ??
       (patientInfo as Record<string, string>).gender ??
       null;
 
+    const skinIntakeId = concern.startsWith('skin_') && answers.__meta && typeof answers.__meta === 'object'
+      ? String((answers.__meta as Record<string, unknown>).skinIntakeId ?? '')
+      : '';
+    const linkedSkinAssessment = skinIntakeId
+      ? await prisma.assessment.findFirst({
+          where: {
+            clinicId: clinic.id,
+            rawResponses: { path: ['__meta', 'skinIntakeId'], equals: skinIntakeId },
+          },
+          orderBy: { createdAt: 'desc' },
+          select: { patientId: true },
+        })
+      : null;
+
     const assessment = await prisma.$transaction(async (tx) => {
+      // Widened window: on Supabase pooled connections a cold Prisma engine
+      // + Patient/Assessment/AssessmentResponse write can breach the 5s default.
+
       // Create a new Patient record for every assessment submission.
       // Patients without auth accounts are anonymous clinic visitors.
-      const patient = await tx.patient.create({
-        data: {
-          clinicId: clinic.id,
-          doctorId:  doctor?.id ?? null,
-          name:      patientName,
-          phone:     patientPhone,
-          email:     patientEmail,
-          age:       patientAge,
-          gender:    patientGender,
-        },
-      });
+      const patient = linkedSkinAssessment
+        ? { id: linkedSkinAssessment.patientId }
+        : await tx.patient.create({
+            data: {
+              clinicId: clinic.id,
+              doctorId:  doctor?.id ?? null,
+              name:      patientName,
+              phone:     patientPhone,
+              email:     patientEmail,
+              age:       patientAge,
+              gender:    patientGender,
+            },
+          });
 
       // Create the Assessment record.
       // reviewingDoctorId is optional — set to the first clinic doctor if available.
@@ -224,28 +279,48 @@ export async function POST(req: Request) {
 
       // Persist each question-answer pair as a structured AssessmentResponse row.
       // Enables per-question analytics and future re-processing without re-parsing rawResponses.
-      const responseRows = Object.entries(normalisedAnswers).map(([questionId, answer]) => ({
-        assessmentId: newAssessment.id,
-        questionId,
-        answer: (Array.isArray(answer) ? answer : answer) as Prisma.InputJsonValue,
-      }));
+      // Prisma's Json column rejects `undefined`; coerce to null so the row still writes.
+      const responseRows = buildAssessmentResponseRows(
+        newAssessment.id,
+        normalisedAnswers,
+      ).map((row) => ({ ...row, answer: row.answer as Prisma.InputJsonValue }));
 
       if (responseRows.length > 0) {
         await tx.assessmentResponse.createMany({ data: responseRows });
       }
 
       return newAssessment;
-    });
+    }, { maxWait: 10_000, timeout: 20_000 });
 
     console.log('[SUBMIT] ASSESSMENT CREATED', assessment.id);
 
-// ── STEP 5: Trigger orchestration asynchronously ─────────────────────────
-void safeDispatchOrchestration(assessment.id);
+    // ── STEP 5: Trigger orchestration via Vercel `after()` ──────────────────
+    // Previously this was `void safeDispatchOrchestration(...)` — a detached
+    // promise. On Vercel serverless the lambda can freeze the moment the
+    // response returns, silently abandoning Phase A/B mid-flight. Wrapping in
+    // `after()` keeps the invocation alive until the callback resolves. This
+    // is the same durable-dispatch shape used by /api/assessment/orchestrate.
+    // safeDispatchOrchestration relies on claimPhaseA() internally, so a
+    // patient double-submit or an orchestrate retry can never spawn a second
+    // Phase A for the same assessment.
+    // HairOS orchestration is strictly hair-only. Skin FACT submissions stay
+    // PENDING until the dedicated skin clinical review pipeline handles them.
+    if (concern === 'hair') {
+      after(() => safeDispatchOrchestration(assessment.id));
+    }
 
     // ── STEP 4: Return success immediately ─────────────────────────────────────
+    // Signed token so the patient's own processing/preview pages (which are
+    // anonymous public routes) can read the full assessment status payload.
+    // Without it, /api/assessment/status falls through to the anonymous
+    // branch that strips out narratives and the clinical report never
+    // renders on /q/[clinicSlug]/preview/[assessmentId].
+    const previewToken = signReviewToken(assessment.id);
+
     return NextResponse.json({
       success: true,
       assessmentId: assessment.id,
+      previewToken,
     });
 
   } catch (err) {

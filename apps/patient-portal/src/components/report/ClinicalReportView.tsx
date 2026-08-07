@@ -65,7 +65,7 @@ function QuestionnaireSelections({ report }: { report: ClinicalReport }) {
   const rowsRaw: Array<[string, string[] | string | undefined]> = [
     ["Duration", sel.duration],
     ["Shedding intensity", sel.count],
-    ["Severity grade", sel.grade],
+    ["Severity grade", sel.grade?.replace(/^Grade\s*\d+\s*[—–-]+\s*/i, "")],
     ["Hair pattern", sel.hairType],
     ["Scalp", sel.scalp],
     ["Suspected cause", sel.cause],
@@ -127,7 +127,7 @@ function ClinicalSummaryAndInterpretation({ report }: { report: ClinicalReport }
               <span className="mt-1 h-2 w-2 shrink-0 rounded-full bg-amber-400" />
               <div className="flex-1">
                 <div className="flex flex-wrap items-baseline justify-between gap-2">
-                  <p className="text-sm font-semibold text-slate-900">{item.signal}</p>
+                  <p className="text-sm font-semibold text-slate-900">{item.signal.replace(/^Grade\s*\d+\s*[—–-]+\s*/i, "")}</p>
                   {item.condition && (
                     <span className="rounded-full bg-teal-50 px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-teal-700">
                       {item.condition}
@@ -440,8 +440,7 @@ export function ClinicalReportView({
       {/* 5 — Topical recommendations */}
       <TopicalRecommendations report={report} />
 
-      {/* 6 — Final Clinical Assessment (doctor-style synthesis) */}
-      <ClinicalInsightStorySection report={report} />
+      {/* 6 — Clinical Insight & Recovery Story (archived) */}
 
       {/* 7 — Recovery Milestones (universal, identical for every patient) */}
       <RecoveryMilestonesSection report={report} />

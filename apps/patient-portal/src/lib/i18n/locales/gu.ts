@@ -46,6 +46,8 @@ export const gu: Dictionary = {
     clinicProfile: "ક્લિનિક પ્રોફાઇલ",
     branding: "બ્રાન્ડિંગ",
     whatsapp: "વ્હોટ્સએપ",
+    orders: "કિટ ઓર્ડર",
+    leads: "લીડ્સ",
   },
   shell: {
     searchPlaceholder: "દર્દીઓ, અહેવાલો, ક્લિનિક્સ શોધો…",

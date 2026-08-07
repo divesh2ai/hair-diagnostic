@@ -1,7 +1,6 @@
 'use client';
 
 import { useMemo, useState } from 'react';
-import { UploadCloud } from 'lucide-react';
 
 import { VoiceDictateButton } from '@/components/shared/VoiceDictateButton';
 import {
@@ -15,6 +14,7 @@ import { useAssessmentStore } from '@/stores/useAssessmentStore';
 import type { Question } from '@/types/questionnaire';
 
 import { OptionCardV3 } from './OptionCardV3';
+import { StorageUploadV3 } from './StorageUploadV3';
 import styles from './assessment-v3.module.css';
 
 function formatTextInput(raw: string, format?: 'name' | 'number' | 'text'): string {
@@ -33,6 +33,7 @@ interface QuestionRendererV3Props {
   onAnswer: (answer: unknown) => void;
   allAnswers: Record<string, unknown>;
   questionNumber: number;
+  clinicSlug: string;
 }
 
 export function QuestionRendererV3({
@@ -41,6 +42,7 @@ export function QuestionRendererV3({
   onAnswer,
   allAnswers,
   questionNumber,
+  clinicSlug,
 }: QuestionRendererV3Props) {
   const visibleOptions = getVisibleOptions(question, allAnswers);
   const exclusiveIds = getExclusiveOptions(question).map((option) => option.id);
@@ -222,19 +224,12 @@ export function QuestionRendererV3({
         )}
 
         {question.type === 'image_upload' && (
-          <label className={styles.uploadControl}>
-            <span className={styles.uploadIcon} aria-hidden="true">
-              <UploadCloud size={28} />
-            </span>
-            <strong>Tap to add photo</strong>
-            <small>Use your camera or choose from your gallery</small>
-            <input
-              type="file"
-              accept="image/*"
-              className={styles.srOnly}
-              onChange={(event) => event.target.files?.length && onAnswer('uploaded_file_url_mock')}
-            />
-          </label>
+          <StorageUploadV3
+            questionId={question.id}
+            clinicSlug={clinicSlug}
+            value={currentAnswer}
+            onChange={onAnswer}
+          />
         )}
 
         {isSelectType && (

@@ -678,6 +678,43 @@
   white-space: nowrap;
 }
 
+.enterHint {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--muted);
+  font-size: 0.75rem;
+  font-weight: 500;
+  letter-spacing: 0.01em;
+  white-space: nowrap;
+  opacity: 0.75;
+}
+
+.enterHint kbd {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 22px;
+  height: 20px;
+  padding: 0 6px;
+  border: 1px solid var(--forest-900, rgba(18, 60, 50, 0.25));
+  border-bottom-width: 2px;
+  border-radius: 4px;
+  background: var(--cream-50, #fafafa);
+  color: var(--forest-900, #123c32);
+  font-family: inherit;
+  font-size: 0.7rem;
+  font-weight: 600;
+  line-height: 1;
+}
+
+/* Hint is a desktop affordance — hide on touch/narrow layouts. */
+@media (max-width: 700px), (pointer: coarse) {
+  .enterHint {
+    display: none;
+  }
+}
+
 .continueButton {
   display: inline-flex;
   min-width: 164px;

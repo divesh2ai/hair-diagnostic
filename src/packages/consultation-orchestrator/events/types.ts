@@ -35,7 +35,13 @@ export type ConsultationCreated = BaseEvent<
 
 export type ConsultationUpdated = BaseEvent<
   "CONSULTATION_UPDATED",
-  { previousVersion: number; nextVersion: number; changedFields: string[] }
+  {
+    kind: "DOCTOR_EDIT" | "SYSTEM_REGENERATE";
+    doctorId?: string;
+    previousVersion: number;
+    nextVersion: number;
+    changedFields: string[];
+  }
 >;
 
 export type DoctorReviewCompleted = BaseEvent<

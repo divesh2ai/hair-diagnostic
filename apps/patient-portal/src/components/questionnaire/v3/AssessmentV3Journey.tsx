@@ -85,6 +85,8 @@ export interface AssessmentV3JourneyProps {
   clinicSlugOverride?: string;
   compactProgress?: boolean;
   compactShell?: boolean;
+  patientInfoOverride?: { name: string; phone?: string; email?: string; gender: string };
+  onSubmitted?: (result: { assessmentId: string; previewToken?: string }) => void | Promise<void>;
 }
 
 export function AssessmentV3Journey({
@@ -92,6 +94,8 @@ export function AssessmentV3Journey({
   clinicSlugOverride,
   compactProgress = false,
   compactShell = false,
+  patientInfoOverride,
+  onSubmitted,
 }: AssessmentV3JourneyProps) {
   const params = useParams();
   const router = useRouter();
@@ -192,6 +196,93 @@ export function AssessmentV3Journey({
 
   const effectiveClinicSlug = clinicSlugOverride ?? String(params.clinicSlug ?? '');
 
+  const isAnswered = question ? isAnswerValid(question, currentAnswer) : false;
+  const isLast = progress.visiblePosition >= progress.visibleTotal;
+
+  const handleSubmit = useCallback(async () => {
+    setSubmitting(true);
+    setAssessmentComplete(true);
+    try {
+      const response = await fetch('/api/assessment/submit', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ answers, clinicSlug: effectiveClinicSlug, concern, ...(patientInfoOverride ? { patientInfo: patientInfoOverride } : {}) }),
+      });
+      const data = await response.json();
+      if (!response.ok || !data.success) {
+        throw new Error(data.error ?? `Submit failed (HTTP ${response.status})`);
+      }
+      if (onSubmitted) {
+        await onSubmitted({ assessmentId: data.assessmentId, previewToken: data.previewToken });
+        return;
+      }
+      const tokenQuery = data.previewToken
+        ? `?t=${encodeURIComponent(data.previewToken)}`
+        : '';
+      window.setTimeout(() => {
+        router.push(
+          `/q/${effectiveClinicSlug}/processing/${data.assessmentId}${tokenQuery}`,
+        );
+      }, 1400);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Unknown error';
+      console.error('[ASSESSMENT] Submit failed:', message);
+      toast.error('Submission failed', { description: message });
+      setAssessmentComplete(false);
+    } finally {
+      setSubmitting(false);
+    }
+  }, [answers, concern, effectiveClinicSlug, onSubmitted, patientInfoOverride, router, setSubmitting]);
+
+  // Enter-to-continue: select an option first, then press Enter to advance.
+  // Runs in the capture phase so preventDefault() cancels the browser's native
+  // Enter→click translation on any focused button (option cards, forward FAB,
+  // Skip/Back). Without capture+preventDefault, a focused option button would
+  // toggle itself off before our advance fires. Textarea and contenteditable
+  // still opt out so multiline input works.
+  useEffect(() => {
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key !== 'Enter' || event.repeat) return;
+      if (event.shiftKey || event.metaKey || event.ctrlKey || event.altKey) return;
+
+      const el = document.activeElement as HTMLElement | null;
+      if (el) {
+        const tag = el.tagName;
+        if (tag === 'TEXTAREA') return;
+        if (el.isContentEditable) return;
+      }
+
+      if (isSubmitting || assessmentComplete) return;
+
+      if (showingSectionIntro) {
+        event.preventDefault();
+        acknowledgeSection();
+        return;
+      }
+
+      if (!question || !isAnswered) return;
+
+      event.preventDefault();
+      if (isLast) {
+        void handleSubmit();
+      } else {
+        nextStep();
+      }
+    };
+    window.addEventListener('keydown', onKey, true);
+    return () => window.removeEventListener('keydown', onKey, true);
+  }, [
+    acknowledgeSection,
+    assessmentComplete,
+    handleSubmit,
+    isAnswered,
+    isLast,
+    isSubmitting,
+    nextStep,
+    question,
+    showingSectionIntro,
+  ]);
+
   if (assessmentComplete) {
     return (
       <main className={styles.completionScreen} role="status" aria-live="polite">
@@ -228,40 +319,7 @@ export function AssessmentV3Journey({
     );
   }
 
-  const isAnswered = isAnswerValid(question, currentAnswer);
-  const isLast = progress.visiblePosition >= progress.visibleTotal;
   const selectedCount = Array.isArray(currentAnswer) ? currentAnswer.length : 0;
-
-  const handleSubmit = async () => {
-    setSubmitting(true);
-    setAssessmentComplete(true);
-    try {
-      const response = await fetch('/api/assessment/submit', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ answers, clinicSlug: effectiveClinicSlug, concern }),
-      });
-      const data = await response.json();
-      if (!response.ok || !data.success) {
-        throw new Error(data.error ?? `Submit failed (HTTP ${response.status})`);
-      }
-      const tokenQuery = data.previewToken
-        ? `?t=${encodeURIComponent(data.previewToken)}`
-        : '';
-      window.setTimeout(() => {
-        router.push(
-          `/q/${effectiveClinicSlug}/processing/${data.assessmentId}${tokenQuery}`,
-        );
-      }, 1400);
-    } catch (error) {
-      const message = error instanceof Error ? error.message : 'Unknown error';
-      console.error('[ASSESSMENT] Submit failed:', message);
-      toast.error('Submission failed', { description: message });
-      setAssessmentComplete(false);
-    } finally {
-      setSubmitting(false);
-    }
-  };
 
   return (
     <QuestionnaireShellV3

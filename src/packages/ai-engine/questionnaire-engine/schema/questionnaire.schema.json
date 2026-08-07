@@ -303,11 +303,11 @@
           "clinicalMappings": [
             {
               "condition": "Male",
-              "implication": "AGA resolves to MPHL or MPHL PLUS; postpartum options hidden; hormonal question skipped"
+              "implication": "AGA resolves to MPHL or MPHL Pro; postpartum options hidden; hormonal question skipped"
             },
             {
               "condition": "Female",
-              "implication": "AGA resolves to FPHL or FPHL PLUS; hormonal question shown; PCOS/menopause paths enabled"
+              "implication": "AGA resolves to FPHL or FPHL Pro; hormonal question shown; PCOS/menopause paths enabled"
             }
           ],
           "uiMetadata": {
@@ -1039,7 +1039,7 @@
               "triggers": [
                 "TE_POSTPREG score +92",
                 "LACTIHEALTH kit Phase 1",
-                "shown only for Female gender"
+                "shown only for Female gender under 45"
               ],
               "clinicalTags": [
                 "postpartum_TE",
@@ -1048,11 +1048,10 @@
                 "nutritional_drain"
               ],
               "followUpQuestions": [],
-              "visibleOnlyIf": {
-                "dependsOn": "sex",
-                "operator": "equals",
-                "value": "Female"
-              }
+              "visibleOnlyIf": [
+                { "dependsOn": "sex", "operator": "equals", "value": "Female" },
+                { "dependsOn": "age", "operator": "lessThan", "value": 45 }
+              ]
             },
             {
               "label": "Post partum — not feeding",
@@ -1061,7 +1060,7 @@
               "triggers": [
                 "TE_DELIVERY score +90 (if combined with 'not feeding')",
                 "TE GOLD Phase 1 + PRO IMMUNE Phase 2",
-                "shown only for Female gender"
+                "shown only for Female gender under 45"
               ],
               "clinicalTags": [
                 "postpartum_TE",
@@ -1070,11 +1069,10 @@
                 "oestrogen_drop"
               ],
               "followUpQuestions": [],
-              "visibleOnlyIf": {
-                "dependsOn": "sex",
-                "operator": "equals",
-                "value": "Female"
-              }
+              "visibleOnlyIf": [
+                { "dependsOn": "sex", "operator": "equals", "value": "Female" },
+                { "dependsOn": "age", "operator": "lessThan", "value": 45 }
+              ]
             },
             {
               "label": "Hair pulling habit (Trichotillomania)",
@@ -1346,6 +1344,23 @@
                 "atopic_dermatitis",
                 "Th2_inflammation",
                 "skin_barrier_dysfunction"
+              ],
+              "followUpQuestions": []
+            },
+            {
+              "label": "Recurrent Acne / Acne prone skin",
+              "value": "Recurrent Acne / Acne prone skin",
+              "icon": "🧴",
+              "triggers": [
+                "SCALP_INFLAMMATION condition detected → PHENOTYPE INFLAMATION injection",
+                "realInflamSignal=true — sebaceous / androgenic inflammatory terrain"
+              ],
+              "clinicalTags": [
+                "recurrent_acne",
+                "acne_prone_skin",
+                "sebaceous_inflammation",
+                "perifollicular_inflammation",
+                "androgen_sensitive_skin"
               ],
               "followUpQuestions": []
             },
@@ -1735,6 +1750,16 @@
           "validation": {
             "hint": null
           },
+          "mutualExclusivityRules": {
+            "description": "Hypothyroid ↔ Hyperthyroid and Pre-diabetes ↔ Diabetes are mutually contradictory clinical states — a patient can only carry one of each pair.",
+            "toastMessage": "Selected the contradicting option — replacing the previous one.",
+            "rules": [
+              { "selecting": "Hypothyroidism", "deselects": "Hyperthyroidism" },
+              { "selecting": "Hyperthyroidism", "deselects": "Hypothyroidism" },
+              { "selecting": "Pre diabetes", "deselects": "Diabetes" },
+              { "selecting": "Diabetes", "deselects": "Pre diabetes" }
+            ]
+          },
           "scoringSignals": [
             {
               "signal": "THYROID_HYPO_SCORE",
@@ -1896,7 +1921,7 @@
         {
           "id": "hormonal",
           "type": "multi_select",
-          "label": "Any hormonal or reproductive health issues? (Females)",
+          "label": "Any hormonal or reproductive health issues?",
           "subtitle": null,
           "required": false,
           "multiSelect": true,
@@ -1965,7 +1990,11 @@
                 "HEALTHY_9_only",
                 "absolute_lock"
               ],
-              "followUpQuestions": []
+              "followUpQuestions": [],
+              "visibleOnlyIf": [
+                { "dependsOn": "sex", "operator": "equals", "value": "Female" },
+                { "dependsOn": "age", "operator": "lessThan", "value": 45 }
+              ]
             },
             {
               "label": "Post-delivery or breastfeeding",
@@ -1981,7 +2010,11 @@
                 "hormonal_crash",
                 "nutritional_depletion"
               ],
-              "followUpQuestions": []
+              "followUpQuestions": [],
+              "visibleOnlyIf": [
+                { "dependsOn": "sex", "operator": "equals", "value": "Female" },
+                { "dependsOn": "age", "operator": "lessThan", "value": 45 }
+              ]
             },
             {
               "label": "Peri-menopause",
@@ -2021,14 +2054,35 @@
               "value": "Hormone Replacement Therapy (HRT)",
               "icon": "💉",
               "triggers": [
+                "POST_HYSTERECTOMY condition detected → Pro Fact Post Hysterectomy Reset kit",
                 "clinical context signal — processed in LLM narrative"
               ],
               "clinicalTags": [
                 "HRT",
                 "exogenous_hormones",
+                "post_hysterectomy_context",
                 "clinical_context"
               ],
               "followUpQuestions": []
+            },
+            {
+              "label": "Post-hysterectomy",
+              "value": "Post-hysterectomy",
+              "icon": "🩺",
+              "triggers": [
+                "POST_HYSTERECTOMY condition detected → Pro Fact Post Hysterectomy Reset kit",
+                "surgical menopause hormonal cascade — treated as post-menopausal hormonal reset"
+              ],
+              "clinicalTags": [
+                "post_hysterectomy",
+                "surgical_menopause",
+                "oestrogen_withdrawal",
+                "hormonal_reset"
+              ],
+              "followUpQuestions": [],
+              "visibleOnlyIf": [
+                { "dependsOn": "sex", "operator": "equals", "value": "Female" }
+              ]
             },
             {
               "label": "None of the above",
@@ -2076,6 +2130,18 @@
               "Heavy bleeding periods"
             ],
             "sourceCodeReference": "locked clinical rule 2026-06-15"
+          },
+          "mutualExclusivityRules": {
+            "description": "Currently pregnant ↔ Peri-menopause ↔ Post-menopause are mutually contradictory reproductive states — a patient can only be in one of these at a time.",
+            "toastMessage": "Selected the contradicting reproductive state — replacing the previous one.",
+            "rules": [
+              { "selecting": "Currently pregnant", "deselects": "Peri-menopause" },
+              { "selecting": "Currently pregnant", "deselects": "Post-menopause" },
+              { "selecting": "Peri-menopause", "deselects": "Currently pregnant" },
+              { "selecting": "Peri-menopause", "deselects": "Post-menopause" },
+              { "selecting": "Post-menopause", "deselects": "Currently pregnant" },
+              { "selecting": "Post-menopause", "deselects": "Peri-menopause" }
+            ]
           },
           "scoringSignals": [
             {
@@ -2883,7 +2949,7 @@
                 "isGrade45=true",
                 "norwood_V",
                 "if age >= 20 → absolute AGA lock (AGA_MALE_45)",
-                "MPHL PLUS variant"
+                "MPHL Pro variant"
               ],
               "clinicalTags": [
                 "grade_4",
@@ -2911,7 +2977,7 @@
                 "isGrade45=true",
                 "norwood_Va",
                 "if age >= 20 → absolute AGA lock",
-                "MPHL PLUS variant"
+                "MPHL Pro variant"
               ],
               "clinicalTags": [
                 "grade_4",
@@ -2938,7 +3004,7 @@
                 "isGrade45=true",
                 "norwood_VI",
                 "absolute AGA lock at age >= 20",
-                "MPHL PLUS variant",
+                "MPHL Pro variant",
                 "prognosis addendum: bald areas not reversible"
               ],
               "clinicalTags": [
@@ -2967,7 +3033,7 @@
                 "isGrade45=true",
                 "norwood_VII",
                 "absolute AGA lock at age >= 20",
-                "MPHL PLUS variant",
+                "MPHL Pro variant",
                 "prognosis addendum: bald areas not reversible"
               ],
               "clinicalTags": [
@@ -3096,7 +3162,7 @@
                 "isGrade45=true",
                 "ludwig_II_1",
                 "if age >= 20 → absolute AGA lock (AGA_FEMALE_45)",
-                "FPHL PLUS variant"
+                "FPHL Pro variant"
               ],
               "clinicalTags": [
                 "grade_4",
@@ -3124,7 +3190,7 @@
                 "isGrade45=true",
                 "ludwig_III_1",
                 "absolute AGA lock at age >= 20",
-                "FPHL PLUS variant",
+                "FPHL Pro variant",
                 "prognosis addendum: bald areas not reversible"
               ],
               "clinicalTags": [
@@ -3168,7 +3234,7 @@
             },
             {
               "signal": "MPHL_FPHL_PLUS_VARIANT",
-              "rule": "isGrade45=true → kit resolves to MPHL PLUS (male) or FPHL PLUS (female)"
+              "rule": "isGrade45=true → kit resolves to MPHL Pro (male) or FPHL Pro (female)"
             },
             {
               "signal": "AGA_PROTOCOL_GRADE45",
@@ -3190,7 +3256,7 @@
             },
             {
               "value": "Grade 4-5 (age >= 20)",
-              "clinicalNote": "Absolute AGA_MALE_45 or AGA_FEMALE_45 lock; MPHL PLUS/FPHL PLUS variants"
+              "clinicalNote": "Absolute AGA_MALE_45 or AGA_FEMALE_45 lock; MPHL Pro/FPHL Pro variants"
             }
           ],
           "uiMetadata": {

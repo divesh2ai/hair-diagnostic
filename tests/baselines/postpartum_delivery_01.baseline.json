@@ -1,0 +1,50 @@
+{
+  "fixtureId": "postpartum_delivery_01",
+  "generatedAt": "2026-07-03T07:14:18.088Z",
+  "pipelineVersion": "1.0.0",
+  "primaryDiagnosis": "TE_DELIVERY",
+  "scalpStates": [
+    "NORMAL_SCALP"
+  ],
+  "rootCauses": [
+    "POST_PARTUM"
+  ],
+  "therapyNeeds": [],
+  "severity": "MILD",
+  "rankedKitIds": [
+    "HAIR FACT TE GOLD",
+    "PHENOTYPE INFLAMATION",
+    "FPHL"
+  ],
+  "appliedRules": [],
+  "protocolLabel": "Recovery protocol for 3 condition(s): Female pattern hair loss · Scalp / perifollicular inflammation · Acute telogen shedding.",
+  "recommendations": [
+    "HAIR FACT TE GOLD",
+    "PHENOTYPE INFLAMATION",
+    "FPHL"
+  ],
+  "narratives": {
+    "narratives": {
+      "doctorHash": "{\"doctorSummary\":\"Mild Post-delivery telogen effluvium (non-brea",
+      "patientHash": "{\"doctorSummary\":\"Mild Post-delivery telogen effluvium (non-brea"
+    },
+    "orchestration": {
+      "pipelineVersion": "1.0.0",
+      "executionId": "dd1e31a4-0775-4b15-b0ce-fb730ddf8c72",
+      "startedAt": "2026-07-03T07:14:18.089Z",
+      "completedAt": "2026-07-03T07:14:18.089Z",
+      "durationMs": 0,
+      "completedStages": [
+        "questionnaire",
+        "clinical",
+        "therapy",
+        "recommendations",
+        "narratives"
+      ]
+    }
+  },
+  "reportMetadata": {
+    "generatedBy": "generate-baselines.ts",
+    "version": "1.0.0"
+  }
+}

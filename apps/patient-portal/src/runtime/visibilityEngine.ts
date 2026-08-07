@@ -72,6 +72,17 @@ export function evaluateAllConditions(
 }
 
 export function isQuestionVisible(question: Question, answers: Record<string, any>): boolean {
+  if (question.showIf) {
+    const answer = answers[question.showIf.questionId];
+    if (answer === undefined || answer === null) return false;
+    const expected = Array.isArray(question.showIf.value)
+      ? question.showIf.value
+      : [question.showIf.value];
+    const matches = Array.isArray(answer)
+      ? expected.some((value) => answer.includes(value))
+      : expected.includes(answer);
+    if (!matches) return false;
+  }
   if (!question.skipIf || question.skipIf.length === 0) return true;
   return !evaluateAllConditions(question.skipIf, answers, 'any');
 }
@@ -98,9 +109,15 @@ export function getVisibleOptions(
   if (!question.filterOptions || question.filterOptions.length === 0) return question.options;
 
   return question.options.filter(option => {
-    const filterRules = question.filterOptions!.find(f => f.optionId === option.id);
-    if (!filterRules) return true;
-    const shouldHide = evaluateAllConditions(filterRules.hideIf, answers, 'any');
+    // An option may be gated by more than one source — e.g. a question-level
+    // dynamicFilterRule AND an option-level visibleOnlyIf. Treat every
+    // matching entry as an independent reason to hide, so any one firing is
+    // sufficient.
+    const matchingRules = question.filterOptions!.filter(f => f.optionId === option.id);
+    if (matchingRules.length === 0) return true;
+    const shouldHide = matchingRules.some(rule =>
+      evaluateAllConditions(rule.hideIf, answers, 'any')
+    );
     return !shouldHide;
   });
 }

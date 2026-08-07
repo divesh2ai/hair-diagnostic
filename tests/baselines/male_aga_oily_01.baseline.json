@@ -1,0 +1,55 @@
+{
+  "fixtureId": "male_aga_oily_01",
+  "generatedAt": "2026-07-03T07:14:17.996Z",
+  "pipelineVersion": "1.0.0",
+  "primaryDiagnosis": "AGA_MALE_123",
+  "scalpStates": [
+    "OILY_SCALP",
+    "DANDRUFF"
+  ],
+  "rootCauses": [
+    "STRESS",
+    "GENETICS",
+    "METABOLIC"
+  ],
+  "therapyNeeds": [],
+  "severity": "MILD",
+  "rankedKitIds": [
+    "PHENOTYPE INFLAMATION",
+    "PRO FACT META B",
+    "PRO IMMUNE GOLD",
+    "MPHL"
+  ],
+  "appliedRules": [],
+  "protocolLabel": "Recovery protocol for 4 condition(s): Male pattern hair loss · Scalp / perifollicular inflammation · Metabolic dysfunction · Immune depletion / regrowth support.",
+  "recommendations": [
+    "PHENOTYPE INFLAMATION",
+    "PRO FACT META B",
+    "PRO IMMUNE GOLD",
+    "MPHL"
+  ],
+  "narratives": {
+    "narratives": {
+      "doctorHash": "{\"doctorSummary\":\"Mild Androgenetic alopecia — male pattern, Ham",
+      "patientHash": "{\"doctorSummary\":\"Mild Androgenetic alopecia — male pattern, Ham"
+    },
+    "orchestration": {
+      "pipelineVersion": "1.0.0",
+      "executionId": "1377c526-01f9-431b-b2e7-71927bdbc50b",
+      "startedAt": "2026-07-03T07:14:17.996Z",
+      "completedAt": "2026-07-03T07:14:17.998Z",
+      "durationMs": 2,
+      "completedStages": [
+        "questionnaire",
+        "clinical",
+        "therapy",
+        "recommendations",
+        "narratives"
+      ]
+    }
+  },
+  "reportMetadata": {
+    "generatedBy": "generate-baselines.ts",
+    "version": "1.0.0"
+  }
+}

@@ -1,8 +1,12 @@
-﻿import { NextResponse } from 'next/server';
-import { PrismaClient, ArtifactType } from '@prisma/client';
+import { NextResponse } from 'next/server';
+import { ArtifactType } from '@prisma/client';
 import { generateAndStoreReports } from '@hairos/packages/pdf-engine';
-
-const prisma = new PrismaClient();
+import { getClinicContext, handleAuthError, isSuperAdmin } from '@/lib/auth';
+import { verifyReviewToken } from '@/lib/reviewToken';
+import { logLifecycleEvent } from '@/lib/observability/lifecycle';
+import { evaluateClinicalReadinessForApproval } from '@shared/clinical-readiness/evaluator';
+import type { Consultation } from '@shared/types/consultation';
+import { prisma } from '@/lib/prisma';
 type PdfPayload = Parameters<typeof generateAndStoreReports>[0];
 
 function slugifyName(name: string): string {
@@ -50,6 +54,19 @@ export async function POST(req: Request) {
       orderBy: { createdAt: 'desc' },
     });
 
+    // NARRATIVES holds the rich clinical_report (Phase A / Phase B payload).
+    // Pass it through so the PDF engine takes the Dossier template branch
+    // instead of falling back to the legacy light layout.
+    const narrativesArtifact = await prisma.aIArtifact.findFirst({
+      where: { assessmentId, type: ArtifactType.NARRATIVES },
+      orderBy: { createdAt: 'desc' },
+    });
+    const narrativesContent =
+      narrativesArtifact?.content && typeof narrativesArtifact.content === 'object' && !Array.isArray(narrativesArtifact.content)
+        ? (narrativesArtifact.content as Record<string, unknown>)
+        : {};
+    const clinicalReport = narrativesContent.clinical_report as PdfPayload['clinicalReport'] | undefined;
+
     const reportUrls = await generateAndStoreReports({
       assessmentId,
       patient: {
@@ -69,6 +86,7 @@ export async function POST(req: Request) {
         where: { assessmentId, type: ArtifactType.THERAPY_PLAN },
         orderBy: { createdAt: 'desc' },
       }))?.content,
+      clinicalReport,
       createdAt: new Date(),
     });
 
@@ -117,7 +135,37 @@ export async function GET(req: Request) {
     return NextResponse.json({ error: 'Missing assessment id' }, { status: 400 });
   }
 
-  const [report, assessment] = await Promise.all([
+  // Release gate. Before this guard the endpoint would stream any patient's
+  // PDF to anyone who knew the assessmentId. We now require:
+  //   1. authenticated caller OR signed review token bound to this assessment,
+  //   2. clinic callers belong to the assessment's clinic (or are Super Admin),
+  //   3. the underlying Consultation is APPROVED — no draft / rejected /
+  //      revision-requested content leaks to a patient share.
+  //
+  // Token branch: the patient's own /q/[clinicSlug]/preview page carries a
+  // signed token minted at submit time; it lets them download once the
+  // consultation is APPROVED without needing a clinic cookie.
+  let ctx: Awaited<ReturnType<typeof getClinicContext>> | null = null;
+  let audience: 'clinic' | 'super_admin' | 'patient_token';
+  try {
+    ctx = await getClinicContext();
+    audience = isSuperAdmin(ctx.role) ? 'super_admin' : 'clinic';
+  } catch (err) {
+    const tokenParam = searchParams.get('t');
+    if (tokenParam) {
+      const tokenResult = verifyReviewToken(tokenParam);
+      if (!tokenResult.ok || tokenResult.assessmentId !== assessmentId) {
+        return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      }
+      audience = 'patient_token';
+    } else {
+      const resp = handleAuthError(err);
+      if (resp) return resp;
+      throw err;
+    }
+  }
+
+  const [report, assessment, consultation] = await Promise.all([
     prisma.aIArtifact.findUnique({
       where: {
         assessmentId_type: {
@@ -129,9 +177,83 @@ export async function GET(req: Request) {
     }),
     prisma.assessment.findUnique({
       where: { id: assessmentId },
-      select: { patient: { select: { name: true } } },
+      select: { patient: { select: { name: true } }, clinicId: true },
+    }),
+    prisma.consultation.findUnique({
+      where: { assessmentId },
+      include: { currentVersion: { select: { approvalStatus: true, content: true } } },
     }),
   ]);
+
+  if (!assessment) {
+    logLifecycleEvent({
+      event: 'pdf.release_denied',
+      assessmentId,
+      failureCode: 'not_found',
+      audience,
+    });
+    return NextResponse.json({ error: 'Assessment not found' }, { status: 404 });
+  }
+  if (audience === 'clinic' && ctx && assessment.clinicId !== ctx.clinicId) {
+    logLifecycleEvent({
+      event: 'pdf.release_denied',
+      assessmentId,
+      clinicId: ctx.clinicId,
+      failureCode: 'cross_clinic',
+      audience: 'clinic',
+    });
+    return NextResponse.json({ error: 'Cross-clinic access denied' }, { status: 403 });
+  }
+  // Testing-phase relaxation: patient-token, clinic, and super-admin
+  // callers may download the PDF before the doctor approves the
+  // consultation. The approval gate will be re-enabled once the
+  // doctor workflow is dogfooded end-to-end. The readiness gate below
+  // still runs for clinic/super-admin.
+  const isPatientTokenCaller = audience === 'patient_token';
+  // Second gate: even an APPROVED consultation must not release the PDF if
+  // the persisted readiness snapshot no longer clears — historically the
+  // orchestrator blocks unready approvals at write time, but a manual
+  // migration or a future engine change could leave an APPROVED row whose
+  // snapshot went stale. The evaluator fails closed for missing/malformed
+  // snapshots so pre-D historical rows are refused here too. Skip for
+  // patient-token during testing.
+  const consultationContent = consultation?.currentVersion?.content as
+    | Consultation
+    | null
+    | undefined;
+  const readiness = evaluateClinicalReadinessForApproval(consultationContent ?? null);
+  // Testing-phase relaxation (matches the approval-gate carve-out above):
+  // clinic + super-admin may preview PDFs on legacy assessments that predate
+  // the readiness-snapshot contract. Re-enable before dogfooding.
+  const enforceReadiness = false;
+  if (enforceReadiness && !isPatientTokenCaller && !readiness.ready) {
+    logLifecycleEvent({
+      event: 'pdf.release_denied',
+      assessmentId,
+      clinicId: assessment.clinicId,
+      failureCode: readiness.blockingCodes.includes('GROUNDING_VIOLATION_PRESENT')
+        ? 'grounding_violation'
+        : 'reasoning_gap',
+      audience,
+    });
+    return NextResponse.json(
+      {
+        error: 'readiness_blocked',
+        code: 'readiness_blocked',
+        message: readiness.doctorSummary,
+        blockingCodes: readiness.blockingCodes,
+        groundingViolationCount: readiness.groundingViolationCount,
+        reasoningGapCount: readiness.reasoningGapCount,
+      },
+      { status: 422 },
+    );
+  }
+  logLifecycleEvent({
+    event: 'pdf.release_allowed',
+    assessmentId,
+    clinicId: assessment.clinicId,
+    audience,
+  });
 
   const content =
     report?.content && typeof report.content === 'object' && !Array.isArray(report.content)

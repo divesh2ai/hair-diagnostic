@@ -1,0 +1,51 @@
+{
+  "fixtureId": "peri_menopause_stress_01",
+  "generatedAt": "2026-07-03T07:14:18.076Z",
+  "pipelineVersion": "1.0.0",
+  "primaryDiagnosis": "PERI_MENOPAUSE",
+  "scalpStates": [
+    "NORMAL_SCALP"
+  ],
+  "rootCauses": [
+    "STRESS",
+    "HORMONAL_SHIFT"
+  ],
+  "therapyNeeds": [],
+  "severity": "MILD",
+  "rankedKitIds": [
+    "PHENOTYPE INFLAMATION",
+    "HAIR FACT PERI MENOPAUSE",
+    "FPHL"
+  ],
+  "appliedRules": [],
+  "protocolLabel": "Recovery protocol for 3 condition(s): Female pattern hair loss · Scalp / perifollicular inflammation · Peri-menopause.",
+  "recommendations": [
+    "PHENOTYPE INFLAMATION",
+    "HAIR FACT PERI MENOPAUSE",
+    "FPHL"
+  ],
+  "narratives": {
+    "narratives": {
+      "doctorHash": "{\"doctorSummary\":\"Mild Peri-menopausal androgenic alopecia. Fluc",
+      "patientHash": "{\"doctorSummary\":\"Mild Peri-menopausal androgenic alopecia. Fluc"
+    },
+    "orchestration": {
+      "pipelineVersion": "1.0.0",
+      "executionId": "9c89fe6f-2009-4e7b-8561-740fcd5785c4",
+      "startedAt": "2026-07-03T07:14:18.076Z",
+      "completedAt": "2026-07-03T07:14:18.077Z",
+      "durationMs": 1,
+      "completedStages": [
+        "questionnaire",
+        "clinical",
+        "therapy",
+        "recommendations",
+        "narratives"
+      ]
+    }
+  },
+  "reportMetadata": {
+    "generatedBy": "generate-baselines.ts",
+    "version": "1.0.0"
+  }
+}

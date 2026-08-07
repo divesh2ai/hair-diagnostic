@@ -1,0 +1,510 @@
+@page { size: A4 portrait; margin: 0; }
+
+/* ==========================================================================
+   Dr. FACT — One-Page Hair Assessment Report
+   Design system restored from the CEO-approved "Erica" reference build
+   (recovered from a dangling HTML export). Deep emerald + gold on cream
+   paper; Fraunces serif for headings; Plus Jakarta Sans for body.
+   Layout is A4-sized (794px x 1123px @ 96dpi = 210mm x 297mm) for parity
+   with the source. Do not resize without re-checking the mapping table
+   fit for the max-kit case.
+   ========================================================================== */
+
+:root, .op-report-shell {
+  --paper: #FAF7EF;
+  --card: #FFFFFF;
+  --panel: #F4EFE2;
+  --ink: #182720;
+  --muted: #5D6E62;
+  --faint: #8A9A8E;
+  --emerald: #0C1B12;
+  --emerald-2: #12291C;
+  --gold: #B9985A;
+  --gold-deep: #9C7F45;
+  --gold-soft: #E7D5A7;
+  --gold-tint: #F6EFDD;
+  --line: rgba(23, 54, 38, 0.14);
+  --gold-line: rgba(185, 152, 90, 0.38);
+  --rust: #A5533A;
+  --good: #2F6B4F;
+}
+
+html, body { margin: 0; background: #e8e4d8; }
+
+.op-report-shell {
+  min-height: 100vh;
+  display: flex; justify-content: center;
+  padding: 24px 0 48px;
+  color: var(--ink);
+  font-family: var(--font-jakarta), "Plus Jakarta Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* The A4 sheet. All child selectors are scoped under .sheet so nothing
+   here can leak into surrounding chrome (e.g. the doctor review UI). */
+.sheet {
+  width: 794px; height: 1123px;
+  background: var(--paper);
+  display: flex; flex-direction: column;
+  overflow: hidden;
+  box-shadow: 0 22px 60px rgba(6, 27, 45, 0.25);
+}
+.sheet *, .sheet *::before, .sheet *::after { box-sizing: border-box; min-width: 0; }
+.sheet .serif { font-family: var(--font-fraunces), "Fraunces", Georgia, "Iowan Old Style", serif; }
+.sheet .caps  { text-transform: uppercase; letter-spacing: 0.14em; }
+
+/* ============================== HEADER =================================== */
+.sheet .hd {
+  background: var(--emerald);
+  color: #F2EEE3;
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 0 26px;
+  height: 58px;
+  border-bottom: 2px solid var(--gold);
+  flex-shrink: 0;
+}
+.sheet .hd-lockup .serif {
+  font-size: 19px; font-weight: 600; letter-spacing: 0.12em; color: #F4EFE2;
+}
+.sheet .hd-lockup small {
+  display: block; font-size: 6.5px; letter-spacing: 0.34em;
+  color: var(--gold-soft); margin-top: 1px;
+}
+.sheet .hd-title { text-align: center; }
+.sheet .hd-title h1 {
+  margin: 0; font-size: 13.5px; font-weight: 700; letter-spacing: 0.18em; color: #F2EEE3;
+}
+.sheet .hd-title p {
+  margin: 3px 0 0; font-size: 7.5px; letter-spacing: 0.22em; color: rgba(231, 213, 167, 0.75);
+}
+.sheet .hd-right { display: flex; align-items: center; gap: 12px; }
+.sheet .seal {
+  display: flex; align-items: center; gap: 7px;
+  border: 1px solid var(--gold); border-radius: 999px;
+  padding: 5px 12px;
+}
+.sheet .seal i {
+  width: 14px; height: 14px; border-radius: 50%;
+  background: var(--gold);
+  display: flex; align-items: center; justify-content: center;
+}
+.sheet .seal i svg { width: 8px; height: 8px; stroke: #0C1B12; stroke-width: 3; fill: none; }
+.sheet .seal span {
+  font-size: 7px; letter-spacing: 0.16em; color: var(--gold-soft);
+  font-weight: 700; line-height: 1.5;
+}
+.sheet .hd-meta {
+  font-size: 7px; color: rgba(242, 238, 227, 0.55);
+  text-align: right; line-height: 1.7; letter-spacing: 0.08em;
+}
+
+/* ============================ ROW A: PATIENT / SUMMARY / CONTRIBUTORS === */
+.sheet .rowA {
+  display: grid; grid-template-columns: 196px 1fr 214px;
+  gap: 10px; padding: 9px 22px 0;
+}
+.sheet .blk {
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 10px 12px;
+}
+.sheet .blk-label {
+  font-size: 6.8px; font-weight: 700; letter-spacing: 0.2em;
+  color: var(--gold-deep); text-transform: uppercase;
+  display: flex; align-items: center; gap: 6px; margin-bottom: 8px;
+}
+.sheet .blk-label::after { content: ""; flex: 1; height: 1px; background: var(--gold-line); }
+
+.sheet .patient { display: flex; flex-direction: column; }
+.sheet .patient-top {
+  display: flex; align-items: center; gap: 10px; margin-bottom: 8px;
+}
+.sheet .patient-top img {
+  width: 52px; height: 52px; border-radius: 50%; object-fit: cover;
+  border: 1.5px solid var(--gold-soft);
+}
+.sheet .patient-top .serif { font-size: 21px; font-weight: 500; line-height: 1.05; }
+.sheet .patient-top small {
+  display: block; font-size: 8.5px; color: var(--muted); margin-top: 1px;
+}
+.sheet .patient dl { font-size: 8px; line-height: 1.5; margin: 0; }
+.sheet .patient dl div {
+  display: flex; justify-content: space-between;
+  padding: 2.8px 0; border-top: 1px dashed var(--line);
+}
+.sheet .patient dt {
+  color: var(--faint); letter-spacing: 0.06em; text-transform: uppercase;
+  font-size: 6.8px; padding-top: 1px;
+}
+.sheet .patient dd { font-weight: 600; text-align: right; margin: 0; }
+
+.sheet .summary p.pattern {
+  font-family: var(--font-fraunces), "Fraunces", Georgia, serif;
+  font-size: 13px; font-weight: 500; margin: 0 0 6px;
+}
+.sheet .summary p.pattern b { color: var(--gold-deep); font-weight: 600; }
+.sheet .summary .act {
+  font-size: 8.6px; color: var(--muted); line-height: 1.55; margin: 0 0 7px;
+}
+.sheet .summary .act b { color: var(--ink); font-weight: 700; }
+.sheet .summary .concl {
+  background: var(--gold-tint);
+  border-left: 2px solid var(--gold);
+  border-radius: 0 7px 7px 0;
+  padding: 6px 9px;
+}
+.sheet .summary .concl span {
+  font-size: 6.5px; font-weight: 700; letter-spacing: 0.18em;
+  color: var(--gold-deep); text-transform: uppercase;
+}
+.sheet .summary .concl p {
+  font-size: 8.6px; line-height: 1.5; margin: 3px 0 0;
+}
+
+.sheet .contrib ul { list-style: none; margin: 0; padding: 0; }
+.sheet .contrib li {
+  display: flex; align-items: center; gap: 8px;
+  font-size: 8.2px; font-weight: 600;
+  padding: 3px 0; border-top: 1px dashed var(--line);
+}
+.sheet .contrib li:first-child { border-top: none; }
+.sheet .dot-ic {
+  width: 15px; height: 15px; border-radius: 50%;
+  background: var(--gold-tint); border: 1px solid var(--gold-line);
+  display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+}
+.sheet .dot-ic svg {
+  width: 9px; height: 9px; stroke: var(--gold-deep);
+  stroke-width: 1.7; fill: none; stroke-linecap: round; stroke-linejoin: round;
+}
+
+/* ============================== SNAPSHOT ================================= */
+.sheet .snapwrap { padding: 8px 22px 0; }
+.sheet .sec-title {
+  display: flex; align-items: center; gap: 10px; margin-bottom: 6px;
+}
+.sheet .sec-title h2 {
+  margin: 0;
+  font-family: var(--font-fraunces), "Fraunces", Georgia, serif;
+  font-size: 12.5px; font-weight: 600; letter-spacing: 0.02em; white-space: nowrap;
+}
+.sheet .sec-title::before,
+.sheet .sec-title::after {
+  content: ""; flex: 1; height: 1px; background: var(--gold-line);
+}
+.sheet .snap {
+  display: grid; grid-template-columns: repeat(6, 1fr); gap: 8px;
+}
+.sheet .snap article {
+  background: var(--card); border: 1px solid var(--line);
+  border-radius: 9px; padding: 7px 8px; text-align: center;
+}
+.sheet .snap article span {
+  font-size: 6.4px; font-weight: 700; letter-spacing: 0.16em;
+  color: var(--faint); text-transform: uppercase; display: block;
+}
+.sheet .snap .simg {
+  width: 100%; height: 38px; object-fit: cover;
+  border-radius: 7px; margin: 4px 0;
+  border: 1px solid var(--line);
+  background: #fff;
+}
+.sheet .snap article strong {
+  font-size: 8.6px; font-weight: 700; line-height: 1.35; display: block;
+}
+
+/* ============================== LUDWIG BAND ============================== */
+.sheet .ludwig {
+  margin: 6px 22px 0;
+  background: var(--emerald);
+  border-radius: 10px; color: #EFEAE0;
+  display: flex; align-items: center; gap: 16px;
+  padding: 8px 16px;
+}
+.sheet .ludwig .lab {
+  font-size: 6.8px; font-weight: 700; letter-spacing: 0.2em;
+  color: var(--gold-soft); text-transform: uppercase;
+  line-height: 1.6; white-space: nowrap;
+}
+.sheet .ludwig .lab b {
+  display: block;
+  font-family: var(--font-fraunces), "Fraunces", Georgia, serif;
+  font-size: 12px; font-weight: 500; letter-spacing: 0.02em;
+  color: #F4EFE2; text-transform: none;
+}
+.sheet .stages { flex: 1; display: flex; align-items: center; gap: 6px; }
+.sheet .stage {
+  flex: 1; position: relative; text-align: center;
+  padding: 4px 0 3px; border-radius: 7px;
+  border: 1px solid rgba(231, 213, 167, 0.22);
+}
+.sheet .stage em {
+  display: block; font-style: normal;
+  font-size: 6.2px; letter-spacing: 0.14em;
+  color: rgba(239, 234, 224, 0.6); text-transform: uppercase;
+}
+.sheet .stage .dots {
+  display: flex; justify-content: center; gap: 2.5px; margin-top: 3px;
+}
+.sheet .stage .dots i {
+  width: 4px; height: 4px; border-radius: 50%;
+  background: rgba(231, 213, 167, 0.35);
+}
+.sheet .stage.active { background: var(--gold); border-color: var(--gold); }
+.sheet .stage.active em { color: #0C1B12; font-weight: 700; }
+.sheet .stage.active .dots i { background: rgba(12, 27, 18, 0.75); }
+.sheet .goalchip {
+  display: flex; align-items: center; gap: 8px;
+  border: 1px solid var(--gold); border-radius: 8px; padding: 6px 11px;
+}
+.sheet .goalchip svg { width: 13px; height: 13px; stroke: var(--gold-soft); stroke-width: 1.7; fill: none; }
+.sheet .goalchip span {
+  font-size: 7.6px; line-height: 1.45; color: var(--gold-soft);
+  font-weight: 600; max-width: 150px;
+}
+
+/* ============================== MAPPING TABLE ============================ */
+.sheet .mapwrap { padding: 8px 22px 0; }
+.sheet .thead {
+  display: grid; grid-template-columns: 218px 128px 176px 1fr;
+  gap: 10px; padding: 6px 12px;
+  background: var(--emerald);
+  border-radius: 8px 8px 0 0;
+}
+.sheet .thead span {
+  font-size: 6.6px; font-weight: 700; letter-spacing: 0.18em;
+  color: var(--gold-soft); text-transform: uppercase;
+}
+.sheet .trow {
+  display: grid; grid-template-columns: 218px 128px 176px 1fr;
+  gap: 10px; padding: 4px 12px; align-items: center;
+  background: var(--card);
+  border: 1px solid var(--line); border-top: none;
+}
+.sheet .trow:nth-child(odd) { background: #FDFBF5; }
+.sheet .trow:last-child { border-radius: 0 0 8px 8px; }
+
+.sheet .drv { display: flex; gap: 9px; align-items: center; }
+.sheet .drv .thumb {
+  width: 54px; height: 54px; border-radius: 9px;
+  border: 1px solid var(--line); object-fit: cover;
+  flex-shrink: 0; background: #fff;
+}
+.sheet .drv .body strong {
+  font-size: 9.6px; font-weight: 700; display: block;
+}
+.sheet .drv .body p {
+  font-size: 7.6px; color: var(--muted); line-height: 1.45; margin: 2.5px 0 0;
+}
+
+.sheet .kit {
+  display: flex; flex-direction: column; align-items: center; gap: 4px; text-align: center;
+}
+.sheet .kit .shot {
+  width: 64px; height: 46px; background: #fff;
+  border: 1px solid var(--line); border-radius: 7px;
+  display: flex; align-items: center; justify-content: center;
+  box-shadow: 0 2px 6px rgba(23, 54, 38, 0.08);
+}
+.sheet .kit .shot img { max-width: 56px; max-height: 40px; object-fit: contain; }
+.sheet .kit b {
+  font-size: 7.4px; font-weight: 700; letter-spacing: 0.1em;
+  color: var(--gold-deep); text-transform: uppercase;
+}
+
+.sheet .sig { display: flex; flex-wrap: wrap; gap: 4px; align-content: center; }
+.sheet .sig span {
+  font-size: 7px; font-weight: 600;
+  border: 1px solid var(--gold-line); background: var(--gold-tint);
+  color: var(--ink); border-radius: 999px;
+  padding: 2.5px 7px;
+}
+
+.sheet .ben ul { list-style: none; margin: 0; padding: 0; }
+.sheet .ben li {
+  position: relative;
+  font-size: 7.6px; color: var(--ink); line-height: 1.5;
+  padding-left: 11px;
+}
+.sheet .ben li::before {
+  content: ""; position: absolute; left: 0; top: 5px;
+  width: 5px; height: 5px; border-radius: 50%;
+  background: var(--gold); opacity: 0.85;
+}
+
+/* ============================== LOWER GRID =============================== */
+.sheet .lower {
+  display: grid; grid-template-columns: 1fr 1.25fr 1fr;
+  gap: 10px; padding: 7px 22px 0;
+  flex: 1; min-height: 0;
+}
+.sheet .panel {
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 9px 12px;
+  display: flex; flex-direction: column; min-height: 0;
+}
+.sheet .panel-h {
+  font-size: 7px; font-weight: 700; letter-spacing: 0.2em;
+  color: var(--gold-deep); text-transform: uppercase;
+  padding-bottom: 6px; margin-bottom: 7px;
+  border-bottom: 1px solid var(--gold-line);
+  display: flex; align-items: center; justify-content: space-between;
+}
+.sheet .panel-h .sub {
+  letter-spacing: 0.06em; color: var(--faint); font-weight: 700;
+}
+
+.sheet .top-item {
+  display: flex; gap: 9px; align-items: flex-start; padding: 4.5px 0;
+}
+.sheet .top-item + .top-item { border-top: 1px dashed var(--line); }
+.sheet .top-item .shot {
+  width: 32px; height: 40px; flex-shrink: 0;
+  background: #fff; border: 1px solid var(--line); border-radius: 6px;
+  display: flex; align-items: center; justify-content: center;
+}
+.sheet .top-item .shot img { max-width: 28px; max-height: 38px; object-fit: contain; }
+.sheet .top-item strong { font-size: 8.4px; font-weight: 700; display: block; }
+.sheet .top-item p { font-size: 7.2px; color: var(--muted); line-height: 1.45; margin: 1.5px 0 0; }
+.sheet .top-item span { font-size: 7px; color: var(--ink); display: block; margin-top: 2px; }
+.sheet .top-item span b { color: var(--gold-deep); }
+.sheet .warn {
+  margin: auto 0 0;
+  background: var(--gold-tint); border-radius: 6px;
+  padding: 6px 9px;
+  font-size: 6.8px; line-height: 1.5;
+  color: var(--gold-deep); font-weight: 600;
+}
+
+.sheet .tl {
+  display: grid; grid-template-columns: 1fr 1fr;
+  gap: 9px 12px; flex: 1; align-content: start;
+}
+.sheet .tl-step { position: relative; padding: 0 0 0 21px; }
+.sheet .tl-step i {
+  position: absolute; left: 0; top: 0;
+  width: 15px; height: 15px; border-radius: 50%;
+  background: var(--gold); color: #0C1B12;
+  font-size: 7.5px; font-weight: 800; font-style: normal;
+  display: flex; align-items: center; justify-content: center;
+}
+.sheet .tl-step em {
+  font-style: normal;
+  font-size: 6.6px; font-weight: 700; letter-spacing: 0.16em;
+  color: var(--gold-deep); text-transform: uppercase;
+}
+.sheet .tl-step strong { display: block; font-size: 8.8px; font-weight: 700; margin: 1px 0 2px; }
+.sheet .tl-step p { font-size: 7.3px; color: var(--muted); line-height: 1.45; }
+
+.sheet .life {
+  display: grid; grid-template-columns: 1fr; gap: 0;
+  font-size: 7.4px;
+}
+.sheet .life h4 {
+  font-size: 6.6px; font-weight: 700; letter-spacing: 0.16em;
+  text-transform: uppercase; margin: 5px 0 4px;
+}
+.sheet .life h4.g { color: var(--good); }
+.sheet .life h4.r { color: var(--rust); }
+.sheet .life span {
+  display: flex; align-items: center; gap: 6px;
+  padding: 1.5px 0; color: var(--ink); font-weight: 500;
+}
+.sheet .life svg {
+  width: 8px; height: 8px; flex-shrink: 0;
+  stroke-width: 2.6; fill: none; stroke-linecap: round;
+}
+.sheet .life .ok svg { stroke: var(--good); }
+.sheet .life .no svg { stroke: var(--rust); }
+
+.sheet .qr-row {
+  margin-top: auto;
+  display: flex; align-items: center; gap: 9px;
+  border-top: 1px dashed var(--line); padding-top: 6px;
+}
+.sheet .qr-box {
+  width: 40px; height: 40px;
+  background: #fff; border: 1px solid var(--line); border-radius: 6px;
+  padding: 4px;
+}
+.sheet .qr-box svg { width: 100%; height: 100%; display: block; }
+.sheet .qr-row p { font-size: 7px; color: var(--muted); line-height: 1.5; margin: 0; }
+
+/* ============================== FOOTER =================================== */
+.sheet .ft {
+  margin-top: 8px;
+  background: var(--emerald); color: #EFEAE0;
+  display: grid; grid-template-columns: 230px 150px 1fr 128px;
+  gap: 14px; align-items: center;
+  padding: 8px 26px; min-height: 56px;
+  border-top: 2px solid var(--gold);
+  flex-shrink: 0;
+}
+.sheet .ft small {
+  display: block;
+  font-size: 6.2px; letter-spacing: 0.2em;
+  color: var(--gold-soft); text-transform: uppercase; font-weight: 700;
+}
+.sheet .ft .who .serif { font-size: 13px; font-weight: 500; margin-top: 2px; }
+.sheet .ft .who p { font-size: 7px; color: rgba(239, 234, 224, 0.6); margin: 1px 0 0; }
+.sheet .ft .who .signature {
+  margin-top: 2px; width: 120px;
+  border-bottom: 1px solid rgba(231, 213, 167, 0.5); height: 9px;
+  font-family: var(--font-fraunces), "Fraunces", Georgia, serif;
+  font-style: italic; font-size: 9px; color: var(--gold-soft);
+}
+.sheet .ft .next b { display: block; font-size: 11px; font-weight: 700; margin-top: 2px; }
+.sheet .ft .next p { font-size: 6.6px; color: rgba(239, 234, 224, 0.6); margin: 1px 0 0; }
+.sheet .ft .disc {
+  margin: 0;
+  font-size: 6.4px; line-height: 1.55; color: rgba(239, 234, 224, 0.62);
+}
+.sheet .ft .approve {
+  display: flex; align-items: center; gap: 8px;
+  border: 1px solid var(--gold); border-radius: 9px;
+  padding: 8px 11px; justify-self: end;
+}
+.sheet .ft .approve i {
+  width: 20px; height: 20px; border-radius: 50%;
+  background: var(--gold);
+  display: flex; align-items: center; justify-content: center;
+}
+.sheet .ft .approve i svg {
+  width: 11px; height: 11px; stroke: #0C1B12;
+  stroke-width: 2.6; fill: none; stroke-linecap: round; stroke-linejoin: round;
+}
+.sheet .ft .approve span {
+  font-size: 7px; font-weight: 800; letter-spacing: 0.14em;
+  color: var(--gold-soft); line-height: 1.5;
+}
+
+/* Preflight validation (dev-only). Sits outside the .sheet so it never
+   affects the printed page. */
+.op-validation {
+  max-width: 794px;
+  margin: 4mm auto 0;
+  padding: 3mm 4mm;
+  background: #fff4c9;
+  border: 1px solid #d8a02a;
+  border-radius: 2mm;
+  color: #6b4f00;
+  font-size: 10px;
+}
+.op-validation strong { display: block; margin-bottom: 1mm; font-size: 12px; }
+.op-validation ul { margin: 0; padding-left: 4mm; }
+
+/* Density modes — retained for typing/back-compat with viewModel. The
+   Erica layout is tuned for the typical 5-kit case; overflow is already
+   handled by the grid template. */
+.op-mode-dense .sheet .trow { padding: 3px 12px; }
+.op-mode-compact .sheet .trow { padding: 2.5px 12px; }
+
+@media print {
+  html, body { background: #fff; }
+  .op-report-shell { padding: 0; }
+  .sheet { box-shadow: none; }
+  .op-validation { display: none; }
+}

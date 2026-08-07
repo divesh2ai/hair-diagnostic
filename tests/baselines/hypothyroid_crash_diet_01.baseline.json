@@ -1,0 +1,55 @@
+{
+  "fixtureId": "hypothyroid_crash_diet_01",
+  "generatedAt": "2026-07-03T07:14:17.971Z",
+  "pipelineVersion": "1.0.0",
+  "primaryDiagnosis": "THYROID_HYPO",
+  "scalpStates": [
+    "NORMAL_SCALP"
+  ],
+  "rootCauses": [
+    "HYPOTHYROID",
+    "RAPID_WEIGHT_LOSS"
+  ],
+  "therapyNeeds": [],
+  "severity": "MILD",
+  "rankedKitIds": [
+    "RAPID WEIGHT LOSS SHIELD",
+    "PHENOTYPE INFLAMATION",
+    "PRO FACT META B",
+    "FPHL"
+  ],
+  "appliedRules": [
+    "HYPO_METABOLIC: Hypothyroid + metabolic → plain PRO FACT META B (METABOLIC kit covers both)."
+  ],
+  "protocolLabel": "Recovery protocol for 4 condition(s): Female pattern hair loss · Scalp / perifollicular inflammation · Metabolic dysfunction · Rapid weight loss / GLP-1.",
+  "recommendations": [
+    "RAPID WEIGHT LOSS SHIELD",
+    "PHENOTYPE INFLAMATION",
+    "PRO FACT META B",
+    "FPHL"
+  ],
+  "narratives": {
+    "narratives": {
+      "doctorHash": "{\"doctorSummary\":\"Mild Hypothyroidism-associated diffuse alopeci",
+      "patientHash": "{\"doctorSummary\":\"Mild Hypothyroidism-associated diffuse alopeci"
+    },
+    "orchestration": {
+      "pipelineVersion": "1.0.0",
+      "executionId": "16c51686-6cf4-43e7-a141-aff9d6a7def7",
+      "startedAt": "2026-07-03T07:14:17.971Z",
+      "completedAt": "2026-07-03T07:14:17.973Z",
+      "durationMs": 2,
+      "completedStages": [
+        "questionnaire",
+        "clinical",
+        "therapy",
+        "recommendations",
+        "narratives"
+      ]
+    }
+  },
+  "reportMetadata": {
+    "generatedBy": "generate-baselines.ts",
+    "version": "1.0.0"
+  }
+}

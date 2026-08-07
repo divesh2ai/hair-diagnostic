@@ -3,6 +3,53 @@ import { renderToStream } from '@react-pdf/renderer';
 import { PatientReportTemplate } from './templates/PatientReportTemplate';
 import { uploadReportToSupabase } from './storage';
 import { ReportInputPayload } from './types';
+import { formatViolations } from '../ai-engine/clinical-facts';
+import type { GroundingViolation } from '../ai-engine/clinical-facts';
+import { formatReasoningGaps } from '../ai-engine/clinical-context';
+import type { ReasoningGap } from '../ai-engine/clinical-context';
+
+/**
+ * Thrown when the PDF engine is asked to render a report whose narrative
+ * contains symptom claims the patient did not actually report (Rule 10).
+ *
+ * The violation list is structured so the caller can decide whether to
+ * surface them in the doctor dashboard, log to telemetry, or fail loudly.
+ * Caller MUST NOT silently swallow this error in production paths — the
+ * whole point of the validator is to keep ungrounded prose out of the PDF.
+ */
+export class EvidenceGroundingError extends Error {
+  readonly violations: readonly GroundingViolation[];
+  constructor(violations: readonly GroundingViolation[]) {
+    super(
+      `PDF generation blocked: ${violations.length} evidence-grounding ` +
+        `violation${violations.length === 1 ? '' : 's'}. The narrative ` +
+        `claims symptoms the patient did not report.\n` +
+        formatViolations({ valid: false, violations }),
+    );
+    this.name = 'EvidenceGroundingError';
+    this.violations = violations;
+  }
+}
+
+/**
+ * Thrown when the PDF engine is asked to render a report whose recommendations
+ * are not fully explained — e.g. a selected kit not named in the narrative,
+ * or a detected condition that drove the protocol but is never discussed.
+ * Same shape as EvidenceGroundingError; bypassable only by internal QA flags.
+ */
+export class ReasoningCompletenessError extends Error {
+  readonly gaps: readonly ReasoningGap[];
+  constructor(gaps: readonly ReasoningGap[]) {
+    super(
+      `PDF generation blocked: ${gaps.length} reasoning-completeness gap` +
+        `${gaps.length === 1 ? '' : 's'}. The report does not explain ` +
+        `every recommendation back to the patient's assessment.\n` +
+        formatReasoningGaps({ valid: false, gaps }),
+    );
+    this.name = 'ReasoningCompletenessError';
+    this.gaps = gaps;
+  }
+}
 
 /**
  * Converts a patient name into a safe, lowercase filename slug.
@@ -23,6 +70,37 @@ function toFilenameSlug(name: string): string {
  * Converts React PDF Components into Buffers, uploads them, and returns URLs.
  */
 export async function generateAndStoreReports(payload: ReportInputPayload) {
+  // ── Rule 10 gate ──────────────────────────────────────────────────────────
+  // Refuse to render if the narrative carries unreported-symptom claims.
+  // bypassGroundingViolations exists only for QA / replay / debugging — never
+  // production. We still log the violations in that case so they're visible.
+  const violations = payload.groundingViolations ?? [];
+  if (violations.length > 0) {
+    if (payload.bypassGroundingViolations) {
+      console.warn(
+        `[PDF Engine] bypassGroundingViolations=true — rendering despite ` +
+          `${violations.length} violation(s):\n` +
+          formatViolations({ valid: false, violations }),
+      );
+    } else {
+      throw new EvidenceGroundingError(violations);
+    }
+  }
+
+  // ── Reasoning-completeness gate (self-reflection pass) ────────────────────
+  const gaps = payload.reasoningGaps ?? [];
+  if (gaps.length > 0) {
+    if (payload.bypassReasoningGaps) {
+      console.warn(
+        `[PDF Engine] bypassReasoningGaps=true — rendering despite ` +
+          `${gaps.length} gap(s):\n` +
+          formatReasoningGaps({ valid: false, gaps }),
+      );
+    } else {
+      throw new ReasoningCompletenessError(gaps);
+    }
+  }
+
   console.log(`[PDF Engine] Generating reports for Assessment ${payload.assessmentId}...`);
 
   // Derive a patient-specific filename, e.g. "rohini-report.pdf"

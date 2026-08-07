@@ -49,7 +49,7 @@ export interface KitInfo {
  */
 const ENTRIES: Record<string, KitInfo> = {
   TE_GOLD: {
-    displayName: "Telogen Effluvium Stabilisation",
+    displayName: "HAIR FACT TE GOLD",
     diagnosisInsight:
       "The shedding pattern is consistent with Telogen Effluvium — a temporary disruption of the hair cycle where follicles prematurely shift into the resting (shedding) phase. This is typically triggered by systemic stressors such as physiological stress, illness, or nutritional depletion.",
     treatmentObjective:
@@ -103,7 +103,7 @@ const ENTRIES: Record<string, KitInfo> = {
   },
 
   PRO_IMMUNE_GOLD: {
-    displayName: "Pro-Immune Restoration",
+    displayName: "Pro Immune 5",
     diagnosisInsight:
       "Recommended for hair fall and skin compromise associated with weakened immunity, chronic inflammation, or poor recovery from prior insults.",
     treatmentObjective:
@@ -162,7 +162,7 @@ const ENTRIES: Record<string, KitInfo> = {
   },
 
   PHENOTYPE_INFLAMMATION: {
-    displayName: "Inflammation Control",
+    displayName: "Phenotype Inflammation",
     diagnosisInsight:
       "Recommended for chronic low-grade inflammation contributing to persistent hair fall, weak follicles, and poor hair cycle recovery.",
     treatmentObjective:
@@ -211,7 +211,7 @@ const ENTRIES: Record<string, KitInfo> = {
   },
 
   MPHL: {
-    displayName: "Male Pattern Hair Loss (MPHL) — AGA Protocol",
+    displayName: "MPHL Pro",
     diagnosisInsight:
       "The thinning pattern is consistent with Androgenetic Alopecia — a progressive condition driven by androgen (DHT) activity, follicular sensitivity, inflammation, and metabolic imbalance. This produces gradual follicle miniaturisation, reduced density, and shorter growth cycles.",
     treatmentObjective:
@@ -243,7 +243,7 @@ const ENTRIES: Record<string, KitInfo> = {
   },
 
   FPHL: {
-    displayName: "Female Pattern Hair Loss (FPHL) — Pattern Hair Loss Protocol",
+    displayName: "FPHL Pro",
     diagnosisInsight:
       "The thinning pattern is consistent with Female Pattern Hair Loss, driven by a combination of androgen (DHT) activity, follicular sensitivity, inflammation, oxidative stress, and metabolic dysfunction. Over time this produces progressive thinning, weaker strands, and reduced density.",
     treatmentObjective:
@@ -273,7 +273,7 @@ const ENTRIES: Record<string, KitInfo> = {
   },
 
   ALOPECIA_AREATA: {
-    displayName: "Alopecia Areata Support",
+    displayName: "HAIR FACT ALOPECIA AREATA",
     diagnosisInsight:
       "Consistent with Alopecia Areata, an autoimmune disorder where the immune system targets its own hair follicles, producing patchy hair loss that can vary from small patches to more extensive loss. First-line therapy (immunosuppressants) controls flares but weakens immunity; nutritional support modulates immunity and augments therapeutic outcome.",
     treatmentObjective:
@@ -300,7 +300,7 @@ const ENTRIES: Record<string, KitInfo> = {
   },
 
   PERI_MENOPAUSE: {
-    displayName: "Peri-Menopause Hair Stabilisation",
+    displayName: "HAIR FACT PERI MENOPAUSE",
     diagnosisInsight:
       "Hair fall is consistent with peri-menopausal hair changes — often presenting similarly to Female Pattern Hair Loss or Telogen Effluvium. The cause is declining estrogen, a relative rise in androgens, fluctuating progesterone, thyroid shifts, elevated cortisol, and accompanying nutritional decline (iron, ferritin, calcium, vitamin D, B-vitamins, zinc). Digestive enzyme production declines with age, so malabsorption is a parallel problem.",
     treatmentObjective:
@@ -329,7 +329,7 @@ const ENTRIES: Record<string, KitInfo> = {
   },
 
   PCOS: {
-    displayName: "PCOS Hair & Skin Regulation",
+    displayName: "PRO FACT META B - PCOS 6 (veg)",
     diagnosisInsight:
       "Symptoms are consistent with PCOS-related hair and skin changes, driven by hormonal imbalance, insulin resistance, and chronic inflammation. These disruptions produce hair fall / thinning, acne, and occasional hirsutism.",
     treatmentObjective:
@@ -359,7 +359,7 @@ const ENTRIES: Record<string, KitInfo> = {
   },
 
   OXIDATIVE_STRESS: {
-    displayName: "Oxidative Stress Correction",
+    displayName: "PRO FACT OXIDATIVE STRESS PHENOTYPE",
     diagnosisInsight:
       "Recommended for patients with high oxidative load — smoking, alcohol, pollution, or chronic inflammation — producing cellular damage, weak hair structure, and reduced growth capacity.",
     treatmentObjective:
@@ -386,7 +386,7 @@ const ENTRIES: Record<string, KitInfo> = {
   },
 
   META_B: {
-    displayName: "Pro Fact Meta B — Cyclical Metabolic Reset",
+    displayName: "PRO FACT META-B",
     diagnosisInsight:
       "Recommended when the patient profile shows signs of slow metabolism — fatigue and lethargy, mood swings and poor concentration, weight gain or difficulty losing weight, hair and skin damage, hormone disruption, and digestive imbalance. A slowed metabolic engine starves follicles of substrate and disrupts hair-cycle signalling; correcting metabolic terrain is upstream of pattern, hormonal and inflammatory therapy.",
     treatmentObjective:
@@ -447,7 +447,7 @@ const ENTRIES: Record<string, KitInfo> = {
   },
 
   GI_GOLD: {
-    displayName: "Gut–Hair Axis Restoration (GI Gold)",
+    displayName: "PRO FACT GI HEALTH GOLD",
     diagnosisInsight:
       "Recommended for GERD, IBS, or leaky-gut signals that disrupt nutrient absorption, increase systemic inflammation, and compromise hair, skin, and immune function. The gut acts as the central hub for immune activity and nutrient bioavailability — disruption upstream blocks every downstream intervention.",
     treatmentObjective:
@@ -478,7 +478,7 @@ const ENTRIES: Record<string, KitInfo> = {
   // Trichotillomania (TTM) Support
   // ───────────────────────────────────────────────────────────────────────────
   TTM_SUPPORT: {
-    displayName: "Trichotillomania (TTM) Support",
+    displayName: "HAIR FACT TTM (OCD)",
     diagnosisInsight:
       "Recommended for trichotillomania — a behavioural disorder characterised by repetitive hair pulling, often linked to stress, anxiety, and neurochemical imbalance. Hair loss in TTM is not due to follicle damage alone but to mechanical pulling combined with internal triggers.",
     treatmentObjective:
@@ -523,7 +523,7 @@ const ENTRIES: Record<string, KitInfo> = {
   // Hair Breakage Repair (HBR)
   // ───────────────────────────────────────────────────────────────────────────
   HBR: {
-    displayName: "Hair Breakage Repair (HBR)",
+    displayName: "HAIR FACT HAIR BREAKAGE REPAIR(HBR)",
     diagnosisInsight:
       "Recommended for hair breakage where strands weaken and break due to nutritional deficiencies, environmental damage, and structural stress rather than root-level hair loss. Common triggers include heat styling, chemical treatments, pollution, nutritional gaps, and scalp inflammation.",
     treatmentObjective:
@@ -580,7 +580,7 @@ const ENTRIES: Record<string, KitInfo> = {
   // Early Greying Care Gold
   // ───────────────────────────────────────────────────────────────────────────
   EARLY_GREYING_CARE_GOLD: {
-    displayName: "Early Greying Care (EG Care Gold)",
+    displayName: "EARLY GREYING CARE 1",
     diagnosisInsight:
       "Recommended for premature greying, early pigment loss, stress-associated hair ageing, nutritional deficiencies, or premature greying accompanied by hair shedding. Melanocytes are particularly sensitive to oxidative stress, nutritional gaps, and chronic physiological stress.",
     treatmentObjective:
@@ -685,7 +685,7 @@ const ENTRIES: Record<string, KitInfo> = {
   // Rapid Weight Loss Shield
   // ───────────────────────────────────────────────────────────────────────────
   RWL_SHIELD: {
-    displayName: "Rapid Weight Loss Shield (RWL Shield)",
+    displayName: "PRO FACT RWL SHIELD",
     diagnosisInsight:
       "Recommended for rapid weight loss, prolonged calorie restriction, appetite-suppression therapies (including GLP-1 agonists), or significant dietary changes with nutritional deficiencies, hair shedding, fatigue, reduced recovery, gut dysfunction, or loss of muscle and bone health.",
     treatmentObjective:
@@ -738,7 +738,7 @@ const ENTRIES: Record<string, KitInfo> = {
   // FH Well 3 (Endometriosis Support)
   // ───────────────────────────────────────────────────────────────────────────
   FH_WELL_3: {
-    displayName: "F-H Well 3 (Endometriosis Support)",
+    displayName: "PRO FACT F-H WELL3 ENDOMETRIOSIS",
     diagnosisInsight:
       "Recommended for women with endometriosis experiencing chronic inflammation, pelvic discomfort, hormonal imbalance, fatigue, oxidative stress, hair shedding, or skin concerns.",
     treatmentObjective:
@@ -791,7 +791,7 @@ const ENTRIES: Record<string, KitInfo> = {
   // Iron Up Gold
   // ───────────────────────────────────────────────────────────────────────────
   IRON_UP_GOLD: {
-    displayName: "Iron Up Gold (Iron Homeostasis & Hair Recovery)",
+    displayName: "PRO FACT IRON UP",
     diagnosisInsight:
       "Recommended for iron deficiency, low ferritin levels, increased hair shedding, telogen effluvium, diffuse hair loss, nutritional anaemia, or hair loss associated with impaired iron metabolism.",
     treatmentObjective:
@@ -838,7 +838,7 @@ const ENTRIES: Record<string, KitInfo> = {
   // Hair Fact Night Shift
   // ───────────────────────────────────────────────────────────────────────────
   NIGHT_SHIFT: {
-    displayName: "Hair Fact Night Shift (Shift-Worker Recovery)",
+    displayName: "HAIR FACT NIGHT SHIFT",
     diagnosisInsight:
       "Recommended for night-shift or rotating-shift workers with hair fall, premature greying, poor sleep, fatigue, increased stress, or lifestyle-related disruption of biological rhythms.",
     treatmentObjective:
@@ -895,7 +895,7 @@ const ENTRIES: Record<string, KitInfo> = {
   // Hair Fact Frequent Flyers
   // ───────────────────────────────────────────────────────────────────────────
   FREQUENT_FLYERS: {
-    displayName: "Hair Fact Frequent Flyers (Travel Recovery)",
+    displayName: "HAIR FACT FREQUENT FLYERS",
     diagnosisInsight:
       "Recommended for individuals with frequent air travel, disrupted sleep cycles, high stress exposure, fatigue, increased environmental stressors, hair fall, premature greying, dry hair, or skin concerns associated with frequent flying.",
     treatmentObjective:
@@ -952,7 +952,7 @@ const ENTRIES: Record<string, KitInfo> = {
   // Pro Fact Meta B Hypothyroid
   // ───────────────────────────────────────────────────────────────────────────
   META_B_HYPOTHYROID: {
-    displayName: "Pro Fact Meta B Hypothyroid Support",
+    displayName: "PRO FACT META B - HYPOTHYROID 3",
     diagnosisInsight:
       "Recommended for individuals experiencing hair fall, weight gain, reduced metabolic activity, or nutritional insufficiencies associated with hypothyroidism.",
     treatmentObjective:
@@ -1001,10 +1001,60 @@ const ENTRIES: Record<string, KitInfo> = {
   },
 
   // ───────────────────────────────────────────────────────────────────────────
+  // Pro Fact Post Hysterectomy Reset
+  // ───────────────────────────────────────────────────────────────────────────
+  POST_HYSTERECTOMY_RESET: {
+    displayName: "PRO FACT POST HYSTERECTOMY RESET",
+    diagnosisInsight:
+      "This kit is formulated to support your body during this recovery phase by providing nutritional support. It helps meet increased healing demands while maintaining nourishment to hair, skin, and bones. It also supports internal tissue repair and maintains nutrient availability for hair, skin, and the overall body.",
+    treatmentObjective:
+      "Support post-hysterectomy recovery by meeting increased healing demands, restoring nutrient availability, and protecting hair, skin, bones, and internal tissues.",
+    therapeuticStrategy: [
+      "Counteracts sudden estrogen-depletion signals and endocrine shock",
+      "Restores vascular elasticity and resolves post-operative tissue edema",
+      "Shields hair roots to prevent stress-driven shedding and hair loss",
+      "Directs circulating calcium into bones to prevent demineralization",
+      "Clears surgical oxidative debt and improves mitochondrial ATP production",
+    ],
+    formulationRationale: [
+      {
+        group: "Tissue Repair Support",
+        ingredients: ["Natural Eggshell Membrane (ESM)", "Methylsulfonylmethane (MSM)", "Zinc"],
+        action: "Directly reinforce the Extracellular Matrix (ECM), rebuild hair keratin bonds, and accelerate deep connective tissue welding.",
+      },
+      {
+        group: "Circulation & Swelling Control (edema)",
+        ingredients: ["Kelp Seaweed Extract", "Magnesium", "Zinc", "Resveratrol"],
+        action: "Optimizes blood flow, helps reduce post-surgical swelling, and promotes tissue recovery.",
+      },
+      {
+        group: "Stabilizes Metabolic Rate",
+        ingredients: ["Myo-Inositol", "Berberine", "L-Carnitine", "Resveratrol"],
+        action: "Reactivate the AMPK pathway, optimize cellular glucose transport, and restore insulin sensitivity to prevent post-operative metabolic stalling.",
+      },
+      {
+        group: "Bone & Structural Protection",
+        ingredients: ["Natural Eggshell Membrane (ESM)", "Vitamin D3", "Vitamin K2", "Copper"],
+        action: "Supports calcium absorption, strengthens bones, and helps maintain healthy bone density.",
+      },
+      {
+        group: "Hormonal Balance",
+        ingredients: ["Shatavari", "Vidarikand", "Resveratrol"],
+        action: "Binds to estrogen pathways to reduce sudden hormone drop-offs and regulate the body's thermostat.",
+      },
+      {
+        group: "Immune Enhancer",
+        ingredients: ["Colostrum", "Lactoferrin", "Vitamin C", "Zinc"],
+        action: "Enhance immune defence, improve cellular repair, and stimulate the restoration of gut health.",
+      },
+    ],
+    expectedResponse: [],
+  },
+  // ───────────────────────────────────────────────────────────────────────────
   // Lactihealth (Postpartum Recovery & Hair Support)
   // ───────────────────────────────────────────────────────────────────────────
   LACTIHEALTH: {
-    displayName: "Lactihealth (Postpartum Recovery & Hair Support)",
+    displayName: "LACTIHEALTH",
     diagnosisInsight:
       "Recommended for women experiencing postpartum hair shedding, nutritional depletion, fatigue, reduced recovery, or increased physiological demands following pregnancy and breastfeeding.",
     treatmentObjective:
@@ -1131,6 +1181,8 @@ const KIT_ID_TO_ENTRY: Record<string, keyof typeof ENTRIES> = {
   "PRO FACT META B HYPOTHYROID": "META_B_HYPOTHYROID",
   "META B HYPOTHYROID": "META_B_HYPOTHYROID",
   "PRO FACT META B HYPOTHYROID VEG": "META_B_HYPOTHYROID",
+  // Pro Fact Post Hysterectomy Reset
+  "PRO FACT POST HYSTERECTOMY RESET": "POST_HYSTERECTOMY_RESET",
   // Lactihealth (postpartum recovery)
   "LACTIHEALTH": "LACTIHEALTH",
   "HAIR FACT LACTIHEALTH": "LACTIHEALTH",

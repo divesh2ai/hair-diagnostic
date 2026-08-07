@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import {
+  AlertTriangle,
   ArrowUpRight,
   CheckCircle2,
   ChevronDown,
@@ -57,6 +58,15 @@ interface ReportRow {
   severity: string | null;
   consultationVersion: number | null;
   consultationApprovalStatus: string | null;
+  concern: string | null;
+  skinIntakeId: string | null;
+  skinConcernCount: number;
+  consultationStatus: string | null;
+  imageCount: number;
+  previousPrescriptionUploaded: boolean;
+  medicationDeclared: boolean;
+  medicalHistoryDeclared: boolean;
+  bodyPigmentationSelected: boolean;
 }
 
 interface Facets {
@@ -112,6 +122,27 @@ export default function ReportsPage() {
   const [loading, setLoading] = useState(true);
   const [filtersOpen, setFiltersOpen] = useState(false);
 
+  const [doctorMe, setDoctorMe] = useState<{ id: string } | null>(null);
+  const [doctorMeLoading, setDoctorMeLoading] = useState(true);
+  const [doctorMeError, setDoctorMeError] = useState<string | null>(null);
+
+  useEffect(() => {
+    setDoctorMeLoading(true);
+    fetch("/api/doctor/me")
+      .then((r) => {
+        if (!r.ok) throw new Error("Failed to load doctor profile");
+        return r.json();
+      })
+      .then((data) => {
+        setDoctorMe(data.doctor);
+        setDoctorMeLoading(false);
+      })
+      .catch((err) => {
+        setDoctorMeError(err instanceof Error ? err.message : String(err));
+        setDoctorMeLoading(false);
+      });
+  }, []);
+
   const set = (k: keyof Filters, v: string | boolean) =>
     setFilters((f) => ({ ...f, [k]: v }));
 
@@ -119,35 +150,43 @@ export default function ReportsPage() {
     typeof v === "boolean" ? v : Boolean(v),
   ).length;
 
-  // Server-side filters — search + assignedToMe are applied client-side below,
-  // no API change in Phase 0.
   const effectiveQuery = useMemo(() => {
     const p = new URLSearchParams();
     for (const [k, v] of Object.entries(filters)) {
       if (k === "search" || k === "assignedToMe") continue;
       if (typeof v === "string" && v) p.set(k, v);
     }
+    if (filters.assignedToMe && doctorMe?.id) {
+      p.set("assignedTo", doctorMe.id);
+    }
     if (tab === "needs_review") {
-      p.set("status", "CLINICAL_READY,REPORT_GENERATING,COMPLETED");
+      p.set("status", "CLINICAL_READY,REPORT_GENERATING,COMPLETED,PENDING");
+      p.set("includeSkinPigmentationPending", "1");
       p.set("decision", "PENDING");
     } else if (tab === "approved") {
       p.set("decision", "APPROVED");
     }
     p.set("limit", "200");
     return p.toString();
-  }, [filters, tab]);
+  }, [filters, tab, doctorMe]);
 
-  // Client-side narrowing — search matches patient name / phone / diagnosis;
-  // assignedToMe stays a stub until the API accepts a caller id.
   const visibleRows = useMemo(() => {
     const q = filters.search.trim().toLowerCase();
-    if (!q) return rows;
-    return rows.filter((r) =>
-      [r.patientName, r.patientPhone, r.primaryDiagnosis, r.clinicName]
-        .filter(Boolean)
-        .some((v) => (v as string).toLowerCase().includes(q)),
-    );
-  }, [rows, filters.search]);
+    const filtered = !q
+      ? rows
+      : rows.filter((r) =>
+          [r.patientName, r.patientPhone, r.primaryDiagnosis, r.clinicName]
+            .filter(Boolean)
+            .some((v) => (v as string).toLowerCase().includes(q)),
+        );
+    // Needs-review tab: oldest waiting first so the "bleeding" cases surface.
+    if (tab !== "needs_review") return filtered;
+    return [...filtered].sort((a, b) => {
+      const ta = a.submittedAt ? new Date(a.submittedAt).getTime() : Infinity;
+      const tb = b.submittedAt ? new Date(b.submittedAt).getTime() : Infinity;
+      return ta - tb;
+    });
+  }, [rows, filters.search, tab]);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -235,14 +274,15 @@ export default function ReportsPage() {
             className="rounded-full border border-stone-200 bg-white px-3 py-1.5 text-xs text-slate-700 shadow-sm focus:border-slate-900 focus:outline-none"
             aria-label="Submitted to"
           />
-          <label className="inline-flex items-center gap-2 rounded-full border border-stone-200 bg-white px-3 py-1.5 text-xs text-slate-700 shadow-sm cursor-pointer hover:border-stone-400">
+          <label className={`inline-flex items-center gap-2 rounded-full border border-stone-200 bg-white px-3 py-1.5 text-xs text-slate-700 shadow-sm cursor-pointer hover:border-stone-400 ${doctorMeLoading ? "opacity-60 cursor-not-allowed" : doctorMeError ? "border-red-200 bg-red-50 text-red-700" : ""}`}>
             <input
               type="checkbox"
               checked={filters.assignedToMe}
+              disabled={doctorMeLoading || !!doctorMeError}
               onChange={(e) => set("assignedToMe", e.target.checked)}
-              className="h-3.5 w-3.5 rounded border-stone-300 text-slate-900 focus:ring-slate-900/20"
+              className="h-3.5 w-3.5 rounded border-stone-300 text-slate-900 focus:ring-slate-900/20 disabled:opacity-50"
             />
-            Assigned to me
+            {doctorMeLoading ? "Loading profile…" : doctorMeError ? "Profile error" : "Assigned to me"}
           </label>
         </div>
 
@@ -429,13 +469,14 @@ function ReportCard({ row }: { row: ReportRow }) {
     reviewDecision: row.decision,
     approvalStatus: row.consultationApprovalStatus,
   });
-  const diagnosis = labelForDiagnosis(row.primaryDiagnosis);
+  const isDedicatedSkinReview = row.concern === "skin_pigmentation" || row.concern === "skin_anti_ageing";
+  const diagnosis = isDedicatedSkinReview ? null : labelForDiagnosis(row.primaryDiagnosis);
   const waited = waitingTime(row.submittedAt);
 
   return (
     <li>
       <Link
-        href={`/doctor/reports/${row.id}`}
+        href={row.concern === "skin_pigmentation" ? `/doctor/reports/${row.id}/skin/pigmentation` : row.concern === "skin_anti_ageing" ? `/doctor/reports/${row.id}/skin/anti-ageing` : `/doctor/reports/${row.id}`}
         className="group grid grid-cols-[auto_1fr_auto] items-center gap-4 px-5 py-4 hover:bg-stone-50/70 transition-colors"
       >
         {/* avatar */}
@@ -449,12 +490,30 @@ function ReportCard({ row }: { row: ReportRow }) {
             <p className="truncate font-medium text-slate-900">
               {row.patientName}
             </p>
-            <span className="text-sm text-stone-500 truncate">{diagnosis}</span>
+            {row.concern === "skin_acne" && (
+              <span className="inline-flex items-center rounded-full bg-rose-50 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-rose-800 ring-1 ring-rose-200">
+                Acne
+              </span>
+            )}
+            {row.skinIntakeId && row.skinConcernCount > 1 && <span className="inline-flex items-center rounded-full bg-violet-50 px-2 py-0.5 text-[10px] font-semibold text-violet-800 ring-1 ring-violet-200">Part of multi-concern Skin FACT · {row.skinIntakeId.slice(0, 8)}</span>}
+            {row.concern === "skin_pigmentation" && <>
+              <span className="inline-flex items-center rounded-full bg-amber-50 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-amber-900 ring-1 ring-amber-200">Dr Skin FACT</span>
+              <span className="inline-flex items-center rounded-full bg-orange-50 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-orange-900 ring-1 ring-orange-200">Pigmentation</span>
+            </>}
+            {row.concern === "skin_anti_ageing" && <>
+              <span className="inline-flex items-center rounded-full bg-violet-50 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-violet-900 ring-1 ring-violet-200">Dr Skin FACT</span>
+              <span className="inline-flex items-center rounded-full bg-indigo-50 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-indigo-900 ring-1 ring-indigo-200">Anti-Ageing</span>
+            </>}
+            {diagnosis && <span className="text-sm text-stone-500 truncate">{diagnosis}</span>}
           </div>
 
-          {reason && (
+          {reason && !isDedicatedSkinReview && (
             <p className="mt-1 text-xs font-medium text-slate-700">{reason}</p>
           )}
+          {row.concern === "skin_pigmentation" && <div className="mt-1 flex flex-wrap gap-2 text-[11px] text-amber-900">
+            <span>Images: {row.imageCount} uploaded</span><span>·</span><span>Video consultation {(row.consultationStatus ?? "REQUIRED").toLowerCase().replaceAll("_"," ")}</span>
+            {row.previousPrescriptionUploaded && <span>· Prescription uploaded</span>}{row.medicationDeclared && <span>· Medication declared</span>}{row.medicalHistoryDeclared && <span>· Medical history declared</span>}{row.bodyPigmentationSelected && <span>· Body pigmentation</span>}
+          </div>}
 
           <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1.5 text-xs text-stone-500">
             <span className="inline-flex items-center gap-1">
@@ -478,16 +537,50 @@ function ReportCard({ row }: { row: ReportRow }) {
           </div>
         </div>
 
-        {/* right column: workflow badge + arrow. Severity moves into the
-            detail page — noisy in the queue and often duplicates the reason. */}
+        {/* right column: urgency + workflow badge + arrow. */}
         <div className="flex items-center gap-3">
-          <div className="hidden sm:flex flex-col items-end gap-1">
+          <div className="hidden sm:flex flex-col items-end gap-1.5">
+            <UrgencyBadge submittedAt={row.submittedAt} decision={row.decision} />
             <StatusBadge tone={workflow.tone}>{workflow.label}</StatusBadge>
           </div>
           <ArrowUpRight className="h-4 w-4 text-stone-300 transition-all group-hover:text-slate-700 group-hover:-translate-y-0.5 group-hover:translate-x-0.5" />
         </div>
       </Link>
     </li>
+  );
+}
+
+// Urgency band — hours since submission for still-pending cases.
+// >48h → red · 24-48h → amber · <24h → subtle. Suppressed for approved / no submit.
+function UrgencyBadge({
+  submittedAt,
+  decision,
+}: {
+  submittedAt: string | null;
+  decision: string | null;
+}) {
+  if (!submittedAt) return null;
+  if (decision && decision !== "PENDING") return null;
+  const hours = (Date.now() - new Date(submittedAt).getTime()) / 3_600_000;
+  if (hours >= 48) {
+    return (
+      <span className="inline-flex items-center gap-1 rounded-full bg-red-100 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-red-800 ring-1 ring-red-200">
+        <AlertTriangle className="size-2.5" />
+        Urgent · {Math.round(hours)}h
+      </span>
+    );
+  }
+  if (hours >= 24) {
+    return (
+      <span className="inline-flex items-center rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-amber-800 ring-1 ring-amber-200">
+        {Math.round(hours)}h waiting
+      </span>
+    );
+  }
+  return (
+    <span className="inline-flex items-center rounded-full bg-teal-50 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-teal-800 ring-1 ring-teal-100">
+      New
+    </span>
   );
 }
 

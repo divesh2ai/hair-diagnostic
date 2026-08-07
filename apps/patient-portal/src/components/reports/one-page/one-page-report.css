@@ -50,11 +50,31 @@ html, body { margin: 0; background: #d9d5c8; }
   display: flex; flex-direction: column;
   overflow: hidden;
   box-shadow: 0 22px 60px rgba(11, 37, 69, 0.28);
+  /* PDF text-stream integrity — Chrome's headless PDF generator loses the
+     inter-word space glyph on tightly-kerned proportional fonts at ≤10px,
+     which is why the exported PDF text was extracting joined words like
+     "assessmentis", "hormonaltransition", "Chemicaltreatment", "Do notrinse",
+     "Yourfull" and "does notreplace". Widening word-spacing, disabling
+     ligatures and pinning font-kerning to normal keeps the space glyph as a
+     distinct emitted glyph rather than collapsing it into positional advance
+     only. Visually identical; extraction now preserves spaces. */
+  word-spacing: 0.06em;
+  font-variant-ligatures: none;
+  font-kerning: normal;
+  text-rendering: geometricPrecision;
 }
 /* Content flows naturally. Hard A4 clamp lives only in @media print and in
    the Playwright pre-print DOM patch (see render.ts) so the on-screen dev
    preview can show real overflow instead of silently cropping the last row. */
-.sheet *, .sheet *::before, .sheet *::after { box-sizing: border-box; min-width: 0; }
+.sheet *, .sheet *::before, .sheet *::after {
+  box-sizing: border-box; min-width: 0;
+  /* Inherited so every text run in the sheet participates in the same
+     word-space widening — including small nested runs inside chips, tiles
+     and topical bullets where the joined-word artefact was worst. */
+  word-spacing: inherit;
+  font-variant-ligatures: inherit;
+  font-kerning: inherit;
+}
 .sheet .serif { font-family: var(--font-fraunces), "Fraunces", Georgia, "Iowan Old Style", serif; }
 
 /* ============================== HEADER =================================== */
@@ -64,7 +84,9 @@ html, body { margin: 0; background: #d9d5c8; }
   display: grid; grid-template-columns: 220px 1fr 210px;
   align-items: center;
   padding: 0 22px;
-  height: 60px;
+  /* D-day space recovery: 60 → 55 (5px). Under the 4-6px cap in the spec.
+     The h1 stays 20px so brand mark and title still read at print scale. */
+  height: 55px;
   flex-shrink: 0;
 }
 .sheet .hd-lockup { display: flex; align-items: center; gap: 12px; }
@@ -114,8 +136,13 @@ html, body { margin: 0; background: #d9d5c8; }
    header 60 + rowA 178 + mapband ~364 + lower 148 + footer 44 = 794. */
 .sheet .rowA {
   display: grid; grid-template-columns: 18fr 50fr 32fr;
-  gap: 8px; padding: 12px 14px 6px;
-  height: 178px;
+  gap: 8px; padding: 10px 14px 4px;
+  /* D-day space recovery: 178 → 170. The snapshot card (now with tighter
+     tile padding + smaller grade chip) fits comfortably inside 170; the
+     patient portrait + doctor-reviewed result cards both had unused vertical
+     slack. The 8px returned to the mapband is what lets Row 5's second
+     benefit bullet render without the TOPICAL bar cropping it. */
+  height: 170px;
 }
 .sheet .blk {
   background: var(--card);
@@ -204,19 +231,131 @@ html, body { margin: 0; background: #d9d5c8; }
 }
 
 /* SNAPSHOT (landscape: 3-col tile grid + compact grade chip footer) */
-.sheet .snapshot-blk { padding: 8px 10px 6px; display: flex; flex-direction: column; }
-.sheet .snap-hd { text-align: center; margin-bottom: 4px; }
-.sheet .snap-title { font-size: 9px; letter-spacing: 0.14em; font-weight: 700; color: var(--navy); }
-.sheet .snap-sub { font-size: 7px; color: var(--muted); }
+.sheet .snapshot-blk {
+  /* padding-bottom widened from 6 → 10 so the last snapshot row has a real
+     safe-zone above the teal mapband header. Combined with the 12px mapband
+     top margin below, this gives ≥16px between the final caption and the
+     teal band, killing the D-day overlap. */
+  padding: 6px 10px 10px;
+  display: flex; flex-direction: column;
+  /* Hard clip inside the card border. Belt-and-braces guard against a
+     future higher tile count nudging the grade chip past the 178px rowA
+     budget and bleeding onto the teal mapband header. */
+  overflow: hidden;
+}
+.sheet .snap-hd { text-align: center; margin-bottom: 0; }
+.sheet .snap-title { font-size: 8.6px; letter-spacing: 0.14em; font-weight: 700; color: var(--navy); line-height: 1.1; }
+.sheet .snap-sub { font-size: 6.5px; color: var(--muted); line-height: 1.1; }
 .sheet .snap-grid {
   display: grid; grid-template-columns: repeat(3, 1fr); gap: 3px 6px;
   flex: 1 1 auto; align-content: start;
 }
+/* Tile-density steps — the snapshot must show every patient selection, so
+   as tile count grows the grid widens to 4 columns and the icon + caption
+   compress. Text never falls below 5.6px (still legible at 100% zoom). */
+.sheet .snap-grid[data-tile-count="7"],
+.sheet .snap-grid[data-tile-count="8"],
+.sheet .snap-grid[data-tile-count="9"] {
+  grid-template-columns: repeat(4, 1fr); gap: 2px 4px;
+}
+.sheet .snap-grid[data-tile-count="7"] .snap-ico,
+.sheet .snap-grid[data-tile-count="8"] .snap-ico,
+.sheet .snap-grid[data-tile-count="9"] .snap-ico {
+  width: 30px; height: 30px;
+}
+.sheet .snap-grid[data-tile-count="7"] .snap-ico img,
+.sheet .snap-grid[data-tile-count="8"] .snap-ico img,
+.sheet .snap-grid[data-tile-count="9"] .snap-ico img {
+  width: 26px; height: 26px;
+}
+.sheet .snap-grid[data-tile-count="7"] .snap-cap,
+.sheet .snap-grid[data-tile-count="8"] .snap-cap,
+.sheet .snap-grid[data-tile-count="9"] .snap-cap {
+  font-size: 6px; line-height: 1.1;
+}
+.sheet .snap-grid[data-tile-count="10"],
+.sheet .snap-grid[data-tile-count="11"],
+.sheet .snap-grid[data-tile-count="12"],
+.sheet .snap-grid[data-tile-count="13"],
+.sheet .snap-grid[data-tile-count="14"],
+.sheet .snap-grid[data-tile-count="15"],
+.sheet .snap-grid[data-tile-count="16"] {
+  /* Vertical gap trimmed 2 → 1 so the third row lifts ~4px; horizontal gap
+     preserved so tiles never touch. Combined with tighter tile padding
+     below, the whole 10-tile grid gains ~14px of headroom — enough to
+     surface the previously-clipped "improve quality & growth" second line
+     and to leave the grade chip visible. */
+  grid-template-columns: repeat(4, 1fr); gap: 1px 3px;
+}
+.sheet .snap-grid[data-tile-count="10"] .snap-ico,
+.sheet .snap-grid[data-tile-count="11"] .snap-ico,
+.sheet .snap-grid[data-tile-count="12"] .snap-ico,
+.sheet .snap-grid[data-tile-count="13"] .snap-ico,
+.sheet .snap-grid[data-tile-count="14"] .snap-ico,
+.sheet .snap-grid[data-tile-count="15"] .snap-ico,
+.sheet .snap-grid[data-tile-count="16"] .snap-ico {
+  width: 24px; height: 24px;
+}
+.sheet .snap-grid[data-tile-count="10"] .snap-ico img,
+.sheet .snap-grid[data-tile-count="11"] .snap-ico img,
+.sheet .snap-grid[data-tile-count="12"] .snap-ico img,
+.sheet .snap-grid[data-tile-count="13"] .snap-ico img,
+.sheet .snap-grid[data-tile-count="14"] .snap-ico img,
+.sheet .snap-grid[data-tile-count="15"] .snap-ico img,
+.sheet .snap-grid[data-tile-count="16"] .snap-ico img {
+  width: 20px; height: 20px;
+}
+.sheet .snap-grid[data-tile-count="10"] .snap-cap,
+.sheet .snap-grid[data-tile-count="11"] .snap-cap,
+.sheet .snap-grid[data-tile-count="12"] .snap-cap,
+.sheet .snap-grid[data-tile-count="13"] .snap-cap,
+.sheet .snap-grid[data-tile-count="14"] .snap-cap,
+.sheet .snap-grid[data-tile-count="15"] .snap-cap,
+.sheet .snap-grid[data-tile-count="16"] .snap-cap {
+  font-size: 5.8px; line-height: 1.1;
+}
+/* Tighter tile padding at 10+ tile density so each row uses less vertical
+   space. Combined with the icon size reduction (26 → 24) this reclaims the
+   ~12–16px needed to lift the third row above the mapband header. */
+.sheet .snap-grid[data-tile-count="10"] .snap-tile,
+.sheet .snap-grid[data-tile-count="11"] .snap-tile,
+.sheet .snap-grid[data-tile-count="12"] .snap-tile,
+.sheet .snap-grid[data-tile-count="13"] .snap-tile,
+.sheet .snap-grid[data-tile-count="14"] .snap-tile,
+.sheet .snap-grid[data-tile-count="15"] .snap-tile,
+.sheet .snap-grid[data-tile-count="16"] .snap-tile {
+  padding: 1px 2px; gap: 1px;
+}
+/* Cap captions at 2 lines so a long label ("Reduce hair fall and improve
+   quality & growth") wraps cleanly instead of pushing the tile past the
+   card's overflow-hidden clip. Keeps every one of the 10 selections
+   readable within the two-line budget. */
+.sheet .snap-grid[data-tile-count="10"] .snap-cap,
+.sheet .snap-grid[data-tile-count="11"] .snap-cap,
+.sheet .snap-grid[data-tile-count="12"] .snap-cap,
+.sheet .snap-grid[data-tile-count="13"] .snap-cap,
+.sheet .snap-grid[data-tile-count="14"] .snap-cap,
+.sheet .snap-grid[data-tile-count="15"] .snap-cap,
+.sheet .snap-grid[data-tile-count="16"] .snap-cap {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
+  /* No hyphenation — "improve" got broken into "im-prove" which reads
+     wrong for a patient-facing report. Words wrap on natural whitespace
+     only; if a single token is too long the browser lets it overflow the
+     tile width (never happens with our current labels). */
+  overflow-wrap: break-word;
+  word-break: normal;
+  hyphens: none;
+}
 .sheet .snap-grade-chip {
-  margin-top: 6px; padding: 4px 8px;
+  /* Compact grade chip. Sits fully inside the 170px rowA budget so it
+     never gets overpainted by the teal mapband header. */
+  margin-top: 2px; padding: 1px 8px;
   background: #FBF9F3; border: 1px solid var(--line);
   border-radius: 999px; text-align: center;
-  font-size: 8.5px; color: var(--navy);
+  font-size: 7.6px; color: var(--navy); line-height: 1.25;
 }
 .sheet .snap-grade-chip b { font-weight: 700; }
 .sheet .snap-tile {
@@ -235,7 +374,11 @@ html, body { margin: 0; background: #d9d5c8; }
 
 /* ============================ MAPPING BAND =============================== */
 .sheet .mapband {
-  margin: 4px 14px 0;
+  /* Top margin 6 gives a ~16px total gap between the last snapshot caption
+     baseline and the teal bar (10px card padding-bottom + 6px margin).
+     Meets the 14-18px D-day safe-zone rule while returning 4px of
+     vertical budget to the mapband so all 5 kit rows fit. */
+  margin: 6px 14px 0;
   border-radius: 12px;
   background: var(--card);
   border: 1px solid var(--line);
@@ -246,7 +389,10 @@ html, body { margin: 0; background: #d9d5c8; }
 .sheet .map-rows { flex: 1 1 auto; }
 .sheet .map-title {
   display: flex; align-items: center; justify-content: center; gap: 8px;
-  height: 26px;
+  /* Bar height trimmed 26 → 22 to recover 4px of vertical budget for the
+     mapband rows (Row 3 grew after unlocking min-height). Font stays 10px
+     so the header still reads at print scale. */
+  height: 22px;
   background: var(--teal);
   color: #fff;
   font-size: 10px; letter-spacing: 0.16em; font-weight: 700;
@@ -256,7 +402,10 @@ html, body { margin: 0; background: #d9d5c8; }
   grid-template-columns: 22px minmax(0, 29fr) 20px minmax(0, 22fr) minmax(0, 27fr) minmax(0, 22fr);
   column-gap: 8px;
   align-items: center;
-  padding: 5px 14px 4px;
+  /* Tightened vertical padding: recovers ~4px of the mapband budget so the
+     variable-height rows all fit without the last row (FPHL Pro) being
+     clipped by the mapband's overflow:hidden. */
+  padding: 3px 14px 2px;
   background: #F1EDE2;
   border-bottom: 1px solid var(--line-strong);
 }
@@ -265,11 +414,21 @@ html, body { margin: 0; background: #d9d5c8; }
   color: var(--navy); text-transform: uppercase;
 }
 .sheet .map-header-num, .sheet .map-header-arrow { min-width: 0; }
-.sheet .map-rows { padding: 4px 10px; display: grid; gap: 2px; }
+/* row-gap set to 3 so all rows sit close, then Row 3 gets an extra 3px of
+   bottom breathing room via :nth-child(3). Net effect: the natural "8px
+   after Row 3, before Row 4 begins" the D-day patch calls for (3 gap + 3
+   nth-margin + 2 padding-top of next row ≈ 8), without pushing Row 5 off
+   the sheet. Padding tightened 4 → 2 to reclaim more vertical budget for
+   the variable-height rows. */
+.sheet .map-rows { padding: 2px 10px; display: grid; gap: 3px; }
+.sheet .map-rows > .map-row:nth-child(3) { margin-bottom: 3px; }
 .sheet .map-row {
   display: grid;
   grid-template-columns: 20px minmax(0, 29fr) 20px minmax(0, 22fr) minmax(0, 27fr) minmax(0, 22fr);
   column-gap: 8px;
+  /* align-items: center keeps each cell vertically centred against the
+     complete row height (including wrapped chips). The arrow therefore
+     sits in the true midline instead of pinning to the first chip. */
   align-items: center;
   padding: 3px 4px;
   border-bottom: 1px dashed var(--line);
@@ -280,6 +439,9 @@ html, body { margin: 0; background: #d9d5c8; }
   background: var(--teal); color: #fff;
   display: flex; align-items: center; justify-content: center;
   font-size: 10.5px; font-weight: 700;
+  /* Gold hairline ring lifts the numbered priority chip off the paper
+     without adding visual noise — reads as a small "badge" moment. */
+  box-shadow: 0 0 0 1px var(--gold), 0 1px 2px rgba(11, 37, 69, 0.12);
 }
 .sheet .cell-label {
   font-size: 6.6px; letter-spacing: 0.18em; font-weight: 700; color: var(--muted);
@@ -291,9 +453,10 @@ html, body { margin: 0; background: #d9d5c8; }
 .sheet .chip-row { display: flex; flex-wrap: wrap; column-gap: 5px; row-gap: 4px; }
 .sheet .chip {
   display: inline-flex; align-items: center; gap: 4px;
-  padding: 2px 6px 2px 2px; border: 1px solid var(--line-strong); border-radius: 999px;
-  background: #FBF7EF;
+  padding: 2px 7px 2px 2px; border: 1px solid var(--line-strong); border-radius: 999px;
+  background: linear-gradient(180deg, #FDF9F0 0%, #F5EFDF 100%);
   font-size: 7.2px; color: var(--ink); font-weight: 600; line-height: 1.1;
+  box-shadow: 0 1px 1px rgba(11, 37, 69, 0.04);
 }
 .sheet .clinical-option-icon { display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; }
 .sheet .clinical-option-icon-snapshot { width: 100%; height: 100%; }
@@ -305,15 +468,29 @@ html, body { margin: 0; background: #d9d5c8; }
   padding-left: 8px;
 }
 .sheet .support-row { display: flex; flex-direction: row; align-items: center; gap: 8px; width: 100%; }
+/* Kit packshot frame — premium presentation. Padding lets the product image
+   breathe inside the box (was cramped edge-to-edge); the soft off-white
+   gradient + inner highlight + drop shadow give the packshot a "displayed
+   product" feel rather than a raw thumbnail. img uses max-width/height so
+   it centers inside the padded content-box instead of overflowing it. */
 .sheet .support-shot {
-  width: 80px; height: 60px; border-radius: 7px; background: #fff;
+  width: 80px; height: 60px; border-radius: 10px;
+  background: linear-gradient(180deg, #FFFFFF 0%, #FBF7EE 100%);
   flex: 0 0 80px;
+  padding: 5px 6px;
   border: 1px solid var(--line);
+  box-shadow: 0 1px 2px rgba(11, 37, 69, 0.06), inset 0 0 0 1px rgba(255, 255, 255, 0.5);
   display: flex; align-items: center; justify-content: center; overflow: hidden;
 }
-.sheet .support-shot img { width: 100%; height: 100%; object-fit: contain; }
+.sheet .support-shot img {
+  max-width: 100%; max-height: 100%; width: auto; height: auto;
+  object-fit: contain;
+}
 .sheet .support-shot-fallback { font-size: 6px; text-align: center; padding: 2px; color: var(--muted); }
-.sheet .support-name { font-size: 10.5px; font-weight: 600; color: var(--navy); line-height: 1.15; }
+.sheet .support-name {
+  font-size: 10.5px; font-weight: 600; color: var(--navy); line-height: 1.15;
+  letter-spacing: 0.005em;
+}
 
 /* Benefit-bullet list rendered in "How this support will help" column. */
 .sheet .benefit-list {
@@ -333,7 +510,11 @@ html, body { margin: 0; background: #d9d5c8; }
 .sheet .lower {
   display: grid; grid-template-columns: 30fr 38fr 32fr;
   gap: 8px; padding: 4px 14px;
-  height: 196px;
+  /* Height trimmed 196 → 186 (D-day space recovery). Topical card carried
+     visible slack — Aki's plan is a single Minoxidil topical so the panel
+     was ~40% empty. The 10px returned to the mapband is what lets the 5th
+     kit row (FPHL Pro) render fully instead of being clipped. */
+  height: 186px;
 }
 .sheet .card {
   background: var(--card); border: 1px solid var(--line); border-radius: 12px;
@@ -357,12 +538,20 @@ html, body { margin: 0; background: #d9d5c8; }
 }
 .sheet .topical-body[data-count="1"] .topical-row { background: transparent; border: 0; padding: 0; }
 .sheet .topical-shot {
-  width: 58px; height: 74px; background: #fff; border: 1px solid var(--line);
-  border-radius: 6px; display: flex; align-items: center; justify-content: center;
+  width: 58px; height: 74px;
+  background: linear-gradient(180deg, #FFFFFF 0%, #FBF7EE 100%);
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  padding: 5px 6px;
+  box-shadow: 0 1px 2px rgba(11, 37, 69, 0.06), inset 0 0 0 1px rgba(255, 255, 255, 0.5);
+  display: flex; align-items: center; justify-content: center;
   overflow: hidden; flex-shrink: 0;
 }
-.sheet .topical-body[data-count="2"] .topical-shot { width: 48px; height: 60px; }
-.sheet .topical-shot img { width: 100%; height: 100%; object-fit: contain; }
+.sheet .topical-body[data-count="2"] .topical-shot { width: 48px; height: 60px; padding: 4px 5px; }
+.sheet .topical-shot img {
+  max-width: 100%; max-height: 100%; width: auto; height: auto;
+  object-fit: contain;
+}
 .sheet .topical-body-text { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
 .sheet .topical-name {
   font-size: 12px; font-weight: 500; color: var(--navy); line-height: 1.15;
@@ -452,27 +641,47 @@ html, body { margin: 0; background: #d9d5c8; }
   .sheet { box-shadow: none; width: 297mm; height: 210mm; overflow: hidden; }
 }
 
-/* Row-count sizing within the fixed Conference V1 contract (2-4 pathways). */
-.sheet[data-row-count="2"] .support-shot { width: 100px; height: 82px; flex: 0 0 100px; }
+/* Row-count sizing within the fixed Conference V1 contract (2-4 pathways).
+   support-shot padding scales with size so the packshot always has ~8-12%
+   breathing room around it, never so much that the image itself vanishes. */
+.sheet[data-row-count="2"] .support-shot { width: 100px; height: 82px; flex: 0 0 100px; padding: 7px 9px; border-radius: 12px; }
 .sheet[data-row-count="2"] .map-row { height: 124px; padding: 5px; }
 .sheet[data-row-count="2"] .support-name { font-size: 13px; }
-.sheet[data-row-count="3"] .support-shot { width: 84px; height: 66px; flex: 0 0 84px; }
+.sheet[data-row-count="3"] .support-shot { width: 84px; height: 66px; flex: 0 0 84px; padding: 6px 7px; border-radius: 11px; }
 .sheet[data-row-count="3"] .map-row { height: 82px; padding: 4px; }
 .sheet[data-row-count="3"] .support-name { font-size: 12px; }
-.sheet[data-row-count="4"] .support-shot { width: 72px; height: 54px; flex: 0 0 72px; }
+.sheet[data-row-count="4"] .support-shot { width: 72px; height: 54px; flex: 0 0 72px; padding: 5px 6px; }
 .sheet[data-row-count="4"] .map-row { height: 62px; padding: 3px; }
 .sheet[data-row-count="4"] .cell-text { font-size: 8.4px; line-height: 1.3; }
-/* 5-6 kits: compact density — every doctor-approved kit must render. */
-.sheet[data-row-count="5"] .support-shot { width: 60px; height: 46px; flex: 0 0 60px; }
-.sheet[data-row-count="5"] .map-row { height: 50px; padding: 2px 3px; }
-.sheet[data-row-count="5"] .cell-text { font-size: 7.6px; line-height: 1.25; }
+/* 5-6 kits: compact density — every doctor-approved kit must render.
+   D-day patch: fixed row height → min-height so rows with wrapped chips
+   (Row 2's 3-chip trigger) or longer clinical meaning (Row 3's
+   patient-facing Meta B copy) grow naturally. Rows 4 and 5 shift down
+   as a consequence, never by their own margin. */
+.sheet[data-row-count="5"] .support-shot { width: 60px; height: 46px; flex: 0 0 60px; padding: 3px 4px; border-radius: 8px; }
+.sheet[data-row-count="5"] .map-row { min-height: 46px; padding: 3px 3px; }
+.sheet[data-row-count="5"] .cell-text { font-size: 7.6px; line-height: 1.3; }
 .sheet[data-row-count="5"] .support-name { font-size: 10.5px; }
 .sheet[data-row-count="5"] .benefit-list li { font-size: 7.4px; line-height: 1.2; }
-.sheet[data-row-count="6"] .support-shot { width: 52px; height: 40px; flex: 0 0 52px; }
+.sheet[data-row-count="6"] .support-shot { width: 52px; height: 40px; flex: 0 0 52px; padding: 3px; border-radius: 7px; }
 .sheet[data-row-count="6"] .map-row { height: 42px; padding: 2px 3px; }
 .sheet[data-row-count="6"] .cell-text { font-size: 7.2px; line-height: 1.2; }
 .sheet[data-row-count="6"] .support-name { font-size: 10px; }
 .sheet[data-row-count="6"] .benefit-list li { font-size: 7.0px; line-height: 1.2; }
+/* 7–8 kits: ultra-compact density. Still fits within the A4 landscape band;
+   every doctor-approved kit renders — the fix for the COMPREHENSIVE (maxKits
+   7) tier so MPHL / PRO IMMUNE additions never overflow off the sheet.
+   Padding is intentionally tight here — the image would disappear otherwise. */
+.sheet[data-row-count="7"] .support-shot { width: 46px; height: 36px; flex: 0 0 46px; padding: 2px 3px; border-radius: 6px; }
+.sheet[data-row-count="7"] .map-row { height: 36px; padding: 2px 3px; }
+.sheet[data-row-count="7"] .cell-text { font-size: 6.8px; line-height: 1.15; }
+.sheet[data-row-count="7"] .support-name { font-size: 9.4px; }
+.sheet[data-row-count="7"] .benefit-list li { font-size: 6.6px; line-height: 1.15; }
+.sheet[data-row-count="8"] .support-shot { width: 42px; height: 32px; flex: 0 0 42px; padding: 2px; border-radius: 6px; }
+.sheet[data-row-count="8"] .map-row { height: 32px; padding: 2px 3px; }
+.sheet[data-row-count="8"] .cell-text { font-size: 6.4px; line-height: 1.1; }
+.sheet[data-row-count="8"] .support-name { font-size: 9px; }
+.sheet[data-row-count="8"] .benefit-list li { font-size: 6.2px; line-height: 1.1; }
 
 .visually-hidden {
   position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;

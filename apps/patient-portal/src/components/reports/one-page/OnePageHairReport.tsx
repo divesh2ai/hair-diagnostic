@@ -8,6 +8,7 @@ import type {
   PrintTimelineStage,
 } from "@/lib/reports/one-page/viewModel";
 import { clinicalOptionCodeForLabel, resolveClinicalOptionAsset } from "@/lib/reports/one-page/clinicalOptionAssets";
+import { clinicalMeaningForKit, supportBenefitsForKit } from "@/lib/reports/one-page/clinicalCopy";
 import { ClinicalOptionIcon } from "./ClinicalOptionIcon";
 import "./one-page-report.css";
 
@@ -40,7 +41,7 @@ export function HairAssessmentPrintPage({ data }: { data: OnePageReportViewModel
         className={`sheet op-page report-page op-mode-${data.layoutMode}`}
         data-one-page-report
         data-density={data.layoutMode}
-        data-row-count={Math.min(6, Math.max(2, data.treatmentPlan.length))}
+        data-row-count={Math.min(8, Math.max(2, data.treatmentPlan.length))}
       >
         <ReportHeader />
         <RowA data={data} />
@@ -183,10 +184,10 @@ function ExactGradeCard({ data }: { data: OnePageReportViewModel }) {
 function ResultBlock({ data }: { data: OnePageReportViewModel }) {
   const { primary, conclusion } = data.clinicalResult;
   const [head, tail] = splitOnLastDash(primary);
-  // Doctor-Reviewed Result must include diagnosis+grade, shedding+duration,
-  // main contributors AND treatment strategy — that runs ~80 words for a
-  // multi-driver case. Cap at 100 so we never truncate mid-sentence; the
-  // validation layer forbids unterminated conclusions upstream.
+  // Doctor-Reviewed Result targets 55–80 words (diagnosis + active trigger
+  // + contributors + strategy). Cap at 100 as a safety net; the validation
+  // layer already warns when the composed conclusion exceeds 80 words so
+  // this cap should almost never fire in practice.
   const summary = limitWords(conclusion, 100);
   return (
     <div className="blk result-blk">
@@ -226,8 +227,14 @@ function SnapshotBlock({ data }: { data: OnePageReportViewModel }) {
         <div className="snap-title">KEY CLINICAL SNAPSHOT</div>
         <div className="snap-sub">(From your responses)</div>
       </div>
-      <div className="snap-grid">
-        {tiles.slice(0, 6).map((tile) => (
+      {/*
+        No slice — every clinically-meaningful patient selection surfaces as a
+        tile. The grid's data-tile-count drives CSS density so 6 tiles render
+        comfortably and 12+ compact without changing layout or shrinking below
+        legible size.
+      */}
+      <div className="snap-grid" data-tile-count={tiles.length}>
+        {tiles.map((tile) => (
           <div className="snap-tile" key={tile.label}>
             <div className="snap-ico">
               <ClinicalOptionIcon optionCode={tile.optionCode} label={tile.label} usage="snapshot" />
@@ -243,19 +250,12 @@ function SnapshotBlock({ data }: { data: OnePageReportViewModel }) {
   );
 }
 
-function deriveSnapshot(data: OnePageReportViewModel): PrintClinicalSnapshotItem[] {
-  const seen = new Set<string>();
-  const rows: PrintClinicalSnapshotItem[] = [];
-  const push = (label: string) => {
-    const key = label.toLowerCase().trim();
-    if (!key || seen.has(key)) return;
-    seen.add(key);
-    const resolved = resolveClinicalOptionAsset({ label });
-    rows.push({ optionCode: resolved.optionCode, label, asset: resolved.asset, assetStatus: resolved.status });
-  };
-  for (const kit of data.treatmentPlan) for (const d of kit.linkedDrivers) push(d);
-  for (const driver of data.driverStory) push(driver.title);
-  return rows;
+function deriveSnapshot(_data: OnePageReportViewModel): PrintClinicalSnapshotItem[] {
+  // Legacy fallback: earlier fixtures did not carry `keyClinicalSnapshot`.
+  // The snapshot must reflect only options the patient actually selected on
+  // the questionnaire — the source data lives on the ClinicalReport and is
+  // populated by the viewModel. No kit-derived or driver-derived tiles.
+  return [];
 }
 
 /* ============================== MAPPING BAND =========================== */
@@ -274,11 +274,13 @@ function MappingBand({ data }: { data: OnePageReportViewModel }) {
         <div className="map-header-cell">RECOMMENDED SUPPORT</div>
         <div className="map-header-cell">HOW THIS SUPPORT WILL HELP</div>
       </div>
-      <div className="map-rows">
-        {/* Render every doctor-approved kit. Density downshift for 5-6 rows
-           is handled via data-row-count on the sheet, matched by
-           one-page-report.css. Cap at 6 for physical fit on landscape A4. */}
-        {data.treatmentPlan.slice(0, 6).map((kit, i) => (
+      <div className="map-rows" data-row-count={data.treatmentPlan.length}>
+        {/* Render every doctor-approved kit in the approved order. No slice.
+           Density downshift (comfortable / compact / ultra-compact) is applied
+           by one-page-report.css keyed off data-row-count and the sheet-level
+           layoutMode. Approved kits are never cropped, hidden, overflowed, or
+           demoted into an additionalCare bucket. */}
+        {data.treatmentPlan.map((kit, i) => (
           <MappingRow key={kit.id} kit={kit} index={i + 1} />
         ))}
       </div>
@@ -287,17 +289,25 @@ function MappingBand({ data }: { data: OnePageReportViewModel }) {
 }
 
 function MappingRow({ kit, index }: { kit: PrintTreatmentKit; index: number }) {
-  // Show every patient signal this kit actually addresses (up to 4 — the cap
-  // already applied upstream in patientLinkedTags). Was 2, which hid signals
-  // like Smoking / Vaping and Alcohol on the Phenotype Inflammation row when
-  // scalp signals filled both slots — the row then read like it only
-  // addressed scalp inflammation even though the kit was clinically selected
-  // for the oxidative-lifestyle load too. chip-row wraps, so extra chips
-  // flow onto a second line inside the cell.
+  // Show every patient signal this kit actually addresses (up to 4 — the
+  // cap already applied upstream in patientLinkedTags). Previously capped
+  // at 2 here, which hid signals like Smoking / Vaping and Alcohol on the
+  // Phenotype Inflammation row when scalp signals filled both slots — the
+  // row then read like it only addressed scalp inflammation even though
+  // the kit was clinically selected for the oxidative-lifestyle load too.
+  // chip-row wraps, so extra chips flow onto a second line inside the cell.
   const triggers = (kit.linkedDrivers.length > 0 ? kit.linkedDrivers : [kit.mappedCondition]).slice(0, 4);
-  const meaning = conciseClinicalMeaning(kit);
-  // Column 4 is patient-facing benefit copy — NOT the trigger and NOT the
-  // "why this kit was selected" line. Cap at 2 bullets so 5-row density fits.
+  // Clinical safety: the CLINICAL MEANING copy must only reference factors
+  // the patient actually sees as trigger chips. Passing the DISPLAYED
+  // triggers (not the full linkedDrivers bag) prevents the meaning talking
+  // about a driver that never made it into the chips row — e.g. a chip row
+  // showing "Redness + Recurrent Acne" while the copy explains smoking.
+  const meaning = conciseClinicalMeaning(kit, triggers);
+  // Column 4: bullet 1 lists the patient signals this kit is mitigating
+  // (driven by kit.linkedDrivers — the full bag, not just the top 2 chips
+  // — so the patient sees every reported factor this kit addresses).
+  // Bullet 2 is the canonical benefit sentence. Cap at 2 bullets so the
+  // 5-row density fits.
   const benefits = benefitLinesForKit(kit);
   return (
     <div className="map-row">
@@ -353,9 +363,13 @@ function MappingRow({ kit, index }: { kit: PrintTreatmentKit; index: number }) {
 
 /**
  * Patient-facing benefit copy for the "How this support will help" column.
- * Prefer the kit's canonical `benefits` bullets. Fall back to a kit-name
- * lookup so legacy fixtures (single-benefit rows) still render the point-wise
- * production copy the brief locks in.
+ *
+ * Content Master §1 and §2.6: this column carries the KIT'S PURPOSE and must
+ * not repeat the trigger list — the first column already shows every factor
+ * as a chip. An earlier version spent bullet 1 on a "Targets: <signals>"
+ * restatement of those same chips, which both duplicated column 1 and pushed
+ * the kit's actual second purpose line off the row. Both bullets now come
+ * from the approved kit definition.
  */
 function benefitLinesForKit(kit: PrintTreatmentKit): string[] {
   const canonical = canonicalBenefitsForKit(kit.name, kit.kitCode);
@@ -367,85 +381,82 @@ function benefitLinesForKit(kit: PrintTreatmentKit): string[] {
     // production copy comes from `canonical` when this fixture predates
     // the copy lock.
     .slice(0, 2);
-  const source = canonical ?? fromModel;
-  const fallback = "Supports the doctor-reviewed treatment plan.";
-  return [source[0] ?? fallback, source[1] ?? fallback];
+  const source = (canonical ?? fromModel).filter(Boolean);
+  // Render only the purpose lines that actually exist. Padding a one-line kit
+  // with a generic second bullet ("Supports the doctor-reviewed treatment
+  // plan") adds no clinical information and reads as filler next to the
+  // two-line rows around it.
+  const lines = source.slice(0, 2).filter((line, index, all) => all.indexOf(line) === index);
+  return lines.length > 0 ? lines : ["Supports the doctor-reviewed treatment plan."];
 }
 
-function conciseClinicalMeaning(kit: PrintTreatmentKit): string {
-  // Patient-specific interpretation from the clinical engine
-  // (buildClinicalReport's SIGNAL_INTERPRETATION rules, matched to this kit
-  // by interpretationLookupForKit) is the SOURCE OF TRUTH for the clinical
-  // meaning. When the engine has produced a signal-specific line for the
-  // patient (e.g. Post-menopause → "Relative androgen excess causes
-  // imbalance in the hormonal regulation…"), use it verbatim. Kit-family
-  // templates below are a fallback for when no per-signal interpretation
-  // was matched to the kit.
+
+function firstSentence(text: string): string {
+  const trimmed = text.trim();
+  const match = trimmed.match(/^[^.!?]*[.!?]/);
+  return match ? match[0].trim() : trimmed;
+}
+
+function limitChars(text: string, maximum: number): string {
+  const trimmed = text.trim();
+  if (trimmed.length <= maximum) return trimmed;
+  const clipped = trimmed.slice(0, maximum + 1);
+  const lastSpace = clipped.lastIndexOf(" ");
+  const body = clipped.slice(0, lastSpace > maximum / 2 ? lastSpace : maximum).replace(/[,:;\s]+$/, "");
+  return /[.!?]$/.test(body) ? body : `${body}…`;
+}
+
+/**
+ * CLINICAL MEANING column.
+ *
+ * Copy comes from the approved registry in `lib/reports/one-page/clinicalCopy`
+ * (Content Master §1: one combined explanation, 18–32 words, one primary
+ * mechanism plus at most two contributing ones, hedged language).
+ *
+ * `displayedTriggers` — the chips the row actually renders — gates every
+ * trigger-specific variant, so the column can never assert a factor the
+ * patient does not see on the row.
+ *
+ * The clinical engine's per-signal interpretation is the fallback, used only
+ * for kits with no registry entry. Those rows are written in clinician voice
+ * and routinely run past the patient-facing word budget, so they cannot lead
+ * this column; the registry variants carry the same patient specificity in
+ * the approved voice.
+ */
+function conciseClinicalMeaning(kit: PrintTreatmentKit, displayedTriggers?: readonly string[]): string {
+  const triggers =
+    displayedTriggers && displayedTriggers.length > 0 ? displayedTriggers : kit.linkedDrivers;
+
+  const approved = clinicalMeaningForKit({
+    kitCode: kit.kitCode,
+    name: kit.name,
+    triggers,
+    patientInterpretation: kit.mappedInterpretation,
+  });
+  if (approved) return approved;
+
+  // ── Fallback: kit outside the registry ──────────────────────────────────
   const patientSpecific = (kit.mappedInterpretation ?? "").trim();
-  if (patientSpecific.length > 0) {
-    const sentenceEnd = patientSpecific.search(/[.!?](\s|$)/);
-    const firstSentence = sentenceEnd > 0 ? patientSpecific.slice(0, sentenceEnd + 1) : patientSpecific;
-    return limitWords(firstSentence, 28);
-  }
+  if (patientSpecific.length > 0) return limitChars(firstSentence(patientSpecific), 360);
 
-  // Match by the KIT identity first (code + display name), not the trailing
-  // linked-driver bag — that bag often carries broad signals like "Obesity"
-  // that would mis-route TE Gold or Iron Up to the metabolic bucket. Fall
-  // back to the driver bag only when the kit identity does not resolve.
-  const kitIdent = `${kit.kitCode} ${kit.name}`.toLowerCase();
-  const context = `${kitIdent} ${kit.mappedCondition} ${kit.mappedInterpretation ?? ""} ${kit.linkedDrivers.join(" ")}`.toLowerCase();
-
-  // Peri-menopause has a locked one-line clinical meaning (product decision).
-  if (/peri.?menopause/.test(kitIdent)) {
-    return "Hormonal transition during peri-menopause can shorten the active hair-growth phase and increase shedding or pattern thinning.";
+  const context = `${kit.kitCode} ${kit.name} ${kit.mappedCondition}`.toLowerCase();
+  if (/ludwig|norwood|pattern/.test(context)) {
+    return "Pattern-sensitive follicular thinning consistent with the underlying hair-loss pattern.";
   }
-  if (/post.?menopause/.test(kitIdent)) {
-    return "Relative androgen excess causes imbalance in the hormonal regulation of the hair cycle.";
-  }
-  if (/hysterectomy|\bhrt\b/.test(kitIdent)) return "Hormonal-transition support during hair-cycle recovery.";
-  if (/telogen|te gold/.test(kitIdent)) return "Acute shedding phase — a large wave of hair has moved into the resting phase.";
-  if (/iron up/.test(kitIdent)) return "Low iron stores may weaken follicular energy and hair-cycle activity.";
-  if (/phenotype.*inflam/.test(kitIdent)) return "Scalp inflammation and oxidative stress can weaken the follicle environment.";
-  if (/hyperthyroid|thyroid care/.test(kitIdent)) return "Elevated thyroid activity can consume follicular nutrients and disrupt the hair cycle.";
-  if (/hypothyroid|meta[ _-]?b|metabolic/.test(kitIdent)) return "Metabolic and thyroid-linked stress can slow follicular energy and hair-cycle drive.";
-  if (/pro immune|areata|autoimmune/.test(kitIdent)) return "Immune-linked pressure on the follicle can interrupt the hair growth cycle.";
-  if (/gi gold|gut/.test(kitIdent)) return "Gut dysfunction can limit absorption of the nutrients the follicle depends on.";
-  if (/fphl|female pattern|mphl|male pattern|pattern/.test(kitIdent)) return "Early pattern-sensitive follicular thinning.";
-  if (/hbr|breakage|shaft/.test(kitIdent)) return "Hair-shaft damage from styling or chemical stress can weaken visible hair.";
-  if (/rwl|rapid weight/.test(kitIdent)) return "Rapid weight change can trigger follicular stress and shedding.";
-  if (/early greying/.test(kitIdent)) return "Oxidative pressure on melanocytes can accelerate pigment loss.";
-
-  // Broader context fall-throughs.
-  if (/ludwig|norwood|pattern/.test(context)) return "Early pattern-sensitive follicular thinning.";
-  return limitWords(kit.mappedInterpretation ?? kit.mappedCondition, 14);
+  return limitChars(
+    firstSentence(kit.mappedInterpretation ?? kit.mappedCondition ?? "Doctor-approved follicle support."),
+    180,
+  );
 }
+
+/**
+ * HOW THIS SUPPORT WILL HELP column — the kit's purpose, taken from the
+ * approved kit definition via the copy registry. Returns null for kits with
+ * no registry entry so the caller can fall back to the view model's
+ * engine-derived benefit bullets.
+ */
 function canonicalBenefitsForKit(name: string, code: string): string[] | null {
-  const text = `${code} ${name}`.toUpperCase();
-  if (/FH[ _]?WELL[ _]?3|ENDOMETRIOSIS/.test(text)) return ["Supports foundational hormonal balance.", "Helps calm inflammatory burden."];
-  if (/PHENOTYPE.*INFLAM/.test(text)) return ["Helps reduce inflammatory and oxidative stress", "Supports a healthier scalp and follicle environment"];
-  if (/META[ _]?B.*HYPOTHYROID/.test(text)) return ["Supports metabolic activity.", "Helps improve follicular energy supply."];
-  if (/META[ _]?B.*PCOS/.test(text)) return ["Supports insulin balance.", "Helps steady metabolic drive."];
-  if (/META[ _]?B.*POST/.test(text)) return ["Supports hormonal-transition follicle health.", "Helps stabilise the hair cycle."];
-  if (/META[ _]?B/.test(text)) return ["Supports metabolic balance.", "Helps improve follicular energy supply."];
-  if (/THYROID CARE|HYPERTHYROID/.test(text)) return ["Supports thyroid-linked follicle health.", "Helps stabilise metabolic drive."];
-  if (/PRO IMMUNE/.test(text)) return ["Supports balanced immune function.", "Helps reduce inflammatory pressure."];
-  if (/\bFPHL\b|FEMALE PATTERN/.test(text)) return ["Protects pattern-sensitive follicles", "Supports hair calibre and follicular resilience"];
-  if (/\bMPHL\b|MALE PATTERN/.test(text)) return ["Helps reduce androgen impact.", "Supports stronger follicular protection."];
-  if (/IRON UP/.test(text)) return ["Supports iron and ferritin recovery", "Helps improve oxygen and nutrient support to follicles"];
-  if (/TE GOLD|TELOGEN/.test(text)) return ["Helps calm acute shedding.", "Restores nutritional foundation for the hair cycle."];
-  if (/GI GOLD|GUT/.test(text)) return ["Supports gut-linked follicle recovery.", "Helps improve nutrient absorption."];
-  if (/ALOPECIA AREATA/.test(text)) return ["Supports immune-linked follicle recovery.", "Helps reduce autoimmune inflammatory pressure."];
-  if (/EARLY GREYING/.test(text)) return ["Supports melanocyte function.", "Shields follicles from oxidative stress."];
-  if (/HBR|BREAKAGE/.test(text)) return ["Helps repair shaft damage.", "Strengthens the hair fibre against styling stress."];
-  // Peri-menopause has a locked one-line support string (product decision).
-  // Separated from the broader hormonal-transition bucket so wording matches
-  // the approved clinical copy exactly.
-  if (/PERI[ _]?MENOPAUSE/.test(text)) return ["Selected to support hormonal-transition recovery", "Helps stabilise the hair cycle during systemic hormonal change"];
-  if (/POST[ _]?HYSTERECTOMY|HRT|LACTI|HEALTHY[ _-]?9/.test(text)) return ["Supports hormonal-transition recovery", "Helps stabilise the hair cycle during systemic change"];
-  if (/RAPID WEIGHT|RWL/.test(text)) return ["Shields follicles during rapid weight change.", "Supports nutrient recovery."];
-  if (/NIGHT SHIFT|FREQUENT FLY/.test(text)) return ["Supports circadian follicle rhythm.", "Helps counter travel or shift-related stress."];
-  if (/TTM|TRICHOTILLO/.test(text)) return ["Supports follicle recovery from mechanical stress.", "Reinforces regrowth capacity."];
-  return null;
+  return supportBenefitsForKit(code, name);
 }
 
 /* ============================== LOWER GRID ============================= */

@@ -1,5 +1,8 @@
 'use client';
 
+/* eslint-disable @next/next/no-img-element -- Layered static artwork must share identical geometry for the reveal mask. */
+import type { CSSProperties } from 'react';
+
 import type { ProgressState } from '@/runtime/progressEngine';
 
 import styles from './assessment-v3.module.css';
@@ -12,7 +15,15 @@ interface HairProgressV3Props {
 }
 
 export function HairProgressV3({ progress, sectionTitle }: HairProgressV3Props) {
-  const label = `Question ${progress.visiblePosition} of ${progress.visibleTotal} · ${progress.percentage}%`;
+  const label = `Question ${progress.visiblePosition} of ${progress.visibleTotal}`;
+  // Percentage kept in the accessible value text only — hidden from the visible label.
+  const ariaText = `${label} · ${progress.percentage}%`;
+  // Keep the woman's portrait visible at the start, then reveal more of the
+  // strand after every completed question.
+  const visualProgress = 18 + progress.percentage * 0.82;
+  const progressStyle = {
+    '--hair-progress': `${visualProgress}%`,
+  } as CSSProperties;
 
   return (
     <section
@@ -21,28 +32,31 @@ export function HairProgressV3({ progress, sectionTitle }: HairProgressV3Props) 
       aria-valuemin={0}
       aria-valuemax={100}
       aria-valuenow={progress.percentage}
-      aria-valuetext={label}
+      aria-valuetext={ariaText}
       role="progressbar"
+      style={progressStyle}
     >
       <div className={styles.progressMeta}>
         <span>{sectionTitle}</span>
         <strong aria-live="polite">{label}</strong>
       </div>
-      {/* Approved progressive-hair artwork: shown whole via object-fit: contain
-          so the face, hair tip and dark→light gradient are never cropped. It is
-          a single baked illustration (no percentage labels), not a live reveal. */}
       <div className={styles.strand} aria-hidden="true">
-        <picture>
-          <source type="image/avif" srcSet={`${ASSET_ROOT}/strand/hair-progress.avif`} />
-          <source type="image/webp" srcSet={`${ASSET_ROOT}/strand/hair-progress.webp`} />
+        <img
+          className={styles.strandLayer}
+          src={`${ASSET_ROOT}/strand/hair-progress.webp`}
+          alt=""
+          width={1550}
+          height={359}
+        />
+        <span className={styles.strandReveal}>
           <img
-            className={styles.strandImage}
-            src={`${ASSET_ROOT}/strand/hair-progress.png`}
+            className={styles.strandLayer}
+            src={`${ASSET_ROOT}/strand/hair-progress.webp`}
             alt=""
             width={1550}
             height={359}
           />
-        </picture>
+        </span>
       </div>
     </section>
   );

@@ -23,9 +23,15 @@ patient-portal-dev.err.log
 patient-portal-dev.out.log
 
 # env / secrets
+# Catch-all: `.env` and `.env.*.local` alone missed real credential files such
+# as `.env.vercel` (DATABASE_URL / SUPABASE keys / VERCEL_OIDC_TOKEN), which
+# therefore showed up as untracked and was one `git add -A` away from being
+# published. Ignore every .env variant and allow-list the committed samples.
 .env
-.env.local
-.env.*.local
+.env.*
+!.env.example
+!.env.*.example
+!*.env.example
 
 # replay run artifacts (generated)
 tests/fixtures/replay-corpus-v2/_runs/

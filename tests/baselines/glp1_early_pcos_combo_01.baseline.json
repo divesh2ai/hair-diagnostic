@@ -1,0 +1,55 @@
+{
+  "fixtureId": "glp1_early_pcos_combo_01",
+  "generatedAt": "2026-07-03T07:14:17.929Z",
+  "pipelineVersion": "1.0.0",
+  "primaryDiagnosis": "AGA_FEMALE_123",
+  "scalpStates": [
+    "NORMAL_SCALP"
+  ],
+  "rootCauses": [
+    "PCOS",
+    "RAPID_WEIGHT_LOSS"
+  ],
+  "therapyNeeds": [],
+  "severity": "MILD",
+  "rankedKitIds": [
+    "RAPID WEIGHT LOSS SHIELD",
+    "HAIR FACT TE GOLD",
+    "PHENOTYPE INFLAMATION",
+    "PRO FACT META B PCOS",
+    "FPHL"
+  ],
+  "appliedRules": [],
+  "protocolLabel": "Recovery protocol for 5 condition(s): Female pattern hair loss · Scalp / perifollicular inflammation · PCOS / PCOD · Rapid weight loss / GLP-1 · Acute telogen shedding.",
+  "recommendations": [
+    "RAPID WEIGHT LOSS SHIELD",
+    "HAIR FACT TE GOLD",
+    "PHENOTYPE INFLAMATION",
+    "PRO FACT META B PCOS",
+    "FPHL"
+  ],
+  "narratives": {
+    "narratives": {
+      "doctorHash": "{\"doctorSummary\":\"Mild Androgenetic alopecia — female pattern, L",
+      "patientHash": "{\"doctorSummary\":\"Mild Androgenetic alopecia — female pattern, L"
+    },
+    "orchestration": {
+      "pipelineVersion": "1.0.0",
+      "executionId": "e45a41bf-8682-4e37-857b-360d66f888bc",
+      "startedAt": "2026-07-03T07:14:17.929Z",
+      "completedAt": "2026-07-03T07:14:17.931Z",
+      "durationMs": 2,
+      "completedStages": [
+        "questionnaire",
+        "clinical",
+        "therapy",
+        "recommendations",
+        "narratives"
+      ]
+    }
+  },
+  "reportMetadata": {
+    "generatedBy": "generate-baselines.ts",
+    "version": "1.0.0"
+  }
+}

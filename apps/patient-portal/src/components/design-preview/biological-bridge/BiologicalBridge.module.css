@@ -1,0 +1,246 @@
+.frame {
+  --frame-ink: #060f0c;
+  --frame-forest: #0b1f18;
+  --frame-forest-deep: #071612;
+  --frame-cream: #f4efe2;
+  --frame-cream-soft: rgba(244, 239, 226, 0.72);
+  --frame-gold: #d9bc7a;
+  --frame-gold-soft: #f0dca8;
+  --frame-line: rgba(219, 197, 140, 0.22);
+  --frame-frontier: 60%;
+  position: relative;
+  isolation: isolate;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  border-radius: 22px;
+  background:
+    radial-gradient(120% 90% at 85% 40%, rgba(215, 165, 90, 0.16) 0%, transparent 55%),
+    radial-gradient(90% 100% at 12% 70%, rgba(74, 34, 34, 0.35) 0%, transparent 60%),
+    linear-gradient(180deg, #071612 0%, #050d0a 100%);
+}
+
+.frameHero {
+  border-radius: 26px;
+}
+
+.frameStatic {
+  --frame-frontier: 100%;
+}
+
+.artLayer {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+}
+
+.artImage {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: 62% center;
+  display: block;
+  filter: saturate(1.05) contrast(1.02);
+}
+
+.frame[data-mode='assessment'] .artImage {
+  object-position: 60% center;
+}
+
+@media (max-width: 720px) {
+  .artImage {
+    object-position: 66% 42%;
+  }
+}
+
+/* Left-side vignette so hero copy sits on cinematic darkness */
+.copyScrim {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  pointer-events: none;
+  background: linear-gradient(
+    90deg,
+    rgba(6, 15, 12, 0.85) 0%,
+    rgba(6, 15, 12, 0.55) 22%,
+    rgba(6, 15, 12, 0.05) 42%,
+    rgba(6, 15, 12, 0) 60%
+  );
+}
+
+@media (max-width: 720px) {
+  .copyScrim {
+    background: linear-gradient(
+      180deg,
+      rgba(6, 15, 12, 0) 0%,
+      rgba(6, 15, 12, 0) 45%,
+      rgba(6, 15, 12, 0.72) 82%,
+      rgba(6, 15, 12, 0.92) 100%
+    );
+  }
+}
+
+/* The veil: darkens/desaturates the unresolved portion (to the right of the frontier).
+   Uses a mask so it fades softly rather than being a hard rectangle. */
+.veil {
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  pointer-events: none;
+  background:
+    linear-gradient(
+      90deg,
+      rgba(6, 15, 12, 0) 0%,
+      rgba(6, 15, 12, 0) calc(var(--frame-frontier) - 6%),
+      rgba(6, 15, 12, 0.62) calc(var(--frame-frontier) + 8%),
+      rgba(6, 15, 12, 0.78) 100%
+    );
+  transition: background 700ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.veilDesat {
+  position: absolute;
+  inset: 0;
+  z-index: 4;
+  pointer-events: none;
+  backdrop-filter: saturate(0.35) brightness(0.72) blur(0.6px);
+  -webkit-backdrop-filter: saturate(0.35) brightness(0.72) blur(0.6px);
+  mask-image: linear-gradient(
+    90deg,
+    transparent 0%,
+    transparent calc(var(--frame-frontier) + 4%),
+    #000 calc(var(--frame-frontier) + 22%),
+    #000 100%
+  );
+  -webkit-mask-image: linear-gradient(
+    90deg,
+    transparent 0%,
+    transparent calc(var(--frame-frontier) + 4%),
+    #000 calc(var(--frame-frontier) + 22%),
+    #000 100%
+  );
+  transition: mask-image 700ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+/* The construction frontier — a slim column of light at the current progress line. */
+.frontier {
+  position: absolute;
+  top: 4%;
+  bottom: 4%;
+  left: var(--frame-frontier);
+  width: 1px;
+  z-index: 5;
+  pointer-events: none;
+  transform: translateX(-0.5px);
+  transition: left 700ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.frontierCore {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    180deg,
+    rgba(240, 220, 168, 0) 0%,
+    rgba(240, 220, 168, 0.55) 18%,
+    rgba(240, 220, 168, 0.95) 50%,
+    rgba(240, 220, 168, 0.55) 82%,
+    rgba(240, 220, 168, 0) 100%
+  );
+  box-shadow:
+    0 0 20px 4px rgba(240, 220, 168, 0.28),
+    0 0 60px 8px rgba(215, 165, 90, 0.18);
+}
+
+.frontierScan {
+  position: absolute;
+  top: 42%;
+  left: 50%;
+  width: 14px;
+  height: 14px;
+  border-radius: 999px;
+  background: radial-gradient(circle, #fff5dc 0%, #f0dca8 40%, rgba(240, 220, 168, 0) 70%);
+  transform: translate(-50%, -50%);
+  box-shadow: 0 0 22px 6px rgba(240, 220, 168, 0.55);
+}
+
+/* Ambient particles */
+.particles {
+  position: absolute;
+  inset: 0;
+  z-index: 6;
+  pointer-events: none;
+  overflow: hidden;
+}
+
+.particle {
+  position: absolute;
+  width: 3px;
+  height: 3px;
+  border-radius: 999px;
+  background: rgba(240, 220, 168, 0.55);
+  box-shadow: 0 0 8px rgba(240, 220, 168, 0.6);
+  opacity: 0;
+}
+
+.particleGreen {
+  background: rgba(158, 214, 176, 0.55);
+  box-shadow: 0 0 8px rgba(158, 214, 176, 0.4);
+}
+
+.particleRed {
+  background: rgba(215, 108, 96, 0.55);
+  box-shadow: 0 0 8px rgba(215, 108, 96, 0.35);
+}
+
+/* Fallback panel when the reference image is not yet dropped in */
+.fallback {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  display: grid;
+  place-items: center;
+  padding: 8%;
+  color: rgba(244, 239, 226, 0.7);
+  text-align: center;
+  background:
+    radial-gradient(60% 60% at 82% 42%, rgba(215, 165, 90, 0.35) 0%, transparent 60%),
+    radial-gradient(50% 60% at 20% 80%, rgba(120, 50, 50, 0.35) 0%, transparent 60%),
+    linear-gradient(120deg, #0a1c15 0%, #06110d 100%);
+}
+
+.fallbackInner {
+  max-width: 380px;
+  border: 1px dashed rgba(240, 220, 168, 0.35);
+  border-radius: 14px;
+  padding: 20px 22px;
+  background: rgba(6, 15, 12, 0.55);
+  backdrop-filter: blur(4px);
+}
+
+.fallbackInner strong {
+  display: block;
+  font-family: var(--font-fraunces), Georgia, serif;
+  font-size: 15px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: #f0dca8;
+  margin-bottom: 8px;
+}
+
+.fallbackInner code {
+  display: block;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 11.5px;
+  color: #f4efe2;
+  background: rgba(0, 0, 0, 0.35);
+  padding: 8px 10px;
+  border-radius: 8px;
+  margin-top: 10px;
+  word-break: break-all;
+}
+
+.fallbackInner p {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.55;
+}

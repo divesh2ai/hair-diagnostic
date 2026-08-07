@@ -15,3 +15,5 @@ export { TimelineCard } from "./TimelineCard";
 export { FollowUpCard } from "./FollowUpCard";
 export { EducationCard } from "./EducationCard";
 export { RiskFactorsCard } from "./RiskFactorsCard";
+export { TopicalsCard } from "./TopicalsCard";
+export { SafetyCard } from "./SafetyCard";

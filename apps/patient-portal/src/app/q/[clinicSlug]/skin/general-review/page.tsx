@@ -1,0 +1,2 @@
+import Link from 'next/link';
+export default async function GeneralReviewPage({ params }: { params: Promise<{ clinicSlug: string }> }) { const { clinicSlug } = await params; return <main className="mx-auto max-w-xl px-6 py-24"><h1 className="font-serif text-4xl">General skin review</h1><p className="mt-4 text-stone-600">Your concern has not been assigned to Acne, Pigmentation, Anti-Ageing, or HairOS. Please contact the clinic for the right pathway.</p><Link className="mt-8 inline-block underline" href={`/q/${clinicSlug}/skin`}>Return to Skin FACT</Link></main>; }

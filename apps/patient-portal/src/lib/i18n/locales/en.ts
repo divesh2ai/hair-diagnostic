@@ -45,6 +45,8 @@ export const en: Dictionary = {
     clinicProfile: "Clinic profile",
     branding: "Branding",
     whatsapp: "WhatsApp",
+    orders: "Kit orders",
+    leads: "Leads",
   },
   shell: {
     searchPlaceholder: "Search patients, reports, clinics…",

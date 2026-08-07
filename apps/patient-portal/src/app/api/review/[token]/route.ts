@@ -1,21 +1,56 @@
 import { NextResponse } from "next/server";
+import { ReviewDecision } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { verifyReviewToken } from "@/lib/reviewToken";
+import {
+  makeOrchestrator,
+  OrchestratorError,
+  ReadinessBlockedError,
+  type ApprovalStatus,
+} from "@hairos/packages/consultation-orchestrator";
+import { logLifecycleEvent } from "@/lib/observability/lifecycle";
+import { toPatientSafeReadinessDecision } from "@shared/clinical-readiness/evaluator";
 
-// Map our verifier errors to user-facing messages + HTTP codes. We never
-// leak the specific failure shape (signature vs expiry vs payload) beyond
-// the high-level distinction needed to render the right UI state.
+// Signed-token review flow (WhatsApp / email "review this report" link).
+//
+// Approvals here MUST NOT write reviewDecision directly. The token route
+// authenticates + resolves the assessment, then delegates to
+// orchestrator.approve — the same canonical approval boundary the doctor
+// dashboard uses. That guarantees:
+//   • one CONSULTATION_APPROVED event per approval (idempotent on retry),
+//   • cross-clinic ownership check via the orchestrator,
+//   • stale-content / stale-version guard,
+//   • assessment-state guard (no approving FAILED / still-processing cases),
+//   • single audit trail regardless of surface.
+// The legacy Assessment.reviewDecision flag is still mirrored so the reports
+// inbox stays in sync (same pattern as the doctor route).
+
 const ERROR_RESPONSE = {
-  MALFORMED:        { status: 400, message: "This review link is malformed." },
-  INVALID_SIGNATURE:{ status: 401, message: "This review link is not valid." },
-  EXPIRED:          { status: 410, message: "This review link has expired." },
-  INVALID_PAYLOAD:  { status: 400, message: "This review link is not readable." },
+  MALFORMED: { status: 400, message: "This review link is malformed." },
+  INVALID_SIGNATURE: { status: 401, message: "This review link is not valid." },
+  EXPIRED: { status: 410, message: "This review link has expired." },
+  INVALID_PAYLOAD: { status: 400, message: "This review link is not readable." },
 } as const;
 
-const VALID_DECISIONS = new Set(["APPROVED", "EDITS_REQUESTED", "REJECTED"]);
+// Token uses legacy names; orchestrator uses canonical names.
+const DECISION_TO_APPROVAL: Record<string, ApprovalStatus> = {
+  APPROVED: "APPROVED",
+  EDITS_REQUESTED: "REVISION_REQUESTED",
+  REJECTED: "REJECTED",
+};
+const APPROVAL_TO_REVIEW_DECISION: Record<ApprovalStatus, ReviewDecision> = {
+  APPROVED: ReviewDecision.APPROVED,
+  REVISION_REQUESTED: ReviewDecision.EDITS_REQUESTED,
+  REJECTED: ReviewDecision.REJECTED,
+  DRAFT: ReviewDecision.PENDING,
+  PENDING_REVIEW: ReviewDecision.PENDING,
+};
+
 const MAX_NOTES_LEN = 2000;
 const MAX_NAME_LEN = 120;
 const MAX_EMAIL_LEN = 200;
+
+const orchestrator = makeOrchestrator(prisma);
 
 export async function GET(
   _req: Request,
@@ -93,8 +128,9 @@ export async function POST(
     );
   }
 
-  const decision = (body.decision ?? "").toUpperCase();
-  if (!VALID_DECISIONS.has(decision)) {
+  const decisionRaw = (body.decision ?? "").toUpperCase();
+  const approvalStatus = DECISION_TO_APPROVAL[decisionRaw];
+  if (!approvalStatus) {
     return NextResponse.json(
       { success: false, error: "Decision must be APPROVED, EDITS_REQUESTED, or REJECTED." },
       { status: 400 },
@@ -112,19 +148,107 @@ export async function POST(
     );
   }
 
-  // EDITS_REQUESTED and REJECTED both need notes — an Approve without
-  // notes is fine but a rejection without reasoning is not actionable.
-  if (decision !== "APPROVED" && !notes) {
+  // Approve without a note is fine, but reject / revision without reasoning
+  // is not actionable downstream.
+  if (approvalStatus !== "APPROVED" && !notes) {
     return NextResponse.json(
       { success: false, error: "Please add notes explaining the decision." },
       { status: 400 },
     );
   }
 
-  const updated = await prisma.assessment.update({
+  // Resolve the assessment for its clinicId (the orchestrator needs it for
+  // the ownership check the same way the dashboard does). If it's gone,
+  // 404 the token — the URL now references content that no longer exists.
+  const assessment = await prisma.assessment.findUnique({
     where: { id: result.assessmentId },
+    select: { id: true, clinicId: true },
+  });
+  if (!assessment) {
+    return NextResponse.json(
+      { success: false, error: "Report not found." },
+      { status: 404 },
+    );
+  }
+
+  // Actor identity for the audit trail. The token itself doesn't identify a
+  // person, so we key on reviewer email (preferred) or reviewer name; both
+  // are user-supplied but this is signed-URL territory — same trust model as
+  // any email-approval link.
+  const actorId = `review-token:${reviewerEmail || reviewerName}`;
+
+  try {
+    await orchestrator.approve({
+      assessmentId: assessment.id,
+      ctx: {
+        actorId,
+        role: "TOKEN_REVIEWER",
+        clinicId: assessment.clinicId,
+      },
+      status: approvalStatus,
+      notes: notes || undefined,
+    });
+    logLifecycleEvent({
+      event: "token.approval_accepted",
+      assessmentId: assessment.id,
+      clinicId: assessment.clinicId,
+      statusAfter: approvalStatus,
+    });
+  } catch (err) {
+    if (err instanceof ReadinessBlockedError) {
+      logLifecycleEvent({
+        event: "token.approval_rejected",
+        assessmentId: assessment.id,
+        clinicId: assessment.clinicId,
+        failureCode: err.decision.blockingCodes.includes("GROUNDING_VIOLATION_PRESENT")
+          ? "grounding_violation"
+          : "reasoning_gap",
+      });
+      // Token audience is doctor-scoped (WhatsApp review link goes to the
+      // reviewing clinician), but the token itself does not identify a
+      // specific person we can attribute doctor-level violation detail to.
+      // Return counts + codes only; no raw violation entries.
+      const safe = toPatientSafeReadinessDecision(err.decision);
+      return NextResponse.json(
+        {
+          success: false,
+          error: "readiness_blocked",
+          code: "readiness_blocked",
+          message:
+            "This consultation cannot be approved yet: unresolved clinical evidence issues. Please open the dashboard to review.",
+          ...safe,
+        },
+        { status: 422 },
+      );
+    }
+    if (err instanceof OrchestratorError) {
+      const status = err.code === "not_found" ? 404 : err.code === "forbidden" ? 403 : 409;
+      logLifecycleEvent({
+        event: "token.approval_rejected",
+        assessmentId: assessment.id,
+        clinicId: assessment.clinicId,
+        failureCode:
+          err.code === "not_found"
+            ? "not_found"
+            : err.code === "forbidden"
+              ? "cross_clinic"
+              : "state_ineligible",
+      });
+      return NextResponse.json(
+        { success: false, error: err.message },
+        { status },
+      );
+    }
+    throw err;
+  }
+
+  // Mirror onto the legacy workflow flag so the reports inbox stays in sync,
+  // and stash the reviewer contact metadata used to render the read-only GET
+  // screen once the link is opened again.
+  const updated = await prisma.assessment.update({
+    where: { id: assessment.id },
     data: {
-      reviewDecision: decision as "APPROVED" | "EDITS_REQUESTED" | "REJECTED",
+      reviewDecision: APPROVAL_TO_REVIEW_DECISION[approvalStatus],
       reviewerName,
       reviewerEmail: reviewerEmail || null,
       reviewNotes: notes || null,

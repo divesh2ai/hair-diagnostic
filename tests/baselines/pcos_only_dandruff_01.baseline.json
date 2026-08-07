@@ -1,0 +1,51 @@
+{
+  "fixtureId": "pcos_only_dandruff_01",
+  "generatedAt": "2026-07-03T07:14:18.045Z",
+  "pipelineVersion": "1.0.0",
+  "primaryDiagnosis": "PCOS_ONLY",
+  "scalpStates": [
+    "OILY_SCALP",
+    "DANDRUFF"
+  ],
+  "rootCauses": [
+    "PCOS"
+  ],
+  "therapyNeeds": [],
+  "severity": "MILD",
+  "rankedKitIds": [
+    "PHENOTYPE INFLAMATION",
+    "PRO FACT META B PCOS",
+    "FPHL"
+  ],
+  "appliedRules": [],
+  "protocolLabel": "Recovery protocol for 3 condition(s): Female pattern hair loss · Scalp / perifollicular inflammation · PCOS / PCOD.",
+  "recommendations": [
+    "PHENOTYPE INFLAMATION",
+    "PRO FACT META B PCOS",
+    "FPHL"
+  ],
+  "narratives": {
+    "narratives": {
+      "doctorHash": "{\"doctorSummary\":\"Mild PCOS-associated androgenetic alopecia wit",
+      "patientHash": "{\"doctorSummary\":\"Mild PCOS-associated androgenetic alopecia wit"
+    },
+    "orchestration": {
+      "pipelineVersion": "1.0.0",
+      "executionId": "6d36a9b7-580c-42c8-8487-942dc8b43e1f",
+      "startedAt": "2026-07-03T07:14:18.045Z",
+      "completedAt": "2026-07-03T07:14:18.046Z",
+      "durationMs": 1,
+      "completedStages": [
+        "questionnaire",
+        "clinical",
+        "therapy",
+        "recommendations",
+        "narratives"
+      ]
+    }
+  },
+  "reportMetadata": {
+    "generatedBy": "generate-baselines.ts",
+    "version": "1.0.0"
+  }
+}

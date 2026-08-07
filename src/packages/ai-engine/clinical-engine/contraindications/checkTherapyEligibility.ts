@@ -512,8 +512,7 @@ export function checkTherapyEligibility(
   const fphlBlock = checkFphlUnder30(ans, dominantKey);
   if (fphlBlock) {
     eligibilityMap['FPHL'] = fphlBlock;
-    eligibilityMap['FPHL PLUS'] = { ...fphlBlock, kitId: 'FPHL PLUS' };
-    blockedKits.push('FPHL', 'FPHL PLUS');
+    blockedKits.push('FPHL');
     if (!protocolOverride) {
       const isVeg = deriveIsVeg(ans);
       protocolOverride = {

@@ -1,0 +1,227 @@
+﻿{
+    "generatedAt":  "2026-08-05",
+    "scope":  "Controlled Dr. FACT doctor chatbot RAG for five pilot kit families only",
+    "completionGate":  "No new product families added; exact facts remain structured; prices remain hidden",
+    "taxonomyDomains":  [
+                            "CONDITION",
+                            "SYMPTOM",
+                            "LIFESTYLE_FACTOR",
+                            "KIT",
+                            "KIT_VARIANT",
+                            "INGREDIENT",
+                            "SAFETY",
+                            "FAQ"
+                        ],
+    "sourceDocuments":  [
+                            "Kits \u0026 Product.xlsx / Sheet2.composition",
+                            "MRP sheet fluence khushal\u0027s copy.xlsx / Complete formulation",
+                            "Clinical Chunks sheet",
+                            "Canonical Meta B identity decision",
+                            "Controlled lifestyle-factor knowledge update",
+                            "Controlled supporting-topic knowledge update"
+                        ],
+    "pilotFamilies":  [
+                          {
+                              "variants":  [
+
+                                           ],
+                              "kitId":  "KIT_TE_GOLD",
+                              "retrievalAvailability":  [
+                                                            "KIT_COMPOSITION",
+                                                            "KIT_MECHANISM",
+                                                            "LIFESTYLE/CONDITION supporting retrieval"
+                                                        ],
+                              "aliases":  [
+                                              "TE Gold",
+                                              "Hair Fact TE Gold",
+                                              "TE kit"
+                                          ],
+                              "ingredientRows":  99,
+                              "productComponents":  9,
+                              "approvalStatus":  "PUBLISHED structured formulation rows plus controlled educational records",
+                              "conflictingInformation":  [
+
+                                                         ],
+                              "missingInformation":  [
+
+                                                     ],
+                              "displayName":  "TE GOLD"
+                          },
+                          {
+                              "variants":  [
+
+                                           ],
+                              "kitId":  "KIT_GI_HEALTH_GOLD",
+                              "retrievalAvailability":  [
+                                                            "KIT_COMPOSITION",
+                                                            "KIT_MECHANISM",
+                                                            "CONDITION_EXPLANATION for gut health"
+                                                        ],
+                              "aliases":  [
+                                              "GI Gold",
+                                              "GI Health Gold",
+                                              "Pro Fact GI Health Gold"
+                                          ],
+                              "ingredientRows":  101,
+                              "productComponents":  9,
+                              "approvalStatus":  "PUBLISHED structured formulation rows plus controlled educational records",
+                              "conflictingInformation":  [
+
+                                                         ],
+                              "missingInformation":  [
+
+                                                     ],
+                              "displayName":  "GI GOLD"
+                          },
+                          {
+                              "variants":  [
+
+                                           ],
+                              "kitId":  "KIT_PRO_IMMUNE_GOLD",
+                              "retrievalAvailability":  [
+                                                            "KIT_COMPOSITION",
+                                                            "KIT_MECHANISM"
+                                                        ],
+                              "aliases":  [
+                                              "Pro Immune",
+                                              "Proimmune Gold",
+                                              "Pro Immune Gold"
+                                          ],
+                              "ingredientRows":  86,
+                              "productComponents":  9,
+                              "approvalStatus":  "PUBLISHED structured formulation rows plus controlled educational records",
+                              "conflictingInformation":  [
+                                                             "F-SOLSHINE is not silently merged with F-SOLSHINE TABLETS"
+                                                         ],
+                              "missingInformation":  [
+                                                         "F-SOLSHINE has no exact active row in Complete formulation"
+                                                     ],
+                              "displayName":  "PRO IMMUNE GOLD"
+                          },
+                          {
+                              "variants":  [
+
+                                           ],
+                              "kitId":  "KIT_INFLAMMATION_PHENOTYPE",
+                              "retrievalAvailability":  [
+                                                            "KIT_COMPOSITION",
+                                                            "KIT_MECHANISM"
+                                                        ],
+                              "aliases":  [
+                                              "Phenotype Inflammation",
+                                              "Pro Fact Inflammation Phenotype",
+                                              "inflammation kit"
+                                          ],
+                              "ingredientRows":  101,
+                              "productComponents":  8,
+                              "approvalStatus":  "PUBLISHED structured formulation rows plus controlled educational records",
+                              "conflictingInformation":  [
+                                                             "Pilot prose names nine items while kit-product source has eight product components; exact ingredient answer uses Complete formulation"
+                                                         ],
+                              "missingInformation":  [
+
+                                                     ],
+                              "displayName":  "Inflammation Phenotype"
+                          },
+                          {
+                              "variants":  [
+                                               "KIT_PRO_FACT_META_B_PCOS",
+                                               "KIT_PRO_FACT_META_B_THYROID",
+                                               "KIT_PRO_FACT_META_B_MENOPAUSE",
+                                               "KIT_PRO_FACT_META_B_IR5"
+                                           ],
+                              "kitId":  "KIT_PRO_FACT_META_B",
+                              "retrievalAvailability":  [
+                                                            "KIT_OVERVIEW",
+                                                            "KIT_COMPOSITION",
+                                                            "KIT_MECHANISM",
+                                                            "KIT_VARIANT"
+                                                        ],
+                              "aliases":  [
+                                              "Meta B",
+                                              "Meta-B",
+                                              "MetaB",
+                                              "Profact Meta B",
+                                              "Pro Fact Meta B"
+                                          ],
+                              "ingredientRows":  88,
+                              "productComponents":  8,
+                              "approvalStatus":  "PUBLISHED structured formulation rows plus controlled identity records",
+                              "conflictingInformation":  [
+                                                             "Generic Meta-B must not resolve to IR 5 or inherit variant composition"
+                                                         ],
+                              "missingInformation":  [
+                                                         "Meta-B IR 5 has no active structured composition row in catalogue extraction"
+                                                     ],
+                              "displayName":  "PRO FACT META B"
+                          }
+                      ],
+    "supportingTopics":  [
+                             {
+                                 "domain":  "LIFESTYLE_FACTOR",
+                                 "entity":  "SMOKING_AND_HAIR",
+                                 "availability":  "PUBLISHED controlled topic-specific retrieval",
+                                 "aloneTriggersKit":  false
+                             },
+                             {
+                                 "domain":  "LIFESTYLE_FACTOR",
+                                 "entity":  "ALCOHOL_AND_HAIR",
+                                 "availability":  "PUBLISHED controlled topic-specific retrieval",
+                                 "aloneTriggersKit":  false
+                             },
+                             {
+                                 "domain":  "LIFESTYLE_FACTOR",
+                                 "entity":  "STRESS_AND_HAIR",
+                                 "availability":  "PUBLISHED controlled topic-specific retrieval",
+                                 "aloneTriggersKit":  false
+                             },
+                             {
+                                 "domain":  "LIFESTYLE_FACTOR",
+                                 "entity":  "SLEEP_AND_HAIR",
+                                 "availability":  "PUBLISHED controlled topic-specific retrieval",
+                                 "aloneTriggersKit":  false
+                             },
+                             {
+                                 "domain":  "LIFESTYLE_FACTOR",
+                                 "entity":  "RESTRICTIVE_DIET_AND_HAIR",
+                                 "availability":  "PUBLISHED controlled topic-specific retrieval",
+                                 "aloneTriggersKit":  false
+                             },
+                             {
+                                 "domain":  "LIFESTYLE_FACTOR",
+                                 "entity":  "RAPID_WEIGHT_LOSS_AND_HAIR",
+                                 "availability":  "PUBLISHED controlled topic-specific retrieval",
+                                 "aloneTriggersKit":  false
+                             },
+                             {
+                                 "domain":  "CONDITION",
+                                 "entity":  "TELOGEN_EFFLUVIUM",
+                                 "availability":  "PUBLISHED controlled topic-specific retrieval"
+                             },
+                             {
+                                 "domain":  "CONDITION",
+                                 "entity":  "GUT_HEALTH_AND_HAIR",
+                                 "availability":  "PUBLISHED controlled topic-specific retrieval"
+                             },
+                             {
+                                 "domain":  "CONDITION",
+                                 "entity":  "IRON_THYROID_INSULIN_RESISTANCE_AND_HAIR",
+                                 "availability":  "PUBLISHED controlled topic-specific retrieval"
+                             }
+                         ],
+    "retrievalControls":  [
+                              "entityId filter for kit overview/mechanism",
+                              "taxonomyDomain filter",
+                              "contentType filter",
+                              "audience filter",
+                              "topic and knowledge-system filters",
+                              "structured tool precedence for prices/composition/ingredients"
+                          ],
+    "discrepancies":  [
+                          "PRO IMMUNE GOLD: MISSING_PRODUCT_FORMULATION_ROWS:F-SOLSHINE",
+                          "Inflammation Phenotype: product-count vs prose-count distinction retained",
+                          "Meta-B IR 5: variant identity present, structured composition absent"
+                      ],
+    "safeForTesting":  true,
+    "readyStatus":  "READY_FOR_CONTROLLED_FIVE_KIT_LOCAL_TESTING"
+}

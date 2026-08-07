@@ -24,8 +24,12 @@ export interface SchemaOption {
   clinicalTags: string[];
   followUpQuestions: string[];
   /** Option-level visibility gate (e.g. postpartum options only for Female,
-   *  Norwood stages only for Male, Ludwig stages only for Female). */
-  visibleOnlyIf?: { dependsOn: string; operator: string; value: string };
+   *  Norwood stages only for Male, Ludwig stages only for Female). Accepts
+   *  a single rule or an array of rules combined with AND-semantics (the
+   *  option is shown only when every rule matches). */
+  visibleOnlyIf?:
+    | { dependsOn: string; operator: string; value: string | number }
+    | Array<{ dependsOn: string; operator: string; value: string | number }>;
   /** Pairwise mutual exclusion label (e.g. "Oily scalp" ↔ "Dry scalp") */
   mutuallyExclusive?: string;
   /** Photographic tile rendered above the option label (object-cover, 4:3

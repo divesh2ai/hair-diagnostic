@@ -102,7 +102,7 @@ export default function PlatformSettingsPage() {
               onChange={(e) =>
                 setS({ ...s, defaultTheme: e.target.value as Settings["defaultTheme"] })
               }
-              className="mt-1.5 h-9 px-2 rounded-md border border-border bg-background text-sm w-full"
+              className="mt-1.5 h-9 px-3 rounded-lg border border-border bg-background text-sm font-medium focus:outline-none focus:ring-2 focus:ring-ring/40 transition-all w-full cursor-pointer"
             >
               <option value="system">System</option>
               <option value="light">Light</option>
@@ -119,7 +119,7 @@ export default function PlatformSettingsPage() {
                   defaultLanguage: e.target.value as Settings["defaultLanguage"],
                 })
               }
-              className="mt-1.5 h-9 px-2 rounded-md border border-border bg-background text-sm w-full"
+              className="mt-1.5 h-9 px-3 rounded-lg border border-border bg-background text-sm font-medium focus:outline-none focus:ring-2 focus:ring-ring/40 transition-all w-full cursor-pointer"
             >
               {(["EN", "HI", "MR", "GU", "PA", "TA", "TE"] as const).map((l) => (
                 <option key={l} value={l}>

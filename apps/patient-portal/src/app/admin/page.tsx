@@ -60,8 +60,20 @@ type Payload = {
   };
 };
 
+type Funnel = {
+  counts: { clinics: number; doctors: number };
+  funnel: {
+    started: number;
+    completed: number;
+    reviewed: number;
+    orders: number;
+    ordersActive: number;
+  };
+};
+
 export default function AdminDashboardPage() {
   const [data, setData] = useState<Payload | null>(null);
+  const [funnel, setFunnel] = useState<Funnel | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -69,6 +81,10 @@ export default function AdminDashboardPage() {
       .then((r) => (r.ok ? r.json() : Promise.reject(r.statusText)))
       .then(setData)
       .catch((e) => setError(String(e)));
+    fetch("/api/admin/funnel", { cache: "no-store" })
+      .then((r) => (r.ok ? r.json() : null))
+      .then(setFunnel)
+      .catch(() => setFunnel(null));
   }, []);
 
   if (error) {
@@ -166,6 +182,17 @@ export default function AdminDashboardPage() {
         />
       </div>
 
+      {funnel && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">Conversion funnel</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <FunnelStrip funnel={funnel.funnel} />
+          </CardContent>
+        </Card>
+      )}
+
       <div className="grid lg:grid-cols-3 gap-4">
         <Card>
           <CardHeader>
@@ -252,5 +279,40 @@ export default function AdminDashboardPage() {
         </Card>
       </div>
     </PageContainer>
+  );
+}
+
+function FunnelStrip({ funnel }: { funnel: Funnel["funnel"] }) {
+  const stages: { label: string; count: number; tone: string }[] = [
+    { label: "Started", count: funnel.started, tone: "bg-stone-100 text-slate-800" },
+    { label: "Submitted", count: funnel.completed, tone: "bg-teal-100 text-teal-900" },
+    { label: "Doctor reviewed", count: funnel.reviewed, tone: "bg-indigo-100 text-indigo-900" },
+    { label: "Kit orders", count: funnel.orders, tone: "bg-amber-100 text-amber-900" },
+    { label: "Active orders", count: funnel.ordersActive, tone: "bg-emerald-100 text-emerald-900" },
+  ];
+  const top = Math.max(1, stages[0].count);
+  return (
+    <div className="space-y-3">
+      <div className="grid gap-2 sm:grid-cols-5">
+        {stages.map((s, i) => {
+          const prev = i === 0 ? null : stages[i - 1].count;
+          const pctFromTop = Math.round((s.count / top) * 100);
+          const pctFromPrev = prev ? Math.round((s.count / Math.max(1, prev)) * 100) : null;
+          return (
+            <div key={s.label} className={`rounded-xl ${s.tone} px-3 py-2.5`}>
+              <div className="text-[10px] uppercase tracking-wider opacity-80">{s.label}</div>
+              <div className="font-serif text-2xl leading-tight tabular-nums">{s.count.toLocaleString()}</div>
+              <div className="mt-1 text-[10px] opacity-80">
+                {pctFromPrev != null ? `${pctFromPrev}% vs prev · ` : ""}
+                {pctFromTop}% of start
+              </div>
+            </div>
+          );
+        })}
+      </div>
+      <p className="text-[11px] text-muted-foreground">
+        Assessments started → submitted → doctor-reviewed → kit order intent → active (not cancelled).
+      </p>
+    </div>
   );
 }

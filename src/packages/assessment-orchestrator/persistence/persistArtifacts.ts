@@ -91,7 +91,14 @@ export async function persistNarrativeArtifact(
   generationMs?: number
 ): Promise<void> {
   // ── Validate complete narratives payload ────────────────────────────────────
-  if (!narrativesPayload.doctor_narrative && !narrativesPayload.patient_narrative) {
+  // Phase A persists a slim NARRATIVES record (clinical_report + doctor consultation
+  // only); patient/doctor narratives are composed and added in Phase B.
+  const isPhaseA = narrativesPayload.phase === "A";
+  if (
+    !isPhaseA &&
+    !narrativesPayload.doctor_narrative &&
+    !narrativesPayload.patient_narrative
+  ) {
     throw new Error(
       "[NarrativePersistenceError] Missing both doctor_narrative and patient_narrative"
     );
@@ -152,10 +159,18 @@ export async function persistNarrativeArtifact(
   }
 
   const savedContent = saved.content as Record<string, unknown>;
-  if (!savedContent.doctor_narrative && !savedContent.patient_narrative) {
+  if (
+    !isPhaseA &&
+    !savedContent.doctor_narrative &&
+    !savedContent.patient_narrative
+  ) {
     throw new Error(
       "[NarrativePersistenceError] Saved artifact missing narratives"
     );
+  }
+
+  if (isPhaseA) {
+    return;
   }
 
   // ── Content population validation: Ensure no enum-only/placeholder content ──

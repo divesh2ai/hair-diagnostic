@@ -400,7 +400,7 @@ export function DossierReportPages({ report }: { report: ClinicalReport }) {
   return (
     <>
       {/* ── 1. Patient Summary (hero + questionnaire selections) ────────── */}
-      <Page size="A4" style={S.page}>
+      <Page size="A4" style={S.page} wrap={false}>
         <Backdrop accent={C.teal} secondary={C.gold} />
         <View style={S.content}>
           <SectionHeader
@@ -442,7 +442,7 @@ export function DossierReportPages({ report }: { report: ClinicalReport }) {
 
       {/* ── 2. Clinical Summary & Interpretation ──────────────────────── */}
       {interpretations.length > 0 && (
-        <Page size="A4" style={S.page}>
+        <Page size="A4" style={S.page} wrap={false}>
           <Backdrop accent={C.teal} secondary={C.violet} />
           <View style={S.content}>
             <SectionHeader
@@ -476,7 +476,7 @@ export function DossierReportPages({ report }: { report: ClinicalReport }) {
       )}
 
       {/* ── 3. Recommended Recovery Protocol (kits — no formulation) ───── */}
-      <Page size="A4" style={S.page}>
+      <Page size="A4" style={S.page} wrap={false}>
         <Backdrop accent={C.green} secondary={C.teal} />
         <View style={S.content}>
           <SectionHeader
@@ -523,7 +523,7 @@ export function DossierReportPages({ report }: { report: ClinicalReport }) {
 
       {/* ── 4. Topical Recommendations ──────────────────────────────────── */}
       {topicalRecommendations.length > 0 && (
-        <Page size="A4" style={S.page}>
+        <Page size="A4" style={S.page} wrap={false}>
           <Backdrop accent={C.violet} secondary={C.teal} />
           <View style={S.content}>
             <SectionHeader
@@ -589,7 +589,7 @@ export function DossierReportPages({ report }: { report: ClinicalReport }) {
 
       {/* ── 6. Recovery Milestones ──────────────────────────────────────── */}
       {recoveryMilestones && recoveryMilestones.length > 0 && (
-        <Page size="A4" style={S.page}>
+        <Page size="A4" style={S.page} wrap={false}>
           <Backdrop accent={C.teal} secondary={C.green} />
           <View style={S.content}>
             <SectionHeader
@@ -621,7 +621,7 @@ export function DossierReportPages({ report }: { report: ClinicalReport }) {
       )}
 
       {/* ── 7. General Guidance — Diet & Lifestyle (no foods-to-avoid) ── */}
-      <Page size="A4" style={S.page}>
+      <Page size="A4" style={S.page} wrap={false}>
         <Backdrop accent={C.gold} secondary={C.green} />
         <View style={S.content}>
           <SectionHeader

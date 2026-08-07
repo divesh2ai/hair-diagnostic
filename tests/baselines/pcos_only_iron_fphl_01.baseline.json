@@ -1,0 +1,56 @@
+{
+  "fixtureId": "pcos_only_iron_fphl_01",
+  "generatedAt": "2026-07-03T07:14:18.049Z",
+  "pipelineVersion": "1.0.0",
+  "primaryDiagnosis": "PCOS_ONLY",
+  "scalpStates": [
+    "NORMAL_SCALP"
+  ],
+  "rootCauses": [
+    "GENETICS",
+    "IRON_DEFICIENCY",
+    "PCOS"
+  ],
+  "therapyNeeds": [],
+  "severity": "MILD",
+  "rankedKitIds": [
+    "PHENOTYPE INFLAMATION",
+    "PRO FACT META B PCOS",
+    "PRO IMMUNE GOLD",
+    "IRON UP GOLD",
+    "FPHL"
+  ],
+  "appliedRules": [],
+  "protocolLabel": "Recovery protocol for 5 condition(s): Female pattern hair loss · Scalp / perifollicular inflammation · PCOS / PCOD · Iron deficiency / anaemia · Immune depletion / regrowth support.",
+  "recommendations": [
+    "PHENOTYPE INFLAMATION",
+    "PRO FACT META B PCOS",
+    "PRO IMMUNE GOLD",
+    "IRON UP GOLD",
+    "FPHL"
+  ],
+  "narratives": {
+    "narratives": {
+      "doctorHash": "{\"doctorSummary\":\"Mild PCOS-associated androgenetic alopecia wit",
+      "patientHash": "{\"doctorSummary\":\"Mild PCOS-associated androgenetic alopecia wit"
+    },
+    "orchestration": {
+      "pipelineVersion": "1.0.0",
+      "executionId": "2cd0b48c-eb44-4b51-a8fc-eaf021311055",
+      "startedAt": "2026-07-03T07:14:18.049Z",
+      "completedAt": "2026-07-03T07:14:18.049Z",
+      "durationMs": 0,
+      "completedStages": [
+        "questionnaire",
+        "clinical",
+        "therapy",
+        "recommendations",
+        "narratives"
+      ]
+    }
+  },
+  "reportMetadata": {
+    "generatedBy": "generate-baselines.ts",
+    "version": "1.0.0"
+  }
+}

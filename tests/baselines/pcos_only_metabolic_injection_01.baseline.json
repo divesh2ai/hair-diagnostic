@@ -1,0 +1,53 @@
+{
+  "fixtureId": "pcos_only_metabolic_injection_01",
+  "generatedAt": "2026-07-03T07:14:18.054Z",
+  "pipelineVersion": "1.0.0",
+  "primaryDiagnosis": "PCOS_ONLY",
+  "scalpStates": [
+    "DANDRUFF"
+  ],
+  "rootCauses": [
+    "PCOS",
+    "POOR_NUTRITION"
+  ],
+  "therapyNeeds": [],
+  "severity": "MILD",
+  "rankedKitIds": [
+    "PHENOTYPE INFLAMATION",
+    "PRO FACT META B PCOS",
+    "FPHL"
+  ],
+  "appliedRules": [
+    "PCOS_METABOLIC: PRO FACT META B PCOS already covers the metabolic axis."
+  ],
+  "protocolLabel": "Recovery protocol for 3 condition(s): Female pattern hair loss · Scalp / perifollicular inflammation · PCOS / PCOD.",
+  "recommendations": [
+    "PHENOTYPE INFLAMATION",
+    "PRO FACT META B PCOS",
+    "FPHL"
+  ],
+  "narratives": {
+    "narratives": {
+      "doctorHash": "{\"doctorSummary\":\"Mild PCOS-associated androgenetic alopecia wit",
+      "patientHash": "{\"doctorSummary\":\"Mild PCOS-associated androgenetic alopecia wit"
+    },
+    "orchestration": {
+      "pipelineVersion": "1.0.0",
+      "executionId": "842e19ae-2b45-4507-b506-49d38add5024",
+      "startedAt": "2026-07-03T07:14:18.054Z",
+      "completedAt": "2026-07-03T07:14:18.056Z",
+      "durationMs": 2,
+      "completedStages": [
+        "questionnaire",
+        "clinical",
+        "therapy",
+        "recommendations",
+        "narratives"
+      ]
+    }
+  },
+  "reportMetadata": {
+    "generatedBy": "generate-baselines.ts",
+    "version": "1.0.0"
+  }
+}

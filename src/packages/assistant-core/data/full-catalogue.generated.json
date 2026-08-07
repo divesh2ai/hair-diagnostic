@@ -1,0 +1,3379 @@
+{
+  "schemaVersion": 1,
+  "source": {
+    "file": "Kits & Product.xlsx",
+    "repoPath": "Dashboard/Kits & Product.xlsx",
+    "checksumSha256": "30d8f3144e85d24bc42bc047cb1f6690afb0d9faac6c1b57d45df93e5640ad2b",
+    "extractedAt": "2026-07-18"
+  },
+  "extractionPolicy": "Sheet2 A:B is primary; Sheet2 H:I and Sheet1 A:B add only kits absent from the primary range. No missing value is inferred.",
+  "facts": {
+    "mrpPresent": false,
+    "schedulesPresent": false,
+    "formulationsPresent": false,
+    "ingredientsPresent": false
+  },
+  "products": [
+    {
+      "id": "PRODUCT_F_TRICHOGROW",
+      "name": "F-TRICHOGROW",
+      "aliases": [
+        "F-TRICHOGROW",
+        "TRICHOGROW"
+      ],
+      "mrp": null,
+      "formulation": null,
+      "ingredientText": null
+    },
+    {
+      "id": "PRODUCT_F_CAL_D3",
+      "name": "F-CAL D3",
+      "aliases": [
+        "F-CAL D3",
+        "CAL D3"
+      ],
+      "mrp": null,
+      "formulation": null,
+      "ingredientText": null
+    },
+    {
+      "id": "PRODUCT_F_LACTOCOL",
+      "name": "F-LACTOCOL",
+      "aliases": [
+        "F-LACTOCOL",
+        "LACTOCOL"
+      ],
+      "mrp": null,
+      "formulation": null,
+      "ingredientText": null
+    },
+    {
+      "id": "PRODUCT_F_TRICHOFLAX",
+      "name": "F-TRICHOFLAX",
+      "aliases": [
+        "F-TRICHOFLAX",
+        "TRICHOFLAX"
+      ],
+      "mrp": null,
+      "formulation": null,
+      "ingredientText": null
+    },
+    {
+      "id": "PRODUCT_F_EASME",
+      "name": "F-EASME",
+      "aliases": [
+        "F-EASME",
+        "EASME"
+      ],
+      "mrp": null,
+      "formulation": null,
+      "ingredientText": null
+    },
+    {
+      "id": "PRODUCT_F_TRICHO_STRONG",
+      "name": "F-TRICHO STRONG",
+      "aliases": [
+        "F-TRICHO STRONG",
+        "TRICHO STRONG"
+      ],
+      "mrp": null,
+      "formulation": null,
+      "ingredientText": null
+    },
+    {
+      "id": "PRODUCT_F_SOLSHINE_TABLETS",
+      "name": "F-SOLSHINE TABLETS",
+      "aliases": [
+        "F-SOLSHINE TABLETS",
+        "SOLSHINE TABLETS"
+      ],
+      "mrp": null,
+      "formulation": null,
+      "ingredientText": null
+    },
+    {
+      "id": "PRODUCT_FC_NOURISH",
+      "name": "FC-NOURISH",
+      "aliases": [
+        "FC-NOURISH",
+        "C-NOURISH"
+      ],
+      "mrp": null,
+      "formulation": null,
+      "ingredientText": null
+    },
+    {
+      "id": "PRODUCT_F_NICO_R_M",
+      "name": "F-NICO R-M",
+      "aliases": [
+        "F-NICO R-M",
+        "NICO R-M"
+      ],
+      "mrp": null,
+      "formulation": null,
+      "ingredientText": null
+    },
+    {
+      "id": "PRODUCT_F_TRICHO_FERRUM",
+      "name": "F-TRICHO FERRUM",
+      "aliases": [
+        "F-TRICHO FERRUM",
+        "TRICHO FERRUM"
+      ],
+      "mrp": null,
+      "formulation": null,
+      "ingredientText": null
+    },
+    {
+      "id": "PRODUCT_F_TRICHO_PROTEIN",
+      "name": "F-TRICHO PROTEIN",
+      "aliases": [
+        "F-TRICHO PROTEIN",
+        "TRICHO PROTEIN"
+      ],
+      "mrp": null,
+      "formulation": null,
+      "ingredientText": null
+    },
+    {
+      "id": "PRODUCT_F_ONGLE",
+      "name": "F-ONGLE",
+      "aliases": [
+        "F-ONGLE",
+        "ONGLE"
+      ],
+      "mrp": null,
+      "formulation": null,
+      "ingredientText": null
+    },
+    {
+      "id": "PRODUCT_FM_BOLIC",
+      "name": "FM BOLIC",
+      "aliases": [
+        "FM BOLIC",
+        "M BOLIC"
+      ],
+      "mrp": null,
+      "formulation": null,
+      "ingredientText": null
+    },
+    {
+      "id": "PRODUCT_F_IMMUSURGE",
+      "name": "F-IMMUSurge",
+      "aliases": [
+        "F-IMMUSurge",
+        "IMMUSurge"
+      ],
+      "mrp": null,
+      "formulation": null,
+      "ingredientText": null
+    },
+    {
+      "id": "PRODUCT_F_TRICHORISE",
+      "name": "F-TRICHORISE",
+      "aliases": [
+        "F-TRICHORISE",
+        "TRICHORISE"
+      ],
+      "mrp": null,
+      "formulation": null,
+      "ingredientText": null
+    },
+    {
+      "id": "PRODUCT_F_IMMUKIN",
+      "name": "F-IMMUKIN",
+      "aliases": [
+        "F-IMMUKIN",
+        "IMMUKIN"
+      ],
+      "mrp": null,
+      "formulation": null,
+      "ingredientText": null
+    },
+    {
+      "id": "PRODUCT_F_SPRIRULUX",
+      "name": "F-SPRIRULUX",
+      "aliases": [
+        "F-SPRIRULUX",
+        "SPRIRULUX"
+      ],
+      "mrp": null,
+      "formulation": null,
+      "ingredientText": null
+    },
+    {
+      "id": "PRODUCT_F_DAILY_D",
+      "name": "F-DAILY D",
+      "aliases": [
+        "F-DAILY D",
+        "DAILY D"
+      ],
+      "mrp": null,
+      "formulation": null,
+      "ingredientText": null
+    },
+    {
+      "id": "PRODUCT_F_MELASURGE_J_V",
+      "name": "F-MELASurge J V",
+      "aliases": [
+        "F-MELASurge J V",
+        "MELASurge J V"
+      ],
+      "mrp": null,
+      "formulation": null,
+      "ingredientText": null
+    },
+    {
+      "id": "PRODUCT_F_ALEXA",
+      "name": "F-ALEXA..",
+      "aliases": [
+        "F-ALEXA..",
+        "ALEXA.."
+      ],
+      "mrp": null,
+      "formulation": null,
+      "ingredientText": null
+    },
+    {
+      "id": "PRODUCT_F_RESVA_M",
+      "name": "F-RESVA-M",
+      "aliases": [
+        "F-RESVA-M",
+        "RESVA-M"
+      ],
+      "mrp": null,
+      "formulation": null,
+      "ingredientText": null
+    },
+    {
+      "id": "PRODUCT_F_TRICHOSHIELD",
+      "name": "F-TRICHOSHIELD",
+      "aliases": [
+        "F-TRICHOSHIELD",
+        "TRICHOSHIELD"
+      ],
+      "mrp": null,
+      "formulation": null,
+      "ingredientText": null
+    },
+    {
+      "id": "PRODUCT_F_ESM",
+      "name": "F-ESM",
+      "aliases": [
+        "F-ESM",
+        "ESM"
+      ],
+      "mrp": null,
+      "formulation": null,
+      "ingredientText": null
+    },
+    {
+      "id": "PRODUCT_F_FLEX_GL",
+      "name": "F-FLEX GL",
+      "aliases": [
+        "F-FLEX GL",
+        "FLEX GL"
+      ],
+      "mrp": null,
+      "formulation": null,
+      "ingredientText": null
+    },
+    {
+      "id": "PRODUCT_F_NAT_TX",
+      "name": "F-NAT-TX",
+      "aliases": [
+        "F-NAT-TX",
+        "NAT-TX"
+      ],
+      "mrp": null,
+      "formulation": null,
+      "ingredientText": null
+    },
+    {
+      "id": "PRODUCT_F_LACTIHEALTH",
+      "name": "F-LACTIHEALTH",
+      "aliases": [
+        "F-LACTIHEALTH",
+        "LACTIHEALTH"
+      ],
+      "mrp": null,
+      "formulation": null,
+      "ingredientText": null
+    },
+    {
+      "id": "PRODUCT_F_TRICHO_CUMIN",
+      "name": "F-TRICHO CUMIN",
+      "aliases": [
+        "F-TRICHO CUMIN",
+        "TRICHO CUMIN"
+      ],
+      "mrp": null,
+      "formulation": null,
+      "ingredientText": null
+    },
+    {
+      "id": "PRODUCT_F_TRICHO_GOLD",
+      "name": "F-TRICHO GOLD",
+      "aliases": [
+        "F-TRICHO GOLD",
+        "TRICHO GOLD"
+      ],
+      "mrp": null,
+      "formulation": null,
+      "ingredientText": null
+    },
+    {
+      "id": "PRODUCT_F_Q10S",
+      "name": "F-Q10S",
+      "aliases": [
+        "F-Q10S",
+        "Q10S"
+      ],
+      "mrp": null,
+      "formulation": null,
+      "ingredientText": null
+    },
+    {
+      "id": "PRODUCT_F_MELATON",
+      "name": "F-MELATON",
+      "aliases": [
+        "F-MELATON",
+        "MELATON"
+      ],
+      "mrp": null,
+      "formulation": null,
+      "ingredientText": null
+    },
+    {
+      "id": "PRODUCT_F_KINTOX_HYA",
+      "name": "F-KINTOX-HYA",
+      "aliases": [
+        "F-KINTOX-HYA",
+        "KINTOX-HYA"
+      ],
+      "mrp": null,
+      "formulation": null,
+      "ingredientText": null
+    },
+    {
+      "id": "PRODUCT_F_B_SHINE",
+      "name": "F-B SHINE",
+      "aliases": [
+        "F-B SHINE",
+        "B SHINE"
+      ],
+      "mrp": null,
+      "formulation": null,
+      "ingredientText": null
+    },
+    {
+      "id": "PRODUCT_F_D_ENZYSTIVE",
+      "name": "F-D-ENZYSTIVE",
+      "aliases": [
+        "F-D-ENZYSTIVE",
+        "D-ENZYSTIVE"
+      ],
+      "mrp": null,
+      "formulation": null,
+      "ingredientText": null
+    },
+    {
+      "id": "PRODUCT_F_CUMIKIN",
+      "name": "F-CUMIKIN",
+      "aliases": [
+        "F-CUMIKIN",
+        "CUMIKIN"
+      ],
+      "mrp": null,
+      "formulation": null,
+      "ingredientText": null
+    },
+    {
+      "id": "PRODUCT_F_TRICHO_INO",
+      "name": "F-TRICHO-INO",
+      "aliases": [
+        "F-TRICHO-INO",
+        "TRICHO-INO"
+      ],
+      "mrp": null,
+      "formulation": null,
+      "ingredientText": null
+    },
+    {
+      "id": "PRODUCT_F_EQUIKIN",
+      "name": "F-EQUIKIN",
+      "aliases": [
+        "F-EQUIKIN",
+        "EQUIKIN"
+      ],
+      "mrp": null,
+      "formulation": null,
+      "ingredientText": null
+    },
+    {
+      "id": "PRODUCT_F_ASHWAKIN",
+      "name": "F-ASHWAKIN",
+      "aliases": [
+        "F-ASHWAKIN",
+        "ASHWAKIN"
+      ],
+      "mrp": null,
+      "formulation": null,
+      "ingredientText": null
+    },
+    {
+      "id": "PRODUCT_F_SOLSHINE",
+      "name": "F-SOLSHINE",
+      "aliases": [
+        "F-SOLSHINE",
+        "SOLSHINE"
+      ],
+      "mrp": null,
+      "formulation": null,
+      "ingredientText": null
+    },
+    {
+      "id": "PRODUCT_F_METACHOL",
+      "name": "F-METACHOL",
+      "aliases": [
+        "F-METACHOL",
+        "METACHOL"
+      ],
+      "mrp": null,
+      "formulation": null,
+      "ingredientText": null
+    },
+    {
+      "id": "PRODUCT_F_PRO_TEAM_1_6",
+      "name": "F-PRO TEAM 1*6",
+      "aliases": [
+        "F-PRO TEAM 1*6",
+        "PRO TEAM 1*6"
+      ],
+      "mrp": null,
+      "formulation": null,
+      "ingredientText": null
+    },
+    {
+      "id": "PRODUCT_TRICHO_FERRUM_MMS",
+      "name": "TRICHO FERRUM MMS",
+      "aliases": [
+        "TRICHO FERRUM MMS"
+      ],
+      "mrp": null,
+      "formulation": null,
+      "ingredientText": null
+    }
+  ],
+  "kits": [
+    {
+      "id": "KIT_EARLY_GREYING_CARE_1",
+      "name": "EARLY GREYING CARE 1",
+      "aliases": [
+        "EARLY GREYING CARE 1"
+      ],
+      "mrp": null,
+      "schedule": null,
+      "sourceSheet": "Sheet2",
+      "components": [
+        {
+          "productId": "PRODUCT_F_TRICHOGROW",
+          "productName": "F-TRICHOGROW",
+          "componentOrder": 1,
+          "sourceSheet": "Sheet2",
+          "sourceRow": 2,
+          "schedule": null,
+          "formulation": null
+        },
+        {
+          "productId": "PRODUCT_F_CAL_D3",
+          "productName": "F-CAL D3",
+          "componentOrder": 2,
+          "sourceSheet": "Sheet2",
+          "sourceRow": 3,
+          "schedule": null,
+          "formulation": null
+        },
+        {
+          "productId": "PRODUCT_F_LACTOCOL",
+          "productName": "F-LACTOCOL",
+          "componentOrder": 3,
+          "sourceSheet": "Sheet2",
+          "sourceRow": 4,
+          "schedule": null,
+          "formulation": null
+        },
+        {
+          "productId": "PRODUCT_F_TRICHOFLAX",
+          "productName": "F-TRICHOFLAX",
+          "componentOrder": 4,
+          "sourceSheet": "Sheet2",
+          "sourceRow": 5,
+          "schedule": null,
+          "formulation": null
+        },
+        {
+          "productId": "PRODUCT_F_EASME",
+          "productName": "F-EASME",
+          "componentOrder": 5,
+          "sourceSheet": "Sheet2",
+          "sourceRow": 6,
+          "schedule": null,
+          "formulation": null
+        },
+        {
+          "productId": "PRODUCT_F_TRICHO_STRONG",
+          "productName": "F-TRICHO STRONG",
+          "componentOrder": 6,
+          "sourceSheet": "Sheet2",
+          "sourceRow": 7,
+          "schedule": null,
+          "formulation": null
+        },
+        {
+          "productId": "PRODUCT_F_SOLSHINE_TABLETS",
+          "productName": "F-SOLSHINE TABLETS",
+          "componentOrder": 7,
+          "sourceSheet": "Sheet2",
+          "sourceRow": 8,
+          "schedule": null,
+          "formulation": null
+        },
+        {
+          "productId": "PRODUCT_FC_NOURISH",
+          "productName": "FC-NOURISH",
+          "componentOrder": 8,
+          "sourceSheet": "Sheet2",
+          "sourceRow": 9,
+          "schedule": null,
+          "formulation": null
+        }
+      ]
+    },
+    {
+      "id": "KIT_F_AGA_GOLD",
+      "name": "F-AGA GOLD",
+      "aliases": [
+        "F-AGA GOLD",
+        "AGA GOLD"
+      ],
+      "mrp": null,
+      "schedule": null,
+      "sourceSheet": "Sheet2",
+      "components": [
+        {
+          "productId": "PRODUCT_F_NICO_R_M",
+          "productName": "F-NICO R-M",
+          "componentOrder": 1,
+          "sourceSheet": "Sheet2",
+          "sourceRow": 10,
+          "schedule": null,
+          "formulation": null
+        },
+        {
+          "productId": "PRODUCT_F_TRICHOGROW",
+          "productName": "F-TRICHOGROW+",
+          "componentOrder": 2,
+          "sourceSheet": "Sheet2",
+          "sourceRow": 11,
+          "schedule": null,
+          "formulation": null
+        },
+        {
+          "productId": "PRODUCT_F_TRICHO_FERRUM",
+          "productName": "F-TRICHO FERRUM",
+          "componentOrder": 3,
+          "sourceSheet": "Sheet2",
+          "sourceRow": 12,
+          "schedule": null,
+          "formulation": null
+        },
+        {
+          "productId": "PRODUCT_F_LACTOCOL",
+          "productName": "F-LACTOCOL",
+          "componentOrder": 4,
+          "sourceSheet": "Sheet2",
+          "sourceRow": 13,
+          "schedule": null,
+          "formulation": null
+        },
+        {
+          "productId": "PRODUCT_F_TRICHO_PROTEIN",
+          "productName": "F-TRICHO PROTEIN",
+          "componentOrder": 5,
+          "sourceSheet": "Sheet2",
+          "sourceRow": 14,
+          "schedule": null,
+          "formulation": null
+        },
+        {
+          "productId": "PRODUCT_F_ONGLE",
+          "productName": "F-ONGLE",
+          "componentOrder": 6,
+          "sourceSheet": "Sheet2",
+          "sourceRow": 15,
+          "schedule": null,
+          "formulation": null
+        },
+        {
+          "productId": "PRODUCT_F_SOLSHINE_TABLETS",
+          "productName": "F-SOLSHINE TABLETS",
+          "componentOrder": 7,
+          "sourceSheet": "Sheet2",
+          "sourceRow": 16,
+          "schedule": null,
+          "formulation": null
+        }
+      ]
+    },
+    {
+      "id": "KIT_FPHL_PRO",
+      "name": "FPHL PRO",
+      "aliases": [
+        "FPHL PRO"
+      ],
+      "mrp": null,
+      "schedule": null,
+      "sourceSheet": "Sheet2",
+      "components": [
+        {
+          "productId": "PRODUCT_F_NICO_R_M",
+          "productName": "F-NICO R-M",
+          "componentOrder": 1,
+          "sourceSheet": "Sheet2",
+          "sourceRow": 17,
+          "schedule": null,
+          "formulation": null
+        },
+        {
+          "productId": "PRODUCT_F_TRICHOGROW",
+          "productName": "F-TRICHOGROW+",
+          "componentOrder": 2,
+          "sourceSheet": "Sheet2",
+          "sourceRow": 18,
+          "schedule": null,
+          "formulation": null
+        },
+        {
+          "productId": "PRODUCT_F_TRICHO_FERRUM",
+          "productName": "F-TRICHO FERRUM",
+          "componentOrder": 3,
+          "sourceSheet": "Sheet2",
+          "sourceRow": 19,
+          "schedule": null,
+          "formulation": null
+        },
+        {
+          "productId": "PRODUCT_F_LACTOCOL",
+          "productName": "F-LACTOCOL",
+          "componentOrder": 4,
+          "sourceSheet": "Sheet2",
+          "sourceRow": 20,
+          "schedule": null,
+          "formulation": null
+        },
+        {
+          "productId": "PRODUCT_F_TRICHO_PROTEIN",
+          "productName": "F-TRICHO PROTEIN",
+          "componentOrder": 5,
+          "sourceSheet": "Sheet2",
+          "sourceRow": 21,
+          "schedule": null,
+          "formulation": null
+        },
+        {
+          "productId": "PRODUCT_F_ONGLE",
+          "productName": "F-ONGLE",
+          "componentOrder": 6,
+          "sourceSheet": "Sheet2",
+          "sourceRow": 22,
+          "schedule": null,
+          "formulation": null
+        },
+        {
+          "productId": "PRODUCT_F_SOLSHINE_TABLETS",
+          "productName": "F-SOLSHINE TABLETS",
+          "componentOrder": 7,
+          "sourceSheet": "Sheet2",
+          "sourceRow": 23,
+          "schedule": null,
+          "formulation": null
+        },
+        {
+          "productId": "PRODUCT_FM_BOLIC",
+          "productName": "FM BOLIC",
+          "componentOrder": 8,
+          "sourceSheet": "Sheet2",
+          "sourceRow": 24,
+          "schedule": null,
+          "formulation": null
+        }
+      ]
+    },
+    {
+      "id": "KIT_HAIR_FACT_ALOPECIA_AREATA",
+      "name": "HAIR FACT ALOPECIA AREATA",
+      "aliases": [
+        "HAIR FACT ALOPECIA AREATA",
+        "ALOPECIA AREATA"
+      ],
+      "mrp": null,
+      "schedule": null,
+      "sourceSheet": "Sheet2",
+      "components": [
+        {
+          "productId": "PRODUCT_F_IMMUSURGE",
+          "productName": "F-IMMUSurge",
+          "componentOrder": 1,
+          "sourceSheet": "Sheet2",
+          "sourceRow": 25,
+          "schedule": null,
+          "formulation": null
+        },
+        {
+          "productId": "PRODUCT_F_TRICHORISE",
+          "productName": "F-TRICHORISE",
+          "componentOrder": 2,
+          "sourceSheet": "Sheet2",
+          "sourceRow": 26,
+          "schedule": null,
+          "formulation": null
+        },
+        {
+          "productId": "PRODUCT_F_LACTOCOL",
+          "productName": "F-LACTOCOL",
+          "componentOrder": 3,
+          "sourceSheet": "Sheet2",
+          "sourceRow": 27,
+          "schedule": null,
+          "formulation": null
+        },
+        {
+          "productId": "PRODUCT_F_TRICHOFLAX",
+          "productName": "F-TRICHOFLAX",
+          "componentOrder": 4,
+          "sourceSheet": "Sheet2",
+          "sourceRow": 28,
+          "schedule": null,
+          "formulation": null
+        },
+        {
+          "productId": "PRODUCT_F_TRICHO_PROTEIN",
+          "productName": "F-TRICHO PROTEIN",
+          "componentOrder": 5,
+          "sourceSheet": "Sheet2",
+          "sourceRow": 29,
+          "schedule": null,
+          "formulation": null
+        },
+        {
+          "productId": "PRODUCT_F_EASME",
+          "productName": "F-EASME",
+          "componentOrder": 6,
+          "sourceSheet": "Sheet2",
+          "sourceRow": 30,
+          "schedule": null,
+          "formulation": null
+        },
+        {
+          "productId": "PRODUCT_F_SOLSHINE_TABLETS",
+          "productName": "F-SOLSHINE TABLETS",
+          "componentOrder": 7,
+          "sourceSheet": "Sheet2",
+          "sourceRow": 31,
+          "schedule": null,
+          "formulation": null
+        },
+        {
+          "productId": "PRODUCT_F_IMMUKIN",
+          "productName": "F-IMMUKIN",
+          "componentOrder": 8,
+          "sourceSheet": "Sheet2",
+          "sourceRow": 32,
+          "schedule": null,
+          "formulation": null
+        }
+      ]
+    },
+    {
+      "id": "KIT_HAIR_FACT_FREQUENT_FLYERS",
+      "name": "HAIR FACT FREQUENT FLYERS",
+      "aliases": [
+        "HAIR FACT FREQUENT FLYERS",
+        "FREQUENT FLYERS"
+      ],
+      "mrp": null,
+      "schedule": null,
+      "sourceSheet": "Sheet2",
+      "components": [
+        {
+          "productId": "PRODUCT_F_LACTOCOL",
+          "productName": "F-LACTOCOL",
+          "componentOrder": 1,
+          "sourceSheet": "Sheet2",
+          "sourceRow": 33,
+          "schedule": null,
+          "formulation": null
+        },
+        {
+          "productId": "PRODUCT_F_SPRIRULUX",
+          "productName": "F-SPRIRULUX",
+          "componentOrder": 2,
+          "sourceSheet": "Sheet2",
+          "sourceRow": 34,
+          "schedule": null,
+          "formulation": null
+        },
+        {
+          "productId": "PRODUCT_F_NICO_R_M",
+          "productName": "F-NICO R-M",
+          "componentOrder": 3,
+          "sourceSheet": "Sheet2",
+          "sourceRow": 35,
+          "schedule": null,
+          "formulation": null
+        },
+        {
+          "productId": "PRODUCT_F_TRICHORISE",
+          "productName": "F-TRICHORISE",
+          "componentOrder": 4,
+          "sourceSheet": "Sheet2",
+          "sourceRow": 36,
+          "schedule": null,
+          "formulation": null
+        },
+        {
+          "productId": "PRODUCT_F_IMMUSURGE",
+          "productName": "F-IMMUSurge",
+          "componentOrder": 5,
+          "sourceSheet": "Sheet2",
+          "sourceRow": 37,
+          "schedule": null,
+          "formulation": null
+        },
+        {
+          "productId": "PRODUCT_F_TRICHO_STRONG",
+          "productName": "F-TRICHO STRONG",
+          "componentOrder": 6,
+          "sourceSheet": "Sheet2",
+          "sourceRow": 38,
+          "schedule": null,
+          "formulation": null
+        },
+        {
+          "productId": "PRODUCT_FC_NOURISH",
+          "productName": "FC-NOURISH",
+          "componentOrder": 7,
+          "sourceSheet": "Sheet2",
+          "sourceRow": 39,
+          "schedule": null,
+          "formulation": null
+        },
+        {
+          "productId": "PRODUCT_F_DAILY_D",
+          "productName": "F-DAILY D",
+          "componentOrder": 8,
+          "sourceSheet": "Sheet2",
+          "sourceRow": 40,
+          "schedule": null,
+          "formulation": null
+        },
+        {
+          "productId": "PRODUCT_F_MELASURGE_J_V",
+          "productName": "F-MELASurge J V",
+          "componentOrder": 9,
+          "sourceSheet": "Sheet2",
+          "sourceRow": 41,
+          "schedule": null,
+          "formulation": null
+        }
+      ]
+    },
+    {
+      "id": "KIT_HAIR_FACT_HAIR_BREAKAGE_REPAIR_HBR",
+      "name": "HAIR FACT HAIR BREAKAGE REPAIR(HBR)",
+      "aliases": [
+        "HAIR FACT HAIR BREAKAGE REPAIR(HBR)",
+        "HAIR BREAKAGE REPAIR(HBR)"
+      ],
+      "mrp": null,
+      "schedule": null,
+      "sourceSheet": "Sheet2",
+      "components": [
+        {
+          "productId": "PRODUCT_F_TRICHO_FERRUM",
+          "productName": "F-TRICHO FERRUM",
+          "componentOrder": 1,
+          "sourceSheet": "Sheet2",
+          "sourceRow": 42,
+          "schedule": null,
+          "formulation": null
+        },
+        {
+          "productId": "PRODUCT_F_ALEXA",
+          "productName": "F-ALEXA..",
+          "componentOrder": 2,
+          "sourceSheet": "Sheet2",
+          "sourceRow": 43,
+          "schedule": null,
+          "formulation": null
+        },
+        {
+          "productId": "PRODUCT_F_TRICHO_PROTEIN",
+          "productName": "F-TRICHO PROTEIN",
+          "componentOrder": 3,
+          "sourceSheet": "Sheet2",
+          "sourceRow": 44,
+          "schedule": null,
+          "formulation": null
+        },
+        {
+          "productId": "PRODUCT_F_TRICHO_STRONG",
+          "productName": "F-TRICHO STRONG",
+          "componentOrder": 4,
+          "sourceSheet": "Sheet2",
+          "sourceRow": 45,
+          "schedule": null,
+          "formulation": null
+        },
+        {
+          "productId": "PRODUCT_F_NICO_R_M",
+          "productName": "F-NICO R-M",
+          "componentOrder": 5,
+          "sourceSheet": "Sheet2",
+          "sourceRow": 46,
+          "schedule": null,
+          "formulation": null
+        },
+        {
+          "productId": "PRODUCT_F_RESVA_M",
+          "productName": "F-RESVA-M",
+          "componentOrder": 6,
+          "sourceSheet": "Sheet2",
+          "sourceRow": 47,
+          "schedule": null,
+          "formulation": null
+        },
+        {
+          "productId": "PRODUCT_FC_NOURISH",
+          "productName": "FC-NOURISH",
+          "componentOrder": 7,
+          "sourceSheet": "Sheet2",
+          "sourceRow": 48,
+          "schedule": null,
+          "formulation": null
+        },
+        {
+          "productId": "PRODUCT_F_SOLSHINE_TABLETS",
+          "productName": "F-SOLSHINE TABLETS",
+          "componentOrder": 8,
+          "sourceSheet": "Sheet2",
+          "sourceRow": 49,
+          "schedule": null,
+          "formulation": null
+        },
+        {
+          "productId": "PRODUCT_F_TRICHOSHIELD",
+          "productName": "F-TRICHOSHIELD",
+          "componentOrder": 9,
+          "sourceSheet": "Sheet2",
+          "sourceRow": 50,
+          "schedule": null,
+          "formulation": null
+        }
+      ]
+    },
+    {
+      "id": "KIT_HAIR_FACT_HYPOTHYROID_POST_M_3",
+      "name": "HAIR FACT HYPOTHYROID POST M - 3",
+      "aliases": [
+        "HAIR FACT HYPOTHYROID POST M - 3",
+        "HYPOTHYROID POST M - 3"
+      ],
+      "mrp": null,
+      "schedule": null,
+      "sourceSheet": "Sheet2",
+      "components": [
+        {
+          "productId": "PRODUCT_F_ESM",
+          "productName": "F-ESM",
+          "componentOrder": 1,
+          "sourceSheet": "Sheet2",
+          "sourceRow": 51,
+          "schedule": null,
+          "formulation": null
+        },
+        {
+          "productId": "PRODUCT_F_IMMUSURGE",
+          "productName": "F-IMMUSurge",
+          "componentOrder": 2,
+          "sourceSheet": "Sheet2",
+          "sourceRow": 52,
+          "schedule": null,
+          "formulation": null
+        },
+        {
+          "productId": "PRODUCT_F_FLEX_GL",
+          "productName": "F-FLEX GL",
+          "componentOrder": 3,
+          "sourceSheet": "Sheet2",
+          "sourceRow": 53,
+          "schedule": null,
+          "formulation": null
+        },
+        {
+          "productId": "PRODUCT_F_NAT_TX",
+          "productName": "F-NAT-TX",
+          "componentOrder": 4,
+          "sourceSheet": "Sheet2",
+          "sourceRow": 54,
+          "schedule": null,
+          "formulation": null
+        },
+        {
+          "productId": "PRODUCT_F_TRICHO_STRONG",
+          "productName": "F-TRICHO STRONG",
+          "componentOrder": 5,
+          "sourceSheet": "Sheet2",
+          "sourceRow": 55,
+          "schedule": null,
+          "formulation": null
+        },
+        {
+          "productId": "PRODUCT_F_TRICHOGROW",
+          "productName": "F-TRICHOGROW+",
+          "componentOrder": 6,
+          "sourceSheet": "Sheet2",
+          "sourceRow": 56,
+          "schedule": null,
+          "formulation": null
+        },
+        {
+          "productId": "PRODUCT_F_SOLSHINE_TABLETS",
+          "productName": "F-SOLSHINE TABLETS",
+          "componentOrder": 7,
+          "sourceSheet": "Sheet2",
+          "sourceRow": 57,
+          "schedule": null,
+          "formulation": null
+        },
+        {
+          "productId": "PRODUCT_F_LACTIHEALTH",
+          "productName": "F-LACTIHEALTH",
+          "componentOrder": 8,
+          "sourceSheet": "Sheet2",
+          "sourceRow": 58,
+          "schedule": null,
+          "formulation": null
+        }
+      ]
+    },
+    {
+      "id": "KIT_HAIR_FACT_PERI_MENOPAUSE",
+      "name": "HAIR FACT PERI MENOPAUSE",
+      "aliases": [
+        "HAIR FACT PERI MENOPAUSE",
+        "PERI MENOPAUSE"
+      ],
+      "mrp": null,
+      "schedule": null,
+      "sourceSheet": "Sheet2",
+      "components": [
+        {
+          "productId": "PRODUCT_F_NICO_R_M",
+          "productName": "F-NICO R-M",
+          "componentOrder": 1,
+          "sourceSheet": "Sheet2",
+          "sourceRow": 59,
+          "schedule": null,
+          "formulation": null
+        },
+        {
+          "productId": "PRODUCT_F_TRICHOGROW",
+          "productName": "F-TRICHOGROW+",
+          "componentOrder": 2,
+          "sourceSheet": "Sheet2",
+          "sourceRow": 60,
+          "schedule": null,
+          "formulation": null
+        },
+        {
+          "productId": "PRODUCT_F_ESM",
+          "productName": "F-ESM",
+          "componentOrder": 3,
+          "sourceSheet": "Sheet2",
+          "sourceRow": 61,
+          "schedule": null,
+          "formulation": null
+        },
+        {
+          "productId": "PRODUCT_F_LACTOCOL",
+          "productName": "F-LACTOCOL",
+          "componentOrder": 4,
+          "sourceSheet": "Sheet2",
+          "sourceRow": 62,
+          "schedule": null,
+          "formulation": null
+        },
+        {
+          "productId": "PRODUCT_F_TRICHO_PROTEIN",
+          "productName": "F-TRICHO PROTEIN",
+          "componentOrder": 5,
+          "sourceSheet": "Sheet2",
+          "sourceRow": 63,
+          "schedule": null,
+          "formulation": null
+        },
+        {
+          "productId": "PRODUCT_F_EASME",
+          "productName": "F-EASME",
+          "componentOrder": 6,
+          "sourceSheet": "Sheet2",
+          "sourceRow": 64,
+          "schedule": null,
+          "formulation": null
+        },
+        {
+          "productId": "PRODUCT_F_SOLSHINE_TABLETS",
+          "productName": "F-SOLSHINE TABLETS",
+          "componentOrder": 7,
+          "sourceSheet": "Sheet2",
+          "sourceRow": 65,
+          "schedule": null,
+          "formulation": null
+        },
+        {
+          "productId": "PRODUCT_F_LACTIHEALTH",
+          "productName": "F-LACTIHEALTH",
+          "componentOrder": 8,
+          "sourceSheet": "Sheet2",
+          "sourceRow": 66,
+          "schedule": null,
+          "formulation": null
+        }
+      ]
+    },
+    {
+      "id": "KIT_HAIR_FACT_PERI_MENOPAUSE_VEG",
+      "name": "HAIR FACT PERI MENOPAUSE VEG",
+      "aliases": [
+        "HAIR FACT PERI MENOPAUSE VEG",
+        "PERI MENOPAUSE VEG"
+      ],
+      "mrp": null,
+      "schedule": null,
+      "sourceSheet": "Sheet2",
+      "components": [
+        {
+          "productId": "PRODUCT_F_NICO_R_M",
+          "productName": "F-NICO R-M",
+          "componentOrder": 1,
+          "sourceSheet": "Sheet2",
+          "sourceRow": 67,
+          "schedule": null,
+          "formulation": null
+        },
+        {
+          "productId": "PRODUCT_F_TRICHOGROW",
+          "productName": "F-TRICHOGROW+",
+          "componentOrder": 2,
+          "sourceSheet": "Sheet2",
+          "sourceRow": 68,
+          "schedule": null,
+          "formulation": null
+        },
+        {
+          "productId": "PRODUCT_F_CAL_D3",
+          "productName": "F-CAL D3",
+          "componentOrder": 3,
+          "sourceSheet": "Sheet2",
+          "sourceRow": 69,
+          "schedule": null,
+          "formulation": null
+        },
+        {
+          "productId": "PRODUCT_F_LACTOCOL",
+          "productName": "F-LACTOCOL",
+          "componentOrder": 4,
+          "sourceSheet": "Sheet2",
+          "sourceRow": 70,
+          "schedule": null,
+          "formulation": null
+        },
+        {
+          "productId": "PRODUCT_F_TRICHO_PROTEIN",
+          "productName": "F-TRICHO PROTEIN",
+          "componentOrder": 5,
+          "sourceSheet": "Sheet2",
+          "sourceRow": 71,
+          "schedule": null,
+          "formulation": null
+        },
+        {
+          "productId": "PRODUCT_F_EASME",
+          "productName": "F-EASME",
+          "componentOrder": 6,
+          "sourceSheet": "Sheet2",
+          "sourceRow": 72,
+          "schedule": null,
+          "formulation": null
+        },
+        {
+          "productId": "PRODUCT_F_SOLSHINE_TABLETS",
+          "productName": "F-SOLSHINE TABLETS",
+          "componentOrder": 7,
+          "sourceSheet": "Sheet2",
+          "sourceRow": 73,
+          "schedule": null,
+          "formulation": null
+        },
+        {
+          "productId": "PRODUCT_F_LACTIHEALTH",
+          "productName": "F-LACTIHEALTH",
+          "componentOrder": 8,
+          "sourceSheet": "Sheet2",
+          "sourceRow": 74,
+          "schedule": null,
+          "formulation": null
+        }
+      ]
+    },
+    {
+      "id": "KIT_HAIR_FACT_TE_GOLD",
+      "name": "HAIR FACT TE GOLD",
+      "aliases": [
+        "HAIR FACT TE GOLD",
+        "TE GOLD"
+      ],
+      "mrp": null,
+      "schedule": null,
+      "sourceSheet": "Sheet2",
+      "components": [
+        {
+          "productId": "PRODUCT_F_IMMUSURGE",
+          "productName": "F-IMMUSurge",
+          "componentOrder": 1,
+          "sourceSheet": "Sheet2",
+          "sourceRow": 75,
+          "schedule": null,
+          "formulation": null
+        },
+        {
+          "productId": "PRODUCT_F_TRICHORISE",
+          "productName": "F-TRICHORISE",
+          "componentOrder": 2,
+          "sourceSheet": "Sheet2",
+          "sourceRow": 76,
+          "schedule": null,
+          "formulation": null
+        },
+        {
+          "productId": "PRODUCT_F_LACTOCOL",
+          "productName": "F-LACTOCOL",
+          "componentOrder": 3,
+          "sourceSheet": "Sheet2",
+          "sourceRow": 77,
+          "schedule": null,
+          "formulation": null
+        },
+        {
+          "productId": "PRODUCT_F_TRICHO_FERRUM",
+          "productName": "F-TRICHO FERRUM",
+          "componentOrder": 4,
+          "sourceSheet": "Sheet2",
+          "sourceRow": 78,
+          "schedule": null,
+          "formulation": null
+        },
+        {
+          "productId": "PRODUCT_F_TRICHO_STRONG",
+          "productName": "F-TRICHO STRONG",
+          "componentOrder": 5,
+          "sourceSheet": "Sheet2",
+          "sourceRow": 79,
+          "schedule": null,
+          "formulation": null
+        },
+        {
+          "productId": "PRODUCT_F_TRICHO_CUMIN",
+          "productName": "F-TRICHO CUMIN",
+          "componentOrder": 6,
+          "sourceSheet": "Sheet2",
+          "sourceRow": 80,
+          "schedule": null,
+          "formulation": null
+        },
+        {
+          "productId": "PRODUCT_F_SOLSHINE_TABLETS",
+          "productName": "F-SOLSHINE TABLETS",
+          "componentOrder": 7,
+          "sourceSheet": "Sheet2",
+          "sourceRow": 81,
+          "schedule": null,
+          "formulation": null
+        },
+        {
+          "productId": "PRODUCT_FC_NOURISH",
+          "productName": "FC-NOURISH",
+          "componentOrder": 8,
+          "sourceSheet": "Sheet2",
+          "sourceRow": 82,
+          "schedule": null,
+          "formulation": null
+        },
+        {
+          "productId": "PRODUCT_F_MELASURGE_J_V",
+          "productName": "F-MELASurge J V",
+          "componentOrder": 9,
+          "sourceSheet": "Sheet2",
+          "sourceRow": 83,
+          "schedule": null,
+          "formulation": null
+        }
+      ]
+    },
+    {
+      "id": "KIT_HAIR_FACT_TE_GOLD_VEG",
+      "name": "HAIR FACT TE GOLD VEG",
+      "aliases": [
+        "HAIR FACT TE GOLD VEG",
+        "TE GOLD VEG"
+      ],
+      "mrp": null,
+      "schedule": null,
+      "sourceSheet": "Sheet2",
+      "components": [
+        {
+          "productId": "PRODUCT_F_IMMUSURGE",
+          "productName": "F-IMMUSurge",
+          "componentOrder": 1,
+          "sourceSheet": "Sheet2",
+          "sourceRow": 84,
+          "schedule": null,
+          "formulation": null
+        },
+        {
+          "productId": "PRODUCT_F_TRICHO_FERRUM",
+          "productName": "F-TRICHO FERRUM",
+          "componentOrder": 2,
+          "sourceSheet": "Sheet2",
+          "sourceRow": 85,
+          "schedule": null,
+          "formulation": null
+        },
+        {
+          "productId": "PRODUCT_F_EASME",
+          "productName": "F-EASME",
+          "componentOrder": 3,
+          "sourceSheet": "Sheet2",
+          "sourceRow": 86,
+          "schedule": null,
+          "formulation": null
+        },
+        {
+          "productId": "PRODUCT_F_TRICHO_STRONG",
+          "productName": "F-TRICHO STRONG",
+          "componentOrder": 4,
+          "sourceSheet": "Sheet2",
+          "sourceRow": 87,
+          "schedule": null,
+          "formulation": null
+        },
+        {
+          "productId": "PRODUCT_F_LACTOCOL",
+          "productName": "F-LACTOCOL",
+          "componentOrder": 5,
+          "sourceSheet": "Sheet2",
+          "sourceRow": 88,
+          "schedule": null,
+          "formulation": null
+        },
+        {
+          "productId": "PRODUCT_F_TRICHO_CUMIN",
+          "productName": "F-TRICHO CUMIN",
+          "componentOrder": 6,
+          "sourceSheet": "Sheet2",
+          "sourceRow": 89,
+          "schedule": null,
+          "formulation": null
+        },
+        {
+          "productId": "PRODUCT_FC_NOURISH",
+          "productName": "FC-NOURISH",
+          "componentOrder": 7,
+          "sourceSheet": "Sheet2",
+          "sourceRow": 90,
+          "schedule": null,
+          "formulation": null
+        },
+        {
+          "productId": "PRODUCT_F_SOLSHINE_TABLETS",
+          "productName": "F-SOLSHINE TABLETS",
+          "componentOrder": 8,
+          "sourceSheet": "Sheet2",
+          "sourceRow": 91,
+          "schedule": null,
+          "formulation": null
+        },
+        {
+          "productId": "PRODUCT_F_NICO_R_M",
+          "productName": "F-NICO R-M",
+          "componentOrder": 9,
+          "sourceSheet": "Sheet2",
+          "sourceRow": 92,
+          "schedule": null,
+          "formulation": null
+        }
+      ]
+    },
+    {
+      "id": "KIT_HAIR_FACT_TTM_OCD",
+      "name": "HAIR FACT TTM (OCD)",
+      "aliases": [
+        "HAIR FACT TTM (OCD)",
+        "TTM (OCD)"
+      ],
+      "mrp": null,
+      "schedule": null,
+      "sourceSheet": "Sheet2",
+      "components": [
+        {
+          "productId": "PRODUCT_F_TRICHO_CUMIN",
+          "productName": "F-TRICHO CUMIN",
+          "componentOrder": 1,
+          "sourceSheet": "Sheet2",
+          "sourceRow": 93,
+          "schedule": null,
+          "formulation": null
+        },
+        {
+          "productId": "PRODUCT_F_TRICHO_STRONG",
+          "productName": "F-TRICHO STRONG",
+          "componentOrder": 2,
+          "sourceSheet": "Sheet2",
+          "sourceRow": 94,
+          "schedule": null,
+          "formulation": null
+        },
+        {
+          "productId": "PRODUCT_F_RESVA_M",
+          "productName": "F-RESVA-M",
+          "componentOrder": 3,
+          "sourceSheet": "Sheet2",
+          "sourceRow": 95,
+          "schedule": null,
+          "formulation": null
+        },
+        {
+          "productId": "PRODUCT_F_TRICHOFLAX",
+          "productName": "F-TRICHOFLAX",
+          "componentOrder": 4,
+          "sourceSheet": "Sheet2",
+          "sourceRow": 96,
+          "schedule": null,
+          "formulation": null
+        },
+        {
+          "productId": "PRODUCT_F_NICO_R_M",
+          "productName": "F-NICO R-M",
+          "componentOrder": 5,
+          "sourceSheet": "Sheet2",
+          "sourceRow": 97,
+          "schedule": null,
+          "formulation": null
+        },
+        {
+          "productId": "PRODUCT_F_EASME",
+          "productName": "F-EASME",
+          "componentOrder": 6,
+          "sourceSheet": "Sheet2",
+          "sourceRow": 98,
+          "schedule": null,
+          "formulation": null
+        },
+        {
+          "productId": "PRODUCT_F_SOLSHINE_TABLETS",
+          "productName": "F-SOLSHINE TABLETS",
+          "componentOrder": 7,
+          "sourceSheet": "Sheet2",
+          "sourceRow": 99,
+          "schedule": null,
+          "formulation": null
+        },
+        {
+          "productId": "PRODUCT_FC_NOURISH",
+          "productName": "FC-NOURISH",
+          "componentOrder": 8,
+          "sourceSheet": "Sheet2",
+          "sourceRow": 100,
+          "schedule": null,
+          "formulation": null
+        }
+      ]
+    },
+    {
+      "id": "KIT_HEALTHY_9",
+      "name": "HEALTHY - 9",
+      "aliases": [
+        "HEALTHY - 9"
+      ],
+      "mrp": null,
+      "schedule": null,
+      "sourceSheet": "Sheet2",
+      "components": [
+        {
+          "productId": "PRODUCT_F_TRICHO_STRONG",
+          "productName": "F-TRICHO STRONG",
+          "componentOrder": 1,
+          "sourceSheet": "Sheet2",
+          "sourceRow": 101,
+          "schedule": null,
+          "formulation": null
+        },
+        {
+          "productId": "PRODUCT_F_TRICHORISE",
+          "productName": "F-TRICHORISE",
+          "componentOrder": 2,
+          "sourceSheet": "Sheet2",
+          "sourceRow": 102,
+          "schedule": null,
+          "formulation": null
+        },
+        {
+          "productId": "PRODUCT_F_TRICHO_CUMIN",
+          "productName": "F-TRICHO CUMIN",
+          "componentOrder": 3,
+          "sourceSheet": "Sheet2",
+          "sourceRow": 103,
+          "schedule": null,
+          "formulation": null
+        },
+        {
+          "productId": "PRODUCT_F_TRICHOSHIELD",
+          "productName": "F-TRICHOSHIELD",
+          "componentOrder": 4,
+          "sourceSheet": "Sheet2",
+          "sourceRow": 104,
+          "schedule": null,
+          "formulation": null
+        },
+        {
+          "productId": "PRODUCT_F_TRICHO_PROTEIN",
+          "productName": "F-TRICHO PROTEIN",
+          "componentOrder": 5,
+          "sourceSheet": "Sheet2",
+          "sourceRow": 105,
+          "schedule": null,
+          "formulation": null
+        },
+        {
+          "productId": "PRODUCT_F_TRICHO_GOLD",
+          "productName": "F-TRICHO GOLD",
+          "componentOrder": 6,
+          "sourceSheet": "Sheet2",
+          "sourceRow": 106,
+          "schedule": null,
+          "formulation": null
+        }
+      ]
+    },
+    {
+      "id": "KIT_LACTIHEALTH",
+      "name": "LACTIHEALTH",
+      "aliases": [
+        "LACTIHEALTH"
+      ],
+      "mrp": null,
+      "schedule": null,
+      "sourceSheet": "Sheet2",
+      "components": [
+        {
+          "productId": "PRODUCT_F_TRICHOGROW",
+          "productName": "F-TRICHOGROW",
+          "componentOrder": 1,
+          "sourceSheet": "Sheet2",
+          "sourceRow": 107,
+          "schedule": null,
+          "formulation": null
+        },
+        {
+          "productId": "PRODUCT_F_CAL_D3",
+          "productName": "F-CAL D3",
+          "componentOrder": 2,
+          "sourceSheet": "Sheet2",
+          "sourceRow": 108,
+          "schedule": null,
+          "formulation": null
+        },
+        {
+          "productId": "PRODUCT_F_TRICHO_FERRUM",
+          "productName": "F-TRICHO FERRUM",
+          "componentOrder": 3,
+          "sourceSheet": "Sheet2",
+          "sourceRow": 109,
+          "schedule": null,
+          "formulation": null
+        },
+        {
+          "productId": "PRODUCT_F_TRICHOSHIELD",
+          "productName": "F-TRICHOSHIELD",
+          "componentOrder": 4,
+          "sourceSheet": "Sheet2",
+          "sourceRow": 110,
+          "schedule": null,
+          "formulation": null
+        },
+        {
+          "productId": "PRODUCT_F_TRICHO_PROTEIN",
+          "productName": "F-TRICHO PROTEIN",
+          "componentOrder": 5,
+          "sourceSheet": "Sheet2",
+          "sourceRow": 111,
+          "schedule": null,
+          "formulation": null
+        },
+        {
+          "productId": "PRODUCT_F_Q10S",
+          "productName": "F-Q10S",
+          "componentOrder": 6,
+          "sourceSheet": "Sheet2",
+          "sourceRow": 112,
+          "schedule": null,
+          "formulation": null
+        },
+        {
+          "productId": "PRODUCT_F_LACTIHEALTH",
+          "productName": "F-LACTIHEALTH",
+          "componentOrder": 7,
+          "sourceSheet": "Sheet2",
+          "sourceRow": 113,
+          "schedule": null,
+          "formulation": null
+        }
+      ]
+    },
+    {
+      "id": "KIT_LACTIHEALTH_VEG_2",
+      "name": "LACTIHEALTH VEG-2",
+      "aliases": [
+        "LACTIHEALTH VEG-2"
+      ],
+      "mrp": null,
+      "schedule": null,
+      "sourceSheet": "Sheet2",
+      "components": [
+        {
+          "productId": "PRODUCT_F_TRICHOGROW",
+          "productName": "F-TRICHOGROW",
+          "componentOrder": 1,
+          "sourceSheet": "Sheet2",
+          "sourceRow": 114,
+          "schedule": null,
+          "formulation": null
+        },
+        {
+          "productId": "PRODUCT_F_CAL_D3",
+          "productName": "F-CAL D3",
+          "componentOrder": 2,
+          "sourceSheet": "Sheet2",
+          "sourceRow": 115,
+          "schedule": null,
+          "formulation": null
+        },
+        {
+          "productId": "PRODUCT_F_LACTOCOL",
+          "productName": "F-LACTOCOL",
+          "componentOrder": 3,
+          "sourceSheet": "Sheet2",
+          "sourceRow": 116,
+          "schedule": null,
+          "formulation": null
+        },
+        {
+          "productId": "PRODUCT_F_MELATON",
+          "productName": "F-MELATON",
+          "componentOrder": 4,
+          "sourceSheet": "Sheet2",
+          "sourceRow": 117,
+          "schedule": null,
+          "formulation": null
+        },
+        {
+          "productId": "PRODUCT_F_TRICHO_PROTEIN",
+          "productName": "F-TRICHO PROTEIN",
+          "componentOrder": 5,
+          "sourceSheet": "Sheet2",
+          "sourceRow": 118,
+          "schedule": null,
+          "formulation": null
+        },
+        {
+          "productId": "PRODUCT_F_TRICHO_STRONG",
+          "productName": "F-TRICHO STRONG",
+          "componentOrder": 6,
+          "sourceSheet": "Sheet2",
+          "sourceRow": 119,
+          "schedule": null,
+          "formulation": null
+        },
+        {
+          "productId": "PRODUCT_F_LACTIHEALTH",
+          "productName": "F-LACTIHEALTH",
+          "componentOrder": 7,
+          "sourceSheet": "Sheet2",
+          "sourceRow": 120,
+          "schedule": null,
+          "formulation": null
+        }
+      ]
+    },
+    {
+      "id": "KIT_M_AGA_GOLD_PLUS",
+      "name": "M-AGA GOLD PLUS",
+      "aliases": [
+        "M-AGA GOLD PLUS"
+      ],
+      "mrp": null,
+      "schedule": null,
+      "sourceSheet": "Sheet2",
+      "components": [
+        {
+          "productId": "PRODUCT_F_NICO_R_M",
+          "productName": "F-NICO R-M",
+          "componentOrder": 1,
+          "sourceSheet": "Sheet2",
+          "sourceRow": 121,
+          "schedule": null,
+          "formulation": null
+        },
+        {
+          "productId": "PRODUCT_F_TRICHOGROW",
+          "productName": "F-TRICHOGROW+",
+          "componentOrder": 2,
+          "sourceSheet": "Sheet2",
+          "sourceRow": 122,
+          "schedule": null,
+          "formulation": null
+        },
+        {
+          "productId": "PRODUCT_F_TRICHO_FERRUM",
+          "productName": "F-TRICHO FERRUM",
+          "componentOrder": 3,
+          "sourceSheet": "Sheet2",
+          "sourceRow": 123,
+          "schedule": null,
+          "formulation": null
+        },
+        {
+          "productId": "PRODUCT_F_ESM",
+          "productName": "F-ESM",
+          "componentOrder": 4,
+          "sourceSheet": "Sheet2",
+          "sourceRow": 124,
+          "schedule": null,
+          "formulation": null
+        },
+        {
+          "productId": "PRODUCT_F_TRICHO_PROTEIN",
+          "productName": "F-TRICHO PROTEIN",
+          "componentOrder": 5,
+          "sourceSheet": "Sheet2",
+          "sourceRow": 125,
+          "schedule": null,
+          "formulation": null
+        },
+        {
+          "productId": "PRODUCT_F_LACTOCOL",
+          "productName": "F-LACTOCOL",
+          "componentOrder": 6,
+          "sourceSheet": "Sheet2",
+          "sourceRow": 126,
+          "schedule": null,
+          "formulation": null
+        },
+        {
+          "productId": "PRODUCT_F_SOLSHINE_TABLETS",
+          "productName": "F-SOLSHINE TABLETS",
+          "componentOrder": 7,
+          "sourceSheet": "Sheet2",
+          "sourceRow": 127,
+          "schedule": null,
+          "formulation": null
+        }
+      ]
+    },
+    {
+      "id": "KIT_MPHL_PRO",
+      "name": "MPHL PRO",
+      "aliases": [
+        "MPHL PRO"
+      ],
+      "mrp": null,
+      "schedule": null,
+      "sourceSheet": "Sheet2",
+      "components": [
+        {
+          "productId": "PRODUCT_F_NICO_R_M",
+          "productName": "F-NICO R-M",
+          "componentOrder": 1,
+          "sourceSheet": "Sheet2",
+          "sourceRow": 128,
+          "schedule": null,
+          "formulation": null
+        },
+        {
+          "productId": "PRODUCT_F_TRICHOGROW",
+          "productName": "F-TRICHOGROW+",
+          "componentOrder": 2,
+          "sourceSheet": "Sheet2",
+          "sourceRow": 129,
+          "schedule": null,
+          "formulation": null
+        },
+        {
+          "productId": "PRODUCT_F_ONGLE",
+          "productName": "F-ONGLE",
+          "componentOrder": 3,
+          "sourceSheet": "Sheet2",
+          "sourceRow": 130,
+          "schedule": null,
+          "formulation": null
+        },
+        {
+          "productId": "PRODUCT_F_LACTOCOL",
+          "productName": "F-LACTOCOL",
+          "componentOrder": 4,
+          "sourceSheet": "Sheet2",
+          "sourceRow": 131,
+          "schedule": null,
+          "formulation": null
+        },
+        {
+          "productId": "PRODUCT_F_TRICHO_PROTEIN",
+          "productName": "F-TRICHO PROTEIN",
+          "componentOrder": 5,
+          "sourceSheet": "Sheet2",
+          "sourceRow": 132,
+          "schedule": null,
+          "formulation": null
+        },
+        {
+          "productId": "PRODUCT_F_Q10S",
+          "productName": "F-Q10S",
+          "componentOrder": 6,
+          "sourceSheet": "Sheet2",
+          "sourceRow": 133,
+          "schedule": null,
+          "formulation": null
+        },
+        {
+          "productId": "PRODUCT_F_SOLSHINE_TABLETS",
+          "productName": "F-SOLSHINE TABLETS",
+          "componentOrder": 7,
+          "sourceSheet": "Sheet2",
+          "sourceRow": 134,
+          "schedule": null,
+          "formulation": null
+        },
+        {
+          "productId": "PRODUCT_FM_BOLIC",
+          "productName": "FM BOLIC",
+          "componentOrder": 8,
+          "sourceSheet": "Sheet2",
+          "sourceRow": 135,
+          "schedule": null,
+          "formulation": null
+        }
+      ]
+    },
+    {
+      "id": "KIT_PRO_FACT_F_H_WELL3_ENDOMETRIOSIS",
+      "name": "PRO FACT  F-H WELL3 ENDOMETRIOSIS",
+      "aliases": [
+        "PRO FACT  F-H WELL3 ENDOMETRIOSIS",
+        "F-H WELL3 ENDOMETRIOSIS"
+      ],
+      "mrp": null,
+      "schedule": null,
+      "sourceSheet": "Sheet2",
+      "components": [
+        {
+          "productId": "PRODUCT_F_ALEXA",
+          "productName": "F-ALEXA..",
+          "componentOrder": 1,
+          "sourceSheet": "Sheet2",
+          "sourceRow": 136,
+          "schedule": null,
+          "formulation": null
+        },
+        {
+          "productId": "PRODUCT_F_TRICHO_FERRUM",
+          "productName": "F-TRICHO FERRUM",
+          "componentOrder": 2,
+          "sourceSheet": "Sheet2",
+          "sourceRow": 137,
+          "schedule": null,
+          "formulation": null
+        },
+        {
+          "productId": "PRODUCT_F_MELATON",
+          "productName": "F-MELATON",
+          "componentOrder": 3,
+          "sourceSheet": "Sheet2",
+          "sourceRow": 138,
+          "schedule": null,
+          "formulation": null
+        },
+        {
+          "productId": "PRODUCT_F_NAT_TX",
+          "productName": "F-NAT-TX",
+          "componentOrder": 4,
+          "sourceSheet": "Sheet2",
+          "sourceRow": 139,
+          "schedule": null,
+          "formulation": null
+        },
+        {
+          "productId": "PRODUCT_F_LACTOCOL",
+          "productName": "F-LACTOCOL",
+          "componentOrder": 5,
+          "sourceSheet": "Sheet2",
+          "sourceRow": 140,
+          "schedule": null,
+          "formulation": null
+        },
+        {
+          "productId": "PRODUCT_F_NICO_R_M",
+          "productName": "F-NICO R-M",
+          "componentOrder": 6,
+          "sourceSheet": "Sheet2",
+          "sourceRow": 141,
+          "schedule": null,
+          "formulation": null
+        },
+        {
+          "productId": "PRODUCT_F_RESVA_M",
+          "productName": "F-RESVA-M",
+          "componentOrder": 7,
+          "sourceSheet": "Sheet2",
+          "sourceRow": 142,
+          "schedule": null,
+          "formulation": null
+        },
+        {
+          "productId": "PRODUCT_F_SOLSHINE_TABLETS",
+          "productName": "F-SOLSHINE TABLETS",
+          "componentOrder": 8,
+          "sourceSheet": "Sheet2",
+          "sourceRow": 143,
+          "schedule": null,
+          "formulation": null
+        }
+      ]
+    },
+    {
+      "id": "KIT_PRO_FACT_GI_HEALTH_GOLD",
+      "name": "PRO FACT  GI HEALTH GOLD",
+      "aliases": [
+        "PRO FACT  GI HEALTH GOLD",
+        "GI HEALTH GOLD"
+      ],
+      "mrp": null,
+      "schedule": null,
+      "sourceSheet": "Sheet2",
+      "components": [
+        {
+          "productId": "PRODUCT_F_IMMUSURGE",
+          "productName": "F-IMMUSurge",
+          "componentOrder": 1,
+          "sourceSheet": "Sheet2",
+          "sourceRow": 144,
+          "schedule": null,
+          "formulation": null
+        },
+        {
+          "productId": "PRODUCT_F_TRICHO_CUMIN",
+          "productName": "F-TRICHO CUMIN",
+          "componentOrder": 2,
+          "sourceSheet": "Sheet2",
+          "sourceRow": 145,
+          "schedule": null,
+          "formulation": null
+        },
+        {
+          "productId": "PRODUCT_F_LACTOCOL",
+          "productName": "F-LACTOCOL",
+          "componentOrder": 3,
+          "sourceSheet": "Sheet2",
+          "sourceRow": 146,
+          "schedule": null,
+          "formulation": null
+        },
+        {
+          "productId": "PRODUCT_F_TRICHORISE",
+          "productName": "F-TRICHORISE",
+          "componentOrder": 4,
+          "sourceSheet": "Sheet2",
+          "sourceRow": 147,
+          "schedule": null,
+          "formulation": null
+        },
+        {
+          "productId": "PRODUCT_F_TRICHO_STRONG",
+          "productName": "F-TRICHO STRONG",
+          "componentOrder": 5,
+          "sourceSheet": "Sheet2",
+          "sourceRow": 148,
+          "schedule": null,
+          "formulation": null
+        },
+        {
+          "productId": "PRODUCT_F_KINTOX_HYA",
+          "productName": "F-KINTOX-HYA",
+          "componentOrder": 6,
+          "sourceSheet": "Sheet2",
+          "sourceRow": 149,
+          "schedule": null,
+          "formulation": null
+        },
+        {
+          "productId": "PRODUCT_F_B_SHINE",
+          "productName": "F-B SHINE",
+          "componentOrder": 7,
+          "sourceSheet": "Sheet2",
+          "sourceRow": 150,
+          "schedule": null,
+          "formulation": null
+        },
+        {
+          "productId": "PRODUCT_F_D_ENZYSTIVE",
+          "productName": "F-D-ENZYSTIVE",
+          "componentOrder": 8,
+          "sourceSheet": "Sheet2",
+          "sourceRow": 151,
+          "schedule": null,
+          "formulation": null
+        },
+        {
+          "productId": "PRODUCT_F_DAILY_D",
+          "productName": "F-DAILY D",
+          "componentOrder": 9,
+          "sourceSheet": "Sheet2",
+          "sourceRow": 152,
+          "schedule": null,
+          "formulation": null
+        }
+      ]
+    },
+    {
+      "id": "KIT_PRO_FACT_INFLAMMATION_PHENOTYPE",
+      "name": "PRO FACT  INFLAMMATION PHENOTYPE",
+      "aliases": [
+        "PRO FACT  INFLAMMATION PHENOTYPE",
+        "INFLAMMATION PHENOTYPE"
+      ],
+      "mrp": null,
+      "schedule": null,
+      "sourceSheet": "Sheet2",
+      "components": [
+        {
+          "productId": "PRODUCT_F_CUMIKIN",
+          "productName": "F-CUMIKIN",
+          "componentOrder": 1,
+          "sourceSheet": "Sheet2",
+          "sourceRow": 153,
+          "schedule": null,
+          "formulation": null
+        },
+        {
+          "productId": "PRODUCT_F_TRICHOGROW",
+          "productName": "F-TRICHOGROW+",
+          "componentOrder": 2,
+          "sourceSheet": "Sheet2",
+          "sourceRow": 154,
+          "schedule": null,
+          "formulation": null
+        },
+        {
+          "productId": "PRODUCT_F_NICO_R_M",
+          "productName": "F-NICO R-M",
+          "componentOrder": 3,
+          "sourceSheet": "Sheet2",
+          "sourceRow": 155,
+          "schedule": null,
+          "formulation": null
+        },
+        {
+          "productId": "PRODUCT_F_SPRIRULUX",
+          "productName": "F-SPRIRULUX",
+          "componentOrder": 4,
+          "sourceSheet": "Sheet2",
+          "sourceRow": 156,
+          "schedule": null,
+          "formulation": null
+        },
+        {
+          "productId": "PRODUCT_F_IMMUSURGE",
+          "productName": "F-IMMUSurge",
+          "componentOrder": 5,
+          "sourceSheet": "Sheet2",
+          "sourceRow": 157,
+          "schedule": null,
+          "formulation": null
+        },
+        {
+          "productId": "PRODUCT_F_RESVA_M",
+          "productName": "F-RESVA-M",
+          "componentOrder": 6,
+          "sourceSheet": "Sheet2",
+          "sourceRow": 158,
+          "schedule": null,
+          "formulation": null
+        },
+        {
+          "productId": "PRODUCT_FC_NOURISH",
+          "productName": "FC-NOURISH",
+          "componentOrder": 7,
+          "sourceSheet": "Sheet2",
+          "sourceRow": 159,
+          "schedule": null,
+          "formulation": null
+        },
+        {
+          "productId": "PRODUCT_F_SOLSHINE_TABLETS",
+          "productName": "F-SOLSHINE TABLETS",
+          "componentOrder": 8,
+          "sourceSheet": "Sheet2",
+          "sourceRow": 160,
+          "schedule": null,
+          "formulation": null
+        }
+      ]
+    },
+    {
+      "id": "KIT_PRO_FACT_IRON_UP_4_VEG",
+      "name": "PRO FACT  IRON UP - 4 VEG",
+      "aliases": [
+        "PRO FACT  IRON UP - 4 VEG",
+        "IRON UP - 4 VEG"
+      ],
+      "mrp": null,
+      "schedule": null,
+      "sourceSheet": "Sheet2",
+      "components": [
+        {
+          "productId": "PRODUCT_F_LACTOCOL",
+          "productName": "F-LACTOCOL",
+          "componentOrder": 1,
+          "sourceSheet": "Sheet2",
+          "sourceRow": 161,
+          "schedule": null,
+          "formulation": null
+        },
+        {
+          "productId": "PRODUCT_F_TRICHORISE",
+          "productName": "F-TRICHORISE",
+          "componentOrder": 2,
+          "sourceSheet": "Sheet2",
+          "sourceRow": 162,
+          "schedule": null,
+          "formulation": null
+        },
+        {
+          "productId": "PRODUCT_F_TRICHO_CUMIN",
+          "productName": "F-TRICHO CUMIN",
+          "componentOrder": 3,
+          "sourceSheet": "Sheet2",
+          "sourceRow": 163,
+          "schedule": null,
+          "formulation": null
+        },
+        {
+          "productId": "PRODUCT_F_TRICHO_STRONG",
+          "productName": "F-TRICHO STRONG",
+          "componentOrder": 4,
+          "sourceSheet": "Sheet2",
+          "sourceRow": 164,
+          "schedule": null,
+          "formulation": null
+        },
+        {
+          "productId": "PRODUCT_F_TRICHO_FERRUM",
+          "productName": "F-TRICHO FERRUM",
+          "componentOrder": 5,
+          "sourceSheet": "Sheet2",
+          "sourceRow": 165,
+          "schedule": null,
+          "formulation": null
+        },
+        {
+          "productId": "PRODUCT_F_EASME",
+          "productName": "F-EASME",
+          "componentOrder": 6,
+          "sourceSheet": "Sheet2",
+          "sourceRow": 166,
+          "schedule": null,
+          "formulation": null
+        },
+        {
+          "productId": "PRODUCT_F_SOLSHINE_TABLETS",
+          "productName": "F-SOLSHINE TABLETS",
+          "componentOrder": 7,
+          "sourceSheet": "Sheet2",
+          "sourceRow": 167,
+          "schedule": null,
+          "formulation": null
+        },
+        {
+          "productId": "PRODUCT_FC_NOURISH",
+          "productName": "FC-NOURISH",
+          "componentOrder": 8,
+          "sourceSheet": "Sheet2",
+          "sourceRow": 168,
+          "schedule": null,
+          "formulation": null
+        }
+      ]
+    },
+    {
+      "id": "KIT_PRO_FACT_META_B_HYPOTHYROID_3",
+      "name": "PRO FACT  META B - HYPOTHYROID 3",
+      "aliases": [
+        "PRO FACT  META B - HYPOTHYROID 3",
+        "META B - HYPOTHYROID 3"
+      ],
+      "mrp": null,
+      "schedule": null,
+      "sourceSheet": "Sheet2",
+      "components": [
+        {
+          "productId": "PRODUCT_F_IMMUSURGE",
+          "productName": "F-IMMUSurge",
+          "componentOrder": 1,
+          "sourceSheet": "Sheet2",
+          "sourceRow": 169,
+          "schedule": null,
+          "formulation": null
+        },
+        {
+          "productId": "PRODUCT_F_TRICHOSHIELD",
+          "productName": "F-TRICHOSHIELD",
+          "componentOrder": 2,
+          "sourceSheet": "Sheet2",
+          "sourceRow": 170,
+          "schedule": null,
+          "formulation": null
+        },
+        {
+          "productId": "PRODUCT_F_TRICHO_PROTEIN",
+          "productName": "F-TRICHO PROTEIN",
+          "componentOrder": 3,
+          "sourceSheet": "Sheet2",
+          "sourceRow": 171,
+          "schedule": null,
+          "formulation": null
+        },
+        {
+          "productId": "PRODUCT_F_TRICHORISE",
+          "productName": "F-TRICHORISE",
+          "componentOrder": 4,
+          "sourceSheet": "Sheet2",
+          "sourceRow": 172,
+          "schedule": null,
+          "formulation": null
+        },
+        {
+          "productId": "PRODUCT_FM_BOLIC",
+          "productName": "FM BOLIC",
+          "componentOrder": 5,
+          "sourceSheet": "Sheet2",
+          "sourceRow": 173,
+          "schedule": null,
+          "formulation": null
+        },
+        {
+          "productId": "PRODUCT_F_TRICHO_CUMIN",
+          "productName": "F-TRICHO CUMIN",
+          "componentOrder": 6,
+          "sourceSheet": "Sheet2",
+          "sourceRow": 174,
+          "schedule": null,
+          "formulation": null
+        },
+        {
+          "productId": "PRODUCT_FC_NOURISH",
+          "productName": "FC-NOURISH",
+          "componentOrder": 7,
+          "sourceSheet": "Sheet2",
+          "sourceRow": 175,
+          "schedule": null,
+          "formulation": null
+        },
+        {
+          "productId": "PRODUCT_F_SOLSHINE_TABLETS",
+          "productName": "F-SOLSHINE TABLETS",
+          "componentOrder": 8,
+          "sourceSheet": "Sheet2",
+          "sourceRow": 176,
+          "schedule": null,
+          "formulation": null
+        }
+      ]
+    },
+    {
+      "id": "KIT_PRO_FACT_META_B_PCOS_6_VEG",
+      "name": "PRO FACT  META B - PCOS 6 (veg)",
+      "aliases": [
+        "PRO FACT  META B - PCOS 6 (veg)",
+        "META B - PCOS 6 (veg)"
+      ],
+      "mrp": null,
+      "schedule": null,
+      "sourceSheet": "Sheet2",
+      "components": [
+        {
+          "productId": "PRODUCT_F_TRICHO_CUMIN",
+          "productName": "F-TRICHO CUMIN",
+          "componentOrder": 1,
+          "sourceSheet": "Sheet2",
+          "sourceRow": 177,
+          "schedule": null,
+          "formulation": null
+        },
+        {
+          "productId": "PRODUCT_F_NAT_TX",
+          "productName": "F-NAT-TX",
+          "componentOrder": 2,
+          "sourceSheet": "Sheet2",
+          "sourceRow": 178,
+          "schedule": null,
+          "formulation": null
+        },
+        {
+          "productId": "PRODUCT_F_RESVA_M",
+          "productName": "F-RESVA-M",
+          "componentOrder": 3,
+          "sourceSheet": "Sheet2",
+          "sourceRow": 179,
+          "schedule": null,
+          "formulation": null
+        },
+        {
+          "productId": "PRODUCT_F_NICO_R_M",
+          "productName": "F-NICO R-M",
+          "componentOrder": 4,
+          "sourceSheet": "Sheet2",
+          "sourceRow": 180,
+          "schedule": null,
+          "formulation": null
+        },
+        {
+          "productId": "PRODUCT_FM_BOLIC",
+          "productName": "FM BOLIC",
+          "componentOrder": 5,
+          "sourceSheet": "Sheet2",
+          "sourceRow": 181,
+          "schedule": null,
+          "formulation": null
+        },
+        {
+          "productId": "PRODUCT_F_TRICHO_INO",
+          "productName": "F-TRICHO-INO",
+          "componentOrder": 6,
+          "sourceSheet": "Sheet2",
+          "sourceRow": 182,
+          "schedule": null,
+          "formulation": null
+        },
+        {
+          "productId": "PRODUCT_F_SOLSHINE_TABLETS",
+          "productName": "F-SOLSHINE TABLETS",
+          "componentOrder": 7,
+          "sourceSheet": "Sheet2",
+          "sourceRow": 183,
+          "schedule": null,
+          "formulation": null
+        }
+      ]
+    },
+    {
+      "id": "KIT_PRO_FACT_META_B_POST_M_2",
+      "name": "PRO FACT  META B - POST M 2",
+      "aliases": [
+        "PRO FACT  META B - POST M 2",
+        "META B - POST M 2"
+      ],
+      "mrp": null,
+      "schedule": null,
+      "sourceSheet": "Sheet2",
+      "components": [
+        {
+          "productId": "PRODUCT_F_RESVA_M",
+          "productName": "F-RESVA-M",
+          "componentOrder": 1,
+          "sourceSheet": "Sheet2",
+          "sourceRow": 184,
+          "schedule": null,
+          "formulation": null
+        },
+        {
+          "productId": "PRODUCT_F_EASME",
+          "productName": "F-EASME",
+          "componentOrder": 2,
+          "sourceSheet": "Sheet2",
+          "sourceRow": 185,
+          "schedule": null,
+          "formulation": null
+        },
+        {
+          "productId": "PRODUCT_F_TRICHOSHIELD",
+          "productName": "F-TRICHOSHIELD",
+          "componentOrder": 3,
+          "sourceSheet": "Sheet2",
+          "sourceRow": 186,
+          "schedule": null,
+          "formulation": null
+        },
+        {
+          "productId": "PRODUCT_FM_BOLIC",
+          "productName": "FM BOLIC",
+          "componentOrder": 4,
+          "sourceSheet": "Sheet2",
+          "sourceRow": 187,
+          "schedule": null,
+          "formulation": null
+        },
+        {
+          "productId": "PRODUCT_F_CAL_D3",
+          "productName": "F-CAL D3",
+          "componentOrder": 5,
+          "sourceSheet": "Sheet2",
+          "sourceRow": 188,
+          "schedule": null,
+          "formulation": null
+        },
+        {
+          "productId": "PRODUCT_F_TRICHO_STRONG",
+          "productName": "F-TRICHO STRONG",
+          "componentOrder": 6,
+          "sourceSheet": "Sheet2",
+          "sourceRow": 189,
+          "schedule": null,
+          "formulation": null
+        },
+        {
+          "productId": "PRODUCT_F_LACTIHEALTH",
+          "productName": "F-LACTIHEALTH",
+          "componentOrder": 7,
+          "sourceSheet": "Sheet2",
+          "sourceRow": 190,
+          "schedule": null,
+          "formulation": null
+        },
+        {
+          "productId": "PRODUCT_F_SOLSHINE_TABLETS",
+          "productName": "F-SOLSHINE TABLETS",
+          "componentOrder": 8,
+          "sourceSheet": "Sheet2",
+          "sourceRow": 191,
+          "schedule": null,
+          "formulation": null
+        }
+      ]
+    },
+    {
+      "id": "KIT_PRO_FACT_META_B",
+      "name": "PRO FACT  META-B",
+      "aliases": [
+        "PRO FACT  META-B",
+        "META-B"
+      ],
+      "mrp": null,
+      "schedule": null,
+      "sourceSheet": "Sheet2",
+      "components": [
+        {
+          "productId": "PRODUCT_F_IMMUSURGE",
+          "productName": "F-IMMUSurge",
+          "componentOrder": 1,
+          "sourceSheet": "Sheet2",
+          "sourceRow": 192,
+          "schedule": null,
+          "formulation": null
+        },
+        {
+          "productId": "PRODUCT_F_EASME",
+          "productName": "F-EASME",
+          "componentOrder": 2,
+          "sourceSheet": "Sheet2",
+          "sourceRow": 193,
+          "schedule": null,
+          "formulation": null
+        },
+        {
+          "productId": "PRODUCT_F_TRICHO_CUMIN",
+          "productName": "F-TRICHO CUMIN",
+          "componentOrder": 3,
+          "sourceSheet": "Sheet2",
+          "sourceRow": 194,
+          "schedule": null,
+          "formulation": null
+        },
+        {
+          "productId": "PRODUCT_FM_BOLIC",
+          "productName": "FM BOLIC",
+          "componentOrder": 4,
+          "sourceSheet": "Sheet2",
+          "sourceRow": 195,
+          "schedule": null,
+          "formulation": null
+        },
+        {
+          "productId": "PRODUCT_F_TRICHO_INO",
+          "productName": "F-TRICHO-INO",
+          "componentOrder": 5,
+          "sourceSheet": "Sheet2",
+          "sourceRow": 196,
+          "schedule": null,
+          "formulation": null
+        },
+        {
+          "productId": "PRODUCT_F_RESVA_M",
+          "productName": "F-RESVA-M",
+          "componentOrder": 6,
+          "sourceSheet": "Sheet2",
+          "sourceRow": 197,
+          "schedule": null,
+          "formulation": null
+        },
+        {
+          "productId": "PRODUCT_F_SOLSHINE_TABLETS",
+          "productName": "F-SOLSHINE TABLETS",
+          "componentOrder": 7,
+          "sourceSheet": "Sheet2",
+          "sourceRow": 198,
+          "schedule": null,
+          "formulation": null
+        },
+        {
+          "productId": "PRODUCT_F_TRICHO_STRONG",
+          "productName": "F-TRICHO STRONG",
+          "componentOrder": 8,
+          "sourceSheet": "Sheet2",
+          "sourceRow": 199,
+          "schedule": null,
+          "formulation": null
+        }
+      ]
+    },
+    {
+      "id": "KIT_PRO_FACT_OXIDATIVE_STRESS_PHENOTYPE",
+      "name": "PRO FACT  OXIDATIVE STRESS PHENOTYPE",
+      "aliases": [
+        "PRO FACT  OXIDATIVE STRESS PHENOTYPE",
+        "OXIDATIVE STRESS PHENOTYPE"
+      ],
+      "mrp": null,
+      "schedule": null,
+      "sourceSheet": "Sheet2",
+      "components": [
+        {
+          "productId": "PRODUCT_F_SPRIRULUX",
+          "productName": "F-SPRIRULUX",
+          "componentOrder": 1,
+          "sourceSheet": "Sheet2",
+          "sourceRow": 200,
+          "schedule": null,
+          "formulation": null
+        },
+        {
+          "productId": "PRODUCT_F_TRICHOGROW",
+          "productName": "F-TRICHOGROW+",
+          "componentOrder": 2,
+          "sourceSheet": "Sheet2",
+          "sourceRow": 201,
+          "schedule": null,
+          "formulation": null
+        },
+        {
+          "productId": "PRODUCT_F_EQUIKIN",
+          "productName": "F-EQUIKIN",
+          "componentOrder": 3,
+          "sourceSheet": "Sheet2",
+          "sourceRow": 202,
+          "schedule": null,
+          "formulation": null
+        },
+        {
+          "productId": "PRODUCT_F_LACTOCOL",
+          "productName": "F-LACTOCOL",
+          "componentOrder": 4,
+          "sourceSheet": "Sheet2",
+          "sourceRow": 203,
+          "schedule": null,
+          "formulation": null
+        },
+        {
+          "productId": "PRODUCT_F_RESVA_M",
+          "productName": "F-RESVA-M",
+          "componentOrder": 5,
+          "sourceSheet": "Sheet2",
+          "sourceRow": 204,
+          "schedule": null,
+          "formulation": null
+        },
+        {
+          "productId": "PRODUCT_F_TRICHO_STRONG",
+          "productName": "F-TRICHO STRONG",
+          "componentOrder": 6,
+          "sourceSheet": "Sheet2",
+          "sourceRow": 205,
+          "schedule": null,
+          "formulation": null
+        },
+        {
+          "productId": "PRODUCT_FC_NOURISH",
+          "productName": "FC-NOURISH",
+          "componentOrder": 7,
+          "sourceSheet": "Sheet2",
+          "sourceRow": 206,
+          "schedule": null,
+          "formulation": null
+        },
+        {
+          "productId": "PRODUCT_F_SOLSHINE_TABLETS",
+          "productName": "F-SOLSHINE TABLETS",
+          "componentOrder": 8,
+          "sourceSheet": "Sheet2",
+          "sourceRow": 207,
+          "schedule": null,
+          "formulation": null
+        },
+        {
+          "productId": "PRODUCT_F_Q10S",
+          "productName": "F-Q10S",
+          "componentOrder": 9,
+          "sourceSheet": "Sheet2",
+          "sourceRow": 208,
+          "schedule": null,
+          "formulation": null
+        }
+      ]
+    },
+    {
+      "id": "KIT_PRO_FACT_RWL_SHIELD",
+      "name": "PRO FACT  RWL SHIELD",
+      "aliases": [
+        "PRO FACT  RWL SHIELD",
+        "RWL SHIELD"
+      ],
+      "mrp": null,
+      "schedule": null,
+      "sourceSheet": "Sheet2",
+      "components": [
+        {
+          "productId": "PRODUCT_F_LACTOCOL",
+          "productName": "F-LACTOCOL",
+          "componentOrder": 1,
+          "sourceSheet": "Sheet2",
+          "sourceRow": 209,
+          "schedule": null,
+          "formulation": null
+        },
+        {
+          "productId": "PRODUCT_F_KINTOX_HYA",
+          "productName": "F-KINTOX-HYA",
+          "componentOrder": 2,
+          "sourceSheet": "Sheet2",
+          "sourceRow": 210,
+          "schedule": null,
+          "formulation": null
+        },
+        {
+          "productId": "PRODUCT_F_TRICHO_FERRUM",
+          "productName": "F-TRICHO FERRUM",
+          "componentOrder": 3,
+          "sourceSheet": "Sheet2",
+          "sourceRow": 211,
+          "schedule": null,
+          "formulation": null
+        },
+        {
+          "productId": "PRODUCT_F_IMMUSURGE",
+          "productName": "F-IMMUSurge",
+          "componentOrder": 4,
+          "sourceSheet": "Sheet2",
+          "sourceRow": 212,
+          "schedule": null,
+          "formulation": null
+        },
+        {
+          "productId": "PRODUCT_F_B_SHINE",
+          "productName": "F-B SHINE",
+          "componentOrder": 5,
+          "sourceSheet": "Sheet2",
+          "sourceRow": 213,
+          "schedule": null,
+          "formulation": null
+        },
+        {
+          "productId": "PRODUCT_F_DAILY_D",
+          "productName": "F-DAILY D",
+          "componentOrder": 6,
+          "sourceSheet": "Sheet2",
+          "sourceRow": 214,
+          "schedule": null,
+          "formulation": null
+        },
+        {
+          "productId": "PRODUCT_F_ESM",
+          "productName": "F-ESM",
+          "componentOrder": 7,
+          "sourceSheet": "Sheet2",
+          "sourceRow": 215,
+          "schedule": null,
+          "formulation": null
+        },
+        {
+          "productId": "PRODUCT_F_FLEX_GL",
+          "productName": "F-FLEX GL",
+          "componentOrder": 8,
+          "sourceSheet": "Sheet2",
+          "sourceRow": 216,
+          "schedule": null,
+          "formulation": null
+        },
+        {
+          "productId": "PRODUCT_F_ASHWAKIN",
+          "productName": "F-ASHWAKIN",
+          "componentOrder": 9,
+          "sourceSheet": "Sheet2",
+          "sourceRow": 217,
+          "schedule": null,
+          "formulation": null
+        }
+      ]
+    },
+    {
+      "id": "KIT_PRO_IMMUNE_GOLD_PRO",
+      "name": "PRO IMMUNE GOLD Pro",
+      "aliases": [
+        "PRO IMMUNE GOLD Pro"
+      ],
+      "mrp": null,
+      "schedule": null,
+      "sourceSheet": "Sheet2",
+      "components": [
+        {
+          "productId": "PRODUCT_F_IMMUSURGE",
+          "productName": "F-IMMUSurge",
+          "componentOrder": 1,
+          "sourceSheet": "Sheet2",
+          "sourceRow": 218,
+          "schedule": null,
+          "formulation": null
+        },
+        {
+          "productId": "PRODUCT_F_TRICHORISE",
+          "productName": "F-TRICHORISE",
+          "componentOrder": 2,
+          "sourceSheet": "Sheet2",
+          "sourceRow": 219,
+          "schedule": null,
+          "formulation": null
+        },
+        {
+          "productId": "PRODUCT_F_LACTOCOL",
+          "productName": "F-LACTOCOL",
+          "componentOrder": 3,
+          "sourceSheet": "Sheet2",
+          "sourceRow": 220,
+          "schedule": null,
+          "formulation": null
+        },
+        {
+          "productId": "PRODUCT_F_TRICHOFLAX",
+          "productName": "F-TRICHOFLAX",
+          "componentOrder": 4,
+          "sourceSheet": "Sheet2",
+          "sourceRow": 221,
+          "schedule": null,
+          "formulation": null
+        },
+        {
+          "productId": "PRODUCT_F_TRICHO_STRONG",
+          "productName": "F-TRICHO STRONG",
+          "componentOrder": 5,
+          "sourceSheet": "Sheet2",
+          "sourceRow": 222,
+          "schedule": null,
+          "formulation": null
+        },
+        {
+          "productId": "PRODUCT_F_TRICHO_CUMIN",
+          "productName": "F-TRICHO CUMIN",
+          "componentOrder": 6,
+          "sourceSheet": "Sheet2",
+          "sourceRow": 223,
+          "schedule": null,
+          "formulation": null
+        },
+        {
+          "productId": "PRODUCT_FC_NOURISH",
+          "productName": "FC-NOURISH",
+          "componentOrder": 7,
+          "sourceSheet": "Sheet2",
+          "sourceRow": 224,
+          "schedule": null,
+          "formulation": null
+        },
+        {
+          "productId": "PRODUCT_F_SOLSHINE",
+          "productName": "F-SOLSHINE",
+          "componentOrder": 8,
+          "sourceSheet": "Sheet2",
+          "sourceRow": 225,
+          "schedule": null,
+          "formulation": null
+        },
+        {
+          "productId": "PRODUCT_F_METACHOL",
+          "productName": "F-METACHOL",
+          "componentOrder": 9,
+          "sourceSheet": "Sheet2",
+          "sourceRow": 226,
+          "schedule": null,
+          "formulation": null
+        }
+      ]
+    },
+    {
+      "id": "KIT_PRO_IMMUNE_VEG",
+      "name": "PRO IMMUNE VEG",
+      "aliases": [
+        "PRO IMMUNE VEG"
+      ],
+      "mrp": null,
+      "schedule": null,
+      "sourceSheet": "Sheet2",
+      "components": [
+        {
+          "productId": "PRODUCT_F_LACTOCOL",
+          "productName": "F-LACTOCOL",
+          "componentOrder": 1,
+          "sourceSheet": "Sheet2",
+          "sourceRow": 227,
+          "schedule": null,
+          "formulation": null
+        },
+        {
+          "productId": "PRODUCT_F_TRICHO_PROTEIN",
+          "productName": "F-TRICHO PROTEIN",
+          "componentOrder": 2,
+          "sourceSheet": "Sheet2",
+          "sourceRow": 228,
+          "schedule": null,
+          "formulation": null
+        },
+        {
+          "productId": "PRODUCT_F_TRICHO_CUMIN",
+          "productName": "F-TRICHO CUMIN",
+          "componentOrder": 3,
+          "sourceSheet": "Sheet2",
+          "sourceRow": 229,
+          "schedule": null,
+          "formulation": null
+        },
+        {
+          "productId": "PRODUCT_F_Q10S",
+          "productName": "F-Q10S",
+          "componentOrder": 4,
+          "sourceSheet": "Sheet2",
+          "sourceRow": 230,
+          "schedule": null,
+          "formulation": null
+        },
+        {
+          "productId": "PRODUCT_F_TRICHOGROW",
+          "productName": "F-TRICHOGROW",
+          "componentOrder": 5,
+          "sourceSheet": "Sheet2",
+          "sourceRow": 231,
+          "schedule": null,
+          "formulation": null
+        },
+        {
+          "productId": "PRODUCT_F_TRICHO_STRONG",
+          "productName": "F-TRICHO STRONG",
+          "componentOrder": 6,
+          "sourceSheet": "Sheet2",
+          "sourceRow": 232,
+          "schedule": null,
+          "formulation": null
+        },
+        {
+          "productId": "PRODUCT_F_SOLSHINE_TABLETS",
+          "productName": "F-SOLSHINE TABLETS",
+          "componentOrder": 7,
+          "sourceSheet": "Sheet2",
+          "sourceRow": 233,
+          "schedule": null,
+          "formulation": null
+        }
+      ]
+    },
+    {
+      "id": "KIT_HAIR_FACT_NIGHT_SHIFT",
+      "name": "HAIR FACT NIGHT SHIFT",
+      "aliases": [
+        "HAIR FACT NIGHT SHIFT",
+        "NIGHT SHIFT"
+      ],
+      "mrp": null,
+      "schedule": null,
+      "sourceSheet": "Sheet2",
+      "components": [
+        {
+          "productId": "PRODUCT_F_TRICHO_GOLD",
+          "productName": "F-TRICHO GOLD",
+          "componentOrder": 1,
+          "sourceSheet": "Sheet2",
+          "sourceRow": 234,
+          "schedule": null,
+          "formulation": null
+        },
+        {
+          "productId": "PRODUCT_F_SPRIRULUX",
+          "productName": "F-SPRIRULUX",
+          "componentOrder": 2,
+          "sourceSheet": "Sheet2",
+          "sourceRow": 235,
+          "schedule": null,
+          "formulation": null
+        },
+        {
+          "productId": "PRODUCT_F_TRICHOFLAX",
+          "productName": "F-TRICHOFLAX",
+          "componentOrder": 3,
+          "sourceSheet": "Sheet2",
+          "sourceRow": 236,
+          "schedule": null,
+          "formulation": null
+        },
+        {
+          "productId": "PRODUCT_F_TRICHOGROW",
+          "productName": "F-TRICHOGROW",
+          "componentOrder": 4,
+          "sourceSheet": "Sheet2",
+          "sourceRow": 237,
+          "schedule": null,
+          "formulation": null
+        },
+        {
+          "productId": "PRODUCT_F_TRICHORISE",
+          "productName": "F-TRICHORISE",
+          "componentOrder": 5,
+          "sourceSheet": "Sheet2",
+          "sourceRow": 238,
+          "schedule": null,
+          "formulation": null
+        },
+        {
+          "productId": "PRODUCT_F_LACTOCOL",
+          "productName": "F-LACTOCOL",
+          "componentOrder": 6,
+          "sourceSheet": "Sheet2",
+          "sourceRow": 239,
+          "schedule": null,
+          "formulation": null
+        },
+        {
+          "productId": "PRODUCT_F_MELASURGE_J_V",
+          "productName": "F-MELASurge J V",
+          "componentOrder": 7,
+          "sourceSheet": "Sheet2",
+          "sourceRow": 240,
+          "schedule": null,
+          "formulation": null
+        },
+        {
+          "productId": "PRODUCT_F_SOLSHINE_TABLETS",
+          "productName": "F-SOLSHINE TABLETS",
+          "componentOrder": 8,
+          "sourceSheet": "Sheet2",
+          "sourceRow": 241,
+          "schedule": null,
+          "formulation": null
+        },
+        {
+          "productId": "PRODUCT_F_MELASURGE_J_V",
+          "productName": "F-MELASurge J V",
+          "componentOrder": 9,
+          "sourceSheet": "Sheet2",
+          "sourceRow": 242,
+          "schedule": null,
+          "formulation": null
+        }
+      ]
+    },
+    {
+      "id": "KIT_GYM_PRO_PROTEIN_FEMALE_PRO_TEAM",
+      "name": "Gym pro protein female (Pro Team)",
+      "aliases": [
+        "Gym pro protein female (Pro Team)"
+      ],
+      "mrp": null,
+      "schedule": null,
+      "sourceSheet": "Sheet2",
+      "components": [
+        {
+          "productId": "PRODUCT_F_ALEXA",
+          "productName": "F-ALEXA..",
+          "componentOrder": 1,
+          "sourceSheet": "Sheet2",
+          "sourceRow": 246,
+          "schedule": null,
+          "formulation": null
+        },
+        {
+          "productId": "PRODUCT_F_CAL_D3",
+          "productName": "F-CAL D3",
+          "componentOrder": 2,
+          "sourceSheet": "Sheet2",
+          "sourceRow": 247,
+          "schedule": null,
+          "formulation": null
+        },
+        {
+          "productId": "PRODUCT_FM_BOLIC",
+          "productName": "FM BOLIC",
+          "componentOrder": 3,
+          "sourceSheet": "Sheet2",
+          "sourceRow": 248,
+          "schedule": null,
+          "formulation": null
+        },
+        {
+          "productId": "PRODUCT_F_SOLSHINE_TABLETS",
+          "productName": "F-SOLSHINE TABLETS",
+          "componentOrder": 4,
+          "sourceSheet": "Sheet2",
+          "sourceRow": 249,
+          "schedule": null,
+          "formulation": null
+        },
+        {
+          "productId": "PRODUCT_F_TRICHO_FERRUM",
+          "productName": "F-TRICHO FERRUM",
+          "componentOrder": 5,
+          "sourceSheet": "Sheet2",
+          "sourceRow": 250,
+          "schedule": null,
+          "formulation": null
+        },
+        {
+          "productId": "PRODUCT_F_TRICHO_STRONG",
+          "productName": "F-TRICHO STRONG",
+          "componentOrder": 6,
+          "sourceSheet": "Sheet2",
+          "sourceRow": 251,
+          "schedule": null,
+          "formulation": null
+        },
+        {
+          "productId": "PRODUCT_F_TRICHOSHIELD",
+          "productName": "F-TRICHOSHIELD",
+          "componentOrder": 7,
+          "sourceSheet": "Sheet2",
+          "sourceRow": 252,
+          "schedule": null,
+          "formulation": null
+        },
+        {
+          "productId": "PRODUCT_F_PRO_TEAM_1_6",
+          "productName": "F-PRO TEAM 1*6",
+          "componentOrder": 8,
+          "sourceSheet": "Sheet2",
+          "sourceRow": 253,
+          "schedule": null,
+          "formulation": null
+        },
+        {
+          "productId": "PRODUCT_F_PRO_TEAM_1_6",
+          "productName": "F-PRO TEAM 1*6",
+          "componentOrder": 9,
+          "sourceSheet": "Sheet2",
+          "sourceRow": 254,
+          "schedule": null,
+          "formulation": null
+        }
+      ]
+    },
+    {
+      "id": "KIT_PRO_FACT_IRON_UP",
+      "name": "PRO FACT  IRON UP",
+      "aliases": [
+        "PRO FACT  IRON UP",
+        "IRON UP"
+      ],
+      "mrp": null,
+      "schedule": null,
+      "sourceSheet": "Sheet1",
+      "components": [
+        {
+          "productId": "PRODUCT_F_LACTOCOL",
+          "productName": "F-LACTOCOL",
+          "componentOrder": 1,
+          "sourceSheet": "Sheet1",
+          "sourceRow": 43,
+          "schedule": null,
+          "formulation": null
+        }
+      ]
+    },
+    {
+      "id": "KIT_PRO_FACT_IRON_UP_1",
+      "name": "PRO FACT  IRON UP - 1",
+      "aliases": [
+        "PRO FACT  IRON UP - 1",
+        "IRON UP - 1"
+      ],
+      "mrp": null,
+      "schedule": null,
+      "sourceSheet": "Sheet1",
+      "components": [
+        {
+          "productId": "PRODUCT_F_TRICHORISE",
+          "productName": "F-TRICHORISE",
+          "componentOrder": 1,
+          "sourceSheet": "Sheet1",
+          "sourceRow": 44,
+          "schedule": null,
+          "formulation": null
+        },
+        {
+          "productId": "PRODUCT_F_TRICHO_CUMIN",
+          "productName": "F-TRICHO CUMIN",
+          "componentOrder": 2,
+          "sourceSheet": "Sheet1",
+          "sourceRow": 45,
+          "schedule": null,
+          "formulation": null
+        },
+        {
+          "productId": "PRODUCT_F_TRICHO_STRONG",
+          "productName": "F-TRICHO STRONG",
+          "componentOrder": 3,
+          "sourceSheet": "Sheet1",
+          "sourceRow": 46,
+          "schedule": null,
+          "formulation": null
+        },
+        {
+          "productId": "PRODUCT_F_TRICHO_FERRUM",
+          "productName": "F-TRICHO FERRUM",
+          "componentOrder": 4,
+          "sourceSheet": "Sheet1",
+          "sourceRow": 47,
+          "schedule": null,
+          "formulation": null
+        },
+        {
+          "productId": "PRODUCT_F_TRICHOFLAX",
+          "productName": "F-TRICHOFLAX",
+          "componentOrder": 5,
+          "sourceSheet": "Sheet1",
+          "sourceRow": 48,
+          "schedule": null,
+          "formulation": null
+        },
+        {
+          "productId": "PRODUCT_F_SOLSHINE_TABLETS",
+          "productName": "F-SOLSHINE TABLETS",
+          "componentOrder": 6,
+          "sourceSheet": "Sheet1",
+          "sourceRow": 49,
+          "schedule": null,
+          "formulation": null
+        },
+        {
+          "productId": "PRODUCT_FC_NOURISH",
+          "productName": "FC-NOURISH",
+          "componentOrder": 7,
+          "sourceSheet": "Sheet1",
+          "sourceRow": 50,
+          "schedule": null,
+          "formulation": null
+        }
+      ]
+    },
+    {
+      "id": "KIT_PRO_IMMUNE_01",
+      "name": "PRO IMMUNE 01",
+      "aliases": [
+        "PRO IMMUNE 01"
+      ],
+      "mrp": null,
+      "schedule": null,
+      "sourceSheet": "Sheet1",
+      "components": [
+        {
+          "productId": "PRODUCT_F_LACTOCOL",
+          "productName": "F-LACTOCOL",
+          "componentOrder": 1,
+          "sourceSheet": "Sheet1",
+          "sourceRow": 101,
+          "schedule": null,
+          "formulation": null
+        },
+        {
+          "productId": "PRODUCT_F_TRICHO_GOLD",
+          "productName": "F-TRICHO GOLD",
+          "componentOrder": 2,
+          "sourceSheet": "Sheet1",
+          "sourceRow": 102,
+          "schedule": null,
+          "formulation": null
+        },
+        {
+          "productId": "PRODUCT_F_TRICHO_CUMIN",
+          "productName": "F-TRICHO CUMIN",
+          "componentOrder": 3,
+          "sourceSheet": "Sheet1",
+          "sourceRow": 103,
+          "schedule": null,
+          "formulation": null
+        },
+        {
+          "productId": "PRODUCT_F_TRICHORISE",
+          "productName": "F-TRICHORISE",
+          "componentOrder": 4,
+          "sourceSheet": "Sheet1",
+          "sourceRow": 104,
+          "schedule": null,
+          "formulation": null
+        },
+        {
+          "productId": "PRODUCT_F_TRICHOGROW",
+          "productName": "F-TRICHOGROW",
+          "componentOrder": 5,
+          "sourceSheet": "Sheet1",
+          "sourceRow": 105,
+          "schedule": null,
+          "formulation": null
+        },
+        {
+          "productId": "PRODUCT_F_TRICHO_STRONG",
+          "productName": "F-TRICHO STRONG",
+          "componentOrder": 6,
+          "sourceSheet": "Sheet1",
+          "sourceRow": 106,
+          "schedule": null,
+          "formulation": null
+        },
+        {
+          "productId": "PRODUCT_F_SOLSHINE_TABLETS",
+          "productName": "F-SOLSHINE TABLETS",
+          "componentOrder": 7,
+          "sourceSheet": "Sheet1",
+          "sourceRow": 107,
+          "schedule": null,
+          "formulation": null
+        }
+      ]
+    },
+    {
+      "id": "KIT_ANAGEN_EXTEND_GOLD",
+      "name": "Anagen extend gold",
+      "aliases": [
+        "Anagen extend gold"
+      ],
+      "mrp": null,
+      "schedule": null,
+      "sourceSheet": "Sheet1",
+      "components": [
+        {
+          "productId": "PRODUCT_F_ESM",
+          "productName": "F-ESM",
+          "componentOrder": 1,
+          "sourceSheet": "Sheet1",
+          "sourceRow": 108,
+          "schedule": null,
+          "formulation": null
+        },
+        {
+          "productId": "PRODUCT_F_NICO_R_M",
+          "productName": "F-NICO R-M",
+          "componentOrder": 2,
+          "sourceSheet": "Sheet1",
+          "sourceRow": 109,
+          "schedule": null,
+          "formulation": null
+        },
+        {
+          "productId": "PRODUCT_F_ONGLE",
+          "productName": "F-ONGLE",
+          "componentOrder": 3,
+          "sourceSheet": "Sheet1",
+          "sourceRow": 110,
+          "schedule": null,
+          "formulation": null
+        },
+        {
+          "productId": "PRODUCT_F_LACTOCOL",
+          "productName": "F-LACTOCOL",
+          "componentOrder": 4,
+          "sourceSheet": "Sheet1",
+          "sourceRow": 111,
+          "schedule": null,
+          "formulation": null
+        },
+        {
+          "productId": "PRODUCT_F_Q10S",
+          "productName": "F-Q10S",
+          "componentOrder": 5,
+          "sourceSheet": "Sheet1",
+          "sourceRow": 112,
+          "schedule": null,
+          "formulation": null
+        },
+        {
+          "productId": "PRODUCT_F_TRICHO_PROTEIN",
+          "productName": "F-TRICHO PROTEIN",
+          "componentOrder": 6,
+          "sourceSheet": "Sheet1",
+          "sourceRow": 113,
+          "schedule": null,
+          "formulation": null
+        },
+        {
+          "productId": "PRODUCT_F_SOLSHINE_TABLETS",
+          "productName": "F-SOLSHINE TABLETS",
+          "componentOrder": 7,
+          "sourceSheet": "Sheet1",
+          "sourceRow": 114,
+          "schedule": null,
+          "formulation": null
+        },
+        {
+          "productId": "PRODUCT_F_EASME",
+          "productName": "F-EASME",
+          "componentOrder": 8,
+          "sourceSheet": "Sheet1",
+          "sourceRow": 115,
+          "schedule": null,
+          "formulation": null
+        },
+        {
+          "productId": "PRODUCT_TRICHO_FERRUM_MMS",
+          "productName": "TRICHO FERRUM MMS",
+          "componentOrder": 9,
+          "sourceSheet": "Sheet1",
+          "sourceRow": 116,
+          "schedule": null,
+          "formulation": null
+        }
+      ]
+    }
+  ]
+}

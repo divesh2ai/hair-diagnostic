@@ -1,0 +1,53 @@
+{
+  "fixtureId": "medication_illness_te_01",
+  "generatedAt": "2026-07-03T07:14:17.999Z",
+  "pipelineVersion": "1.0.0",
+  "primaryDiagnosis": "TE_ILLNESS",
+  "scalpStates": [
+    "NORMAL_SCALP"
+  ],
+  "rootCauses": [
+    "MEDICATION",
+    "ILLNESS"
+  ],
+  "therapyNeeds": [],
+  "severity": "MILD",
+  "rankedKitIds": [
+    "HAIR FACT TE GOLD",
+    "PHENOTYPE INFLAMATION",
+    "PRO IMMUNE GOLD",
+    "FPHL"
+  ],
+  "appliedRules": [],
+  "protocolLabel": "Recovery protocol for 4 condition(s): Female pattern hair loss · Scalp / perifollicular inflammation · Immune depletion / regrowth support · Acute telogen shedding.",
+  "recommendations": [
+    "HAIR FACT TE GOLD",
+    "PHENOTYPE INFLAMATION",
+    "PRO IMMUNE GOLD",
+    "FPHL"
+  ],
+  "narratives": {
+    "narratives": {
+      "doctorHash": "{\"doctorSummary\":\"Mild Telogen effluvium secondary to acute illn",
+      "patientHash": "{\"doctorSummary\":\"Mild Telogen effluvium secondary to acute illn"
+    },
+    "orchestration": {
+      "pipelineVersion": "1.0.0",
+      "executionId": "dcd53e51-bc9d-4707-bee9-d482b184868c",
+      "startedAt": "2026-07-03T07:14:17.999Z",
+      "completedAt": "2026-07-03T07:14:18.000Z",
+      "durationMs": 1,
+      "completedStages": [
+        "questionnaire",
+        "clinical",
+        "therapy",
+        "recommendations",
+        "narratives"
+      ]
+    }
+  },
+  "reportMetadata": {
+    "generatedBy": "generate-baselines.ts",
+    "version": "1.0.0"
+  }
+}

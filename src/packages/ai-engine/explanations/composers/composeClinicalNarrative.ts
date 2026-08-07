@@ -85,7 +85,7 @@ export function composeClinicalNarrative(
 
   const segments: ComposedSegment[] = sectionDefs
     .map(({ label, fragments }) => {
-      const assembled = assembleSection(label, fragments, conditions, seed, length);
+      const assembled = assembleSection(label, fragments, conditions, seed, length, context.facts);
       const text = ensureTermination(cap(assembled.text));
       return text ? { label, text } : null;
     })

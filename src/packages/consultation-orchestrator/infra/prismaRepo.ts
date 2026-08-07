@@ -15,14 +15,18 @@ export function prismaConsultationRepo(prisma: PrismaClient): ConsultationRepo {
         include: { currentVersion: true },
       });
       if (!consultation || !consultation.currentVersion) return null;
-      return toStored(consultation.id, consultation.currentVersion);
+      return toStored(consultation.id, consultation.clinicId, consultation.currentVersion);
     },
 
     async getVersion(consultationId, contentVersion) {
-      const v = await prisma.consultationVersion.findUnique({
-        where: { consultationId_contentVersion: { consultationId, contentVersion } },
-      });
-      return v ? toStored(consultationId, v) : null;
+      const [consultation, v] = await Promise.all([
+        prisma.consultation.findUnique({ where: { id: consultationId }, select: { clinicId: true } }),
+        prisma.consultationVersion.findUnique({
+          where: { consultationId_contentVersion: { consultationId, contentVersion } },
+        }),
+      ]);
+      if (!consultation || !v) return null;
+      return toStored(consultationId, consultation.clinicId, v);
     },
 
     async createWithInitialVersion(args): Promise<StoredVersion> {
@@ -34,7 +38,7 @@ export function prismaConsultationRepo(prisma: PrismaClient): ConsultationRepo {
         include: { currentVersion: true },
       });
       if (existing?.currentVersion) {
-        return toStored(existing.id, existing.currentVersion);
+        return toStored(existing.id, existing.clinicId, existing.currentVersion);
       }
 
       return prisma.$transaction(async (tx) => {
@@ -67,7 +71,7 @@ export function prismaConsultationRepo(prisma: PrismaClient): ConsultationRepo {
 
         await writeEvents(tx, consultation.id, version.id, args.events);
 
-        return toStored(consultation.id, version);
+        return toStored(consultation.id, args.clinicId, version);
       });
     },
 
@@ -83,7 +87,7 @@ export function prismaConsultationRepo(prisma: PrismaClient): ConsultationRepo {
 
         // Skip duplicate work — same content, same version pointer.
         if (current.currentVersion?.contentHash === args.contentHash) {
-          return toStored(current.id, current.currentVersion);
+          return toStored(current.id, current.clinicId, current.currentVersion);
         }
 
         const nextVersion = (current.currentVersion?.contentVersion ?? 0) + 1;
@@ -107,7 +111,7 @@ export function prismaConsultationRepo(prisma: PrismaClient): ConsultationRepo {
 
         await writeEvents(tx, current.id, version.id, args.events);
 
-        return toStored(current.id, version);
+        return toStored(current.id, current.clinicId, version);
       });
     },
 
@@ -136,7 +140,12 @@ export function prismaConsultationRepo(prisma: PrismaClient): ConsultationRepo {
         }
 
         await writeEvents(tx, args.consultationId, version.id, args.events);
-        return toStored(args.consultationId, version);
+        const c = await tx.consultation.findUnique({
+          where: { id: args.consultationId },
+          select: { clinicId: true },
+        });
+        if (!c) throw new Error(`Consultation ${args.consultationId} vanished mid-tx`);
+        return toStored(args.consultationId, c.clinicId, version);
       });
     },
   };
@@ -164,6 +173,10 @@ async function writeEvents(
   if (events.length === 0) return;
   await tx.consultationEvent.createMany({
     data: events.map((e) => ({
+      // Composition events are authored before the consultation row exists,
+      // so they carry a `__pending__` sentinel. Persistence rewrites it to
+      // the real consultationId here — no `__pending__` should ever land on
+      // disk.
       consultationId,
       type: e.type,
       payload: e.payload as Prisma.InputJsonValue,
@@ -174,6 +187,7 @@ async function writeEvents(
 
 function toStored(
   consultationId: string,
+  clinicId: string,
   v: {
     id: string;
     contentVersion: number;
@@ -193,6 +207,7 @@ function toStored(
   return {
     id: v.id,
     consultationId,
+    clinicId,
     contentVersion: v.contentVersion,
     content: v.content as Consultation,
     contentHash: v.contentHash,

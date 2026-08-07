@@ -1,0 +1,44 @@
+{
+  "fixtureId": "greying_sole_concern_01",
+  "generatedAt": "2026-07-03T07:14:17.944Z",
+  "pipelineVersion": "1.0.0",
+  "primaryDiagnosis": "EARLY_GREY",
+  "scalpStates": [
+    "NORMAL_SCALP"
+  ],
+  "rootCauses": [],
+  "therapyNeeds": [],
+  "severity": "MODERATE",
+  "rankedKitIds": [
+    "EARLY GREYING CARE GOLD"
+  ],
+  "appliedRules": [],
+  "protocolLabel": "Recovery protocol for Early / premature greying.",
+  "recommendations": [
+    "EARLY GREYING CARE GOLD"
+  ],
+  "narratives": {
+    "narratives": {
+      "doctorHash": "{\"doctorSummary\":\"Moderate Premature canities. Oxidative damage ",
+      "patientHash": "{\"doctorSummary\":\"Moderate Premature canities. Oxidative damage "
+    },
+    "orchestration": {
+      "pipelineVersion": "1.0.0",
+      "executionId": "80d91411-c2dd-49d4-86f0-29110a2f26a4",
+      "startedAt": "2026-07-03T07:14:17.944Z",
+      "completedAt": "2026-07-03T07:14:17.945Z",
+      "durationMs": 1,
+      "completedStages": [
+        "questionnaire",
+        "clinical",
+        "therapy",
+        "recommendations",
+        "narratives"
+      ]
+    }
+  },
+  "reportMetadata": {
+    "generatedBy": "generate-baselines.ts",
+    "version": "1.0.0"
+  }
+}

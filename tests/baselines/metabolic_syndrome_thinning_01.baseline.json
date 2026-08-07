@@ -1,0 +1,53 @@
+{
+  "fixtureId": "metabolic_syndrome_thinning_01",
+  "generatedAt": "2026-07-03T07:14:18.007Z",
+  "pipelineVersion": "1.0.0",
+  "primaryDiagnosis": "AGA_MALE_123",
+  "scalpStates": [
+    "OILY_SCALP"
+  ],
+  "rootCauses": [
+    "GENETICS",
+    "METABOLIC"
+  ],
+  "therapyNeeds": [],
+  "severity": "MODERATE",
+  "rankedKitIds": [
+    "PHENOTYPE INFLAMATION",
+    "PRO FACT META B",
+    "PRO IMMUNE GOLD",
+    "MPHL"
+  ],
+  "appliedRules": [],
+  "protocolLabel": "Recovery protocol for 4 condition(s): Male pattern hair loss · Scalp / perifollicular inflammation · Metabolic dysfunction · Immune depletion / regrowth support.",
+  "recommendations": [
+    "PHENOTYPE INFLAMATION",
+    "PRO FACT META B",
+    "PRO IMMUNE GOLD",
+    "MPHL"
+  ],
+  "narratives": {
+    "narratives": {
+      "doctorHash": "{\"doctorSummary\":\"Moderate Androgenetic alopecia — male pattern,",
+      "patientHash": "{\"doctorSummary\":\"Moderate Androgenetic alopecia — male pattern,"
+    },
+    "orchestration": {
+      "pipelineVersion": "1.0.0",
+      "executionId": "1c2abc5b-d843-4243-a6e5-455407b3298c",
+      "startedAt": "2026-07-03T07:14:18.007Z",
+      "completedAt": "2026-07-03T07:14:18.008Z",
+      "durationMs": 1,
+      "completedStages": [
+        "questionnaire",
+        "clinical",
+        "therapy",
+        "recommendations",
+        "narratives"
+      ]
+    }
+  },
+  "reportMetadata": {
+    "generatedBy": "generate-baselines.ts",
+    "version": "1.0.0"
+  }
+}

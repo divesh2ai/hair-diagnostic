@@ -1,0 +1,50 @@
+{
+  "fixtureId": "female_aga_regrow_fphl_01",
+  "generatedAt": "2026-07-03T07:14:17.907Z",
+  "pipelineVersion": "1.0.0",
+  "primaryDiagnosis": "AGA_FEMALE_123",
+  "scalpStates": [
+    "NORMAL_SCALP"
+  ],
+  "rootCauses": [
+    "GENETICS"
+  ],
+  "therapyNeeds": [],
+  "severity": "MODERATE",
+  "rankedKitIds": [
+    "PHENOTYPE INFLAMATION",
+    "PRO IMMUNE GOLD",
+    "FPHL"
+  ],
+  "appliedRules": [],
+  "protocolLabel": "Recovery protocol for 3 condition(s): Female pattern hair loss · Scalp / perifollicular inflammation · Immune depletion / regrowth support.",
+  "recommendations": [
+    "PHENOTYPE INFLAMATION",
+    "PRO IMMUNE GOLD",
+    "FPHL"
+  ],
+  "narratives": {
+    "narratives": {
+      "doctorHash": "{\"doctorSummary\":\"Moderate Androgenetic alopecia — female patter",
+      "patientHash": "{\"doctorSummary\":\"Moderate Androgenetic alopecia — female patter"
+    },
+    "orchestration": {
+      "pipelineVersion": "1.0.0",
+      "executionId": "825ac4c9-2acd-48f4-a122-1f3ce260ea5c",
+      "startedAt": "2026-07-03T07:14:17.907Z",
+      "completedAt": "2026-07-03T07:14:17.907Z",
+      "durationMs": 0,
+      "completedStages": [
+        "questionnaire",
+        "clinical",
+        "therapy",
+        "recommendations",
+        "narratives"
+      ]
+    }
+  },
+  "reportMetadata": {
+    "generatedBy": "generate-baselines.ts",
+    "version": "1.0.0"
+  }
+}

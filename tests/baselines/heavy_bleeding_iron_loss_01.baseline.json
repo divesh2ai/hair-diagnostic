@@ -1,0 +1,48 @@
+{
+  "fixtureId": "heavy_bleeding_iron_loss_01",
+  "generatedAt": "2026-07-03T07:14:17.957Z",
+  "pipelineVersion": "1.0.0",
+  "primaryDiagnosis": "AGA_FEMALE_123",
+  "scalpStates": [
+    "NORMAL_SCALP"
+  ],
+  "rootCauses": [
+    "IRON_DEFICIENCY"
+  ],
+  "therapyNeeds": [],
+  "severity": "MILD",
+  "rankedKitIds": [
+    "PHENOTYPE INFLAMATION",
+    "FPHL"
+  ],
+  "appliedRules": [],
+  "protocolLabel": "Recovery protocol for 2 condition(s): Female pattern hair loss · Scalp / perifollicular inflammation.",
+  "recommendations": [
+    "PHENOTYPE INFLAMATION",
+    "FPHL"
+  ],
+  "narratives": {
+    "narratives": {
+      "doctorHash": "{\"doctorSummary\":\"Mild Androgenetic alopecia — female pattern, L",
+      "patientHash": "{\"doctorSummary\":\"Mild Androgenetic alopecia — female pattern, L"
+    },
+    "orchestration": {
+      "pipelineVersion": "1.0.0",
+      "executionId": "7c053df6-1e1a-40e4-9932-20e6b1f42680",
+      "startedAt": "2026-07-03T07:14:17.957Z",
+      "completedAt": "2026-07-03T07:14:17.957Z",
+      "durationMs": 0,
+      "completedStages": [
+        "questionnaire",
+        "clinical",
+        "therapy",
+        "recommendations",
+        "narratives"
+      ]
+    }
+  },
+  "reportMetadata": {
+    "generatedBy": "generate-baselines.ts",
+    "version": "1.0.0"
+  }
+}

@@ -1,3 +1,4 @@
+import "server-only";
 import { prisma } from "@/lib/prisma";
 import { PLATFORM_BRANDING, type ClinicBranding } from "./types";
 
@@ -52,8 +53,9 @@ export async function loadClinicBranding(opts: {
     primaryColor: clinic.primaryColor,
     secondaryColor: clinic.secondaryColor,
     tagline: clinic.tagline,
-    doctorAvatarUrl: doctor?.avatarUrl ?? doctor?.photoUrl ?? null,
-    doctorName: doctor?.name ?? null,
+    doctorAvatarUrl:
+      doctor?.avatarUrl ?? doctor?.photoUrl ?? "/demo/Dr%20Priya.png",
+    doctorName: doctor?.name ?? "Dr Priya",
     doctorSignatureUrl: doctor?.signatureUrl ?? null,
     pdfBranding: (clinic.pdfBranding as Record<string, unknown> | null) ?? null,
     reportBranding: (clinic.reportBranding as Record<string, unknown> | null) ?? null,

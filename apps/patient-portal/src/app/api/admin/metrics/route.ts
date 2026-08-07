@@ -8,7 +8,9 @@ export async function GET() {
   try {
     await assertSuperAdmin();
 
-    const [clinics, doctors, assessments, failures, logs] = await Promise.all([
+    // pgbouncer connection_limit=1 — batch as a transaction so all queries
+    // share one connection sequentially instead of starving.
+    const [clinics, doctors, assessments, failures, logs] = await prisma.$transaction([
       prisma.clinic.count({ where: { deletedAt: null } }),
       prisma.doctor.count({ where: { deletedAt: null } }),
       prisma.assessment.count({ where: { deletedAt: null } }),

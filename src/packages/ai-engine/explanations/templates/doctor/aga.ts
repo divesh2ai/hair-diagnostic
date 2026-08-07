@@ -1,5 +1,5 @@
 import type { ClinicalTemplate } from '../types';
-import { f, v, c, cv } from '../_fragmentUtils';
+import { f, v, c, cv, vReq } from '../_fragmentUtils';
 
 // ─── Opening ──────────────────────────────────────────────────────────────────
 
@@ -21,9 +21,19 @@ export const AGA_DOCTOR_MECHANISM = [
     '5α-reductase type II activity at the follicular unit converts testosterone to DHT; sustained DHT-AR binding drives progressive follicular regression and shaft miniaturisation.',
     'Androgen receptor polymorphism elevates follicular sensitivity to circulating DHT, triggering a progressive miniaturisation cascade in androgen-susceptible regions.'
   ),
+  // Microscopic / mechanism claim — does NOT assert visible scalp inflammation,
+  // so it remains unconditional. Reading note in patient version emphasises
+  // "even when the scalp appears clinically normal" so this is honest at the
+  // doctor level too.
   v(7,
     'Perifollicular NF-kB-mediated microinflammation amplifies the androgenetic process, accelerating miniaturisation beyond the androgen-only model.',
-    'Seborrhoea and concurrent scalp inflammatory load compound DHT-mediated follicular regression, widening the zone of androgenetic involvement over time.'
+  ),
+  // Seborrhoea / visible scalp inflammatory load — only valid when the
+  // patient actually reported scalp signals. Gated to prevent the "scalp
+  // signs you described — dandruff, itching, oiliness" class of leak for
+  // normal-scalp AGA patients.
+  vReq(['scalp.anyNonNormal'], 7,
+    'Seborrhoea and concurrent scalp inflammatory load compound DHT-mediated follicular regression, widening the zone of androgenetic involvement over time.',
   ),
 ];
 

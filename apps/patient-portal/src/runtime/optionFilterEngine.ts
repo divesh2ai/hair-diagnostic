@@ -34,7 +34,8 @@ export function getExclusiveOptions(question: Question): QuestionOption[] {
     o.label === 'None of the above' || o.label === 'No gut issues' ||
     o.label === 'Normal scalp' || o.label === 'Not Applicable' ||
     o.label === 'No heat or chemical treatments' ||
-    o.label === 'None / Not tested');
+    o.label === 'None / Not tested' ||
+    o.label === 'Not sure');
 }
 
 /**

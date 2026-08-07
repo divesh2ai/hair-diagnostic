@@ -1,0 +1,53 @@
+{
+  "fixtureId": "hypothyroid_obesity_rule1_01",
+  "generatedAt": "2026-07-03T07:14:17.975Z",
+  "pipelineVersion": "1.0.0",
+  "primaryDiagnosis": "THYROID_HYPO",
+  "scalpStates": [
+    "NORMAL_SCALP"
+  ],
+  "rootCauses": [
+    "HYPOTHYROID",
+    "METABOLIC"
+  ],
+  "therapyNeeds": [],
+  "severity": "MILD",
+  "rankedKitIds": [
+    "PHENOTYPE INFLAMATION",
+    "PRO FACT META B",
+    "FPHL"
+  ],
+  "appliedRules": [
+    "HYPO_METABOLIC: Hypothyroid + metabolic → plain PRO FACT META B (METABOLIC kit covers both)."
+  ],
+  "protocolLabel": "Recovery protocol for 3 condition(s): Female pattern hair loss · Scalp / perifollicular inflammation · Metabolic dysfunction.",
+  "recommendations": [
+    "PHENOTYPE INFLAMATION",
+    "PRO FACT META B",
+    "FPHL"
+  ],
+  "narratives": {
+    "narratives": {
+      "doctorHash": "{\"doctorSummary\":\"Mild Hypothyroidism-associated diffuse alopeci",
+      "patientHash": "{\"doctorSummary\":\"Mild Hypothyroidism-associated diffuse alopeci"
+    },
+    "orchestration": {
+      "pipelineVersion": "1.0.0",
+      "executionId": "b610fd97-113c-473b-bfd7-205862c3fb32",
+      "startedAt": "2026-07-03T07:14:17.975Z",
+      "completedAt": "2026-07-03T07:14:17.976Z",
+      "durationMs": 1,
+      "completedStages": [
+        "questionnaire",
+        "clinical",
+        "therapy",
+        "recommendations",
+        "narratives"
+      ]
+    }
+  },
+  "reportMetadata": {
+    "generatedBy": "generate-baselines.ts",
+    "version": "1.0.0"
+  }
+}

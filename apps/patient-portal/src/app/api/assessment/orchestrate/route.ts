@@ -23,7 +23,8 @@ import { prisma } from '@/lib/prisma';
  */
 export async function POST(req: Request) {
   try {
-    const { assessmentId } = await req.json();
+    const body = (await req.json()) as { assessmentId?: string; force?: boolean };
+    const { assessmentId, force } = body;
     if (!assessmentId) {
       return NextResponse.json({ error: 'Missing assessmentId' }, { status: 400 });
     }
@@ -38,6 +39,20 @@ export async function POST(req: Request) {
 
     const isFailedState =
       assessment.status === 'FAILED' || assessment.status === 'PARTIAL_FAILURE';
+
+    // Force-regenerate: caller explicitly wants a stored COMPLETED report to be
+    // rebuilt (e.g. after a code change to buildClinicalReport). We flip the row
+    // into PARTIAL_FAILURE so resumeOrchestration is willing to touch it, then
+    // re-run the whole pipeline. Only valid for terminal states — never for
+    // in-flight ones (which would race the live worker's lease).
+    if (force && assessment.status === 'COMPLETED') {
+      await prisma.assessment.update({
+        where: { id: assessmentId },
+        data: { status: 'PARTIAL_FAILURE', retryCount: 0 },
+      });
+      await resumeOrchestration(assessmentId);
+      return NextResponse.json({ success: true, resumed: true, forced: true });
+    }
 
     if (isFailedState) {
       await resumeOrchestration(assessmentId);

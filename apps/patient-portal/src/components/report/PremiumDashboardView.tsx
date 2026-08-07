@@ -201,7 +201,7 @@ function ClinicalSnapshot({ report }: { report: ClinicalReport }) {
   const goal = p.goal ?? [];
 
   const tiles: Array<{ label: string; value: string | null; tone?: string }> = [
-    { label: "Severity grade", value: sel.grade ?? null },
+    { label: "Severity grade", value: sel.grade?.replace(/^Grade\s*\d+\s*[—–-]+\s*/i, "") ?? null },
     { label: "Pattern", value: pattern[0] ?? sel.hairType?.[0] ?? null },
     { label: "Duration", value: sel.duration ?? p.hairLossDuration ?? null },
     { label: "Shedding intensity", value: sel.count ?? null },

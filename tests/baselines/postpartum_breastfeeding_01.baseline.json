@@ -1,0 +1,50 @@
+{
+  "fixtureId": "postpartum_breastfeeding_01",
+  "generatedAt": "2026-07-03T07:14:18.083Z",
+  "pipelineVersion": "1.0.0",
+  "primaryDiagnosis": "TE_POSTPREG",
+  "scalpStates": [
+    "NORMAL_SCALP"
+  ],
+  "rootCauses": [
+    "POST_PARTUM"
+  ],
+  "therapyNeeds": [],
+  "severity": "MILD",
+  "rankedKitIds": [
+    "LACTIHEALTH",
+    "PHENOTYPE INFLAMATION",
+    "FPHL"
+  ],
+  "appliedRules": [],
+  "protocolLabel": "Recovery protocol for 3 condition(s): Female pattern hair loss · Scalp / perifollicular inflammation · Post-partum / breastfeeding.",
+  "recommendations": [
+    "LACTIHEALTH",
+    "PHENOTYPE INFLAMATION",
+    "FPHL"
+  ],
+  "narratives": {
+    "narratives": {
+      "doctorHash": "{\"doctorSummary\":\"Mild Post-partum telogen effluvium with concur",
+      "patientHash": "{\"doctorSummary\":\"Mild Post-partum telogen effluvium with concur"
+    },
+    "orchestration": {
+      "pipelineVersion": "1.0.0",
+      "executionId": "031774cc-cbdc-4a7b-b345-c49cecec7431",
+      "startedAt": "2026-07-03T07:14:18.083Z",
+      "completedAt": "2026-07-03T07:14:18.084Z",
+      "durationMs": 1,
+      "completedStages": [
+        "questionnaire",
+        "clinical",
+        "therapy",
+        "recommendations",
+        "narratives"
+      ]
+    }
+  },
+  "reportMetadata": {
+    "generatedBy": "generate-baselines.ts",
+    "version": "1.0.0"
+  }
+}

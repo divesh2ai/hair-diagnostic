@@ -25,7 +25,7 @@ export async function GET() {
       : null,
     prisma.doctor.findFirst({
       where: { supabaseUserId: auth.sub },
-      select: { name: true, photoUrl: true, specialization: true },
+      select: { id: true, name: true, photoUrl: true, specialization: true },
     }),
   ]);
 

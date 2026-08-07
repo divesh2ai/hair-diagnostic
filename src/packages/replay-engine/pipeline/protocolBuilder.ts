@@ -66,14 +66,14 @@ export function buildProtocol(
       if (diag.severity === "severe") fired.push("GRADE45_LOCK");
       break;
     case "FPHL":
-      kits.push("MPHL PLUS", "FPHL");
+      kits.push("MPHL", "FPHL");
       therapyNeeds.add("DHT_SUPPRESSION");
       therapyNeeds.add("ENDOCRINE_OPTIMIZATION");
       therapyNeeds.add("INFLAMMATION_CONTROL");
       fired.push("NO_VISIBLE_FALL");
       break;
     case "PCOS":
-      kits.push("PCOS GOLD", "MPHL PLUS");
+      kits.push("PCOS GOLD", "MPHL");
       therapyNeeds.add("ENDOCRINE_OPTIMIZATION");
       therapyNeeds.add("DHT_SUPPRESSION");
       therapyNeeds.add("INFLAMMATION_CONTROL");
@@ -117,7 +117,7 @@ export function buildProtocol(
       therapyNeeds.add("SHAFT_RECONSTRUCTION");
       break;
     case "MULTIFACTORIAL":
-      kits.push("MPHL PLUS", "HAIR FACT TE GOLD", "PHENOTYPE INFLAMATION");
+      kits.push("MPHL", "HAIR FACT TE GOLD", "PHENOTYPE INFLAMATION");
       therapyNeeds.add("DHT_SUPPRESSION");
       therapyNeeds.add("CYCLE_RESTORATION");
       therapyNeeds.add("INFLAMMATION_CONTROL");

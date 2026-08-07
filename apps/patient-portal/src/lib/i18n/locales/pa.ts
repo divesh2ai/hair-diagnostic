@@ -46,6 +46,8 @@ export const pa: Dictionary = {
     clinicProfile: "ਕਲੀਨਿਕ ਪ੍ਰੋਫਾਈਲ",
     branding: "ਬ੍ਰੈਂਡਿੰਗ",
     whatsapp: "ਵਟਸਐਪ",
+    orders: "ਕਿੱਟ ਆਰਡਰ",
+    leads: "ਲੀਡਸ",
   },
   shell: {
     searchPlaceholder: "ਮਰੀਜ਼, ਰਿਪੋਰਟਾਂ, ਕਲੀਨਿਕਸ ਖੋਜੋ…",

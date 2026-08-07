@@ -1,0 +1,202 @@
+.host {
+  --ink: #050d0a;
+  --forest-950: #0b2b24;
+  --forest-900: #123c32;
+  --cream: #f4efe2;
+  --cream-soft: rgba(214, 222, 208, 0.72);
+  --muted: rgba(214, 222, 208, 0.58);
+  --gold: #d9bc7a;
+  --gold-soft: #f0dca8;
+  min-height: 100dvh;
+  background: linear-gradient(180deg, #030807 0%, #060f0c 100%);
+  font-family: var(--font-jakarta), system-ui, sans-serif;
+}
+
+.topBar {
+  position: sticky;
+  top: 0;
+  z-index: 40;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 10px clamp(16px, 4vw, 40px);
+  background: rgba(6, 15, 12, 0.9);
+  color: var(--cream);
+  border-bottom: 1px solid rgba(240, 220, 168, 0.18);
+  backdrop-filter: blur(12px);
+  flex-wrap: wrap;
+}
+
+.brand {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+}
+
+.brand span {
+  font-size: 9.5px;
+  letter-spacing: 0.26em;
+  text-transform: uppercase;
+  color: var(--gold);
+}
+
+.brand strong {
+  font-family: var(--font-fraunces), Georgia, serif;
+  font-size: 15px;
+  font-weight: 500;
+}
+
+.brandClinic {
+  font-size: 11px;
+  color: var(--muted);
+  letter-spacing: 0.06em;
+  margin-top: 2px;
+}
+
+.actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.viewSwitch {
+  display: inline-flex;
+  gap: 3px;
+  padding: 3px;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.35);
+  border: 1px solid rgba(240, 220, 168, 0.22);
+}
+
+.viewLink {
+  padding: 5px 12px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted);
+  text-decoration: none;
+  transition: color 200ms ease, background 200ms ease;
+}
+
+.viewLink:hover {
+  color: var(--cream);
+}
+
+.viewLinkActive {
+  background: rgba(240, 220, 168, 0.15);
+  color: var(--gold-soft);
+}
+
+.resetButton {
+  padding: 5px 12px;
+  border-radius: 999px;
+  border: 1px solid rgba(240, 220, 168, 0.28);
+  background: transparent;
+  color: rgba(244, 239, 226, 0.72);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: all 180ms ease;
+}
+
+.resetButton:hover {
+  color: var(--gold-soft);
+  border-color: rgba(240, 220, 168, 0.55);
+}
+
+.resetButton:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.stage {
+  display: flex;
+  justify-content: center;
+  padding: 20px clamp(12px, 3vw, 32px) 40px;
+}
+
+.desktopFrame {
+  width: 100%;
+  max-width: 1400px;
+  border-radius: 20px;
+  overflow: hidden;
+  border: 1px solid rgba(240, 220, 168, 0.16);
+  background: #f3ecde;
+  box-shadow: 0 30px 80px -30px rgba(0, 0, 0, 0.65);
+}
+
+.mobileFrame {
+  width: 100%;
+  max-width: 430px;
+  border-radius: 34px;
+  overflow: hidden;
+  border: 10px solid #0a1611;
+  background: #f3ecde;
+  box-shadow: 0 30px 80px -30px rgba(0, 0, 0, 0.65);
+}
+
+.responsiveFrame {
+  width: 100%;
+  border-radius: 0;
+  overflow: hidden;
+  background: #f3ecde;
+}
+
+/* Boot state — while we load the demo clinic. */
+.boot {
+  min-height: 100dvh;
+  display: grid;
+  place-items: center;
+  background: linear-gradient(180deg, #030807 0%, #060f0c 100%);
+  color: rgba(240, 220, 168, 0.85);
+  font-family: var(--font-jakarta), system-ui, sans-serif;
+}
+
+.bootInner {
+  text-align: center;
+  padding: 26px 32px;
+  border: 1px solid rgba(240, 220, 168, 0.22);
+  border-radius: 16px;
+  background: rgba(8, 21, 15, 0.66);
+  backdrop-filter: blur(8px);
+}
+
+.bootInner strong {
+  display: block;
+  font-family: var(--font-fraunces), Georgia, serif;
+  font-size: 18px;
+  font-weight: 500;
+  color: var(--gold-soft);
+  margin-bottom: 6px;
+}
+
+.bootInner p {
+  margin: 0;
+  font-size: 13px;
+  color: rgba(244, 239, 226, 0.72);
+  line-height: 1.55;
+}
+
+.bootError {
+  color: rgba(255, 200, 190, 0.85);
+}
+
+.bootRetry {
+  display: inline-flex;
+  margin-top: 12px;
+  padding: 6px 14px;
+  border-radius: 999px;
+  border: 1px solid rgba(240, 220, 168, 0.4);
+  color: var(--gold-soft);
+  font-size: 12px;
+  cursor: pointer;
+  background: transparent;
+  font-family: inherit;
+}
