@@ -35,17 +35,62 @@ export function OnePageReportActions({
     };
   }, [menuOpen]);
 
-  const reportUrl = () =>
+  /** The signed review token this page was opened with, if any. */
+  const currentToken = () =>
     typeof window !== "undefined"
-      ? `${window.location.origin}/reports/${assessmentId}/one-page`
-      : `/reports/${assessmentId}/one-page`;
+      ? new URLSearchParams(window.location.search).get("t")
+      : null;
+
+  const reportUrl = () => {
+    const base =
+      typeof window !== "undefined"
+        ? `${window.location.origin}/reports/${assessmentId}/one-page`
+        : `/reports/${assessmentId}/one-page`;
+    // Keep the token on shared links — without it a conference recipient
+    // lands on the clinical-console login instead of the report.
+    const token = currentToken();
+    return token ? `${base}?t=${encodeURIComponent(token)}` : base;
+  };
 
   const shareMessage = () =>
     `Hi${patientName ? ` ${patientName}` : ""}, your hair-health report ` +
     `${clinicName ? `from ${clinicName} ` : ""}is ready. View it here: ${reportUrl()}`;
 
-  const onDownload = () => {
-    window.open(`/api/reports/${assessmentId}/one-page/pdf`, "_blank");
+  const onDownload = async () => {
+    // Server-side rendering is the preferred path — it produces the exact
+    // A4 landscape PDF. It needs Playwright plus browser binaries, which are
+    // not present in every runtime (Vercel serverless returns 501
+    // playwright_missing), and it 401s for a token-authorised viewer unless
+    // the token travels with the request.
+    //
+    // Rather than opening a tab that shows a JSON error, probe first and fall
+    // back to the browser's own print-to-PDF. The sheet is already print-
+    // styled A4 landscape, so the fallback yields the same page and works on
+    // desktop and mobile alike.
+    const token = currentToken();
+    const pdfUrl = `/api/reports/${assessmentId}/one-page/pdf${
+      token ? `?t=${encodeURIComponent(token)}` : ""
+    }`;
+    try {
+      const res = await fetch(pdfUrl);
+      const type = res.headers.get("content-type") ?? "";
+      if (res.ok && type.includes("pdf")) {
+        const blob = await res.blob();
+        const objectUrl = URL.createObjectURL(blob);
+        const link = document.createElement("a");
+        link.href = objectUrl;
+        link.download = `${patientName ?? "hair-health"} -1 pager.pdf`;
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+        URL.revokeObjectURL(objectUrl);
+        return;
+      }
+    } catch {
+      // Network failure — fall through to print.
+    }
+    toast.info("Opening your print dialog — choose “Save as PDF”.");
+    window.print();
   };
 
   const onWhatsapp = () => {
