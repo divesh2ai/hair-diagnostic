@@ -1,56 +1,42 @@
-'use client';
+import { getClinicLandingData } from '@/lib/clinics/getClinicLandingData';
 
-import { useEffect, useState } from 'react';
+import { AssessmentV3Client } from './AssessmentV3Client';
 
-import { AssessmentV3Journey } from '@/components/questionnaire/v3';
-import { getProtocolForConcern } from '@/runtime/protocolLoader';
-import {
-  resolvePersistedAssessmentSession,
-  useAssessmentStore,
-} from '@/stores/useAssessmentStore';
+interface AssessmentV3PageProps {
+  params: Promise<{ clinicSlug: string }>;
+}
 
 /**
- * HairOS — hair assessment route.
+ * Server shell for the hair assessment.
  *
- * Mirrors the skin/acne page's hydration guard, but pins the store to the
- * hair concern. Without this, a persisted `concern: 'skin_acne'` in
- * localStorage (from a previous visit to /skin/acne) would rehydrate the
- * skin protocol and render skin questions on this URL.
+ * Exists only to resolve the clinic's offered languages before the client
+ * renders, so the language gate and switcher show the right list even when a
+ * patient deep-links straight here without passing the landing page. Mirrors
+ * the composition already used by `q/[clinicSlug]/page.tsx`, and shares its
+ * cached Prisma read.
+ *
+ * Deliberately does NOT 404 on an unknown or inactive clinic — that is the
+ * landing page's job, and changing it here would alter existing behaviour for
+ * in-flight assessments. A missing clinic simply falls back to offering every
+ * language the platform supports.
  */
-export default function AssessmentV3Page() {
-  const concern = useAssessmentStore((state) => state.concern);
-  const setConcern = useAssessmentStore((state) => state.setConcern);
-  const [hasHydrated, setHasHydrated] = useState(false);
+export default async function AssessmentV3Page({ params }: AssessmentV3PageProps) {
+  const { clinicSlug } = await params;
+  const clinic = await getClinicLandingData(clinicSlug);
 
-  useEffect(() => {
-    let cancelled = false;
-    const persistence = useAssessmentStore.persist;
-    const hydration = persistence ? persistence.rehydrate() : Promise.resolve();
-    void Promise.resolve(hydration).finally(() => {
-      if (cancelled) return;
-      try {
-        const raw = localStorage.getItem('drfact-assessment-storage');
-        const persisted = raw ? JSON.parse(raw)?.state : null;
-        if (persisted?.concern === 'hair') {
-          useAssessmentStore.setState(resolvePersistedAssessmentSession(persisted));
-        }
-      } catch {
-        // Malformed / blocked storage falls back to a fresh hair session below.
+  return (
+    <AssessmentV3Client
+      clinicSlug={clinicSlug}
+      clinic={
+        clinic
+          ? {
+              id: clinic.id,
+              name: clinic.name,
+              language: clinic.language,
+              supportedLanguages: clinic.supportedLanguages,
+            }
+          : null
       }
-      setHasHydrated(true);
-    });
-    return () => {
-      cancelled = true;
-    };
-  }, []);
-
-  useEffect(() => {
-    if (hasHydrated && concern !== 'hair') {
-      setConcern('hair', getProtocolForConcern('hair'));
-    }
-  }, [concern, hasHydrated, setConcern]);
-
-  if (!hasHydrated || concern !== 'hair') return null;
-
-  return <AssessmentV3Journey visualMode="bridge" />;
+    />
+  );
 }

@@ -1,6 +1,6 @@
 {
   "fixtureId": "night_shift_oxidative_01",
-  "generatedAt": "2026-07-03T07:14:18.014Z",
+  "generatedAt": "2026-08-10T13:00:39.656Z",
   "pipelineVersion": "1.0.0",
   "primaryDiagnosis": "NIGHT_SHIFT",
   "scalpStates": [
@@ -32,10 +32,10 @@
     },
     "orchestration": {
       "pipelineVersion": "1.0.0",
-      "executionId": "1544b51a-8027-4814-9a11-6e2245726394",
-      "startedAt": "2026-07-03T07:14:18.014Z",
-      "completedAt": "2026-07-03T07:14:18.015Z",
-      "durationMs": 1,
+      "executionId": "cffc1558-4c43-4884-afa6-fca5767dbdc4",
+      "startedAt": "2026-08-10T13:00:39.656Z",
+      "completedAt": "2026-08-10T13:00:39.659Z",
+      "durationMs": 3,
       "completedStages": [
         "questionnaire",
         "clinical",

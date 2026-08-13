@@ -1,6 +1,6 @@
 {
   "fixtureId": "pcos_only_dandruff_01",
-  "generatedAt": "2026-07-03T07:14:18.045Z",
+  "generatedAt": "2026-08-10T13:00:39.674Z",
   "pipelineVersion": "1.0.0",
   "primaryDiagnosis": "PCOS_ONLY",
   "scalpStates": [
@@ -31,9 +31,9 @@
     },
     "orchestration": {
       "pipelineVersion": "1.0.0",
-      "executionId": "6d36a9b7-580c-42c8-8487-942dc8b43e1f",
-      "startedAt": "2026-07-03T07:14:18.045Z",
-      "completedAt": "2026-07-03T07:14:18.046Z",
+      "executionId": "0d3cb4b2-e75c-48ff-8fee-bbb5bf6fd926",
+      "startedAt": "2026-08-10T13:00:39.674Z",
+      "completedAt": "2026-08-10T13:00:39.675Z",
       "durationMs": 1,
       "completedStages": [
         "questionnaire",

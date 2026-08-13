@@ -14,11 +14,9 @@ import {
   FeedbackIssueType,
   FeedbackSeverity,
   FeedbackVerdict,
-  SystemRole,
 } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
-import { getClinicContext, handleAuthError } from "@/lib/auth";
-import { isSuperAdmin } from "@/lib/auth/roles";
+import { requireDoctorContext, assertDoctorInClinic } from "@/lib/auth";
 import { writeAuditLog } from "@/lib/audit/writeAuditLog";
 import { logLifecycleEvent } from "@/lib/observability/lifecycle";
 
@@ -54,14 +52,9 @@ export async function POST(
   req: Request,
   ctxParam: { params: Promise<{ assessmentId: string }> },
 ) {
-  let auth;
-  try {
-    auth = await getClinicContext();
-  } catch (err) {
-    const resp = handleAuthError(err);
-    if (resp) return resp;
-    throw err;
-  }
+  const authResult = await requireDoctorContext();
+  if (authResult instanceof NextResponse) return authResult;
+  const { doctor, authUserId, authRole, mode } = authResult;
 
   const { assessmentId } = await ctxParam.params;
   const body = (await req.json().catch(() => ({}))) as {
@@ -112,43 +105,28 @@ export async function POST(
       { status: 404 },
     );
   }
-  if (!isSuperAdmin(auth.role) && consultation.clinicId !== auth.clinicId) {
+  if (assertDoctorInClinic(doctor, consultation.clinicId)) {
     logLifecycleEvent({
       event: "feedback.denied",
       assessmentId,
-      clinicId: auth.clinicId ?? null,
+      clinicId: doctor.clinicId,
       failureCode: "cross_clinic",
     });
     return NextResponse.json({ error: "forbidden" }, { status: 403 });
   }
 
-  // FK requires a real Doctor row. Fall back to the reviewingDoctor bound to
-  // the assessment when the caller is not a doctor themselves.
-  const assessmentRow = await prisma.assessment.findUnique({
-    where: { id: assessmentId },
-    select: { reviewingDoctorId: true },
-  });
-  const doctorId =
-    (auth.role === SystemRole.DOCTOR && auth.userId
-      ? (await prisma.doctor.findUnique({
-          where: { supabaseUserId: auth.userId },
-          select: { id: true },
-        }))?.id
-      : undefined) ?? assessmentRow?.reviewingDoctorId;
-  if (!doctorId) {
-    return NextResponse.json(
-      { error: "no_doctor_id", message: "No doctor bound to record feedback" },
-      { status: 422 },
-    );
-  }
-
+  // Feedback is always attributed to the ACTING Doctor (from the verified
+  // context). The old fallback that attributed feedback to
+  // `assessment.reviewingDoctorId` when the caller wasn't a DOCTOR is
+  // removed — it caused feedback to be written under another doctor's ID
+  // whenever a STAFF or admin caller hit this endpoint.
   const created = await prisma.recommendationFeedback.create({
     data: {
       consultationId: consultation.id,
       consultationVersionId: consultation.currentVersion.id,
       assessmentId,
       clinicId: consultation.clinicId,
-      doctorId,
+      doctorId: doctor.id,
       verdict,
       issueType,
       severity,
@@ -162,12 +140,14 @@ export async function POST(
     action: "RECOMMENDATION_FEEDBACK_SUBMITTED",
     entityType: "RecommendationFeedback",
     entityId: created.id,
-    actorId: auth.userId ?? null,
-    actorRole: auth.role,
-    actorType: "doctor",
+    actorId: authUserId,
+    actorRole: authRole,
+    actorType: mode,
     assessmentId,
     metadata: {
       clinicId: consultation.clinicId,
+      actingDoctorId: doctor.id,
+      mode,
       consultationId: consultation.id,
       consultationVersionId: consultation.currentVersion.id,
       contentVersion: consultation.currentVersion.contentVersion,
@@ -191,14 +171,9 @@ export async function GET(
   _req: Request,
   ctxParam: { params: Promise<{ assessmentId: string }> },
 ) {
-  let auth;
-  try {
-    auth = await getClinicContext();
-  } catch (err) {
-    const resp = handleAuthError(err);
-    if (resp) return resp;
-    throw err;
-  }
+  const authResult = await requireDoctorContext();
+  if (authResult instanceof NextResponse) return authResult;
+  const { doctor } = authResult;
 
   const { assessmentId } = await ctxParam.params;
   const consultation = await prisma.consultation.findUnique({
@@ -208,8 +183,8 @@ export async function GET(
   if (!consultation) {
     return NextResponse.json({ error: "not_found" }, { status: 404 });
   }
-  if (!isSuperAdmin(auth.role) && consultation.clinicId !== auth.clinicId) {
-    return NextResponse.json({ error: "forbidden" }, { status: 403 });
+  if (assertDoctorInClinic(doctor, consultation.clinicId)) {
+    return NextResponse.json({ error: "not_found" }, { status: 404 });
   }
 
   const rows = await prisma.recommendationFeedback.findMany({

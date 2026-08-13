@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from 'react';
 import { CheckCircle2, ImageIcon, Loader2, RefreshCw, Trash2, UploadCloud } from 'lucide-react';
 
 import { MAX_UPLOAD_BYTES } from '@/app/api/upload/validation';
+import { useAssessmentTranslator } from '@/lib/assessment-i18n';
 import { useAssessmentStore } from '@/stores/useAssessmentStore';
 
 import styles from './assessment-v3.module.css';
@@ -65,6 +66,7 @@ export function StorageUploadV3({
   onChange: (value: StoredUploadReference | undefined) => void;
 }) {
   const inputRef = useRef<HTMLInputElement>(null);
+  const { t } = useAssessmentTranslator();
   const setAnswer = useAssessmentStore((state) => state.setAnswer);
   const answersMeta = useAssessmentStore((state) => state.answers.__meta);
   const [sessionId] = useState(() => {
@@ -133,12 +135,12 @@ export function StorageUploadV3({
   async function uploadFile(file: File) {
     setError(null);
     if (!ALLOWED_TYPES.has(file.type)) {
-      setError('Choose a JPEG, PNG, or WebP image.');
+      setError(t('photo.errorType'));
       setPendingFile(file);
       return;
     }
     if (file.size <= 0 || file.size > MAX_UPLOAD_BYTES) {
-      setError('Image must be smaller than 4 MB.');
+      setError(t('photo.errorSize'));
       setPendingFile(file);
       return;
     }
@@ -185,7 +187,11 @@ export function StorageUploadV3({
       setPendingFile(null);
       setProgress(100);
     } catch (uploadError) {
-      setError(uploadError instanceof Error ? uploadError.message : 'Upload failed');
+      // Transport/storage failures surface as English technical strings from
+      // the API. Show the patient a localised, actionable message and keep the
+      // raw detail in the console for support.
+      console.error('[UPLOAD] failed:', uploadError);
+      setError(t('photo.errorGeneric'));
     } finally {
       setBusy(false);
     }
@@ -201,7 +207,8 @@ export function StorageUploadV3({
       setPendingFile(null);
       setProgress(0);
     } catch (removeError) {
-      setError(removeError instanceof Error ? removeError.message : 'Could not remove upload');
+      console.error('[UPLOAD] remove failed:', removeError);
+      setError(t('photo.errorRemove'));
     } finally {
       setRemoving(false);
     }
@@ -224,7 +231,12 @@ export function StorageUploadV3({
       {previewUrl ? (
         <div className={styles.uploadPreview}>
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={previewUrl} alt={`Preview of ${stored?.fileName ?? pendingFile?.name ?? 'upload'}`} />
+          <img
+            src={previewUrl}
+            alt={t('photo.previewAlt', {
+              name: stored?.fileName ?? pendingFile?.name ?? '',
+            })}
+          />
         </div>
       ) : (
         <button
@@ -234,15 +246,16 @@ export function StorageUploadV3({
           onClick={() => inputRef.current?.click()}
         >
           <span className={styles.uploadIcon} aria-hidden="true"><UploadCloud size={28} /></span>
-          <strong>Tap to add photo</strong>
-          <small>JPEG, PNG, or WebP · up to 4 MB</small>
+          <strong>{t('photo.tapToAdd')}</strong>
+          <small>{t('photo.fileHint')}</small>
+          <small>{t('photo.guidanceLighting')}</small>
         </button>
       )}
 
       {busy && (
         <div className={styles.uploadProgressWrap} role="status" aria-live="polite">
           <div className={styles.uploadProgressCopy}>
-            <span><Loader2 size={15} className={styles.spin} /> Uploading</span>
+            <span><Loader2 size={15} className={styles.spin} /> {t('photo.uploading')}</span>
             <strong>{progress}%</strong>
           </div>
           <div className={styles.uploadProgressTrack}>
@@ -254,7 +267,9 @@ export function StorageUploadV3({
       {!busy && stored && (
         <div className={styles.uploadSuccess} role="status">
           <span><CheckCircle2 size={16} /> {stored.fileName}</span>
-          <small>{Math.max(1, Math.round(stored.size / 1024))} KB · saved securely</small>
+          <small>
+            {Math.max(1, Math.round(stored.size / 1024))} KB · {t('photo.savedSecurely')}
+          </small>
         </div>
       )}
 
@@ -263,7 +278,7 @@ export function StorageUploadV3({
           <p>{error}</p>
           {pendingFile && ALLOWED_TYPES.has(pendingFile.type) && pendingFile.size <= MAX_UPLOAD_BYTES && (
             <button type="button" onClick={() => void uploadFile(pendingFile)}>
-              <RefreshCw size={14} /> Retry upload
+              <RefreshCw size={14} /> {t('photo.retryUpload')}
             </button>
           )}
         </div>
@@ -272,11 +287,12 @@ export function StorageUploadV3({
       {(stored || previewUrl) && !busy && (
         <div className={styles.uploadActions}>
           <button type="button" onClick={() => inputRef.current?.click()}>
-            <ImageIcon size={15} /> Replace
+            <ImageIcon size={15} /> {t('photo.replace')}
           </button>
           {stored && (
             <button type="button" disabled={removing} onClick={() => void handleRemove()}>
-              {removing ? <Loader2 size={15} className={styles.spin} /> : <Trash2 size={15} />} Remove
+              {removing ? <Loader2 size={15} className={styles.spin} /> : <Trash2 size={15} />}{' '}
+              {t('photo.remove')}
             </button>
           )}
         </div>

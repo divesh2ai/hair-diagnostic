@@ -1,6 +1,6 @@
 {
   "fixtureId": "alopecia_areata_iron_combo_01",
-  "generatedAt": "2026-07-03T07:14:17.867Z",
+  "generatedAt": "2026-08-10T13:00:39.593Z",
   "pipelineVersion": "1.0.0",
   "primaryDiagnosis": "ALOPECIA_AREATA",
   "scalpStates": [
@@ -14,18 +14,18 @@
   "severity": "MILD",
   "rankedKitIds": [
     "HAIR FACT ALOPECIA AREATA",
+    "IRON UP GOLD",
     "PHENOTYPE INFLAMATION",
     "PRO IMMUNE GOLD",
-    "IRON UP GOLD",
     "FPHL"
   ],
   "appliedRules": [],
   "protocolLabel": "Recovery protocol for 5 condition(s): Female pattern hair loss · Scalp / perifollicular inflammation · Iron deficiency / anaemia · Alopecia areata (autoimmune) · Immune depletion / regrowth support.",
   "recommendations": [
     "HAIR FACT ALOPECIA AREATA",
+    "IRON UP GOLD",
     "PHENOTYPE INFLAMATION",
     "PRO IMMUNE GOLD",
-    "IRON UP GOLD",
     "FPHL"
   ],
   "narratives": {
@@ -35,10 +35,10 @@
     },
     "orchestration": {
       "pipelineVersion": "1.0.0",
-      "executionId": "a683c6a9-05c6-410e-9a81-ea9514ae912b",
-      "startedAt": "2026-07-03T07:14:17.867Z",
-      "completedAt": "2026-07-03T07:14:17.871Z",
-      "durationMs": 4,
+      "executionId": "745b8485-03dc-4505-9f22-bf970ba24e62",
+      "startedAt": "2026-08-10T13:00:39.593Z",
+      "completedAt": "2026-08-10T13:00:39.594Z",
+      "durationMs": 1,
       "completedStages": [
         "questionnaire",
         "clinical",

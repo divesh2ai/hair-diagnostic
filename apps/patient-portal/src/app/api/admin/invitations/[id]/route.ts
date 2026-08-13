@@ -1,12 +1,19 @@
 import { NextResponse } from "next/server";
-import { SystemRole, InvitationStatus } from "@prisma/client";
+import { SystemRole } from "@prisma/client";
 import { requireRole } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { revokeInvitation } from "@/lib/invitations";
+import { cancelInvitation, InvitationError } from "@/lib/invitations";
 
 // DELETE /api/admin/invitations/[id]
-// Revokes a pending invitation. Only the original scope's admin (or
-// SUPER_ADMIN) may revoke.
+//
+// Cancel a pending / lazily-expired invitation. Slice-1 semantics:
+//   • Only the invitation's scope admin (or SUPER_ADMIN) may cancel.
+//   • Cancel is idempotent — repeat calls on a REVOKED / ACCEPTED invitation
+//     succeed with `alreadyTerminal: true` and do NOT emit a duplicate
+//     audit event.
+//   • The invitation row is retained (not physically deleted) for audit.
+//   • The bearer token is immediately unusable — subsequent /accept calls
+//     get 410 revoked.
 export async function DELETE(
   _req: Request,
   { params }: { params: Promise<{ id: string }> },
@@ -28,7 +35,9 @@ export async function DELETE(
     return NextResponse.json({ error: "not_found" }, { status: 404 });
   }
 
-  // Scope check
+  // Scope check — trust source is the invitation row's own clinicId /
+  // organizationId. Body-supplied scope values are never trusted here
+  // (the route param is just an id lookup).
   if (auth.user_role === SystemRole.CLINIC_ADMIN) {
     if (inv.clinicId !== auth.clinic_id) {
       return NextResponse.json({ error: "forbidden" }, { status: 403 });
@@ -42,13 +51,26 @@ export async function DELETE(
     }
   }
 
-  if (inv.status !== InvitationStatus.PENDING) {
-    return NextResponse.json(
-      { error: "invalid_state", status: inv.status },
-      { status: 409 },
-    );
+  try {
+    const { invitation, alreadyTerminal } = await cancelInvitation({
+      invitationId: id,
+      actorSupabaseUserId: auth.sub,
+      actorEmail: auth.email,
+    });
+    return NextResponse.json({
+      ok: true,
+      alreadyTerminal,
+      invitation: {
+        id: invitation.id,
+        status: invitation.status,
+        revokedAt: invitation.revokedAt,
+      },
+    });
+  } catch (err) {
+    if (err instanceof InvitationError && err.code === "not_found") {
+      return NextResponse.json({ error: "not_found" }, { status: 404 });
+    }
+    console.error("[invitations.cancel]", err);
+    return NextResponse.json({ error: "internal_error" }, { status: 500 });
   }
-
-  await revokeInvitation(id);
-  return NextResponse.json({ ok: true });
 }

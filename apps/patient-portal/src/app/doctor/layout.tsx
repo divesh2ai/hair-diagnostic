@@ -1,8 +1,7 @@
-import { redirect } from "next/navigation";
 import type { ReactNode } from "react";
 import { AppShell, AppShellProviders } from "@/components/app-shell";
 import {
-  loadShellData,
+  loadDoctorShellData,
   firstNameOf,
 } from "@/components/app-shell/loadShellData";
 import { navForRole } from "@/lib/navigation";
@@ -12,16 +11,13 @@ export const dynamic = "force-dynamic";
 // the caller's JWT role — a SUPER_ADMIN previewing the doctor surface must
 // still see the Doctor workspace and Doctor nav, otherwise multi-role users
 // leak admin navigation into the clinical workspace.
+//
+// Slice-0 hardening (2026-08-10): role alone no longer grants access. A
+// live Doctor row (isActive, not soft-deleted) must exist for the caller's
+// supabaseUserId. `loadDoctorShellData` enforces this and routes admins
+// without a Doctor row back to their own default surface.
 export default async function DoctorLayout({ children }: { children: ReactNode }) {
-  const data = await loadShellData();
-  if (
-    data.role !== "DOCTOR" &&
-    data.role !== "CLINIC_ADMIN" &&
-    data.role !== "ORG_ADMIN" &&
-    data.role !== "SUPER_ADMIN"
-  ) {
-    redirect("/");
-  }
+  const data = await loadDoctorShellData();
   const greetingName = firstNameOf(data.displayName, data.email);
   const doctorNav = navForRole("DOCTOR");
   const clinicName = data.branding.clinicName;

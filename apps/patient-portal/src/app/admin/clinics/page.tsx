@@ -22,6 +22,8 @@ type Row = {
   status: "ACTIVE" | "SUSPENDED" | "ARCHIVED";
   doctorCount: number;
   patientCount: number;
+  locationCount: number;
+  locationSetup: "NONE" | "INCOMPLETE" | "COMPLETE";
   createdAt: string;
   updatedAt: string;
 };
@@ -137,6 +139,23 @@ export default function AdminClinicsPage() {
         cell: (r) => r.patientCount,
         align: "right",
         width: "100px",
+      },
+      {
+        // The national map is only as complete as this column. A clinic that
+        // reads "Not set up" cannot be plotted, however healthy it otherwise is.
+        key: "location",
+        header: "Location",
+        cell: (r) =>
+          r.locationSetup === "COMPLETE" ? (
+            <StatusBadge tone="success">
+              {r.locationCount > 1 ? `${r.locationCount} branches` : "On map"}
+            </StatusBadge>
+          ) : r.locationSetup === "INCOMPLETE" ? (
+            <StatusBadge tone="warning">Pin missing</StatusBadge>
+          ) : (
+            <StatusBadge tone="neutral">Not set up</StatusBadge>
+          ),
+        width: "140px",
       },
       {
         key: "created",

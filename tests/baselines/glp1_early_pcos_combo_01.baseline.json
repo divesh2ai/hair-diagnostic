@@ -1,6 +1,6 @@
 {
   "fixtureId": "glp1_early_pcos_combo_01",
-  "generatedAt": "2026-07-03T07:14:17.929Z",
+  "generatedAt": "2026-08-10T13:00:39.614Z",
   "pipelineVersion": "1.0.0",
   "primaryDiagnosis": "AGA_FEMALE_123",
   "scalpStates": [
@@ -15,16 +15,14 @@
   "rankedKitIds": [
     "RAPID WEIGHT LOSS SHIELD",
     "HAIR FACT TE GOLD",
-    "PHENOTYPE INFLAMATION",
     "PRO FACT META B PCOS",
     "FPHL"
   ],
   "appliedRules": [],
-  "protocolLabel": "Recovery protocol for 5 condition(s): Female pattern hair loss · Scalp / perifollicular inflammation · PCOS / PCOD · Rapid weight loss / GLP-1 · Acute telogen shedding.",
+  "protocolLabel": "Recovery protocol for 4 condition(s): Female pattern hair loss · PCOS / PCOD · Rapid weight loss / GLP-1 · Acute telogen shedding.",
   "recommendations": [
     "RAPID WEIGHT LOSS SHIELD",
     "HAIR FACT TE GOLD",
-    "PHENOTYPE INFLAMATION",
     "PRO FACT META B PCOS",
     "FPHL"
   ],
@@ -35,10 +33,10 @@
     },
     "orchestration": {
       "pipelineVersion": "1.0.0",
-      "executionId": "e45a41bf-8682-4e37-857b-360d66f888bc",
-      "startedAt": "2026-07-03T07:14:17.929Z",
-      "completedAt": "2026-07-03T07:14:17.931Z",
-      "durationMs": 2,
+      "executionId": "85b483f8-83f9-4606-877b-afcb87467faa",
+      "startedAt": "2026-08-10T13:00:39.614Z",
+      "completedAt": "2026-08-10T13:00:39.617Z",
+      "durationMs": 3,
       "completedStages": [
         "questionnaire",
         "clinical",

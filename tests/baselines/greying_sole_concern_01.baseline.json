@@ -1,6 +1,6 @@
 {
   "fixtureId": "greying_sole_concern_01",
-  "generatedAt": "2026-07-03T07:14:17.944Z",
+  "generatedAt": "2026-08-10T13:00:39.625Z",
   "pipelineVersion": "1.0.0",
   "primaryDiagnosis": "EARLY_GREY",
   "scalpStates": [
@@ -24,10 +24,10 @@
     },
     "orchestration": {
       "pipelineVersion": "1.0.0",
-      "executionId": "80d91411-c2dd-49d4-86f0-29110a2f26a4",
-      "startedAt": "2026-07-03T07:14:17.944Z",
-      "completedAt": "2026-07-03T07:14:17.945Z",
-      "durationMs": 1,
+      "executionId": "965ea417-c0ec-4dc0-a00c-663576c061b2",
+      "startedAt": "2026-08-10T13:00:39.625Z",
+      "completedAt": "2026-08-10T13:00:39.625Z",
+      "durationMs": 0,
       "completedStages": [
         "questionnaire",
         "clinical",

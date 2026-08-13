@@ -3,6 +3,7 @@
 import { useMemo, useState } from 'react';
 
 import { VoiceDictateButton } from '@/components/shared/VoiceDictateButton';
+import { useAssessmentTranslator } from '@/lib/assessment-i18n';
 import {
   applyGroupExclusivity,
   applyMultiSelectRules,
@@ -45,9 +46,17 @@ export function QuestionRendererV3({
   clinicSlug,
 }: QuestionRendererV3Props) {
   const visibleOptions = getVisibleOptions(question, allAnswers);
+  // Exclusivity is resolved from canonical option IDs and English protocol
+  // labels — deliberately untouched by localisation, so "None of the above"
+  // keeps clearing the other selections in every language.
   const exclusiveIds = getExclusiveOptions(question).map((option) => option.id);
   const recordExclusivityEvent = useAssessmentStore((state) => state.recordExclusivityEvent);
   const [deselectedHint, setDeselectedHint] = useState<string | null>(null);
+  const { t, tOption, tQuestionTitle, tQuestionSubtitle, tPlaceholder, tErrorMessage, tExclusivityToast } =
+    useAssessmentTranslator();
+
+  const questionTitle = tQuestionTitle(question);
+  const questionSubtitle = tQuestionSubtitle(question);
 
   const { density, gridClass } = useMemo(() => {
     if (question.type === 'scale') {
@@ -57,8 +66,11 @@ export function QuestionRendererV3({
       return { density: 'card' as const, gridClass: styles.optionGridImage };
     }
 
+    // Density is measured against the *displayed* label, not the English one:
+    // Hindi options run to different lengths and would otherwise be packed into
+    // tiles sized for English text.
     const longestLabel = visibleOptions.reduce(
-      (maximum, option) => Math.max(maximum, option.label.length),
+      (maximum, option) => Math.max(maximum, tOption(question.id, option).length),
       0,
     );
     const hasDescriptions = visibleOptions.some((option) => Boolean(option.description));
@@ -74,7 +86,7 @@ export function QuestionRendererV3({
             ? styles.optionGridCard
             : styles.optionGridTile,
     };
-  }, [question.type, visibleOptions]);
+  }, [question.id, question.type, tOption, visibleOptions]);
 
   const handleSelect = (optionId: string) => {
     if (question.type !== 'multi_select') {
@@ -95,8 +107,9 @@ export function QuestionRendererV3({
           selected: optionId,
           deselected: autoDeselected,
         });
-        if (question.mutualExclusivityToast) {
-          setDeselectedHint(question.mutualExclusivityToast);
+        const toast = tExclusivityToast(question);
+        if (toast) {
+          setDeselectedHint(toast);
           window.setTimeout(() => setDeselectedHint(null), 2500);
         }
       }
@@ -133,10 +146,14 @@ export function QuestionRendererV3({
   return (
     <section className={styles.question} aria-labelledby={`v3-question-${question.id}`}>
       <header className={styles.questionCopy}>
-        <span className={styles.questionNumber}>QUESTION {String(questionNumber).padStart(2, '0')}</span>
-        <h1 id={`v3-question-${question.id}`}>{question.title}</h1>
-        {(question.subtitle || question.type === 'multi_select') && (
-          <p>{question.subtitle ?? 'Select all that apply.'}</p>
+        <span className={styles.questionNumber}>
+          {t('questionnaire.questionEyebrow', {
+            number: String(questionNumber).padStart(2, '0'),
+          })}
+        </span>
+        <h1 id={`v3-question-${question.id}`}>{questionTitle}</h1>
+        {(questionSubtitle || question.type === 'multi_select') && (
+          <p>{questionSubtitle ?? t('questionnaire.multiSelectHint')}</p>
         )}
       </header>
 
@@ -150,13 +167,13 @@ export function QuestionRendererV3({
         {question.type === 'text' && (
           <div className={styles.textControlWrap}>
             <label className={styles.srOnly} htmlFor={`v3-input-${question.id}`}>
-              {question.title}
+              {questionTitle}
             </label>
             <input
               id={`v3-input-${question.id}`}
               className={styles.textControl}
               type="text"
-              placeholder={question.validation?.placeholder ?? 'Type your answer…'}
+              placeholder={tPlaceholder(question, t('input.textPlaceholder'))}
               value={typeof currentAnswer === 'string' ? currentAnswer : ''}
               minLength={question.validation?.minLength}
               maxLength={question.validation?.maxLength}
@@ -175,14 +192,14 @@ export function QuestionRendererV3({
         {question.type === 'number' && (
           <div>
             <label className={styles.srOnly} htmlFor={`v3-input-${question.id}`}>
-              {question.title}
+              {questionTitle}
             </label>
             <input
               id={`v3-input-${question.id}`}
               className={`${styles.textControl} ${outOfRange ? styles.textControlInvalid : ''}`}
               type="number"
               inputMode="numeric"
-              placeholder={question.validation?.placeholder ?? 'e.g. 28'}
+              placeholder={tPlaceholder(question, t('input.numberPlaceholder'))}
               value={typeof currentAnswer === 'number' || typeof currentAnswer === 'string' ? currentAnswer : ''}
               min={question.validation?.min}
               max={question.validation?.max}
@@ -192,8 +209,11 @@ export function QuestionRendererV3({
             />
             {outOfRange && (
               <p id={`v3-error-${question.id}`} className={styles.errorText}>
-                {question.validation?.errorMessage ??
-                  `Please enter a value between ${question.validation?.min ?? 'the minimum'} and ${question.validation?.max ?? 'the maximum'}.`}
+                {tErrorMessage(question) ??
+                  t('validation.outOfRange', {
+                    min: question.validation?.min ?? '—',
+                    max: question.validation?.max ?? '—',
+                  })}
               </p>
             )}
           </div>
@@ -202,12 +222,12 @@ export function QuestionRendererV3({
         {question.type === 'textarea' && (
           <div className={styles.textControlWrap}>
             <label className={styles.srOnly} htmlFor={`v3-input-${question.id}`}>
-              {question.title}
+              {questionTitle}
             </label>
             <textarea
               id={`v3-input-${question.id}`}
               className={`${styles.textControl} ${styles.textareaControl}`}
-              placeholder={question.validation?.placeholder ?? 'Start typing…'}
+              placeholder={tPlaceholder(question, t('input.textareaPlaceholder'))}
               value={typeof currentAnswer === 'string' ? currentAnswer : ''}
               minLength={question.validation?.minLength}
               maxLength={question.validation?.maxLength}
@@ -236,12 +256,13 @@ export function QuestionRendererV3({
           <div
             className={`${styles.optionGrid} ${gridClass}`}
             role={question.type === 'multi_select' ? 'group' : 'radiogroup'}
-            aria-label={question.title}
+            aria-label={questionTitle}
           >
             {visibleOptions.map((option) => (
               <OptionCardV3
                 key={option.id}
                 option={option}
+                label={tOption(question.id, option)}
                 isSelected={
                   Array.isArray(currentAnswer)
                     ? currentAnswer.includes(option.id)

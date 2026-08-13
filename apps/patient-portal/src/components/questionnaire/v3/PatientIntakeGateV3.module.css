@@ -1,0 +1,410 @@
+/* Pre-assessment intake — name, mobile, and (for a returning patient) why they
+   are here today.
+
+   Palette, radii and type scale are lifted from LanguageGateV3.module.css on
+   purpose: this screen sits between the language gate and chapter one, and a
+   patient should read the three as one continuous arrival, not as a form
+   wedged in front of a product. */
+
+.gate {
+  --forest-950: #0b2b24;
+  --forest-900: #123c32;
+  --cream-50: #fffdf7;
+  --cream-100: #f8f3e8;
+  --gold: #b48e43;
+  --gold-soft: #ead7a8;
+  --danger: #f2b8ac;
+  box-sizing: border-box;
+  display: flex;
+  width: 100%;
+  min-height: 100dvh;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  overflow-x: hidden;
+  padding: clamp(28px, 7vh, 72px) clamp(20px, 6vw, 48px);
+  background: radial-gradient(120% 90% at 50% 0%, var(--forest-900) 0%, var(--forest-950) 62%);
+  color: var(--cream-50);
+  text-align: center;
+}
+
+.gate *,
+.gate *::before,
+.gate *::after {
+  box-sizing: border-box;
+}
+
+.gate button {
+  font: inherit;
+  touch-action: manipulation;
+}
+
+.inner {
+  display: flex;
+  width: 100%;
+  max-width: 460px;
+  flex-direction: column;
+  align-items: center;
+}
+
+.eyebrow {
+  color: var(--gold-soft);
+  font-size: 0.6875rem;
+  font-weight: 700;
+  letter-spacing: 0.24em;
+  text-transform: uppercase;
+}
+
+.clinicName {
+  margin: 8px 0 0;
+  color: rgba(248, 243, 232, 0.6);
+  font-size: 0.8125rem;
+  letter-spacing: 0.08em;
+  line-height: 1.6;
+}
+
+.title {
+  margin: 18px 0 0;
+  font-family: var(--font-fraunces), var(--font-devanagari), Georgia, serif;
+  font-size: clamp(1.5rem, 6vw, 2rem);
+  font-weight: 500;
+  letter-spacing: -0.01em;
+  /* Devanagari matras need the extra leading; Latin is unaffected at this
+     size because the line box is already taller than the cap height. */
+  line-height: 1.35;
+}
+
+.body {
+  margin: 12px 0 0;
+  max-width: 40ch;
+  color: rgba(248, 243, 232, 0.66);
+  font-size: 0.9375rem;
+  line-height: 1.75;
+}
+
+/* ── Form ──────────────────────────────────────────────────────────────── */
+
+.form {
+  display: flex;
+  width: 100%;
+  flex-direction: column;
+  gap: 18px;
+  margin-top: clamp(24px, 5vh, 34px);
+  text-align: left;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.label {
+  color: rgba(248, 243, 232, 0.78);
+  font-size: 0.8125rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  line-height: 1.6;
+}
+
+.input {
+  width: 100%;
+  min-height: 56px;
+  padding: 14px 18px;
+  border: 1px solid rgba(234, 215, 168, 0.26);
+  border-radius: 14px;
+  background: rgba(248, 243, 232, 0.05);
+  color: var(--cream-50);
+  font-size: 1.0625rem;
+  line-height: 1.6;
+  transition: border-color 180ms ease, background 180ms ease;
+}
+
+.input::placeholder {
+  color: rgba(248, 243, 232, 0.34);
+}
+
+.input:focus {
+  outline: none;
+  border-color: var(--gold-soft);
+  background: rgba(248, 243, 232, 0.09);
+}
+
+.input:focus-visible {
+  outline: 2px solid var(--gold-soft);
+  outline-offset: 2px;
+}
+
+.input[aria-invalid='true'] {
+  border-color: var(--danger);
+}
+
+/* +91 sits inside the field as a fixed adornment rather than a country picker.
+   India-only today; when a second country is offered this becomes a select and
+   nothing else on the screen has to move. */
+.phoneRow {
+  display: flex;
+  align-items: stretch;
+  gap: 0;
+  border: 1px solid rgba(234, 215, 168, 0.26);
+  border-radius: 14px;
+  background: rgba(248, 243, 232, 0.05);
+  transition: border-color 180ms ease, background 180ms ease;
+}
+
+.phoneRow:focus-within {
+  border-color: var(--gold-soft);
+  background: rgba(248, 243, 232, 0.09);
+}
+
+.phoneRow[data-invalid='true'] {
+  border-color: var(--danger);
+}
+
+.phonePrefix {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  padding: 0 14px 0 18px;
+  border-right: 1px solid rgba(234, 215, 168, 0.2);
+  color: rgba(248, 243, 232, 0.72);
+  font-size: 1.0625rem;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.6;
+}
+
+.phoneInput {
+  flex: 1 1 auto;
+  min-width: 0;
+  min-height: 56px;
+  padding: 14px 18px;
+  border: 0;
+  background: transparent;
+  color: var(--cream-50);
+  font-size: 1.0625rem;
+  /* Comfortable digit spacing without the browser's proportional wobble as
+     the patient types. */
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.06em;
+  line-height: 1.6;
+}
+
+.phoneInput::placeholder {
+  color: rgba(248, 243, 232, 0.34);
+  letter-spacing: 0.06em;
+}
+
+.phoneInput:focus {
+  outline: none;
+}
+
+.hint {
+  margin: 0;
+  color: rgba(248, 243, 232, 0.5);
+  font-size: 0.75rem;
+  line-height: 1.65;
+}
+
+.error {
+  margin: 0;
+  color: var(--danger);
+  font-size: 0.8125rem;
+  line-height: 1.6;
+}
+
+.continueButton {
+  display: inline-flex;
+  width: 100%;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  min-height: 54px;
+  margin-top: 6px;
+  padding: 14px 28px;
+  border: 0;
+  border-radius: 999px;
+  background: linear-gradient(135deg, var(--gold-soft) 0%, var(--gold) 100%);
+  color: #10241a;
+  font-size: 1rem;
+  font-weight: 700;
+  line-height: 1.6;
+  cursor: pointer;
+  transition: transform 180ms ease, box-shadow 180ms ease, opacity 180ms ease;
+}
+
+.continueButton:hover:not(:disabled) {
+  box-shadow: 0 16px 40px -16px rgba(180, 142, 67, 0.75);
+  transform: translateY(-1px);
+}
+
+.continueButton:focus-visible {
+  outline: 2px solid var(--gold-soft);
+  outline-offset: 3px;
+}
+
+.continueButton:disabled {
+  cursor: not-allowed;
+  opacity: 0.62;
+}
+
+.spinner {
+  display: inline-block;
+  width: 15px;
+  height: 15px;
+  border: 2px solid rgba(16, 36, 26, 0.28);
+  border-top-color: #10241a;
+  border-radius: 50%;
+  animation: spin 700ms linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .spinner {
+    animation-duration: 2.4s;
+  }
+
+  .continueButton:hover:not(:disabled) {
+    transform: none;
+  }
+}
+
+.privacyNote {
+  margin: 18px 0 0;
+  max-width: 38ch;
+  color: rgba(248, 243, 232, 0.44);
+  font-size: 0.75rem;
+  line-height: 1.7;
+  text-align: center;
+}
+
+/* ── Connection failure ────────────────────────────────────────────────── */
+
+.failure {
+  width: 100%;
+  margin-top: 4px;
+  padding: 14px 16px;
+  border: 1px solid rgba(242, 184, 172, 0.34);
+  border-radius: 14px;
+  background: rgba(242, 184, 172, 0.08);
+  text-align: left;
+}
+
+.failureTitle {
+  margin: 0;
+  color: var(--cream-50);
+  font-size: 0.875rem;
+  font-weight: 600;
+  line-height: 1.6;
+}
+
+.failureBody {
+  margin: 4px 0 0;
+  color: rgba(248, 243, 232, 0.62);
+  font-size: 0.8125rem;
+  line-height: 1.6;
+}
+
+.secondaryButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 44px;
+  margin-top: 10px;
+  padding: 8px 4px;
+  border: 0;
+  background: none;
+  color: var(--gold-soft);
+  font-size: 0.8125rem;
+  font-weight: 600;
+  line-height: 1.6;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  cursor: pointer;
+}
+
+.secondaryButton:focus-visible {
+  outline: 2px solid var(--gold-soft);
+  outline-offset: 3px;
+  border-radius: 6px;
+}
+
+/* ── Visit intent ──────────────────────────────────────────────────────── */
+
+.choices {
+  display: grid;
+  width: 100%;
+  gap: 10px;
+  margin-top: clamp(22px, 4vh, 30px);
+}
+
+.choice {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  min-height: 62px;
+  padding: 14px 18px;
+  border: 1px solid rgba(234, 215, 168, 0.26);
+  border-radius: 16px;
+  background: rgba(248, 243, 232, 0.05);
+  color: var(--cream-50);
+  cursor: pointer;
+  text-align: left;
+  transition: border-color 180ms ease, background 180ms ease, transform 180ms ease;
+}
+
+.choice:hover {
+  border-color: rgba(234, 215, 168, 0.55);
+  background: rgba(248, 243, 232, 0.09);
+}
+
+.choice[aria-checked='true'] {
+  border-color: var(--gold-soft);
+  background: rgba(234, 215, 168, 0.14);
+}
+
+.choice:focus-visible {
+  outline: 2px solid var(--gold-soft);
+  outline-offset: 3px;
+}
+
+.choiceLabel {
+  min-width: 0;
+  font-size: 0.9375rem;
+  font-weight: 500;
+  line-height: 1.6;
+}
+
+.choiceMark {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border: 1px solid rgba(234, 215, 168, 0.4);
+  border-radius: 50%;
+  color: #10241a;
+}
+
+.choice[aria-checked='true'] .choiceMark {
+  border-color: var(--gold-soft);
+  background: var(--gold-soft);
+}
+
+@media (max-width: 400px) {
+  .choice {
+    min-height: 58px;
+    padding: 12px 14px;
+  }
+
+  .choiceLabel {
+    font-size: 0.9rem;
+  }
+}

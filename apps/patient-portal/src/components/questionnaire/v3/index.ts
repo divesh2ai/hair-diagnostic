@@ -9,7 +9,13 @@ export {
   type MobileProgressiveBridgeProps,
 } from './MobileProgressiveBridge';
 export { InsightMomentV3 } from './InsightMomentV3';
+export { LanguageGateV3 } from './LanguageGateV3';
+export { LocaleSwitcherV3 } from './LocaleSwitcherV3';
 export { OptionCardV3 } from './OptionCardV3';
+export {
+  PatientIntakeGateV3,
+  type PatientIntakeResult,
+} from './PatientIntakeGateV3';
 export {
   QuestionnaireShellV3,
   type QuestionnaireVisualMode,

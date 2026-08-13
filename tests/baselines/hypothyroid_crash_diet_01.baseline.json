@@ -1,6 +1,6 @@
 {
   "fixtureId": "hypothyroid_crash_diet_01",
-  "generatedAt": "2026-07-03T07:14:17.971Z",
+  "generatedAt": "2026-08-10T13:00:39.636Z",
   "pipelineVersion": "1.0.0",
   "primaryDiagnosis": "THYROID_HYPO",
   "scalpStates": [
@@ -14,18 +14,18 @@
   "severity": "MILD",
   "rankedKitIds": [
     "RAPID WEIGHT LOSS SHIELD",
-    "PHENOTYPE INFLAMATION",
     "PRO FACT META B",
+    "PRO IMMUNE GOLD",
     "FPHL"
   ],
   "appliedRules": [
     "HYPO_METABOLIC: Hypothyroid + metabolic → plain PRO FACT META B (METABOLIC kit covers both)."
   ],
-  "protocolLabel": "Recovery protocol for 4 condition(s): Female pattern hair loss · Scalp / perifollicular inflammation · Metabolic dysfunction · Rapid weight loss / GLP-1.",
+  "protocolLabel": "Recovery protocol for 4 condition(s): Female pattern hair loss · Metabolic dysfunction · Rapid weight loss / GLP-1 · Immune depletion / regrowth support.",
   "recommendations": [
     "RAPID WEIGHT LOSS SHIELD",
-    "PHENOTYPE INFLAMATION",
     "PRO FACT META B",
+    "PRO IMMUNE GOLD",
     "FPHL"
   ],
   "narratives": {
@@ -35,10 +35,10 @@
     },
     "orchestration": {
       "pipelineVersion": "1.0.0",
-      "executionId": "16c51686-6cf4-43e7-a141-aff9d6a7def7",
-      "startedAt": "2026-07-03T07:14:17.971Z",
-      "completedAt": "2026-07-03T07:14:17.973Z",
-      "durationMs": 2,
+      "executionId": "c1278f0a-0dab-4906-961d-a2fe261a5df2",
+      "startedAt": "2026-08-10T13:00:39.636Z",
+      "completedAt": "2026-08-10T13:00:39.637Z",
+      "durationMs": 1,
       "completedStages": [
         "questionnaire",
         "clinical",

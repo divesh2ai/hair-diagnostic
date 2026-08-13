@@ -1,0 +1,340 @@
+.layer {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  overflow: hidden;
+  pointer-events: none;
+  contain: layout style;
+}
+
+.mover {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 148px;
+  height: 168px;
+  pointer-events: auto;
+  cursor: grab;
+  user-select: none;
+  -webkit-user-select: none;
+  will-change: transform;
+}
+
+.mover:active { cursor: grabbing; }
+.mover[data-dragging="true"] .controls,
+.mover[data-drag-phase="release"] .controls { opacity: 0; pointer-events: none; }
+.mover[data-drag-phase="pickup"] .characterButton { animation: companion-pickup 120ms cubic-bezier(.2,.8,.2,1) both; }
+.mover[data-dragging="true"] .characterButton {
+  transform: rotate(var(--drag-lean, 0deg));
+  transition: none;
+}
+.mover[data-drag-phase="release"] .characterButton { animation: companion-release 520ms cubic-bezier(.2,.8,.2,1) both; }
+.mover[data-boundary="left"] .characterButton { transform: translate3d(3px,var(--drag-lag-y,0),0) rotate(-2deg); }
+.mover[data-boundary="right"] .characterButton { transform: translate3d(-3px,var(--drag-lag-y,0),0) rotate(2deg); }
+.mover[data-boundary="top"] .characterButton { transform: translate3d(var(--drag-lag-x,0),3px,0); }
+.mover[data-boundary="bottom"] .characterButton { transform: translate3d(var(--drag-lag-x,0),-2px,0); }
+.mover[data-debug="true"]::after {
+  position: absolute;
+  left: 4px;
+  top: -50px;
+  z-index: 20;
+  width: max-content;
+  max-width: 230px;
+  content: "state=" attr(data-companion-state) "  drag=" attr(data-drag-phase) "  gait=" attr(data-locomotion) "  phase=" attr(data-gait-phase) "\A velocity=" attr(data-velocity) "  vector=" attr(data-target-vector) "  distance=" attr(data-distance) "  facing=" attr(data-facing) "\A head=" attr(data-head-orientation) "  body=" attr(data-body-orientation) "  feet=" attr(data-left-foot) "/" attr(data-right-foot) "  grounded=" attr(data-grounded) "\A current=" attr(data-current) "  target=" attr(data-target) "  boundary=" attr(data-boundary) "  quiet=" attr(data-quiet-mode);
+  white-space: pre;
+  padding: 5px 7px;
+  border: 1px solid #5eead4;
+  border-radius: 6px;
+  background: rgb(3 19 27 / .9);
+  color: #99f6e4;
+  font: 10px/1.35 ui-monospace, monospace;
+  pointer-events: none;
+}
+
+/* Keep the server-rendered companion safely parked until motion hydration assigns coordinates. */
+.mover:not([style]) { left: auto; right: 24px; top: auto; bottom: 24px; }
+.mover[style] { right: auto; bottom: auto; }
+.mover[data-edge-dock="left"][data-drag-phase="idle"] .characterButton { transform: translateX(1px); }
+.mover[data-edge-dock="right"][data-drag-phase="idle"] .characterButton { transform: translateX(-1px); }
+.mover[data-edge-dock="bottom"][data-drag-phase="idle"] .characterButton { transform: translateY(2px); }
+.mover[data-edge-perched="true"] .characterButton { animation: companion-edge-perch 520ms cubic-bezier(.22,1,.36,1) both; }
+
+.companion {
+  position: relative;
+  display: grid;
+  width: 148px;
+  height: 168px;
+  place-items: end center;
+  filter: drop-shadow(0 10px 14px rgb(15 23 42 / .14));
+}
+
+.characterButton {
+  position: relative;
+  display: grid;
+  width: 148px;
+  height: 160px;
+  padding: 0;
+  place-items: end center;
+  border: 0;
+  border-radius: 36px;
+  background: transparent;
+  cursor: grab;
+  touch-action: none;
+}
+
+.mover:active .characterButton { cursor: grabbing; }
+
+.characterButton > span { transform: scale(1.03); transform-origin: bottom center; }
+.characterButton:focus-visible { outline: 3px solid #0f766e; outline-offset: 2px; }
+.characterButton:active { transform: scale(.98); }
+
+@keyframes companion-edge-perch {
+  0% { transform: translateY(2px) scaleY(1); }
+  45% { transform: translateY(5px) scaleY(.975); }
+  100% { transform: translateY(4px) scaleY(.985); }
+}
+
+.controls {
+  position: absolute;
+  right: -4px;
+  top: 0;
+  display: flex;
+  gap: 4px;
+  padding: 3px;
+  border: 1px solid rgb(203 213 225 / .9);
+  border-radius: 999px;
+  background: rgb(255 255 255 / .94);
+  box-shadow: 0 5px 16px rgb(15 23 42 / .13);
+  opacity: 0;
+  transform: translateY(4px);
+  transition: opacity 160ms ease, transform 160ms ease;
+}
+
+.companion:hover .controls,
+.companion:focus-within .controls { opacity: 1; transform: translateY(0); }
+
+.controls button {
+  display: grid;
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  place-items: center;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: #334155;
+  cursor: pointer;
+}
+
+.controls button:hover { background: #ccfbf1; color: #0f766e; }
+.controls button:focus-visible { outline: 2px solid #0f766e; outline-offset: 1px; }
+.controls svg { width: 15px; height: 15px; }
+.controls .rateButton { font: 700 11px/1 ui-monospace, monospace; }
+.controls .rateButton[aria-pressed="true"] { background: #0f766e; color: white; }
+
+.animationPreviews {
+  position: absolute;
+  left: 50%;
+  bottom: -30px;
+  z-index: 12;
+  display: flex;
+  gap: 5px;
+  transform: translateX(-50%);
+  pointer-events: auto;
+}
+
+.animationPreviews button {
+  display: inline-flex;
+  min-height: 28px;
+  padding: 4px 8px;
+  align-items: center;
+  gap: 4px;
+  border: 1px solid rgb(15 118 110 / .3);
+  border-radius: 999px;
+  background: rgb(255 255 255 / .96);
+  box-shadow: 0 4px 12px rgb(15 23 42 / .12);
+  color: #0f766e;
+  font: 700 10px/1 system-ui, sans-serif;
+  cursor: pointer;
+}
+
+.animationPreviews button:hover { background: #ccfbf1; }
+.animationPreviews button[data-active="true"] { background: #0f766e; color: white; }
+.animationPreviews button:focus-visible { outline: 2px solid #0f766e; outline-offset: 1px; }
+.animationPreviews svg { width: 13px; height: 13px; }
+
+.previewStatus {
+  position: absolute;
+  left: 50%;
+  top: 32px;
+  width: max-content;
+  padding: 3px 7px;
+  border-radius: 999px;
+  background: rgb(15 23 42 / .9);
+  color: white;
+  font: 700 9px/1.2 system-ui, sans-serif;
+  transform: translateX(-50%);
+}
+
+.prop { position: absolute; z-index: 4; pointer-events: none; }
+
+.laptop {
+  left: 50%;
+  bottom: 4px;
+  width: 58px;
+  height: 39px;
+  transform: translateX(-50%);
+  perspective: 120px;
+}
+
+.laptopScreen {
+  position: absolute;
+  left: 7px;
+  top: 0;
+  display: block;
+  width: 44px;
+  height: 28px;
+  overflow: hidden;
+  border: 2px solid #397e91;
+  border-radius: 5px 5px 2px 2px;
+  background: linear-gradient(145deg, #10263c, #0a1726);
+  box-shadow: inset 0 0 0 1px rgb(141 244 230 / .12), 0 4px 8px rgb(8 24 39 / .25);
+  transform: rotateX(-5deg);
+  transform-origin: bottom;
+  animation: prop-open 360ms cubic-bezier(.2,.8,.2,1) both;
+}
+
+.laptopBase {
+  position: absolute;
+  left: 2px;
+  bottom: 4px;
+  width: 54px;
+  height: 7px;
+  border: 1px solid #397e91;
+  border-radius: 2px 2px 8px 8px;
+  background: linear-gradient(#d9f5f1, #7fc8cb);
+  transform: skewX(-12deg);
+}
+
+.scanLine {
+  position: absolute;
+  left: 5px;
+  right: 5px;
+  top: 6px;
+  height: 2px;
+  border-radius: 999px;
+  background: #8df4e6;
+  box-shadow: 0 0 6px #54d9d0;
+  animation: prop-scan 1.4s ease-in-out infinite;
+}
+
+.noteLines {
+  position: absolute;
+  inset: 6px 7px;
+  background: repeating-linear-gradient(to bottom, #8df4e6 0 1px, transparent 1px 5px);
+  opacity: .8;
+  animation: note-write 1s steps(4) infinite;
+}
+
+.microphone {
+  right: 5px;
+  bottom: 15px;
+  width: 26px;
+  height: 38px;
+}
+
+.microphone span {
+  position: absolute;
+  left: 8px;
+  top: 4px;
+  width: 10px;
+  height: 18px;
+  border: 2px solid #397e91;
+  border-radius: 999px;
+  background: linear-gradient(#d9f5f1, #7fc8cb);
+}
+
+.microphone i {
+  position: absolute;
+  left: 5px;
+  top: 14px;
+  width: 16px;
+  height: 12px;
+  border: 2px solid #54d9d0;
+  border-top: 0;
+  border-radius: 0 0 12px 12px;
+}
+
+.microphone b {
+  position: absolute;
+  left: 12px;
+  top: 27px;
+  width: 2px;
+  height: 7px;
+  background: #397e91;
+  box-shadow: 0 0 0 5px rgb(84 217 208 / .13);
+  animation: listen-pulse 1.5s ease-in-out infinite;
+}
+
+.guidePointer {
+  right: -16px;
+  top: 29px;
+  display: grid;
+  width: 36px;
+  height: 36px;
+  place-items: center;
+  border: 2px solid #2dd4bf;
+  border-radius: 999px;
+  background: rgb(240 253 250 / .94);
+  color: #0f766e;
+  box-shadow: 0 0 0 7px rgb(45 212 191 / .13);
+  animation: guide-point 900ms ease-in-out infinite;
+}
+
+.guidePointer span { font: 700 26px/1 system-ui; transform: translateX(1px); }
+
+.mover[data-companion-state="roaming"] .companion { animation: roam-arc 1.5s ease-in-out 1; }
+.mover[data-flying="true"] .companion { animation: companion-fly 680ms cubic-bezier(.2,.8,.2,1) 1; }
+.mover[data-flying="true"] .shadow { animation: companion-flight-shadow 680ms ease-out 1; }
+.mover[data-companion-state="page-transition"] .companion { animation: page-trail 720ms ease-in-out 1; }
+.mover[data-companion-state="sleep"] .companion { opacity: .72; }
+.mover[data-companion-state="minimized"] { width: 58px; height: 62px; }
+.mover[data-companion-state="minimized"] .companion { width: 58px; height: 62px; place-items: center; }
+.mover[data-companion-state="minimized"] .characterButton { width: 52px; height: 52px; place-items: center; }
+.mover[data-companion-state="minimized"] .characterButton > span { transform: none; }
+.mover[data-companion-state="minimized"] .controls { right: -28px; top: -2px; opacity: 0; }
+.mover[data-companion-state="minimized"] .animationPreviews { display: none; }
+
+.companion[data-mode="doctor"] { filter: drop-shadow(0 8px 12px rgb(15 23 42 / .12)); }
+.companion[data-mode="doctor"] .characterButton > span { transform: scale(1.05); }
+
+@keyframes prop-open { from { opacity: 0; transform: rotateX(-80deg) scale(.75); } to { opacity: 1; transform: rotateX(-5deg) scale(1); } }
+@keyframes prop-scan { 0%, 100% { transform: translateY(0); opacity: .45; } 50% { transform: translateY(12px); opacity: 1; } }
+@keyframes note-write { 0% { clip-path: inset(0 100% 0 0); } 100% { clip-path: inset(0 0 0 0); } }
+@keyframes listen-pulse { 0%, 100% { box-shadow: 0 0 0 3px rgb(84 217 208 / .1); } 50% { box-shadow: 0 0 0 8px rgb(84 217 208 / .22); } }
+@keyframes guide-point { 0%, 100% { transform: translateX(0); } 50% { transform: translateX(5px); } }
+@keyframes roam-arc { 0%, 100% { rotate: 0deg; } 35% { rotate: -5deg; } 70% { rotate: 4deg; } }
+@keyframes companion-fly { 0%, 100% { transform: translateY(0) rotate(0); } 38% { transform: translateY(-9px) rotate(-4deg) scale(1.035); } 72% { transform: translateY(-3px) rotate(2deg) scale(1.015); } }
+@keyframes companion-flight-shadow { 0%, 100% { opacity: .13; transform: scaleX(1); } 45% { opacity: .05; transform: scaleX(.72); } }
+@keyframes page-trail { 0% { filter: blur(0); } 48% { filter: blur(2px); transform: translateX(12px) scale(.9); } 100% { filter: blur(0); } }
+@keyframes companion-pickup { 0% { transform: translate3d(0,0,0) scale(1); } 70% { transform: translate3d(0,2px,0) scale(.975); } 100% { transform: translate3d(0,1px,0) scale(.985); } }
+@keyframes companion-release { 0% { transform: translate3d(var(--drag-lag-x,0),var(--drag-lag-y,0),0) rotate(var(--drag-lean,0deg)); } 38% { transform: translate3d(3px,1px,0) rotate(calc(var(--drag-lean,0deg) * -.35)) scale(.985,1.015); } 64% { transform: translate3d(-1px,-1px,0) rotate(1deg) scale(1.012,.99); } 82% { transform: translate3d(.5px,0,0) rotate(-.35deg); } 100% { transform: translate3d(0,0,0) rotate(0) scale(1); } }
+
+.companion[data-reduced-motion="true"],
+.companion[data-reduced-motion="true"] * { animation: none !important; transition: none !important; }
+
+@media (max-width: 767px) {
+  .mover { width: 108px; height: 124px; }
+  .mover:not([style]) { right: 12px; bottom: 12px; }
+  .companion { width: 108px; height: 124px; }
+  .characterButton { width: 108px; height: 118px; }
+  .characterButton > span { transform: scale(1); }
+  .controls { right: -8px; top: -8px; opacity: 1; }
+  .controls button { width: 28px; height: 28px; }
+  .laptop { transform: translateX(-50%) scale(.78); transform-origin: bottom; }
+  .guidePointer { right: -8px; transform: scale(.78); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .mover, .companion, .prop, .prop * { animation: none !important; transition: none !important; }
+}

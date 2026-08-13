@@ -87,7 +87,7 @@ export async function POST(req: NextRequest) {
   }
 
   try {
-    const { invitation, rawToken, inviteLink, delivery } = await createInvitation({
+    const { invitation, delivery } = await createInvitation({
       email: body.email ?? null,
       phone: body.phone ?? null,
       name: body.name ?? null,
@@ -100,8 +100,13 @@ export async function POST(req: NextRequest) {
       invitedByEmail: auth.email,
     });
 
+    // Slice 1: the API response NEVER contains the raw token or the
+    // invite link. The server holds them only long enough to construct
+    // the outgoing message. If delivery fails, the admin uses Resend
+    // (which rotates the token) rather than pasting the previous URL.
     return NextResponse.json(
       {
+        ok: true,
         invitation: {
           id: invitation.id,
           email: invitation.email,
@@ -115,11 +120,11 @@ export async function POST(req: NextRequest) {
           expiresAt: invitation.expiresAt,
           createdAt: invitation.createdAt,
         },
-        // Raw token + link — shown once. Falls back to admin-copy if
-        // delivery failed (delivery.ok=false).
-        rawToken,
-        inviteLink,
-        delivery,
+        delivery: {
+          ok: delivery.ok,
+          channel: delivery.channel ?? null,
+          error: delivery.ok ? undefined : delivery.error ?? null,
+        },
       },
       { status: 201 },
     );

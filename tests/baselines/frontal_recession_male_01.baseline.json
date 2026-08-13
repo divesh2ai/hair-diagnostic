@@ -1,6 +1,6 @@
 {
   "fixtureId": "frontal_recession_male_01",
-  "generatedAt": "2026-07-03T07:14:17.923Z",
+  "generatedAt": "2026-08-10T13:00:39.612Z",
   "pipelineVersion": "1.0.0",
   "primaryDiagnosis": "AGA_MALE_123",
   "scalpStates": [
@@ -13,15 +13,11 @@
   "therapyNeeds": [],
   "severity": "MODERATE",
   "rankedKitIds": [
-    "PHENOTYPE INFLAMATION",
-    "PRO IMMUNE GOLD",
     "MPHL"
   ],
   "appliedRules": [],
-  "protocolLabel": "Recovery protocol for 3 condition(s): Male pattern hair loss · Scalp / perifollicular inflammation · Immune depletion / regrowth support.",
+  "protocolLabel": "Recovery protocol for Male pattern hair loss.",
   "recommendations": [
-    "PHENOTYPE INFLAMATION",
-    "PRO IMMUNE GOLD",
     "MPHL"
   ],
   "narratives": {
@@ -31,9 +27,9 @@
     },
     "orchestration": {
       "pipelineVersion": "1.0.0",
-      "executionId": "bfc51926-1b75-473c-b86f-23eb814d5605",
-      "startedAt": "2026-07-03T07:14:17.923Z",
-      "completedAt": "2026-07-03T07:14:17.924Z",
+      "executionId": "f4cb1850-a315-46f3-a50a-21b4a35b33e0",
+      "startedAt": "2026-08-10T13:00:39.612Z",
+      "completedAt": "2026-08-10T13:00:39.613Z",
       "durationMs": 1,
       "completedStages": [
         "questionnaire",

@@ -1,4 +1,16 @@
 import { PrismaClient, Prisma } from '@prisma/client';
+import { assertSafeDatabaseTarget } from '@shared/env/databaseTarget';
+
+// Single choke point: everything server-side reaches the database through this
+// module, so refusing here refuses everywhere. Runs at import time so a
+// misconfigured process dies on startup rather than after it has written
+// something.
+//
+// Scope note: this does NOT cover the Prisma CLI (`migrate deploy`, `db push`,
+// `studio`), which reads DIRECT_URL itself and never imports this file. Those
+// remain a human decision — which is correct for the migration-promotion step,
+// and worth remembering before running `db push` against the wrong URL.
+assertSafeDatabaseTarget(process.env, 'patient-portal runtime');
 
 // Prevent multiple Prisma Client instances during Next.js hot-reload in dev.
 // In production a single instance is created for the process lifetime.
@@ -33,6 +45,11 @@ function isPoolAcquisitionTimeout(err: unknown): boolean {
     err instanceof Prisma.PrismaClientKnownRequestError && err.code === "P2024"
   );
 }
+
+// Schema-drift classification lives in ./prismaErrors so route catch blocks and
+// unit tests can import it without constructing a client or tripping the
+// database guard above.
+export { describeSchemaDrift, isSchemaDriftError } from './prismaErrors';
 
 function makeClient(): PrismaClient {
   const client = new PrismaClient({

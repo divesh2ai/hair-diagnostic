@@ -1,6 +1,6 @@
 {
   "fixtureId": "heavy_bleeding_iron_loss_01",
-  "generatedAt": "2026-07-03T07:14:17.957Z",
+  "generatedAt": "2026-08-10T13:00:39.629Z",
   "pipelineVersion": "1.0.0",
   "primaryDiagnosis": "AGA_FEMALE_123",
   "scalpStates": [
@@ -12,13 +12,15 @@
   "therapyNeeds": [],
   "severity": "MILD",
   "rankedKitIds": [
-    "PHENOTYPE INFLAMATION",
+    "IRON UP GOLD",
+    "PRO IMMUNE GOLD",
     "FPHL"
   ],
   "appliedRules": [],
-  "protocolLabel": "Recovery protocol for 2 condition(s): Female pattern hair loss · Scalp / perifollicular inflammation.",
+  "protocolLabel": "Recovery protocol for 3 condition(s): Female pattern hair loss · Iron deficiency / anaemia · Immune depletion / regrowth support.",
   "recommendations": [
-    "PHENOTYPE INFLAMATION",
+    "IRON UP GOLD",
+    "PRO IMMUNE GOLD",
     "FPHL"
   ],
   "narratives": {
@@ -28,9 +30,9 @@
     },
     "orchestration": {
       "pipelineVersion": "1.0.0",
-      "executionId": "7c053df6-1e1a-40e4-9932-20e6b1f42680",
-      "startedAt": "2026-07-03T07:14:17.957Z",
-      "completedAt": "2026-07-03T07:14:17.957Z",
+      "executionId": "5c397b92-2481-4a57-805c-d1e24ff050f0",
+      "startedAt": "2026-08-10T13:00:39.630Z",
+      "completedAt": "2026-08-10T13:00:39.630Z",
       "durationMs": 0,
       "completedStages": [
         "questionnaire",

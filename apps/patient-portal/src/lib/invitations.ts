@@ -3,6 +3,7 @@ import {
   SystemRole,
   InvitationStatus,
   NotificationChannel as DBNotificationChannel,
+  type ClinicInvitation,
 } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import {
@@ -13,6 +14,7 @@ import {
   getNotificationService,
   type NotificationChannel,
 } from "@/lib/notifications";
+import { writeAuditLog } from "@/lib/audit/writeAuditLog";
 
 export { generateInvitationToken, hashInvitationToken };
 
@@ -32,6 +34,11 @@ const CHANNEL_PRIORITY: NotificationChannel[] = [
   "EMAIL",
   "IN_APP",
 ];
+
+// ── Resend policy (Slice 1) ────────────────────────────────────────────────
+// P0 rate-limit constants. In-DB, no Redis / new platform.
+export const RESEND_COOLDOWN_MS = 60 * 1000;
+export const RESEND_CEILING = 10;
 
 export type CreateInvitationInput = {
   email?: string | null;
@@ -59,9 +66,15 @@ export class InvitationError extends Error {
       | "not_found"
       | "expired"
       | "already_accepted"
+      | "already_activated"
+      | "cancelled"
       | "revoked"
-      | "identity_mismatch",
+      | "identity_mismatch"
+      | "resend_cooldown"
+      | "resend_limit"
+      | "invitation_changed",
     message: string,
+    public readonly retryAfterSec?: number,
   ) {
     super(message);
   }
@@ -74,16 +87,74 @@ function normEmail(v?: string | null): string | null {
 
 function normPhone(v?: string | null): string | null {
   if (!v) return null;
-  // Keep "+" and digits only. Real E.164 validation belongs in Phase 8 once
-  // we settle on a phone library; for now this is a safe normalization.
   const t = v.trim().replace(/[^\d+]/g, "");
   return t ? t : null;
 }
 
+// ── Lazy-expiry helper ─────────────────────────────────────────────────────
+// Canonical "is this invitation expired for authorization purposes" rule.
+// Do NOT compare `status === EXPIRED` in call sites — a PENDING row with
+// `expiresAt < now()` is functionally expired but not yet transitioned
+// (no background sweep runs on P0). This helper is the single source of
+// truth so every endpoint agrees.
+export function isEffectivelyExpired(
+  inv: Pick<ClinicInvitation, "status" | "expiresAt">,
+): boolean {
+  if (inv.status === InvitationStatus.ACCEPTED) return false;
+  if (inv.status === InvitationStatus.REVOKED) return false;
+  return inv.expiresAt.getTime() <= Date.now();
+}
+
+// Persist EXPIRED status for a lazily-observed expired row and emit the
+// audit event. Idempotent — safe to call repeatedly. Kept small so any
+// endpoint can call it inline without needing its own audit plumbing.
+export async function normalizeExpiry(invitationId: string): Promise<void> {
+  const inv = await prisma.clinicInvitation.findUnique({
+    where: { id: invitationId },
+    select: { status: true, expiresAt: true, clinicId: true, organizationId: true, role: true },
+  });
+  if (!inv) return;
+  if (inv.status !== InvitationStatus.PENDING) return;
+  if (!isEffectivelyExpired(inv)) return;
+  const updated = await prisma.clinicInvitation.updateMany({
+    where: { id: invitationId, status: InvitationStatus.PENDING },
+    data: { status: InvitationStatus.EXPIRED },
+  });
+  if (updated.count > 0) {
+    await writeAuditLog({
+      action: "DOCTOR_INVITATION_EXPIRED",
+      entityType: "ClinicInvitation",
+      entityId: invitationId,
+      actorType: "system",
+      metadata: {
+        clinicId: inv.clinicId,
+        organizationId: inv.organizationId,
+        intendedRole: inv.role,
+      },
+    }).catch((err) => console.error("[invitations.expired] audit failed", err));
+  }
+}
+
+// ── Create ─────────────────────────────────────────────────────────────────
+export type CreateInvitationResult = {
+  invitation: ClinicInvitation;
+  delivery: {
+    ok: boolean;
+    channel?: NotificationChannel;
+    error?: string;
+  };
+};
+
 // Create a pending invitation, then attempt delivery on the preferred
 // channel (WhatsApp default, addendum §6) with fallback through the chain.
-// Returns the raw token exactly once.
-export async function createInvitation(input: CreateInvitationInput) {
+//
+// SECURITY (Slice 1): the raw token is NEVER returned from this function.
+// The server holds it only long enough to build the outgoing message. The
+// route response also strips it. If code needs to verify a token later,
+// it comes IN from the recipient (URL param), never OUT from the server.
+export async function createInvitation(
+  input: CreateInvitationInput,
+): Promise<CreateInvitationResult> {
   const email = normEmail(input.email);
   const phone = normPhone(input.phone);
   const name = input.name?.trim() || null;
@@ -137,8 +208,11 @@ export async function createInvitation(input: CreateInvitationInput) {
     organizationName = o.name;
   }
 
-  // Duplicate pending check — matches on either email or phone.
-  const dup = await prisma.clinicInvitation.findFirst({
+  // Duplicate-pending check honours lazy expiry: a stale PENDING row past
+  // its expiresAt does NOT block a new invitation (transition it to EXPIRED
+  // first, then proceed). Without this, admins would be locked out of
+  // re-inviting a lapsed recipient until a sweep ran (which never does on P0).
+  const dups = await prisma.clinicInvitation.findMany({
     where: {
       status: InvitationStatus.PENDING,
       clinicId: input.clinicId ?? null,
@@ -148,13 +222,17 @@ export async function createInvitation(input: CreateInvitationInput) {
         phone ? { phone } : { id: "__never__" },
       ],
     },
-    select: { id: true },
+    select: { id: true, expiresAt: true, status: true },
   });
-  if (dup) {
-    throw new InvitationError(
-      "duplicate_pending",
-      "a pending invitation for this contact already exists",
-    );
+  for (const d of dups) {
+    if (isEffectivelyExpired(d)) {
+      await normalizeExpiry(d.id);
+    } else {
+      throw new InvitationError(
+        "duplicate_pending",
+        "a pending invitation for this contact already exists",
+      );
+    }
   }
 
   const ttlHours = Math.max(1, Math.min(input.ttlHours ?? 24 * 7, 24 * 30));
@@ -181,9 +259,6 @@ export async function createInvitation(input: CreateInvitationInput) {
     },
   });
 
-  // Deliver. Each provider returns ok=false on missing-config or missing-
-  // contact; we step down the channel priority. Recorded outcome lets the
-  // admin see whether the raw token still needs to be shared manually.
   const inviteLink = buildInviteLink(raw);
   const delivery = await deliverInvitation({
     primaryChannel: channel,
@@ -193,7 +268,7 @@ export async function createInvitation(input: CreateInvitationInput) {
     role: input.role,
   });
 
-  await prisma.clinicInvitation.update({
+  const updated = await prisma.clinicInvitation.update({
     where: { id: invitation.id },
     data: {
       sentAt: delivery.ok ? new Date() : null,
@@ -201,7 +276,23 @@ export async function createInvitation(input: CreateInvitationInput) {
     },
   });
 
-  return { invitation, rawToken: raw, inviteLink, delivery };
+  await writeAuditLog({
+    action: "DOCTOR_INVITATION_CREATED",
+    entityType: "ClinicInvitation",
+    entityId: invitation.id,
+    actorId: input.invitedBySupabaseUserId ?? null,
+    actorType: "admin",
+    metadata: {
+      clinicId: invitation.clinicId,
+      organizationId: invitation.organizationId,
+      intendedRole: invitation.role,
+      channel: invitation.channel,
+      deliveryChannel: delivery.channel ?? null,
+      deliveryOk: delivery.ok,
+    },
+  }).catch((err) => console.error("[invitations.create] audit failed", err));
+
+  return { invitation: updated, delivery };
 }
 
 function buildInviteLink(rawToken: string): string {
@@ -283,6 +374,236 @@ export async function findInvitationByToken(rawToken: string) {
   });
 }
 
+// ── Resend (Slice 1) ───────────────────────────────────────────────────────
+export type ResendInvitationInput = {
+  invitationId: string;
+  scopeName?: string; // pre-resolved clinic/org display name
+  actorSupabaseUserId?: string | null;
+  actorEmail?: string | null;
+};
+
+export type ResendInvitationResult = {
+  invitation: ClinicInvitation;
+  delivery: {
+    ok: boolean;
+    channel?: NotificationChannel;
+    error?: string;
+  };
+};
+
+// Rotate an invitation's bearer token, reset its TTL, deliver a new
+// message, and audit. Uses a compare-and-swap on (tokenHash, resendCount,
+// lastResentAt, status) so two concurrent Resend clicks cannot both
+// deliver messages. The loser observes count=0 on updateMany and returns
+// `invitation_changed`.
+//
+// Delivery happens ONLY AFTER the CAS wins — the DB is the sole
+// authority on which token is current. If external delivery then fails,
+// the new token remains authoritative (recoverable via next Resend).
+export async function resendInvitation(
+  input: ResendInvitationInput,
+): Promise<ResendInvitationResult> {
+  const current = await prisma.clinicInvitation.findUnique({
+    where: { id: input.invitationId },
+  });
+  if (!current) throw new InvitationError("not_found", "invitation not found");
+
+  // Lifecycle gates
+  if (current.status === InvitationStatus.ACCEPTED) {
+    throw new InvitationError(
+      "already_activated",
+      "invitation has already been accepted",
+    );
+  }
+  if (current.status === InvitationStatus.REVOKED) {
+    throw new InvitationError(
+      "cancelled",
+      "invitation has been cancelled — create a new invitation instead",
+    );
+  }
+
+  // Rate limits
+  if (current.resendCount >= RESEND_CEILING) {
+    throw new InvitationError(
+      "resend_limit",
+      `resend ceiling reached (${RESEND_CEILING}); cancel and create a new invitation`,
+    );
+  }
+  if (current.lastResentAt) {
+    const elapsed = Date.now() - current.lastResentAt.getTime();
+    if (elapsed < RESEND_COOLDOWN_MS) {
+      const retryAfter = Math.ceil((RESEND_COOLDOWN_MS - elapsed) / 1000);
+      throw new InvitationError(
+        "resend_cooldown",
+        `try again in ${retryAfter}s`,
+        retryAfter,
+      );
+    }
+  }
+
+  // Resolve scope name for the delivery message. Kept inside resend so the
+  // helper is self-contained.
+  let scopeName = input.scopeName ?? "your clinic";
+  if (!input.scopeName) {
+    if (current.clinicId) {
+      const c = await prisma.clinic.findUnique({
+        where: { id: current.clinicId },
+        select: { name: true },
+      });
+      scopeName = c?.name ?? scopeName;
+    } else if (current.organizationId) {
+      const o = await prisma.organization.findUnique({
+        where: { id: current.organizationId },
+        select: { name: true },
+      });
+      scopeName = o?.name ?? scopeName;
+    }
+  }
+
+  const { raw, hash } = generateInvitationToken();
+  const newExpiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+  const newResendCount = current.resendCount + 1;
+  const now = new Date();
+
+  // CAS: only the row whose (tokenHash, resendCount, lastResentAt, status)
+  // exactly match what we read may be updated. A concurrent caller that
+  // rotated the token in between will fail this WHERE clause.
+  //
+  // Prisma updateMany accepts null equality via `equals: null` — encode
+  // both nullable comparisons explicitly.
+  const rotation = await prisma.clinicInvitation.updateMany({
+    where: {
+      id: current.id,
+      tokenHash: current.tokenHash,
+      resendCount: current.resendCount,
+      status: current.status,
+      lastResentAt: current.lastResentAt ?? null,
+    },
+    data: {
+      tokenHash: hash,
+      expiresAt: newExpiresAt,
+      resendCount: newResendCount,
+      lastResentAt: now,
+      // If we were resending an EXPIRED invitation, transition back to PENDING.
+      status: InvitationStatus.PENDING,
+      // Delivery outcome is reset — will be written after send() resolves.
+      sentAt: null,
+      sendError: null,
+    },
+  });
+  if (rotation.count === 0) {
+    throw new InvitationError(
+      "invitation_changed",
+      "invitation was modified concurrently; refresh and try again",
+    );
+  }
+
+  // ONLY NOW deliver. The new token is authoritative in the DB.
+  const inviteLink = buildInviteLink(raw);
+  const delivery = await deliverInvitation({
+    primaryChannel: current.channel,
+    recipient: {
+      name: current.name ?? undefined,
+      email: current.email ?? undefined,
+      phone: current.phone ?? undefined,
+    },
+    scopeName,
+    inviteLink,
+    role: current.role,
+  });
+
+  const updated = await prisma.clinicInvitation.update({
+    where: { id: current.id },
+    data: {
+      sentAt: delivery.ok ? new Date() : null,
+      sendError: delivery.ok ? null : delivery.error ?? "unknown_send_error",
+    },
+  });
+
+  await writeAuditLog({
+    action: "DOCTOR_INVITATION_RESENT",
+    entityType: "ClinicInvitation",
+    entityId: current.id,
+    actorId: input.actorSupabaseUserId ?? null,
+    actorType: "admin",
+    metadata: {
+      clinicId: updated.clinicId,
+      organizationId: updated.organizationId,
+      intendedRole: updated.role,
+      channel: updated.channel,
+      deliveryChannel: delivery.channel ?? null,
+      deliveryOk: delivery.ok,
+      resendCount: newResendCount,
+    },
+  }).catch((err) => console.error("[invitations.resend] audit failed", err));
+
+  return { invitation: updated, delivery };
+}
+
+// ── Cancel (Slice 1) ───────────────────────────────────────────────────────
+// Idempotent revoke. If the invitation is already REVOKED / ACCEPTED /
+// EXPIRED, we short-circuit rather than throwing. Emits the audit event
+// only on the transition, not on repeat calls.
+export type CancelInvitationInput = {
+  invitationId: string;
+  actorSupabaseUserId?: string | null;
+  actorEmail?: string | null;
+};
+
+export type CancelInvitationResult = {
+  invitation: ClinicInvitation;
+  alreadyTerminal: boolean;
+};
+
+export async function cancelInvitation(
+  input: CancelInvitationInput,
+): Promise<CancelInvitationResult> {
+  const current = await prisma.clinicInvitation.findUnique({
+    where: { id: input.invitationId },
+  });
+  if (!current) throw new InvitationError("not_found", "invitation not found");
+
+  if (current.status !== InvitationStatus.PENDING &&
+      current.status !== InvitationStatus.EXPIRED) {
+    // Already terminal (REVOKED / ACCEPTED). Idempotent no-op.
+    return { invitation: current, alreadyTerminal: true };
+  }
+
+  const updated = await prisma.clinicInvitation.update({
+    where: { id: current.id },
+    data: {
+      status: InvitationStatus.REVOKED,
+      revokedAt: new Date(),
+    },
+  });
+
+  await writeAuditLog({
+    action: "DOCTOR_INVITATION_CANCELLED",
+    entityType: "ClinicInvitation",
+    entityId: current.id,
+    actorId: input.actorSupabaseUserId ?? null,
+    actorType: "admin",
+    metadata: {
+      clinicId: updated.clinicId,
+      organizationId: updated.organizationId,
+      intendedRole: updated.role,
+      previousStatus: current.status,
+    },
+  }).catch((err) => console.error("[invitations.cancel] audit failed", err));
+
+  return { invitation: updated, alreadyTerminal: false };
+}
+
+// Retained for back-compat with any legacy caller — routes now prefer
+// cancelInvitation, which is idempotent and audit-logged.
+export async function revokeInvitation(id: string) {
+  return prisma.clinicInvitation.update({
+    where: { id },
+    data: { status: InvitationStatus.REVOKED, revokedAt: new Date() },
+  });
+}
+
+// ── Accept ─────────────────────────────────────────────────────────────────
 export type AcceptInput = {
   rawToken: string;
   supabaseUserId: string;
@@ -294,6 +615,10 @@ export type AcceptInput = {
 // Accept an invitation. Matches by phone OR email — the signed-in user
 // must hold the contact method the invitation was addressed to. Atomic
 // w/ membership creation; idempotent on the same supabaseUserId.
+//
+// (Activation redesign around verified mobile OTP happens in a later
+// slice. This function is unchanged behaviourally in Slice 1 apart from
+// emitting DOCTOR_INVITATION_EXPIRED when it observes a lazy expiry.)
 export async function acceptInvitation(
   input: AcceptInput,
 ): Promise<{
@@ -323,6 +648,22 @@ export async function acceptInvitation(
           where: { id: inv.id },
           data: { status: InvitationStatus.EXPIRED },
         });
+        // Best-effort audit — fire-and-forget so a logging failure never
+        // blocks the accept itself from returning the correct error.
+        writeAuditLog({
+          action: "DOCTOR_INVITATION_EXPIRED",
+          entityType: "ClinicInvitation",
+          entityId: inv.id,
+          actorType: "system",
+          metadata: {
+            clinicId: inv.clinicId,
+            organizationId: inv.organizationId,
+            intendedRole: inv.role,
+            observedDuring: "accept",
+          },
+        }).catch((err) =>
+          console.error("[invitations.expired] audit failed", err),
+        );
         throw new InvitationError("expired", "invitation has expired");
       }
 
@@ -371,10 +712,6 @@ export async function acceptInvitation(
         membershipType = "doctor";
         membershipId = doctor.id;
       } else if (inv.clinicId) {
-        if (!memberEmail || !memberPhone) {
-          // ClinicMember requires both; backfill the missing one from the user.
-          // (Both columns are NOT NULL in the schema.)
-        }
         const member = await tx.clinicMember.upsert({
           where: {
             clinicId_supabaseUserId: {
@@ -440,11 +777,4 @@ export async function acceptInvitation(
     },
     { isolationLevel: Prisma.TransactionIsolationLevel.Serializable },
   );
-}
-
-export async function revokeInvitation(id: string) {
-  return prisma.clinicInvitation.update({
-    where: { id },
-    data: { status: InvitationStatus.REVOKED, revokedAt: new Date() },
-  });
 }

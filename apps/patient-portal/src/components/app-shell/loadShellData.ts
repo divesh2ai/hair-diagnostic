@@ -108,6 +108,52 @@ export async function loadSuperAdminShellData(): Promise<ShellData> {
   return { ...data, branding: PLATFORM_BRANDING };
 }
 
+// Slice-0 authorisation guard for the /doctor workspace.
+//
+// Rules:
+//   1. A user with a live Doctor row (supabaseUserId match, isActive, not
+//      soft-deleted) is admitted regardless of primary JWT role. `viewMode`
+//      is "self" for DOCTOR-primary, "admin_view" for admin roles that
+//      happen to also hold a Doctor row.
+//   2. A user WITHOUT a Doctor row is redirected to the surface matching
+//      their JWT role — SUPER_ADMIN/ORG_ADMIN → /admin, CLINIC_ADMIN →
+//      /clinic, everything else → /login?reason=forbidden.
+//
+// The role alone (SUPER_ADMIN) never confers Doctor authority. The prior
+// layout admitted any admin role without a Doctor row check — this closes
+// that gap. `?view=doctor` is UI navigation intent only; server-side
+// membership is the sole authorisation source.
+export type DoctorShellData = ShellData & {
+  doctorId: string;
+  viewMode: "self" | "admin_view";
+};
+
+export async function loadDoctorShellData(): Promise<DoctorShellData> {
+  const data = await loadShellData();
+  const doctor = await prisma.doctor.findFirst({
+    where: {
+      supabaseUserId: data.userId,
+      isActive: true,
+      deletedAt: null,
+    },
+    select: { id: true, clinicId: true },
+  });
+  if (!doctor) {
+    // No live Doctor row → route away by primary role, never render the
+    // Doctor surface. This is the point that closes the multi-role gap.
+    if (data.role === "SUPER_ADMIN" || data.role === "ORG_ADMIN") {
+      redirect("/admin");
+    }
+    if (data.role === "CLINIC_ADMIN") {
+      redirect("/clinic");
+    }
+    redirect("/login?reason=forbidden");
+  }
+  const viewMode: "self" | "admin_view" =
+    data.role === "DOCTOR" ? "self" : "admin_view";
+  return { ...data, doctorId: doctor.id, viewMode };
+}
+
 // Best-effort first-name extraction for greetings: "Dr. Divesh Shah" → "Divesh".
 export function firstNameOf(displayName: string | null, email: string | null): string {
   if (displayName) {

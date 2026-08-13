@@ -1,6 +1,6 @@
 {
   "fixtureId": "male_aga_oily_01",
-  "generatedAt": "2026-07-03T07:14:17.996Z",
+  "generatedAt": "2026-08-10T13:00:39.646Z",
   "pipelineVersion": "1.0.0",
   "primaryDiagnosis": "AGA_MALE_123",
   "scalpStates": [
@@ -35,10 +35,10 @@
     },
     "orchestration": {
       "pipelineVersion": "1.0.0",
-      "executionId": "1377c526-01f9-431b-b2e7-71927bdbc50b",
-      "startedAt": "2026-07-03T07:14:17.996Z",
-      "completedAt": "2026-07-03T07:14:17.998Z",
-      "durationMs": 2,
+      "executionId": "4f5995cd-c95a-4c1b-939c-a2c82d6a2fa0",
+      "startedAt": "2026-08-10T13:00:39.646Z",
+      "completedAt": "2026-08-10T13:00:39.647Z",
+      "durationMs": 1,
       "completedStages": [
         "questionnaire",
         "clinical",

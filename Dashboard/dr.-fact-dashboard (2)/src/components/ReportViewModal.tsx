@@ -1,6 +1,8 @@
-import { X, Download, Share2, Sparkles, Activity, ShieldCheck, Zap, Info } from 'lucide-react';
-import { motion } from 'motion/react';
+import { useState } from 'react';
+import { X, Download, Share2, Sparkles, Activity, ShieldCheck, Zap, Info, ShoppingCart } from 'lucide-react';
+import { motion, AnimatePresence } from 'motion/react';
 import { Report } from '../types';
+import CartAnimation from './CartAnimation';
 
 interface Props {
   report: Report;
@@ -8,6 +10,7 @@ interface Props {
 }
 
 export default function ReportViewModal({ report, onClose }: Props) {
+  const [showCart, setShowCart] = useState(false);
   const getSeverityColor = (score: number) => {
     if (score >= 70) return 'text-emerald-400 bg-emerald-400/10 border-emerald-400/20';
     if (score >= 40) return 'text-yellow-400 bg-yellow-400/10 border-yellow-400/20';
@@ -20,6 +23,16 @@ export default function ReportViewModal({ report, onClose }: Props) {
   };
 
   return (
+    <>
+    <AnimatePresence>
+      {showCart && (report.aiKits?.length ?? 0) > 0 && (
+        <CartAnimation
+          kits={report.aiKits!}
+          patientName={report.patientName}
+          onComplete={() => setShowCart(false)}
+        />
+      )}
+    </AnimatePresence>
     <div className="fixed inset-0 z-50 flex items-center justify-center p-6 bg-black/90 backdrop-blur-md overflow-y-auto custom-scrollbar">
       <motion.div 
         initial={{ opacity: 0, y: 50, scale: 0.95 }}
@@ -155,6 +168,15 @@ export default function ReportViewModal({ report, onClose }: Props) {
                       </div>
                     ))}
                   </div>
+                  {(report.aiKits?.length ?? 0) > 0 && (
+                    <button
+                      onClick={() => setShowCart(true)}
+                      className="mt-6 w-full flex items-center justify-center gap-3 py-4 bg-emerald-600 hover:bg-emerald-500 text-zinc-950 rounded-2xl font-bold transition-all shadow-[0_0_20px_rgba(16,185,129,0.3)] group"
+                    >
+                      <ShoppingCart className="w-5 h-5 group-hover:scale-110 transition-transform" />
+                      Order {report.aiKits!.length} Kit{report.aiKits!.length > 1 ? 's' : ''}
+                    </button>
+                  )}
                 </div>
               </div>
 
@@ -179,5 +201,6 @@ export default function ReportViewModal({ report, onClose }: Props) {
         </div>
       </motion.div>
     </div>
+    </>
   );
 }

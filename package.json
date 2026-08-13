@@ -5,6 +5,7 @@
   "main": "dist/server.js",
   "scripts": {
     "dev": "next dev",
+    "postinstall": "prisma generate",
     "test": "vitest run",
     "test:watch": "vitest",
     "typecheck": "tsc --noEmit",
@@ -15,11 +16,15 @@
     "db:push": "prisma db push",
     "db:generate": "prisma generate",
     "db:seed": "tsx prisma/seed.ts",
+    "seed:demo": "tsx scripts/seed-demo.ts",
+    "seed:demo:inspect": "tsx scripts/inspect-demo-seed.ts",
     "db:migrate": "prisma migrate deploy",
     "db:baseline": "prisma migrate diff --from-empty --to-url $DIRECT_URL --script",
     "db:studio": "prisma studio",
     "baselines:generate": "tsx scripts/generate-baselines.ts",
-    "sandbox:run": "tsx src/sandbox/executeSandbox.ts"
+    "baselines:test": "tsx scripts/run-regression.ts",
+    "sandbox:run": "tsx src/sandbox/executeSandbox.ts",
+    "i18n:review": "node scripts/build-review-doc.mjs"
   },
   "prisma": {
     "seed": "tsx prisma/seed.ts"

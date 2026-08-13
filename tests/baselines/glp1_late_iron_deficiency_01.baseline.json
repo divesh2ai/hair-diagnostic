@@ -1,6 +1,6 @@
 {
   "fixtureId": "glp1_late_iron_deficiency_01",
-  "generatedAt": "2026-07-03T07:14:17.938Z",
+  "generatedAt": "2026-08-10T13:00:39.620Z",
   "pipelineVersion": "1.0.0",
   "primaryDiagnosis": "WEIGHT_LOSS",
   "scalpStates": [
@@ -14,18 +14,16 @@
   "severity": "MILD",
   "rankedKitIds": [
     "RAPID WEIGHT LOSS SHIELD",
-    "PHENOTYPE INFLAMATION",
-    "PRO IMMUNE GOLD",
     "IRON UP GOLD",
+    "PRO IMMUNE GOLD",
     "FPHL"
   ],
   "appliedRules": [],
-  "protocolLabel": "Recovery protocol for 5 condition(s): Female pattern hair loss · Scalp / perifollicular inflammation · Iron deficiency / anaemia · Rapid weight loss / GLP-1 · Immune depletion / regrowth support.",
+  "protocolLabel": "Recovery protocol for 4 condition(s): Female pattern hair loss · Iron deficiency / anaemia · Rapid weight loss / GLP-1 · Immune depletion / regrowth support.",
   "recommendations": [
     "RAPID WEIGHT LOSS SHIELD",
-    "PHENOTYPE INFLAMATION",
-    "PRO IMMUNE GOLD",
     "IRON UP GOLD",
+    "PRO IMMUNE GOLD",
     "FPHL"
   ],
   "narratives": {
@@ -35,10 +33,10 @@
     },
     "orchestration": {
       "pipelineVersion": "1.0.0",
-      "executionId": "3d4b2310-732f-491b-a0de-cd7ccf319f45",
-      "startedAt": "2026-07-03T07:14:17.938Z",
-      "completedAt": "2026-07-03T07:14:17.940Z",
-      "durationMs": 2,
+      "executionId": "007a6493-cc22-4fdd-b39b-d62d14ba89d0",
+      "startedAt": "2026-08-10T13:00:39.620Z",
+      "completedAt": "2026-08-10T13:00:39.621Z",
+      "durationMs": 1,
       "completedStages": [
         "questionnaire",
         "clinical",

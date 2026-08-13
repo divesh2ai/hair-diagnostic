@@ -10,6 +10,12 @@ import styles from './assessment-v3.module.css';
 
 interface OptionCardV3Props {
   option: QuestionOption;
+  /**
+   * Display label in the patient's language. Falls back to the protocol's
+   * English `option.label`. `option.id` — the canonical answer code — is what
+   * gets stored, and is never derived from this string.
+   */
+  label?: string;
   isSelected: boolean;
   multi: boolean;
   density?: 'tile' | 'card' | 'feature';
@@ -18,6 +24,7 @@ interface OptionCardV3Props {
 
 export function OptionCardV3({
   option,
+  label,
   isSelected,
   multi,
   density = 'card',
@@ -47,7 +54,7 @@ export function OptionCardV3({
         </span>
       )}
       <span className={styles.optionBody}>
-        <strong>{option.label}</strong>
+        <strong>{label ?? option.label}</strong>
         {option.description && density !== 'tile' && <small>{option.description}</small>}
       </span>
       <span className={`${styles.selectionIndicator} ${multi ? styles.checkboxIndicator : ''}`} aria-hidden="true">

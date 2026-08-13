@@ -1,6 +1,6 @@
 {
   "fixtureId": "pcos_obesity_hypothyroid_01",
-  "generatedAt": "2026-07-03T07:14:18.040Z",
+  "generatedAt": "2026-08-10T13:00:39.672Z",
   "pipelineVersion": "1.0.0",
   "primaryDiagnosis": "PCOS_OBESITY",
   "scalpStates": [
@@ -14,8 +14,8 @@
   "therapyNeeds": [],
   "severity": "MILD",
   "rankedKitIds": [
-    "PHENOTYPE INFLAMATION",
     "PRO FACT META B",
+    "PRO IMMUNE GOLD",
     "FPHL"
   ],
   "appliedRules": [
@@ -23,10 +23,10 @@
     "PCOS_HYPO_UNIFY: PCOS META B variant collapsed to plain PRO FACT META B.",
     "PCOS_METABOLIC: PRO FACT META B PCOS already covers the metabolic axis."
   ],
-  "protocolLabel": "Recovery protocol for 3 condition(s): Female pattern hair loss · Scalp / perifollicular inflammation · PCOS / PCOD.",
+  "protocolLabel": "Recovery protocol for 3 condition(s): Female pattern hair loss · PCOS / PCOD · Immune depletion / regrowth support.",
   "recommendations": [
-    "PHENOTYPE INFLAMATION",
     "PRO FACT META B",
+    "PRO IMMUNE GOLD",
     "FPHL"
   ],
   "narratives": {
@@ -36,10 +36,10 @@
     },
     "orchestration": {
       "pipelineVersion": "1.0.0",
-      "executionId": "0105b083-c07e-43f9-9f60-ad99e2dae304",
-      "startedAt": "2026-07-03T07:14:18.040Z",
-      "completedAt": "2026-07-03T07:14:18.041Z",
-      "durationMs": 1,
+      "executionId": "a1602e65-1f8b-4afe-a55a-5f4e8a00ae61",
+      "startedAt": "2026-08-10T13:00:39.672Z",
+      "completedAt": "2026-08-10T13:00:39.672Z",
+      "durationMs": 0,
       "completedStages": [
         "questionnaire",
         "clinical",

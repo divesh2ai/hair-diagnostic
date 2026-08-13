@@ -26,7 +26,9 @@ import {
   ChevronLeft,
   ChevronRight,
   Sparkles,
-  Activity
+  Activity,
+  Globe,
+  Check
 } from 'lucide-react';
 import { motion } from 'motion/react';
 
@@ -43,7 +45,58 @@ import ValidationDashboard from './pages/ValidationDashboard';
 import KnowledgeBase from './pages/KnowledgeBase';
 import HumanHandoff from './pages/HumanHandoff';
 
-import { LanguageProvider, useLanguage } from './lib/i18n';
+import { LanguageProvider, useLanguage, type Language } from './lib/i18n';
+
+const LANG_OPTIONS: { code: Language; label: string; short: string }[] = [
+  { code: 'en', label: 'English',           short: 'EN' },
+  { code: 'hi', label: 'हिन्दी (Hindi)',      short: 'हि' },
+  { code: 'mr', label: 'मराठी (Marathi)',    short: 'मरा' },
+  { code: 'pa', label: 'ਪੰਜਾਬੀ (Punjabi)',   short: 'ਪੰ' },
+  { code: 'gu', label: 'ગુજરાતી (Gujarati)', short: 'ગુ' },
+];
+
+const HeaderLanguageSwitcher = () => {
+  const { language, setLanguage } = useLanguage();
+  const [open, setOpen] = useState(false);
+  const current = LANG_OPTIONS.find(l => l.code === language) ?? LANG_OPTIONS[0];
+
+  useEffect(() => {
+    if (!open) return;
+    const close = () => setOpen(false);
+    window.addEventListener('click', close);
+    return () => window.removeEventListener('click', close);
+  }, [open]);
+
+  return (
+    <div className="relative" onClick={(e) => e.stopPropagation()}>
+      <button
+        onClick={() => setOpen(o => !o)}
+        aria-label="Change language"
+        title="Change language"
+        className="flex items-center gap-2 px-3 py-2 text-white/60 hover:text-white bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl transition-all"
+      >
+        <Globe className="w-4 h-4" />
+        <span className="text-xs font-bold tracking-wide">{current.short}</span>
+      </button>
+      {open && (
+        <div className="absolute right-0 mt-2 w-56 bg-[#0a0a0a] border border-white/10 rounded-2xl shadow-2xl shadow-black/50 overflow-hidden z-30">
+          {LANG_OPTIONS.map(opt => (
+            <button
+              key={opt.code}
+              onClick={() => { setLanguage(opt.code); setOpen(false); }}
+              className={`w-full flex items-center justify-between px-4 py-3 text-sm text-left hover:bg-white/5 transition-colors ${
+                opt.code === language ? 'text-emerald-400' : 'text-zinc-300'
+              }`}
+            >
+              <span>{opt.label}</span>
+              {opt.code === language && <Check className="w-4 h-4" />}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+};
 
 // --- Auth Context ---
 interface AuthContextType {
@@ -290,6 +343,7 @@ const Header = ({ profile }: { profile: UserProfile | null }) => {
       
       <div className="flex items-center gap-6">
         <div className="flex items-center gap-2">
+          <HeaderLanguageSwitcher />
           <button className="p-2.5 text-white/40 hover:text-white hover:bg-white/5 rounded-xl transition-all relative">
             <Bell className="w-5 h-5" />
             <span className="absolute top-2.5 right-2.5 w-2 h-2 bg-emerald-500 rounded-full border-2 border-[#050505]"></span>

@@ -12,7 +12,7 @@
 
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { getClinicContext, handleAuthError } from "@/lib/auth";
+import { requireDoctorContext, assertDoctorInClinic } from "@/lib/auth";
 import { makeOrchestrator, OrchestratorError } from "@hairos/packages/consultation-orchestrator";
 import { consultationMeta, readOperationalState } from "@/lib/consultation/meta";
 import { writeAuditLog } from "@/lib/audit/writeAuditLog";
@@ -25,24 +25,32 @@ export async function GET(
   _req: Request,
   ctxParam: { params: Promise<{ assessmentId: string }> },
 ) {
-  let auth;
-  try {
-    auth = await getClinicContext();
-  } catch (err) {
-    const resp = handleAuthError(err);
-    if (resp) return resp;
-    throw err;
-  }
+  const authResult = await requireDoctorContext();
+  if (authResult instanceof NextResponse) return authResult;
+  const { doctor } = authResult;
 
   const { assessmentId } = await ctxParam.params;
+
+  // Cross-clinic reject — 404 (not 403) so we don't leak that a
+  // consultation with this id exists in a different clinic.
+  const target = await prisma.assessment.findUnique({
+    where: { id: assessmentId },
+    select: { clinicId: true },
+  });
+  if (!target) {
+    return NextResponse.json({ error: "not_found" }, { status: 404 });
+  }
+  if (assertDoctorInClinic(doctor, target.clinicId)) {
+    return NextResponse.json({ error: "not_found" }, { status: 404 });
+  }
 
   try {
     const stored = await orchestrator.getOrCreateDetailed({
       assessmentId,
       ctx: {
-        actorId: auth.userId ?? "system",
-        role: auth.role,
-        clinicId: auth.clinicId ?? null,
+        actorId: doctor.id,
+        role: "DOCTOR",
+        clinicId: doctor.clinicId,
       },
     });
     const operational = await readOperationalState(prisma, assessmentId);
@@ -60,16 +68,24 @@ export async function PATCH(
   req: Request,
   ctxParam: { params: Promise<{ assessmentId: string }> },
 ) {
-  let auth;
-  try {
-    auth = await getClinicContext();
-  } catch (err) {
-    const resp = handleAuthError(err);
-    if (resp) return resp;
-    throw err;
-  }
+  const authResult = await requireDoctorContext();
+  if (authResult instanceof NextResponse) return authResult;
+  const { doctor, authUserId, authRole, mode } = authResult;
 
   const { assessmentId } = await ctxParam.params;
+
+  // Cross-clinic reject BEFORE the orchestrator sees the request.
+  const target = await prisma.assessment.findUnique({
+    where: { id: assessmentId },
+    select: { clinicId: true },
+  });
+  if (!target) {
+    return NextResponse.json({ error: "not_found" }, { status: 404 });
+  }
+  if (assertDoctorInClinic(doctor, target.clinicId)) {
+    return NextResponse.json({ error: "not_found" }, { status: 404 });
+  }
+
   const body = (await req.json().catch(() => ({}))) as {
     edits?: Record<string, unknown>;
     doctorNotes?: unknown;
@@ -81,9 +97,9 @@ export async function PATCH(
     const stored = await orchestrator.revise({
       assessmentId,
       ctx: {
-        actorId: auth.userId ?? "system",
-        role: auth.role,
-        clinicId: auth.clinicId ?? null,
+        actorId: doctor.id,
+        role: "DOCTOR",
+        clinicId: doctor.clinicId,
       },
       edits: body.edits as Parameters<typeof orchestrator.revise>[0]["edits"],
       doctorNotes: body.doctorNotes as Parameters<typeof orchestrator.revise>[0]["doctorNotes"],
@@ -95,8 +111,8 @@ export async function PATCH(
     });
 
     // A note-only revise (no clinical edits) is DOCTOR_NOTE_SAVED. Anything
-    // else is CONSULTATION_UPDATED. Detected from the request shape so a
-    // note write can never accidentally look like an approval event.
+    // else is CONSULTATION_UPDATED. Audit preserves BOTH the authenticated
+    // caller and the acting Doctor so admin_view actions are traceable.
     const isNoteOnly =
       !body.edits ||
       typeof body.edits !== "object" ||
@@ -105,12 +121,14 @@ export async function PATCH(
       action: isNoteOnly ? "DOCTOR_NOTE_SAVED" : "CONSULTATION_UPDATED",
       entityType: "Consultation",
       entityId: stored.consultationId,
-      actorId: auth.userId ?? null,
-      actorRole: auth.role,
-      actorType: "doctor",
+      actorId: authUserId,
+      actorRole: authRole,
+      actorType: mode,
       assessmentId,
       metadata: {
-        clinicId: auth.clinicId ?? null,
+        clinicId: doctor.clinicId,
+        actingDoctorId: doctor.id,
+        mode,
         contentVersion: stored.contentVersion,
       },
     }).catch((err) => console.error("[consultation.patch] audit failed", err));

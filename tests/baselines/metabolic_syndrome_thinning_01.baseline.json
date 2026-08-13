@@ -1,6 +1,6 @@
 {
   "fixtureId": "metabolic_syndrome_thinning_01",
-  "generatedAt": "2026-07-03T07:14:18.007Z",
+  "generatedAt": "2026-08-10T13:00:39.654Z",
   "pipelineVersion": "1.0.0",
   "primaryDiagnosis": "AGA_MALE_123",
   "scalpStates": [
@@ -33,10 +33,10 @@
     },
     "orchestration": {
       "pipelineVersion": "1.0.0",
-      "executionId": "1c2abc5b-d843-4243-a6e5-455407b3298c",
-      "startedAt": "2026-07-03T07:14:18.007Z",
-      "completedAt": "2026-07-03T07:14:18.008Z",
-      "durationMs": 1,
+      "executionId": "1a37c4ce-6eab-4138-8598-8b65c58a80b2",
+      "startedAt": "2026-08-10T13:00:39.654Z",
+      "completedAt": "2026-08-10T13:00:39.654Z",
+      "durationMs": 0,
       "completedStages": [
         "questionnaire",
         "clinical",

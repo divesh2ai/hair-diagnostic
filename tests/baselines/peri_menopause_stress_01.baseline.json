@@ -1,6 +1,6 @@
 {
   "fixtureId": "peri_menopause_stress_01",
-  "generatedAt": "2026-07-03T07:14:18.076Z",
+  "generatedAt": "2026-08-10T13:00:39.680Z",
   "pipelineVersion": "1.0.0",
   "primaryDiagnosis": "PERI_MENOPAUSE",
   "scalpStates": [
@@ -13,16 +13,18 @@
   "therapyNeeds": [],
   "severity": "MILD",
   "rankedKitIds": [
-    "PHENOTYPE INFLAMATION",
     "HAIR FACT PERI MENOPAUSE",
-    "FPHL"
+    "FPHL",
+    "PRO IMMUNE GOLD"
   ],
-  "appliedRules": [],
-  "protocolLabel": "Recovery protocol for 3 condition(s): Female pattern hair loss · Scalp / perifollicular inflammation · Peri-menopause.",
+  "appliedRules": [
+    "PRO_IMMUNE_CONSOLIDATION_FILLER: stack had only 2 kits — PRO IMMUNE added as consolidation layer."
+  ],
+  "protocolLabel": "Recovery protocol for 2 condition(s): Female pattern hair loss · Peri-menopause.",
   "recommendations": [
-    "PHENOTYPE INFLAMATION",
     "HAIR FACT PERI MENOPAUSE",
-    "FPHL"
+    "FPHL",
+    "PRO IMMUNE GOLD"
   ],
   "narratives": {
     "narratives": {
@@ -31,9 +33,9 @@
     },
     "orchestration": {
       "pipelineVersion": "1.0.0",
-      "executionId": "9c89fe6f-2009-4e7b-8561-740fcd5785c4",
-      "startedAt": "2026-07-03T07:14:18.076Z",
-      "completedAt": "2026-07-03T07:14:18.077Z",
+      "executionId": "19925404-ba27-494d-a55e-ac7edf64cc3e",
+      "startedAt": "2026-08-10T13:00:39.680Z",
+      "completedAt": "2026-08-10T13:00:39.681Z",
       "durationMs": 1,
       "completedStages": [
         "questionnaire",

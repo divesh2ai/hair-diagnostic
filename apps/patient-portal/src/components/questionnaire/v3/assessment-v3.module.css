@@ -18,7 +18,7 @@
   overflow-x: hidden;
   background: var(--cream-50);
   color: var(--ink);
-  font-family: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
+  font-family: var(--font-geist-sans), var(--font-devanagari), ui-sans-serif, system-ui, sans-serif;
 }
 
 .assessmentShell *,
@@ -66,7 +66,7 @@
   border: 1px solid rgba(234, 215, 168, 0.58);
   border-radius: 50%;
   color: var(--gold-soft);
-  font-family: var(--font-fraunces), Georgia, serif;
+  font-family: var(--font-fraunces), var(--font-devanagari), Georgia, serif;
   font-size: 0.7rem;
 }
 
@@ -77,7 +77,7 @@
 }
 
 .brandCopy strong {
-  font-family: var(--font-fraunces), Georgia, serif;
+  font-family: var(--font-fraunces), var(--font-devanagari), Georgia, serif;
   font-size: 1rem;
   font-weight: 620;
   letter-spacing: 0.01em;
@@ -213,7 +213,7 @@
   max-width: 820px;
   margin: 0;
   color: var(--forest-950);
-  font-family: var(--font-fraunces), Georgia, serif;
+  font-family: var(--font-fraunces), var(--font-devanagari), Georgia, serif;
   font-size: clamp(2.15rem, 3.3vw, 3.25rem);
   font-weight: 520;
   letter-spacing: -0.035em;
@@ -678,6 +678,17 @@
   white-space: nowrap;
 }
 
+/* Shown in place of Skip when a required question is unanswered. Wraps rather
+   than truncating — Hindi runs longer than the English equivalent. */
+.requiredHint {
+  color: var(--muted);
+  font-size: 0.75rem;
+  font-weight: 500;
+  line-height: 1.6;
+  opacity: 0.85;
+  text-align: right;
+}
+
 .enterHint {
   display: inline-flex;
   align-items: center;
@@ -760,7 +771,7 @@
 .insightMoment p {
   margin: 7px 0 0;
   color: var(--forest-800);
-  font-family: var(--font-fraunces), Georgia, serif;
+  font-family: var(--font-fraunces), var(--font-devanagari), Georgia, serif;
   font-size: 1.125rem;
   line-height: 1.45;
 }
@@ -862,7 +873,7 @@
 
 .chapterCopy h1 {
   margin: 10px 0 0;
-  font-family: var(--font-fraunces), Georgia, serif;
+  font-family: var(--font-fraunces), var(--font-devanagari), Georgia, serif;
   font-size: clamp(3.6rem, 7vw, 6.8rem);
   font-weight: 470;
   letter-spacing: -0.05em;
@@ -911,7 +922,7 @@
   right: 3.5%;
   bottom: 2.5%;
   color: var(--gold-soft);
-  font-family: var(--font-fraunces), Georgia, serif;
+  font-family: var(--font-fraunces), var(--font-devanagari), Georgia, serif;
   font-size: clamp(4rem, 10vw, 9rem);
   font-weight: 420;
   line-height: 1;
@@ -960,7 +971,7 @@
 }
 
 .completionContent h1 {
-  font-family: 'Fraunces', serif;
+  font-family: 'Fraunces', var(--font-devanagari), serif;
   font-size: 34px;
   font-weight: 500;
   line-height: 1.15;
@@ -1698,4 +1709,49 @@
   font-size: 1rem;
   min-height: 54px;
   border-radius: 14px;
+}
+
+/* ── Devanagari typography corrections ───────────────────────────────────────
+   Applied only when the document is in a Devanagari locale (the assessment
+   sets <html lang> from the patient's choice), so English typography is
+   untouched.
+
+   Two things break Devanagari in a stack tuned for Latin display type:
+     1. Tight leading (1.08–1.15) clips the upper matras (ि ी े ै ो ौ) against
+        the line above and the lower ones (ु ू ृ) against the descender line.
+     2. Negative letter-spacing collides conjuncts (क्ष त्र ज्ञ) — Devanagari
+        joins glyphs rather than spacing them, so tracking must be neutral.
+
+   Font size is deliberately NOT reduced: Hindi is allowed to wrap onto more
+   lines rather than being shrunk to fit an English line count. */
+
+:global(html:lang(hi)) .questionCopy h1 {
+  letter-spacing: normal;
+  line-height: 1.35;
+}
+
+:global(html:lang(hi)) .questionCopy p,
+:global(html:lang(hi)) .optionCard strong,
+:global(html:lang(hi)) .optionCard small {
+  line-height: 1.65;
+}
+
+:global(html:lang(hi)) .chapterCopy h1 {
+  letter-spacing: normal;
+  line-height: 1.4;
+}
+
+:global(html:lang(hi)) .chapterCopy p {
+  line-height: 1.75;
+}
+
+:global(html:lang(hi)) .completionContent h1 {
+  letter-spacing: normal;
+  line-height: 1.4;
+}
+
+/* Option cards size to content; Devanagari needs a slightly taller floor so a
+   two-line Hindi label doesn't crowd the selection indicator. */
+:global(html:lang(hi)) .optionCard {
+  line-height: 1.6;
 }

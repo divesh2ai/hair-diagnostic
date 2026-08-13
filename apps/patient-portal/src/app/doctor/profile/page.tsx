@@ -16,7 +16,13 @@ import {
 
 type DoctorMe = {
   clinic: { name: string; logoUrl: string | null; tagline: string | null } | null;
-  doctor: { id: string; name: string | null; photoUrl: string | null; specialization: string | null } | null;
+  doctor: {
+    id: string;
+    name: string | null;
+    photoUrl: string | null;
+    specialization: string | null;
+    badgeTheme: string | null;
+  } | null;
   role: string;
   email: string | null;
 };
@@ -29,19 +35,44 @@ export default function DoctorProfilePage() {
   const fileRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
+    // localStorage is the immediate first-paint cache; the server value
+    // (loaded below) is the source of truth and overrides it once the
+    // /api/doctor/me response lands.
     setBadgeThemeId(readStoredBadgeTheme());
     fetch("/api/doctor/me")
       .then((r) => (r.ok ? r.json() : Promise.reject(r.statusText)))
-      .then(setMe)
+      .then((data: DoctorMe) => {
+        setMe(data);
+        const server = data.doctor?.badgeTheme;
+        if (server && server !== readStoredBadgeTheme()) {
+          setBadgeThemeId(server as BadgeThemeId);
+          writeBadgeTheme(server as BadgeThemeId);
+        }
+      })
       .catch((e) => toast.error(`Could not load profile: ${e}`));
   }, []);
 
   const badgeTheme = getBadgeTheme(badgeThemeId);
 
-  const pickBadgeTheme = (id: BadgeThemeId) => {
+  const pickBadgeTheme = async (id: BadgeThemeId) => {
+    // Optimistic: local cache + UI update first, then persist to server.
     setBadgeThemeId(id);
     writeBadgeTheme(id);
-    toast.success("Badge color updated");
+    try {
+      const res = await fetch("/api/doctor/me", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ badgeTheme: id }),
+      });
+      if (!res.ok) throw new Error(await res.text());
+      toast.success("Badge color updated");
+    } catch (err) {
+      toast.error(
+        err instanceof Error
+          ? `Could not save: ${err.message}`
+          : "Could not save badge color",
+      );
+    }
   };
 
   const onPick = (e: React.ChangeEvent<HTMLInputElement>) => {

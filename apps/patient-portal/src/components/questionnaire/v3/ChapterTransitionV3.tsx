@@ -4,6 +4,7 @@ import type { CSSProperties } from 'react';
 import { ArrowRight } from 'lucide-react';
 
 import type { SectionIntroContent } from '@/components/questionnaire/v2/insightRules';
+import { useAssessmentTranslator } from '@/lib/assessment-i18n';
 
 import styles from './assessment-v3.module.css';
 
@@ -100,6 +101,7 @@ export function ChapterTransitionV3({
   onContinue,
   isFinalChapter = false,
 }: ChapterTransitionV3Props) {
+  const { t } = useAssessmentTranslator();
   const artwork =
     (sectionId ? CHAPTER_ARTWORK[sectionId] : undefined) ?? CHAPTER_ARTWORK[content.id];
   const indexLabel = String(sectionIndex).padStart(2, '0');
@@ -139,7 +141,7 @@ export function ChapterTransitionV3({
           className={styles.chapterCompHit}
           type="button"
           onClick={onContinue}
-          aria-label={`Begin chapter: ${content.title}`}
+          aria-label={t('questionnaire.chapterAriaLabel', { title: content.title })}
           autoFocus
         />
       </section>
@@ -189,7 +191,10 @@ export function ChapterTransitionV3({
         <h1 id={`v3-chapter-${sectionId ?? content.id}`}>{content.title}</h1>
         <p>{content.body}</p>
         <button className={styles.chapterButton} type="button" onClick={onContinue} autoFocus>
-          {isFinalChapter ? 'Begin final chapter' : 'Begin chapter'} <ArrowRight size={18} aria-hidden="true" />
+          {isFinalChapter
+            ? t('questionnaire.beginFinalChapter')
+            : t('questionnaire.beginChapter')}{' '}
+          <ArrowRight size={18} aria-hidden="true" />
         </button>
       </div>
       <span className={styles.chapterIndex} aria-hidden="true">{indexLabel}</span>

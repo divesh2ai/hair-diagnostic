@@ -1,6 +1,6 @@
 {
   "fixtureId": "peri_menopause_metabolic_01",
-  "generatedAt": "2026-07-03T07:14:18.074Z",
+  "generatedAt": "2026-08-10T13:00:39.679Z",
   "pipelineVersion": "1.0.0",
   "primaryDiagnosis": "PERI_MENOPAUSE",
   "scalpStates": [
@@ -13,17 +13,17 @@
   "therapyNeeds": [],
   "severity": "MILD",
   "rankedKitIds": [
-    "PHENOTYPE INFLAMATION",
-    "PRO FACT META B",
     "HAIR FACT PERI MENOPAUSE",
+    "PRO FACT META B",
+    "PRO IMMUNE GOLD",
     "FPHL"
   ],
   "appliedRules": [],
-  "protocolLabel": "Recovery protocol for 4 condition(s): Female pattern hair loss · Scalp / perifollicular inflammation · Metabolic dysfunction · Peri-menopause.",
+  "protocolLabel": "Recovery protocol for 4 condition(s): Female pattern hair loss · Metabolic dysfunction · Peri-menopause · Immune depletion / regrowth support.",
   "recommendations": [
-    "PHENOTYPE INFLAMATION",
-    "PRO FACT META B",
     "HAIR FACT PERI MENOPAUSE",
+    "PRO FACT META B",
+    "PRO IMMUNE GOLD",
     "FPHL"
   ],
   "narratives": {
@@ -33,10 +33,10 @@
     },
     "orchestration": {
       "pipelineVersion": "1.0.0",
-      "executionId": "8ddf55ad-7572-4115-8cc7-71b5a9c5ed54",
-      "startedAt": "2026-07-03T07:14:18.074Z",
-      "completedAt": "2026-07-03T07:14:18.074Z",
-      "durationMs": 0,
+      "executionId": "aacb87cc-0769-4381-98c9-5fff20efe912",
+      "startedAt": "2026-08-10T13:00:39.679Z",
+      "completedAt": "2026-08-10T13:00:39.680Z",
+      "durationMs": 1,
       "completedStages": [
         "questionnaire",
         "clinical",

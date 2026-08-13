@@ -1,6 +1,6 @@
 {
   "fixtureId": "pcos_only_iron_fphl_01",
-  "generatedAt": "2026-07-03T07:14:18.049Z",
+  "generatedAt": "2026-08-10T13:00:39.676Z",
   "pipelineVersion": "1.0.0",
   "primaryDiagnosis": "PCOS_ONLY",
   "scalpStates": [
@@ -14,19 +14,19 @@
   "therapyNeeds": [],
   "severity": "MILD",
   "rankedKitIds": [
-    "PHENOTYPE INFLAMATION",
+    "IRON UP GOLD",
     "PRO FACT META B PCOS",
     "PRO IMMUNE GOLD",
-    "IRON UP GOLD",
     "FPHL"
   ],
-  "appliedRules": [],
-  "protocolLabel": "Recovery protocol for 5 condition(s): Female pattern hair loss · Scalp / perifollicular inflammation · PCOS / PCOD · Iron deficiency / anaemia · Immune depletion / regrowth support.",
+  "appliedRules": [
+    "PCOS_METABOLIC: PRO FACT META B PCOS already covers the metabolic axis."
+  ],
+  "protocolLabel": "Recovery protocol for 4 condition(s): Female pattern hair loss · PCOS / PCOD · Iron deficiency / anaemia · Immune depletion / regrowth support.",
   "recommendations": [
-    "PHENOTYPE INFLAMATION",
+    "IRON UP GOLD",
     "PRO FACT META B PCOS",
     "PRO IMMUNE GOLD",
-    "IRON UP GOLD",
     "FPHL"
   ],
   "narratives": {
@@ -36,10 +36,10 @@
     },
     "orchestration": {
       "pipelineVersion": "1.0.0",
-      "executionId": "2cd0b48c-eb44-4b51-a8fc-eaf021311055",
-      "startedAt": "2026-07-03T07:14:18.049Z",
-      "completedAt": "2026-07-03T07:14:18.049Z",
-      "durationMs": 0,
+      "executionId": "900edca2-776f-4ef9-bb1f-d1a51be3da4d",
+      "startedAt": "2026-08-10T13:00:39.676Z",
+      "completedAt": "2026-08-10T13:00:39.677Z",
+      "durationMs": 1,
       "completedStages": [
         "questionnaire",
         "clinical",

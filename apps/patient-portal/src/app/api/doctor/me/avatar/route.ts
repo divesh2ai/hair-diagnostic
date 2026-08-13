@@ -1,8 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
-import { SystemRole } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
-import { requireRole } from "@/lib/auth";
+import { requireDoctorContext } from "@/lib/auth";
 
 // POST /api/doctor/me/avatar — upload the signed-in doctor's profile photo.
 // Multipart body with a single `file` field. Server-side upload via the
@@ -12,20 +11,9 @@ const ALLOWED = new Set(["image/jpeg", "image/png", "image/webp"]);
 const MAX_BYTES = 5 * 1024 * 1024;
 
 export async function POST(req: Request) {
-  const auth = await requireRole(
-    SystemRole.DOCTOR,
-    SystemRole.CLINIC_ADMIN,
-    SystemRole.SUPER_ADMIN,
-  );
-  if (auth instanceof NextResponse) return auth;
-
-  const doctor = await prisma.doctor.findFirst({
-    where: { supabaseUserId: auth.sub },
-    select: { id: true },
-  });
-  if (!doctor) {
-    return NextResponse.json({ error: "No doctor profile linked to this account" }, { status: 404 });
-  }
+  const authResult = await requireDoctorContext();
+  if (authResult instanceof NextResponse) return authResult;
+  const { doctor } = authResult;
 
   const form = await req.formData().catch(() => null);
   const file = form?.get("file");

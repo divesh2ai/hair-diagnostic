@@ -1,6 +1,6 @@
 {
   "fixtureId": "severe_dandruff_01",
-  "generatedAt": "2026-07-03T07:14:18.115Z",
+  "generatedAt": "2026-08-10T13:00:39.702Z",
   "pipelineVersion": "1.0.0",
   "primaryDiagnosis": "AGA_FEMALE_123",
   "scalpStates": [
@@ -15,7 +15,9 @@
     "PHENOTYPE INFLAMATION",
     "FPHL"
   ],
-  "appliedRules": [],
+  "appliedRules": [
+    "PRO_IMMUNE_CONSOLIDATION_FILLER: stack had only 2 kits — PRO IMMUNE added as consolidation layer."
+  ],
   "protocolLabel": "Recovery protocol for 2 condition(s): Female pattern hair loss · Scalp / perifollicular inflammation.",
   "recommendations": [
     "PHENOTYPE INFLAMATION",
@@ -28,9 +30,9 @@
     },
     "orchestration": {
       "pipelineVersion": "1.0.0",
-      "executionId": "532132c0-e295-436d-8043-f35ff94f5cce",
-      "startedAt": "2026-07-03T07:14:18.115Z",
-      "completedAt": "2026-07-03T07:14:18.115Z",
+      "executionId": "ed3a695c-76d5-4135-b47e-c7e0c2aa196a",
+      "startedAt": "2026-08-10T13:00:39.702Z",
+      "completedAt": "2026-08-10T13:00:39.702Z",
       "durationMs": 0,
       "completedStages": [
         "questionnaire",

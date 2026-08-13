@@ -1,6 +1,6 @@
 {
   "fixtureId": "post_menopause_diffuse_01",
-  "generatedAt": "2026-07-03T07:14:18.080Z",
+  "generatedAt": "2026-08-10T13:00:39.684Z",
   "pipelineVersion": "1.0.0",
   "primaryDiagnosis": "POST_MENOPAUSE",
   "scalpStates": [
@@ -12,16 +12,18 @@
   "therapyNeeds": [],
   "severity": "MILD",
   "rankedKitIds": [
-    "PHENOTYPE INFLAMATION",
     "PRO FACT META B POSTMENOPAUSE",
-    "FPHL"
+    "FPHL",
+    "PRO IMMUNE GOLD"
   ],
-  "appliedRules": [],
-  "protocolLabel": "Recovery protocol for 3 condition(s): Female pattern hair loss · Scalp / perifollicular inflammation · Post-menopause.",
+  "appliedRules": [
+    "PRO_IMMUNE_CONSOLIDATION_FILLER: stack had only 2 kits — PRO IMMUNE added as consolidation layer."
+  ],
+  "protocolLabel": "Recovery protocol for 2 condition(s): Female pattern hair loss · Post-menopause.",
   "recommendations": [
-    "PHENOTYPE INFLAMATION",
     "PRO FACT META B POSTMENOPAUSE",
-    "FPHL"
+    "FPHL",
+    "PRO IMMUNE GOLD"
   ],
   "narratives": {
     "narratives": {
@@ -30,10 +32,10 @@
     },
     "orchestration": {
       "pipelineVersion": "1.0.0",
-      "executionId": "0abb30aa-8815-40c3-a7de-b1a9a0a33b3d",
-      "startedAt": "2026-07-03T07:14:18.080Z",
-      "completedAt": "2026-07-03T07:14:18.081Z",
-      "durationMs": 1,
+      "executionId": "bf24768e-27ae-4891-b3a8-48784ef8c233",
+      "startedAt": "2026-08-10T13:00:39.684Z",
+      "completedAt": "2026-08-10T13:00:39.684Z",
+      "durationMs": 0,
       "completedStages": [
         "questionnaire",
         "clinical",

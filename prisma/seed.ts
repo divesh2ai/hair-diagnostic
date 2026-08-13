@@ -1,8 +1,15 @@
 import { PrismaClient, SystemRole } from '@prisma/client'
+import { assertSafeDatabaseTarget } from '../packages/shared/env/databaseTarget'
 
 const prisma = new PrismaClient()
 
 async function main() {
+  // This script had no environment guard at all. It upserts an Organization,
+  // Clinic and Doctor by slug, so run against production it would quietly
+  // rewrite live tenant records — and `npm run db:seed` reads whatever
+  // DATABASE_URL happens to be in .env.
+  assertSafeDatabaseTarget(process.env, 'prisma/seed')
+
   console.log('Seeding HairOS platform...')
 
   // Organization

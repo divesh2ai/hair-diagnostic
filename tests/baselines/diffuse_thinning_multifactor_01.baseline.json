@@ -1,6 +1,6 @@
 {
   "fixtureId": "diffuse_thinning_multifactor_01",
-  "generatedAt": "2026-07-03T07:14:17.899Z",
+  "generatedAt": "2026-08-10T13:00:39.603Z",
   "pipelineVersion": "1.0.0",
   "primaryDiagnosis": "AGA_FEMALE_123",
   "scalpStates": [
@@ -16,15 +16,13 @@
   "severity": "MILD",
   "rankedKitIds": [
     "PRO FACT GI GOLD",
-    "PHENOTYPE INFLAMATION",
     "PRO IMMUNE GOLD",
     "FPHL"
   ],
   "appliedRules": [],
-  "protocolLabel": "Recovery protocol for 4 condition(s): Female pattern hair loss · Scalp / perifollicular inflammation · Gut dysfunction (GERD / IBS / Acid / Crohn) · Immune depletion / regrowth support.",
+  "protocolLabel": "Recovery protocol for 3 condition(s): Female pattern hair loss · Gut dysfunction (GERD / IBS / Acid / Crohn) · Immune depletion / regrowth support.",
   "recommendations": [
     "PRO FACT GI GOLD",
-    "PHENOTYPE INFLAMATION",
     "PRO IMMUNE GOLD",
     "FPHL"
   ],
@@ -35,9 +33,9 @@
     },
     "orchestration": {
       "pipelineVersion": "1.0.0",
-      "executionId": "de6defd3-c5bc-4a8e-8645-ff2736deb822",
-      "startedAt": "2026-07-03T07:14:17.899Z",
-      "completedAt": "2026-07-03T07:14:17.900Z",
+      "executionId": "dbf487bf-5b14-403a-a2fd-95cddf5b35c2",
+      "startedAt": "2026-08-10T13:00:39.603Z",
+      "completedAt": "2026-08-10T13:00:39.604Z",
       "durationMs": 1,
       "completedStages": [
         "questionnaire",

@@ -18,6 +18,7 @@ import {
   Stethoscope,
 } from 'lucide-react';
 
+import { LocaleSwitcherV3 } from '@/components/questionnaire/v3';
 import type { ClinicLandingData } from '@/lib/clinics/getClinicLandingData';
 
 /* ── DR. FACT palette ──────────────────────────────────────────── */
@@ -112,8 +113,17 @@ export default function ClinicLandingClient({ clinic }: ClinicLandingClientProps
       name: clinic.name,
       theme: 'default',
       language: clinic.language,
+      // Drives which languages the switcher and the assessment gate offer.
+      supportedLanguages: clinic.supportedLanguages,
     });
-  }, [clinic.id, clinic.name, clinic.language, setClinicData, reset]);
+  }, [
+    clinic.id,
+    clinic.name,
+    clinic.language,
+    clinic.supportedLanguages,
+    setClinicData,
+    reset,
+  ]);
 
   const startAssessment = () => router.push(`/q/${clinic.slug}/assessment-v3`);
   const openScience = () => router.push(`/q/${clinic.slug}/science`);
@@ -129,7 +139,7 @@ export default function ClinicLandingClient({ clinic }: ClinicLandingClientProps
         className="sticky top-0 z-50 border-b backdrop-blur-xl"
         style={{ borderColor: LINE, background: 'rgba(8,18,9,0.82)' }}
       >
-        <div className="mx-auto flex w-full max-w-7xl items-center justify-between px-6 py-4">
+        <div className="mx-auto flex w-full max-w-7xl items-center justify-between gap-3 px-5 py-4 sm:px-6">
           <div className="min-w-0">
             <p
               className="font-[family-name:var(--font-fraunces)] text-[20px] font-semibold tracking-[0.14em]"
@@ -142,22 +152,37 @@ export default function ClinicLandingClient({ clinic }: ClinicLandingClientProps
             </p>
           </div>
 
-          <nav className="hidden items-center gap-8 text-[13px] md:flex" style={{ color: MUTED }}>
+          <nav className="hidden items-center gap-8 text-[13px] lg:flex" style={{ color: MUTED }}>
             <a href="#how-it-works" className="transition-colors hover:text-[#F4EFE2]">How It Works</a>
             <a href="#science" className="transition-colors hover:text-[#F4EFE2]">The Science</a>
             <a href="#results" className="transition-colors hover:text-[#F4EFE2]">Results</a>
             <a href="#about" className="transition-colors hover:text-[#F4EFE2]">About Us</a>
           </nav>
 
-          <button
-            type="button"
-            onClick={startAssessment}
-            className="group inline-flex items-center gap-2 rounded-full border px-5 py-2.5 text-[12.5px] font-semibold transition-all hover:-translate-y-px"
-            style={{ borderColor: 'rgba(219,197,140,0.4)', color: GOLD_SOFT }}
-          >
-            Take Hair Analysis
-            <ArrowRight className="h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5" />
-          </button>
+          <div className="flex shrink-0 items-center gap-2 sm:gap-3">
+            {/*
+              The language choice lives here so a patient who reads Hindi picks
+              it before entering the assessment rather than after. A tap is a
+              deliberate decision, so `confirmOnSelect` records it and the
+              assessment starts straight at chapter one instead of re-asking.
+              Leave it untouched and the in-assessment gate still runs.
+
+              This page's own copy stays English by design — see
+              docs/localisation/assessment-hi-review.md.
+            */}
+            <LocaleSwitcherV3 compact confirmOnSelect />
+
+            <button
+              type="button"
+              onClick={startAssessment}
+              className="group inline-flex items-center gap-2 rounded-full border px-3.5 py-2.5 text-[12.5px] font-semibold transition-all hover:-translate-y-px sm:px-5"
+              style={{ borderColor: 'rgba(219,197,140,0.4)', color: GOLD_SOFT }}
+            >
+              <span className="hidden sm:inline">Take Hair Analysis</span>
+              <span className="sm:hidden">Start</span>
+              <ArrowRight className="h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5" />
+            </button>
+          </div>
         </div>
       </header>
 

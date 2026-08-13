@@ -151,10 +151,14 @@ export default function ValidationDashboard() {
   const incorrectReviews = filteredReviews.filter(r => r.agreement === 'incorrect').length;
 
   const accuracy = totalReviews > 0 ? ((correctReviews + (partialReviews * 0.5)) / totalReviews) * 100 : 0;
-  
+
   const totalOutcomes = filteredOutcomes.length;
   const improvedOutcomes = filteredOutcomes.filter(o => o.improvement).length;
   const improvementRate = totalOutcomes > 0 ? (improvedOutcomes / totalOutcomes) * 100 : 0;
+
+  const totalKitsPrescribed = filteredReports.reduce((sum, r) => sum + ((r as any).aiKits?.length || 0), 0);
+  const reportsWithKits = filteredReports.filter(r => (r as any).aiKits?.length > 0).length;
+  const kitCoverage = filteredReports.length > 0 ? (reportsWithKits / filteredReports.length) * 100 : 0;
 
   return (
     <div className="space-y-8 pb-20">
@@ -235,12 +239,12 @@ export default function ValidationDashboard() {
             <div className="p-3 bg-emerald-500/10 rounded-xl text-emerald-400 border border-emerald-500/20">
               <CheckCircle2 className="w-6 h-6" />
             </div>
-            <h3 className="text-zinc-400 font-medium">Kit Accuracy</h3>
+            <h3 className="text-zinc-400 font-medium">Kits Prescribed</h3>
           </div>
           <div className="flex items-baseline gap-2">
-            <span className="text-5xl font-bold text-white tracking-tighter font-display">{accuracy.toFixed(1)}%</span>
+            <span className="text-5xl font-bold text-white tracking-tighter font-display">{totalKitsPrescribed}</span>
           </div>
-          <p className="text-sm text-zinc-500 mt-2">Recommendation match rate</p>
+          <p className="text-sm text-zinc-500 mt-2">{kitCoverage.toFixed(0)}% of reports have kits</p>
         </div>
 
         <div className="p-8 glass-card rounded-3xl shadow-[0_0_20px_rgba(0,0,0,0.1)]">

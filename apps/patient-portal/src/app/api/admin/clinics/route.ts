@@ -3,6 +3,7 @@ import { z } from "zod";
 import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { assertSuperAdmin, handleAuthError } from "@/lib/auth";
+import { locationSetupState } from "@/lib/clinic/location";
 
 export const dynamic = "force-dynamic";
 
@@ -45,6 +46,12 @@ export async function GET(req: Request) {
           createdAt: true,
           updatedAt: true,
           _count: { select: { doctors: true, patients: true } },
+          // Enough to answer "can this clinic be plotted?" without pulling
+          // every branch's address into a list response.
+          locations: {
+            where: { deletedAt: null },
+            select: { geoStatus: true },
+          },
         },
       }),
       prisma.clinic.count({ where }),
@@ -59,6 +66,10 @@ export async function GET(req: Request) {
         status: r.status,
         doctorCount: r._count.doctors,
         patientCount: r._count.patients,
+        locationCount: r.locations.length,
+        // NONE | INCOMPLETE | COMPLETE — the Super Admin worklist for getting
+        // the national map populated.
+        locationSetup: locationSetupState(r.locations),
         createdAt: r.createdAt.toISOString(),
         updatedAt: r.updatedAt.toISOString(),
       })),

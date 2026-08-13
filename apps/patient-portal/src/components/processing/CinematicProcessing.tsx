@@ -24,6 +24,7 @@ import { AnimatePresence, motion } from 'framer-motion';
 import { AlertCircle, RotateCcw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { parseAssessmentStatusResponse } from '@/lib/adapters/assessmentAdapter';
+import { useAssessmentTranslator } from '@/lib/assessment-i18n';
 import { safeArray } from '@/lib/safeData';
 
 interface Props {
@@ -44,52 +45,38 @@ interface PhaseCopy {
   eta: string;
 }
 
-const PHASES: Record<Exclude<PhaseIndex, 0>, PhaseCopy> = {
-  1: {
-    eyebrow: 'Step 1 of 5',
-    head: 'Reading your responses',
-    sub: 'Translating your answers into clinical signals.',
-    eta: 'This usually takes under a minute.',
-  },
-  2: {
-    eyebrow: 'Step 2 of 5',
-    head: 'Mapping your hair biology',
-    sub: 'Connecting stress, hormones, scalp, and nutrition into one picture.',
-    eta: 'Just a few moments more.',
-  },
-  3: {
-    eyebrow: 'Step 3 of 5',
-    head: 'Designing your protocol',
-    sub: 'Matching the right therapies to your unique profile.',
-    eta: 'Almost there.',
-  },
-  4: {
-    eyebrow: 'Step 4 of 5',
-    head: 'Composing your doctor briefing',
-    sub: 'Writing the narrative your doctor avatar will deliver.',
-    eta: 'Any moment now.',
-  },
-  5: {
-    eyebrow: 'Step 5 of 5',
-    head: 'Rendering your personalized video',
-    sub: 'Bringing your hair story to life.',
-    eta: '30–90 seconds.',
-  },
-};
+/**
+ * Phase copy is resolved from the assessment dictionary rather than held as
+ * module constants, so the patient stays in the language they answered in all
+ * the way through processing. The phase *model* (which stage maps to which
+ * index) is unchanged — only the words are looked up.
+ */
+type Translate = ReturnType<typeof useAssessmentTranslator>['t'];
 
-const WARMUP_COPY: PhaseCopy = {
-  eyebrow: 'Preparing',
-  head: 'Preparing your assessment',
-  sub: 'Getting everything in place.',
-  eta: 'This will start in a moment.',
-};
-
-const DONE_COPY: PhaseCopy = {
-  eyebrow: 'Ready',
-  head: 'Your report is ready',
-  sub: 'Opening your recovery plan.',
-  eta: '',
-};
+function resolvePhaseCopy(t: Translate, phase: PhaseIndex, isDone: boolean): PhaseCopy {
+  if (isDone) {
+    return {
+      eyebrow: t('processing.doneEyebrow'),
+      head: t('processing.doneHead'),
+      sub: t('processing.doneSub'),
+      eta: '',
+    };
+  }
+  if (phase === 0) {
+    return {
+      eyebrow: t('processing.warmupEyebrow'),
+      head: t('processing.warmupHead'),
+      sub: t('processing.warmupSub'),
+      eta: t('processing.warmupEta'),
+    };
+  }
+  return {
+    eyebrow: t(`processing.step${phase}Eyebrow` as const),
+    head: t(`processing.step${phase}Head` as const),
+    sub: t(`processing.step${phase}Sub` as const),
+    eta: t(`processing.step${phase}Eta` as const),
+  };
+}
 
 /**
  * Real orchestration stages mapped to the four patient-facing phases. We
@@ -112,6 +99,7 @@ function stageToPhase(stage: string | undefined): PhaseIndex {
 
 export function CinematicProcessing({ assessmentId, clinicSlug, previewToken }: Props) {
   const router = useRouter();
+  const { t, locale } = useAssessmentTranslator();
 
   const [phase, setPhase] = useState<PhaseIndex>(0);
   const [status, setStatus] = useState<string>('PROCESSING');
@@ -204,16 +192,13 @@ export function CinematicProcessing({ assessmentId, clinicSlug, previewToken }: 
     poll();
   };
 
-  const copy: PhaseCopy = isDone
-    ? DONE_COPY
-    : phase === 0
-      ? WARMUP_COPY
-      : PHASES[phase];
+  const copy = resolvePhaseCopy(t, phase, isDone);
 
   const isFailed = status === 'FAILED' || !!error;
 
   return (
     <div
+      lang={locale}
       className="relative min-h-[100dvh] w-full overflow-hidden text-slate-900"
       style={{
         // Dawn palette — cream base, warm peach lift at the top, soft lavender hush at the bottom.
@@ -306,10 +291,15 @@ export function CinematicProcessing({ assessmentId, clinicSlug, previewToken }: 
         <div className="absolute inset-0 z-20 flex items-center justify-center bg-white/85 backdrop-blur-md px-6">
           <div className="max-w-sm rounded-3xl border border-slate-200 bg-white p-7 text-center shadow-xl">
             <AlertCircle className="mx-auto mb-3 h-10 w-10 text-rose-500" />
-            <h2 className="text-lg font-semibold text-slate-900">We hit a snag</h2>
-            <p className="mt-2 text-sm text-slate-600">{error ?? 'Processing failed.'}</p>
+            <h2 className="text-lg font-semibold text-slate-900">
+              {t('processing.errorTitle')}
+            </h2>
+            {/* The raw `error` is an English technical string from the API, so
+                the patient reads the localised message and support reads the
+                detail in the console. */}
+            <p className="mt-2 text-sm text-slate-600">{t('processing.errorBody')}</p>
             <Button onClick={retry} className="mt-5 w-full rounded-full">
-              <RotateCcw className="mr-2 h-4 w-4" /> Retry
+              <RotateCcw className="mr-2 h-4 w-4" /> {t('common.retry')}
             </Button>
           </div>
         </div>

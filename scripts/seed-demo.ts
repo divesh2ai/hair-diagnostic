@@ -17,6 +17,7 @@ import {
   ClinicStatus,
   SystemRole,
 } from "@prisma/client";
+import { assertSafeDatabaseTarget } from "../packages/shared/env/databaseTarget";
 
 const prisma = new PrismaClient();
 
@@ -39,6 +40,14 @@ function projectRefFromDbUrl(url: string): string | null {
 }
 
 function guardEnvironment() {
+  // Hard floor, checked before anything else and not satisfiable by any
+  // combination of the opt-ins below. The existing checks are opt-*in* — they
+  // all pass the moment someone sets EXPECTED_SUPABASE_PROJECT_REF to the
+  // production ref, which is a plausible thing to do while copying a command
+  // out of a runbook. This one cannot be satisfied that way: it recognises the
+  // production project by identity.
+  assertSafeDatabaseTarget(process.env, "seed-demo");
+
   const failures: string[] = [];
   if (process.env.NODE_ENV === "production") failures.push("NODE_ENV=production");
   if (process.env.VERCEL_ENV === "production") failures.push("VERCEL_ENV=production");

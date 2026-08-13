@@ -14,3 +14,4 @@ export * from "./roles";
 export * from "./clinicContext";
 export * from "./tenantGuard";
 export * from "./legacy";
+export * from "./doctorContext";

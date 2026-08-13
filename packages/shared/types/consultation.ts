@@ -297,6 +297,56 @@ export interface ConsultationVersion {
   };
 }
 
+// ── Clinical readiness snapshot ─────────────────────────────────────────────
+//
+// Persisted at composition time so approval/release gates never rerun the
+// clinical pipeline. The snapshot is derived from the same ClinicalContext
+// that produced the rest of the consultation — it is NOT an independent
+// clinical judgement, only a deterministic pass/fail witness against the
+// existing evidence-grounding and reasoning-completeness validators.
+//
+// A missing snapshot on a historical consultation is treated as a BLOCK by
+// the evaluator (fail-closed migration policy) — see
+// packages/shared/clinical-readiness/evaluator.ts.
+
+export interface ReadinessGroundingViolation {
+  /** Stable rule id from validateEvidenceGrounding (e.g. "scalp.dandruff"). */
+  readonly ruleId: string;
+  /** Narrative section the claim appeared in. */
+  readonly section: string;
+  /** Short doctor-readable summary. NEVER include raw patient answers. */
+  readonly summary: string;
+}
+
+export interface ReadinessReasoningGap {
+  /** ReasoningGapKind from validateReasoningCompleteness. */
+  readonly kind: string;
+  /** Affected subject id (kitId, rootCause, section name). */
+  readonly subject: string;
+  /** Short doctor-readable summary. */
+  readonly summary: string;
+}
+
+export interface ClinicalReadinessSnapshot {
+  readonly schemaVersion: 1;
+  readonly evaluatedAt: string;
+  /** Stable identifier of the clinical pipeline output that fed the snapshot. */
+  readonly sourceClinicalArtifactVersion: string;
+  readonly isReadyForApproval: boolean;
+  readonly groundingViolations: readonly ReadinessGroundingViolation[];
+  readonly reasoningGaps: readonly ReadinessReasoningGap[];
+  /**
+   * Stable machine-readable failure codes carried alongside violations so the
+   * approval gate can decide without walking arrays. Examples:
+   *   GROUNDING_VIOLATION_PRESENT, REASONING_GAP_PRESENT.
+   */
+  readonly blockingCodes: readonly string[];
+  readonly summary: {
+    readonly groundingViolationCount: number;
+    readonly reasoningGapCount: number;
+  };
+}
+
 // ── Top-level Consultation ──────────────────────────────────────────────────
 
 export interface Consultation {
@@ -320,6 +370,12 @@ export interface Consultation {
   attachments: ConsultationAttachment[];
   audit: ConsultationAudit;
   version: ConsultationVersion;
+  /**
+   * Evidence-contract readiness snapshot. Present on all consultations
+   * composed after Workstream D landed; absent on pre-D historical rows.
+   * Approval and PDF release gate on this — a missing snapshot fails closed.
+   */
+  clinicalReadiness?: ClinicalReadinessSnapshot;
   /** Embedded ClinicalReport for renderers that already speak the v4 shape
    *  (PDF, existing patient report view). New code SHOULD prefer the typed
    *  fields above. This field is the back-compat bridge. */

@@ -1,6 +1,6 @@
 {
   "fixtureId": "seborrheic_dermatitis_01",
-  "generatedAt": "2026-07-03T07:14:18.106Z",
+  "generatedAt": "2026-08-10T13:00:39.697Z",
   "pipelineVersion": "1.0.0",
   "primaryDiagnosis": "AGA_MALE_123",
   "scalpStates": [
@@ -14,13 +14,17 @@
   "severity": "MILD",
   "rankedKitIds": [
     "PHENOTYPE INFLAMATION",
-    "MPHL"
+    "MPHL",
+    "PRO IMMUNE GOLD"
   ],
-  "appliedRules": [],
+  "appliedRules": [
+    "PRO_IMMUNE_CONSOLIDATION_FILLER: stack had only 2 kits — PRO IMMUNE added as consolidation layer."
+  ],
   "protocolLabel": "Recovery protocol for 2 condition(s): Male pattern hair loss · Scalp / perifollicular inflammation.",
   "recommendations": [
     "PHENOTYPE INFLAMATION",
-    "MPHL"
+    "MPHL",
+    "PRO IMMUNE GOLD"
   ],
   "narratives": {
     "narratives": {
@@ -29,9 +33,9 @@
     },
     "orchestration": {
       "pipelineVersion": "1.0.0",
-      "executionId": "208f147b-4b64-43a1-924a-34db944b5aa3",
-      "startedAt": "2026-07-03T07:14:18.106Z",
-      "completedAt": "2026-07-03T07:14:18.107Z",
+      "executionId": "a8168d18-62b5-4747-ba4e-f3f1c756b6c6",
+      "startedAt": "2026-08-10T13:00:39.697Z",
+      "completedAt": "2026-08-10T13:00:39.698Z",
       "durationMs": 1,
       "completedStages": [
         "questionnaire",

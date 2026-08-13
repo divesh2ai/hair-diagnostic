@@ -1,11 +1,6 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import {
-  assertClinicAccess,
-  getClinicContext,
-  handleAuthError,
-  isSuperAdmin,
-} from "@/lib/auth";
+import { requireDoctorContext, assertDoctorInClinic } from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
 
@@ -13,10 +8,13 @@ export async function GET(
   _req: Request,
   { params }: { params: Promise<{ id: string }> },
 ) {
+  const authResult = await requireDoctorContext();
+  if (authResult instanceof NextResponse) return authResult;
+  const { doctor } = authResult;
+
   const { id } = await params;
 
   try {
-    // Look up first so we can scope the access check to the row's clinic.
     const patient = await prisma.patient.findUnique({
       where: { id },
       include: {
@@ -39,16 +37,14 @@ export async function GET(
     });
 
     if (!patient) {
-      // Don't leak existence vs. permission — use the same 404 for both.
-      const ctx = await getClinicContext();
-      void ctx;
+      // Same 404 for missing and forbidden — don't leak existence.
       return NextResponse.json({ error: "Patient not found" }, { status: 404 });
     }
 
-    // Now enforce tenant scope on the resolved clinic.
-    const ctx = await getClinicContext();
-    if (!isSuperAdmin(ctx.role)) {
-      await assertClinicAccess(patient.clinicId);
+    // Cross-clinic reject — same 404 as missing, so we do not leak that
+    // a patient with this id exists in a different clinic.
+    if (assertDoctorInClinic(doctor, patient.clinicId)) {
+      return NextResponse.json({ error: "Patient not found" }, { status: 404 });
     }
 
     return NextResponse.json({
@@ -76,8 +72,6 @@ export async function GET(
       },
     });
   } catch (err) {
-    const resp = handleAuthError(err);
-    if (resp) return resp;
     console.error("[DOCTOR PATIENT API]", err);
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }

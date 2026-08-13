@@ -4,6 +4,8 @@ import type { HairKnowledgeTopic, KnowledgeSystem } from "./knowledgeTypes";
 import type { KnowledgeRetriever, RetrievalResult } from "./hybridRetrieval";
 import { understandQuestion, type GeneralIntent } from "./questionUnderstanding";
 import { outOfScopeDomainMessage } from "./domainConfig";
+import { planGeneralResponse, presentGeneralResponse, type ResponsePlan, type ResponsePresentation } from "./responsePresentation";
+import type { GeneralConversationContext } from "./conversationContext";
 
 export type GeneralAssistantInput = {
   requestId?: string;
@@ -11,6 +13,7 @@ export type GeneralAssistantInput = {
   language?: string;
   history?: Array<{ role: "user" | "assistant"; content: string }>;
   debug?: boolean;
+  context?: GeneralConversationContext;
 };
 
 export type GeneralAssistantResponse = {
@@ -30,7 +33,13 @@ export type GeneralAssistantResponse = {
   detectedLanguage: string;
   usedFollowUpContext: boolean;
   selectedAuthority: "STRUCTURED_CATALOGUE" | "APPROVED_KNOWLEDGE" | "SAFETY_POLICY" | "AUTHENTICATED_PERSONAL_PLAN";
-  retrieval?: { strategy: RetrievalResult["strategy"]; contradictions: RetrievalResult["contradictions"]; evidenceSufficient: boolean; insufficiencyReasons: string[] };
+  responsePlan?: ResponsePlan;
+  presentation?: ResponsePresentation;
+  retrieval?: { strategy: RetrievalResult["strategy"]; contradictions: RetrievalResult["contradictions"]; evidenceSufficient: boolean; insufficiencyReasons: string[]; metadataFilters?: Record<string, unknown>; sourcesRetrieved?: string[] };
+  inheritedContext?: boolean;
+  resolvedEntity?: string;
+  resolvedIngredient?: string;
+  resolvedLifestyleFactor?: string;
   debug?: {
     entityResolution?: { resolvedProduct: string; resolvedEntityId: string; confidence: number; method: string; matchedAlias: string };
     sourceIntegrity?: { checked: boolean; ingredientCount: number; ingredientNames: string[]; strengthsStatus: string; sourceRecord: string; version?: number; approvalStatus?: string; discrepancyResult: string };
@@ -74,6 +83,7 @@ function knowledgeSources(result: RetrievalResult): SourceRef[] {
     sourceId: claim.claimId,
     label: hit.sourceLabel,
     version: Number.isFinite(Number(hit.sourceVersion)) ? Number(hit.sourceVersion) : undefined,
+    sourceVersion: hit.sourceVersion,
     effectiveFrom: hit.effectiveFrom || null,
     approvalStatus: hit.approvalStatus,
     url: hit.sourceUrl,
@@ -88,6 +98,15 @@ function citedKnowledgeAnswer(result: RetrievalResult): string {
   if (!result.evidenceSufficient) return `I could not find enough current, patient-published Hair evidence for that question. I will not fill the gap by guessing.${result.contradictions.length ? " The approved sources also contain a material contradiction." : ""} Please ask a hair clinician or try a more specific Hair question.`;
   const body = result.hits.slice(0, 3).map((hit, index) => `${hit.content} [${index + 1}]`).join("\n\n");
   return body;
+}
+
+const retrievalTrace = (result: RetrievalResult, filters: Record<string, unknown>) => ({ strategy: result.strategy, contradictions: result.contradictions, evidenceSufficient: result.evidenceSufficient, insufficiencyReasons: result.insufficiencyReasons, metadataFilters: filters, sourcesRetrieved: result.hits.map((hit) => hit.id) });
+
+function combinedRetrieval(results: RetrievalResult[]): RetrievalResult {
+  const hits = results.flatMap((result) => result.hits).filter((hit, index, all) => all.findIndex((candidate) => candidate.id === hit.id) === index);
+  const contradictions = results.flatMap((result) => result.contradictions);
+  const insufficiencyReasons = [...new Set(results.flatMap((result) => result.insufficiencyReasons))];
+  return { hits, contradictions, evidenceSufficient: hits.length > 0 && contradictions.length === 0, insufficiencyReasons: hits.length ? insufficiencyReasons.filter((reason) => reason !== "NO_CURRENT_PATIENT_PUBLISHED_HAIR_SOURCE" && reason !== "NO_SUPPORTED_PUBLISHED_CLAIM") : insufficiencyReasons, strategy: results.some((result) => result.strategy === "INDEXED_RAG") ? "INDEXED_RAG" : results[0]?.strategy ?? "STATIC_APPROVED_FALLBACK" };
 }
 
 type KitCompositionData = { kitId?: string; name: string; components: Array<{ productName: string; formulation?: string | null }> };
@@ -144,18 +163,35 @@ function debugBlock(debug: NonNullable<GeneralAssistantResponse["debug"]> | unde
   const integrity = debug.sourceIntegrity;
   return `\n\nDebug:\n- Resolved product: ${entity?.resolvedProduct ?? "n/a"} (${entity?.resolvedEntityId ?? "n/a"})\n- Confidence: ${entity?.confidence.toFixed(2) ?? "n/a"} via ${entity?.method ?? "n/a"}; matched alias: ${entity?.matchedAlias ?? "n/a"}\n- Source record: ${integrity?.sourceRecord ?? "n/a"}\n- Version: ${integrity?.version ?? "n/a"}; approval status: ${integrity?.approvalStatus ?? "n/a"}\n- Ingredient count: ${integrity?.ingredientCount ?? "n/a"}; strengths: ${integrity?.strengthsStatus ?? "n/a"}\n- Discrepancy result: ${integrity?.discrepancyResult ?? "n/a"}`;
 }
-export async function runGeneralAssistant(
+async function runGeneralAssistantRaw(
   input: GeneralAssistantInput,
   catalogue: GeneralCataloguePort,
   knowledge: KnowledgeRetriever,
 ): Promise<GeneralAssistantResponse> {
-  const understood = understandQuestion(input.query, input.history);
+  const understood = understandQuestion(input.query, input.history, input.context);
+  const responsePlan = planGeneralResponse(understood);
   const base = {
     requestId: input.requestId ?? crypto.randomUUID(), mode: "GENERAL_KNOWLEDGE" as const,
     intent: understood.intent, cards: [] as GeneralAssistantResponse["cards"], sources: [] as SourceRef[],
     safetyFlags: [] as SafetyFlag[], toolCalls: [] as GeneralAssistantResponse["toolCalls"],
     detectedLanguage: understood.language, usedFollowUpContext: understood.usedFollowUpContext,
+    inheritedContext: understood.usedFollowUpContext,
+    resolvedEntity: understood.entities.find((entity) => entity.type === "KIT") ? canonicalFiveKitId(understood.entities.find((entity) => entity.type === "KIT")!.value.name) : undefined,
+    resolvedIngredient: understood.ingredient,
+    resolvedLifestyleFactor: understood.lifestyleFactor,
   };
+
+  if (understood.intent === "SOURCE_INSPECTION") {
+    const sources = input.context?.previousSources ?? [];
+    return {
+      ...base,
+      action: sources.length ? "ANSWER" : "ABSTAIN",
+      selectedAuthority: "APPROVED_KNOWLEDGE",
+      answer: sources.length ? `The immediately preceding answer used: ${sources.map((source, index) => `[${index + 1}] ${source.label}${source.sourceVersion ?? source.version ? ` (version ${source.sourceVersion ?? source.version})` : ""}`).join("; ")}. No new retrieval was run.` : "There is no preceding sourced answer in this conversation to inspect.",
+      sources,
+      toolCalls: [],
+    };
+  }
 
   if (understood.intent === "PROMPT_INJECTION") return {
     ...base, action: "ABSTAIN", selectedAuthority: "SAFETY_POLICY",
@@ -201,7 +237,7 @@ export async function runGeneralAssistant(
         : wantsIngredientFacts
           ? catalogue.getKitIngredientFacts(kit.value.name)
           : catalogue.getKitComposition(kit.value.name),
-      knowledge.search({ text: understood.retrievalQuery, rewrittenQueries: understood.rewrittenQueries, domain: "HAIR", entityId: canonicalFiveKitId(kit.value.name), topics: ["HAIR_BIOLOGY", "HAIR_CONDITION", "SAFETY"], language: understood.language === "hi" ? "hi" : "en", limit: 5 }),
+      knowledge.search({ text: understood.retrievalQuery, rewrittenQueries: understood.rewrittenQueries, domain: "HAIR", entityId: canonicalFiveKitId(kit.value.name), topics: ["HAIR_BIOLOGY", "HAIR_CONDITION", "SAFETY"], language: understood.language === "hi" ? "hi" : "en", limit: responsePlan.evidenceLimit }),
     ]);
     const price = catalogueResult.data as { mrp?: number | null; currency?: string | null; status?: string } | undefined;
     const composition = catalogueResult.data as KitCompositionData | undefined;
@@ -229,31 +265,37 @@ export async function runGeneralAssistant(
       debug,
     };
   }
-  if (understood.intent === "KIT_OVERVIEW" || understood.intent === "KIT_MECHANISM") {
+  if (["KIT_OVERVIEW", "KIT_MECHANISM", "INGREDIENT_RATIONALE", "KIT_PATHWAYS", "KIT_CLINICAL_RELEVANCE", "KIT_SUMMARY", "FORMULATION_RATIONALE", "FOLLOW_UP_REFERENCE"].includes(understood.intent)) {
     const kit = entities.find((entity) => entity.type === "KIT");
     if (!kit) return { ...base, action: "CLARIFY", selectedAuthority: "APPROVED_KNOWLEDGE", answer: "Which pilot kit family should I explain? Likely options include TE Gold, GI Gold, Pro Immune Gold, Inflammation Phenotype, and Meta-B." };
     const entityDebug = { resolvedProduct: kit.value.name, resolvedEntityId: kit.value.id, confidence: kit.confidence, method: kit.method, matchedAlias: kit.matchedAlias };
     if (kit.confidence < 0.7) return { ...base, action: "CLARIFY", selectedAuthority: "APPROVED_KNOWLEDGE", answer: "Which pilot kit family should I explain? Likely options include TE Gold, GI Gold, Pro Immune Gold, Inflammation Phenotype, and Meta-B.", debug: input.debug ? { entityResolution: entityDebug } : undefined };
     const asksVariants = /variant|variants|ir 5|ir5|pcos|thyroid|menopause/.test(understood.normalized);
-    const contentTypes = asksVariants ? ["VARIANT", "OVERVIEW"] as const : understood.intent === "KIT_OVERVIEW" ? ["OVERVIEW", "DOCTOR_EXPLANATION", "VARIANT"] as const : ["DOCTOR_EXPLANATION", "THERAPEUTIC_PATHWAY", "FORMULATION_RATIONALE"] as const;
-    const retrieval = await knowledge.search({ text: understood.retrievalQuery, rewrittenQueries: understood.rewrittenQueries, domain: "HAIR", entityId: canonicalFiveKitId(kit.value.name) ?? kit.value.id, topics: topicsFor(understood.intent).topics, systems: topicsFor(understood.intent).systems, taxonomyDomains: ["KIT", "KIT_VARIANT"], contentTypes: [...contentTypes], audience: "DOCTOR", language: understood.language === "hi" ? "hi" : "en", limit: 4 });
+    const contentTypes = asksVariants ? ["VARIANT", "OVERVIEW"] : understood.intent === "KIT_SUMMARY" ? ["OVERVIEW", "DOCTOR_EXPLANATION", "THERAPEUTIC_PATHWAY", "PATIENT_FACTOR", "FORMULATION_RATIONALE", "INGREDIENT_ROLE"] : understood.intent === "KIT_OVERVIEW" ? ["OVERVIEW", "DOCTOR_EXPLANATION"] : understood.intent === "INGREDIENT_RATIONALE" ? ["INGREDIENT_ROLE"] : understood.intent === "KIT_PATHWAYS" ? ["THERAPEUTIC_PATHWAY"] : understood.intent === "KIT_CLINICAL_RELEVANCE" ? ["PATIENT_FACTOR"] : understood.intent === "FORMULATION_RATIONALE" ? ["FORMULATION_RATIONALE", "INGREDIENT_ROLE"] : ["DOCTOR_EXPLANATION", "THERAPEUTIC_PATHWAY", "FORMULATION_RATIONALE"];
+    const filters = { entityId: canonicalFiveKitId(kit.value.name) ?? kit.value.id, taxonomyDomains: understood.intent === "INGREDIENT_RATIONALE" ? ["INGREDIENT"] : understood.intent === "KIT_SUMMARY" ? ["KIT", "INGREDIENT"] : ["KIT", "KIT_VARIANT"], contentTypes, audience: "DOCTOR", ingredient: understood.intent === "INGREDIENT_RATIONALE" ? understood.ingredient : undefined };
+    const retrieval = await knowledge.search({ text: understood.retrievalQuery, rewrittenQueries: understood.rewrittenQueries, domain: "HAIR", entityId: filters.entityId, taxonomyDomains: filters.taxonomyDomains as Array<"INGREDIENT" | "KIT" | "KIT_VARIANT">, contentTypes: contentTypes as Array<import("./knowledgeTypes").KnowledgeContentType>, audience: "DOCTOR", ingredient: filters.ingredient, language: understood.language === "hi" ? "hi" : "en", limit: understood.intent === "KIT_SUMMARY" ? 5 : responsePlan.evidenceLimit });
     const assumption = kit.confidence < 0.9 ? `Assuming you mean ${kit.value.name}.\n\n` : "";
     const debug = input.debug ? { entityResolution: entityDebug } : undefined;
     return {
       ...base,
       action: retrieval.evidenceSufficient ? "ANSWER" : "ABSTAIN",
       selectedAuthority: "APPROVED_KNOWLEDGE",
-      answer: `${assumption}${citedKnowledgeAnswer(retrieval)}${debugBlock(debug)}`,
+      answer: understood.intent === "KIT_SUMMARY" && retrieval.evidenceSufficient ? `${assumption}${retrieval.hits.slice(0, 5).map((hit) => `- ${hit.content}`).join("\n")}${debugBlock(debug)}` : `${assumption}${citedKnowledgeAnswer(retrieval)}${debugBlock(debug)}`,
       sources: knowledgeSources(retrieval),
       toolCalls: [{ name: "retrieveApprovedKnowledge", status: retrieval.hits.length ? "ok" : "not_found", sourceIds: retrieval.hits.map((hit) => hit.id) }],
-      retrieval: { strategy: retrieval.strategy, contradictions: retrieval.contradictions, evidenceSufficient: retrieval.evidenceSufficient, insufficiencyReasons: retrieval.insufficiencyReasons },
+      retrieval: retrievalTrace(retrieval, filters),
       debug,
     };
   }
 
   if (understood.intent === "CONDITION_EXPLANATION" || understood.intent === "LIFESTYLE_FACTOR_IMPACT") {
     const filter = topicsFor(understood.intent);
-    const retrieval = await knowledge.search({ text: understood.retrievalQuery, rewrittenQueries: understood.rewrittenQueries, domain: "HAIR", topics: filter.topics, systems: filter.systems, taxonomyDomains: [understood.intent === "LIFESTYLE_FACTOR_IMPACT" ? "LIFESTYLE_FACTOR" : "CONDITION"], contentTypes: [understood.intent === "LIFESTYLE_FACTOR_IMPACT" ? "LIFESTYLE_IMPACT" : "CONDITION_EXPLANATION"], audience: "DOCTOR", language: understood.language === "hi" ? "hi" : "en", limit: 4 });
+    const factorFilters = { taxonomyDomains: [understood.intent === "LIFESTYLE_FACTOR_IMPACT" ? "LIFESTYLE_FACTOR" : "CONDITION"], contentTypes: [understood.intent === "LIFESTYLE_FACTOR_IMPACT" ? "LIFESTYLE_IMPACT" : "CONDITION_EXPLANATION"], audience: "DOCTOR" };
+    const factorRetrieval = await knowledge.search({ text: understood.retrievalQuery, rewrittenQueries: understood.rewrittenQueries, domain: "HAIR", topics: filter.topics, systems: filter.systems, taxonomyDomains: factorFilters.taxonomyDomains as Array<"LIFESTYLE_FACTOR" | "CONDITION">, contentTypes: factorFilters.contentTypes as Array<"LIFESTYLE_IMPACT" | "CONDITION_EXPLANATION">, audience: "DOCTOR", lifestyleFactor: understood.lifestyleFactor, language: understood.language === "hi" ? "hi" : "en", limit: responsePlan.evidenceLimit });
+    const activeEntity = understood.entities.find((entity) => entity.type === "KIT");
+    const phenotypeRetrieval = understood.intent === "LIFESTYLE_FACTOR_IMPACT" && activeEntity && canonicalFiveKitId(activeEntity.value.name) === "KIT_INFLAMMATION_PHENOTYPE" ? await knowledge.search({ text: understood.retrievalQuery, domain: "HAIR", entityId: "KIT_INFLAMMATION_PHENOTYPE", taxonomyDomains: ["KIT"], contentTypes: ["LIFESTYLE_IMPACT"], audience: "DOCTOR", limit: 2 }) : undefined;
+    const retrieval = phenotypeRetrieval ? combinedRetrieval([factorRetrieval, phenotypeRetrieval]) : factorRetrieval;
+    const filters = { ...factorFilters, activeProductFamily: phenotypeRetrieval ? "KIT_INFLAMMATION_PHENOTYPE" : undefined, lifestyleFactor: understood.lifestyleFactor };
     return {
       ...base,
       action: retrieval.evidenceSufficient ? "ANSWER" : "ABSTAIN",
@@ -261,7 +303,7 @@ export async function runGeneralAssistant(
       answer: citedKnowledgeAnswer(retrieval),
       sources: knowledgeSources(retrieval),
       toolCalls: [{ name: "retrieveApprovedKnowledge", status: retrieval.hits.length ? "ok" : "not_found", sourceIds: retrieval.hits.map((hit) => hit.id) }],
-      retrieval: { strategy: retrieval.strategy, contradictions: retrieval.contradictions, evidenceSufficient: retrieval.evidenceSufficient, insufficiencyReasons: retrieval.insufficiencyReasons },
+      retrieval: retrievalTrace(retrieval, filters),
     };
   }
   if (understood.intent === "CATALOGUE_PRICE") {
@@ -350,7 +392,7 @@ export async function runGeneralAssistant(
   }
 
   const filter = topicsFor(understood.intent);
-  const retrieval = await knowledge.search({ text: understood.retrievalQuery, rewrittenQueries: understood.rewrittenQueries, domain: "HAIR", entityId: entities.find((entity) => entity.type === "KIT") ? canonicalFiveKitId(entities.find((entity) => entity.type === "KIT")!.value.name) : undefined, topics: filter.topics, systems: filter.systems, language: understood.language === "hi" ? "hi" : "en", limit: 5 });
+  const retrieval = await knowledge.search({ text: understood.retrievalQuery, rewrittenQueries: understood.rewrittenQueries, domain: "HAIR", entityId: entities.find((entity) => entity.type === "KIT") ? canonicalFiveKitId(entities.find((entity) => entity.type === "KIT")!.value.name) : undefined, topics: filter.topics, systems: filter.systems, language: understood.language === "hi" ? "hi" : "en", limit: responsePlan.evidenceLimit });
   const urgent = understood.intent === "GENERAL_SAFETY" && /chest pain|faint|breathing|severe swelling|facial swelling/.test(understood.normalized);
   return {
     ...base, action: urgent ? "URGENT_ESCALATION" : retrieval.evidenceSufficient ? "ANSWER" : "ABSTAIN",
@@ -360,4 +402,15 @@ export async function runGeneralAssistant(
     toolCalls: [{ name: "retrieveApprovedKnowledge", status: retrieval.hits.length ? "ok" : "not_found", sourceIds: retrieval.hits.map((hit) => hit.id) }],
     retrieval: { strategy: retrieval.strategy, contradictions: retrieval.contradictions, evidenceSufficient: retrieval.evidenceSufficient, insufficiencyReasons: retrieval.insufficiencyReasons },
   };
+}
+
+export async function runGeneralAssistant(
+  input: GeneralAssistantInput,
+  catalogue: GeneralCataloguePort,
+  knowledge: KnowledgeRetriever,
+): Promise<GeneralAssistantResponse> {
+  const understood = understandQuestion(input.query, input.history, input.context);
+  const response = await runGeneralAssistantRaw(input, catalogue, knowledge);
+  const { plan, presentation } = presentGeneralResponse(response, understood);
+  return { ...response, responsePlan: plan, presentation };
 }

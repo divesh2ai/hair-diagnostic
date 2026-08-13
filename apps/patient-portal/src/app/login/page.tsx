@@ -19,7 +19,12 @@ import { toast } from "sonner";
 function LoginInner() {
   const params = useSearchParams();
   const router = useRouter();
-  const nextPath = params?.get("next") ?? "/doctor";
+  // Post-login server route inspects the user's actual role + memberships
+  // and redirects to the correct surface (SUPER_ADMIN → /admin, CLINIC_ADMIN
+  // → /clinic, DOCTOR → /doctor). The old default of "/doctor for everyone"
+  // is exactly what let admin roles leak into the Doctor workspace.
+  const nextParam = params?.get("next");
+  const nextPath = nextParam ? `/post-login?next=${encodeURIComponent(nextParam)}` : "/post-login";
   const reason = params?.get("reason");
 
   const [step, setStep] = useState<"email" | "code">("email");

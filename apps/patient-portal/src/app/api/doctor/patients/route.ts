@@ -1,40 +1,26 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import {
-  clinicScope,
-  getClinicContext,
-  handleAuthError,
-  isSuperAdmin,
-} from "@/lib/auth";
+import { requireDoctorContext } from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
 
-// Doctor-facing patient list. Tenant-scoped via JWT clinic_id; SUPER_ADMIN
-// can optionally pass ?clinicId= to inspect any clinic in preview mode.
+// Doctor-facing patient list. Scoped to the caller's own Doctor row's
+// clinic — no `?clinicId=` override. Cross-clinic inspection belongs on
+// /api/admin/* under a SUPER_ADMIN role check; routing it through the
+// Doctor API would grant Doctor-role identity to a super-admin's queries
+// in a different clinic, which is not the security model.
 export async function GET(req: Request) {
-  let ctx;
-  try {
-    ctx = await getClinicContext();
-  } catch (err) {
-    const resp = handleAuthError(err);
-    if (resp) return resp;
-    throw err;
-  }
+  const authResult = await requireDoctorContext();
+  if (authResult instanceof NextResponse) return authResult;
+  const { doctor } = authResult;
 
   const url = new URL(req.url);
   const doctorId = url.searchParams.get("doctorId");
-  const requestedClinicId = url.searchParams.get("clinicId");
-
-  const scope = isSuperAdmin(ctx.role)
-    ? requestedClinicId
-      ? { clinicId: requestedClinicId }
-      : {}
-    : clinicScope(ctx);
 
   try {
     const patients = await prisma.patient.findMany({
       where: {
-        ...scope,
+        clinicId: doctor.clinicId,
         ...(doctorId ? { doctorId } : {}),
         deletedAt: null,
       },

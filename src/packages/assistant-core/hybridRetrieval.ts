@@ -3,10 +3,10 @@ import { Prisma, PrismaClient } from "@prisma/client";
 import { GENERAL_KNOWLEDGE_SEED } from "./generalKnowledgeSeed";
 import type { GeneralKnowledgeEntry, GovernedClaim, HairKnowledgeTopic, KnowledgeSystem, KnowledgeContentType, KnowledgeTaxonomyDomain } from "./knowledgeTypes";
 
-export type RetrievalQuery = { text: string; rewrittenQueries?: string[]; domain: "HAIR"; entityId?: string; topics?: HairKnowledgeTopic[]; systems?: KnowledgeSystem[]; taxonomyDomains?: KnowledgeTaxonomyDomain[]; contentTypes?: KnowledgeContentType[]; audience?: "DOCTOR" | "PATIENT" | "INTERNAL"; productFamily?: string; variant?: string; sourceVersion?: string; language?: string; limit?: number };
+export type RetrievalQuery = { text: string; rewrittenQueries?: string[]; domain: "HAIR"; entityId?: string; topics?: HairKnowledgeTopic[]; systems?: KnowledgeSystem[]; taxonomyDomains?: KnowledgeTaxonomyDomain[]; contentTypes?: KnowledgeContentType[]; audience?: "DOCTOR" | "PATIENT" | "INTERNAL"; productFamily?: string; variant?: string; ingredient?: string; lifestyleFactor?: string; sourceVersion?: string; language?: string; limit?: number };
 export type KnowledgeHit = GeneralKnowledgeEntry & { lexicalScore: number; semanticScore: number; fusedScore: number; rerankScore: number };
 export type Contradiction = { claimKey: string; values: string[]; sourceIds: string[] };
-export type RetrievalResult = { hits: KnowledgeHit[]; contradictions: Contradiction[]; evidenceSufficient: boolean; insufficiencyReasons: string[]; strategy: "POSTGRES_HYBRID" | "STATIC_APPROVED_FALLBACK" };
+export type RetrievalResult = { hits: KnowledgeHit[]; contradictions: Contradiction[]; evidenceSufficient: boolean; insufficiencyReasons: string[]; strategy: "POSTGRES_HYBRID" | "INDEXED_RAG" | "STATIC_APPROVED_FALLBACK" };
 export interface KnowledgeRetriever { search(query: RetrievalQuery): Promise<RetrievalResult>; }
 export interface CrossEncoderReranker { score(query: string, candidates: Array<{ title: string; content: string }>): Promise<number[]>; }
 
@@ -35,6 +35,11 @@ function metadataMatches(entry: GeneralKnowledgeEntry, query: RetrievalQuery): b
   if (query.audience && metadata?.audience?.length && !metadata.audience.includes(query.audience)) return false;
   if (query.productFamily && metadata?.productFamily !== query.productFamily) return false;
   if (query.variant && metadata?.variant !== query.variant) return false;
+  if (query.ingredient && metadata?.ingredient !== query.ingredient) return false;
+  if (query.lifestyleFactor) {
+    const expectedEntity = query.lifestyleFactor === "SMOKING" ? "SMOKING_AND_HAIR" : query.lifestyleFactor === "ALCOHOL" ? "ALCOHOL_AND_HAIR" : undefined;
+    if (expectedEntity && metadata?.canonicalEntity !== expectedEntity) return false;
+  }
   if (query.sourceVersion && entry.sourceVersion !== query.sourceVersion) return false;
   return true;
 }
@@ -85,6 +90,51 @@ export class StaticApprovedKnowledgeRetriever implements KnowledgeRetriever {
   }
 }
 
+const vectorFor = (value: string, dimensions = 96): number[] => {
+  const vector = Array.from({ length: dimensions }, () => 0);
+  for (const token of words(value)) {
+    let hash = 2166136261;
+    for (const char of token) hash = Math.imul(hash ^ char.charCodeAt(0), 16777619);
+    vector[Math.abs(hash) % dimensions] += 1;
+  }
+  const magnitude = Math.sqrt(vector.reduce((sum, item) => sum + item * item, 0)) || 1;
+  return vector.map((item) => item / magnitude);
+};
+const cosine = (left: number[], right: number[]) => left.reduce((sum, value, index) => sum + value * right[index], 0);
+
+/** Local approved index for the first production pilot. It deliberately contains only reviewed Inflammation Phenotype records. */
+export class InflammationPhenotypeIndexedRetriever implements KnowledgeRetriever {
+  private readonly indexed = GENERAL_KNOWLEDGE_SEED
+    .filter((entry) => entry.metadata?.canonicalEntity === "KIT_INFLAMMATION_PHENOTYPE")
+    .map((entry) => ({ entry, vector: vectorFor(`${entry.title} ${entry.content} ${entry.keywords.join(" ")}`) }));
+
+  constructor(private readonly fallback: KnowledgeRetriever = new StaticApprovedKnowledgeRetriever()) {}
+
+  async search(query: RetrievalQuery): Promise<RetrievalResult> {
+    if (query.entityId !== "KIT_INFLAMMATION_PHENOTYPE") return this.fallback.search(query);
+    const now = new Date();
+    const searchText = (query.rewrittenQueries?.length ? query.rewrittenQueries : [query.text]).join(" ");
+    const queryWords = words(searchText);
+    const queryVector = vectorFor(searchText);
+    const hits = this.indexed
+      .map(({ entry, vector }) => ({ entry, semanticScore: cosine(queryVector, vector) }))
+      .filter(({ entry }) => entry.sourceStatus === "ACTIVE" && entry.approvalStatus === "PUBLISHED_PATIENT" && isEffective(entry, now))
+      .filter(({ entry }) => metadataMatches(entry, query))
+      .filter(({ entry }) => !query.topics?.length || query.topics.includes(entry.topic))
+      .filter(({ entry }) => !query.systems?.length || query.systems.includes(entry.knowledgeSystem))
+      .map(({ entry, semanticScore }) => {
+        const hay = words(`${entry.title} ${entry.content} ${entry.keywords.join(" ")}`);
+        const lexicalScore = [...queryWords].filter((word) => hay.has(word)).length / Math.max(queryWords.size, 1);
+        const fusedScore = lexicalScore * 0.58 + semanticScore * 0.32 + entry.authorityScore / 1000;
+        return { ...entry, lexicalScore, semanticScore, fusedScore, rerankScore: fusedScore };
+      })
+      .filter((entry) => entry.lexicalScore > 0 || entry.semanticScore > 0.08)
+      .sort((left, right) => right.rerankScore - left.rerankScore)
+      .slice(0, query.limit ?? 5);
+    return complete(hits, contradictionsFor(hits), "INDEXED_RAG");
+  }
+}
+
 export class OpenAIEmbeddingProvider {
   private readonly client: OpenAI;
   constructor(apiKey: string, readonly modelName = process.env.ASSISTANT_EMBEDDING_MODEL ?? "text-embedding-3-small", readonly dimensions = 1536) { this.client = new OpenAI({ apiKey }); }
@@ -101,7 +151,7 @@ export class OpenAIEmbeddingProvider {
 type DbHit = { id: string; title: string | null; topic: string; knowledgeSystem: string; language: string; content: string; authorityScore: number; sourceType: string; metadata: Prisma.JsonValue; claims: Prisma.JsonValue; lexicalScore: number; semanticScore: number; fusedScore: number; sourceFile: string; version: number; effectiveFrom: Date | null; effectiveUntil: Date | null };
 
 export class PrismaHybridKnowledgeRetriever implements KnowledgeRetriever {
-  constructor(private readonly prisma: PrismaClient, private readonly embedding?: OpenAIEmbeddingProvider, private readonly fallback: KnowledgeRetriever = new StaticApprovedKnowledgeRetriever(), private readonly crossEncoder?: CrossEncoderReranker) {}
+  constructor(private readonly prisma: PrismaClient, private readonly embedding?: OpenAIEmbeddingProvider, private readonly fallback: KnowledgeRetriever = new InflammationPhenotypeIndexedRetriever(), private readonly crossEncoder?: CrossEncoderReranker) {}
 
   async search(query: RetrievalQuery): Promise<RetrievalResult> {
     if (query.domain !== "HAIR") return complete([], [], "POSTGRES_HYBRID");

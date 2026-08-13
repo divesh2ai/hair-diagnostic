@@ -41,6 +41,9 @@
 }
 
 .metaLabel {
+  /* min-width:0 lets a long localised section title actually ellipsis inside
+     the flex row instead of pushing the language control off-screen. */
+  min-width: 0;
   overflow: hidden;
   color: rgba(240, 220, 168, 0.82);
   font-size: 0.625rem;
@@ -49,6 +52,19 @@
   text-overflow: ellipsis;
   text-transform: uppercase;
   white-space: nowrap;
+}
+
+/* Right cluster of the meta row: question counter + language control. Wraps
+   rather than compressing, so a long localised counter never squeezes the
+   language pill below a tappable size. */
+.metaEnd {
+  display: flex;
+  flex: 0 1 auto;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+  flex-wrap: wrap;
+  min-width: 0;
 }
 
 .metaCount {
@@ -198,7 +214,7 @@
 }
 
 .stageTitle {
-  font-family: var(--font-fraunces), Georgia, serif;
+  font-family: var(--font-fraunces), var(--font-devanagari), Georgia, serif;
   font-size: clamp(0.9375rem, 1.35vw, 1.15rem);
   font-weight: 540;
   color: var(--cream);
@@ -232,7 +248,7 @@
 
 .fallbackInner strong {
   display: block;
-  font-family: var(--font-fraunces), Georgia, serif;
+  font-family: var(--font-fraunces), var(--font-devanagari), Georgia, serif;
   font-size: 13px;
   letter-spacing: 0.16em;
   text-transform: uppercase;
@@ -326,4 +342,10 @@
   .mobileArt {
     display: block;
   }
+}
+
+/* Devanagari needs more leading than the 1.15 tuned for Fraunces; without it
+   the stage name's upper matras clip against the artwork above. */
+:global(html:lang(hi)) .stageTitle {
+  line-height: 1.4;
 }

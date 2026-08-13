@@ -25,6 +25,12 @@ export interface BridgeTrigger {
   index: number;
   /** Horizontal center in the desktop hero art, 0–100 (% of image width). */
   imagePct: number;
+  /**
+   * English reference name. NOT what renders — the band resolves the displayed
+   * stage name from `id` through the assessment dictionary
+   * (`bridgeStages.<id>`), so a new locale is a dictionary entry rather than an
+   * edit here. Kept as the canonical English wording of record.
+   */
   label: string;
 }
 

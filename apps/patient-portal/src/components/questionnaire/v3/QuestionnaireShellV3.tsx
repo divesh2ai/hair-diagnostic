@@ -3,10 +3,12 @@
 import type { ReactNode } from 'react';
 import { ArrowLeft, ArrowRight, CheckCircle2 } from 'lucide-react';
 
+import { useAssessmentTranslator } from '@/lib/assessment-i18n';
 import type { ProgressState } from '@/runtime/progressEngine';
 
 import { BiologicalBridgeProgressV3 } from './BiologicalBridgeProgressV3';
 import { HairProgressV3 } from './HairProgressV3';
+import { LocaleSwitcherV3 } from './LocaleSwitcherV3';
 import styles from './assessment-v3.module.css';
 
 export type QuestionnaireVisualMode = 'hair' | 'bridge';
@@ -46,11 +48,12 @@ export function QuestionnaireShellV3({
   compactProgress = false,
   compactShell = false,
 }: QuestionnaireShellV3Props) {
+  const { t } = useAssessmentTranslator();
   const forwardLabel = isSubmitting
-    ? 'Analyzing your answers'
+    ? t('questionnaire.forwardSubmitting')
     : isLast
-      ? 'Complete assessment'
-      : 'Continue to next question';
+      ? t('questionnaire.forwardComplete')
+      : t('questionnaire.forwardContinue');
   return (
     <div
       className={`${styles.assessmentShell} ${compactShell ? styles.assessmentShellCompact : ''}`}
@@ -62,6 +65,7 @@ export function QuestionnaireShellV3({
           visiblePosition={progress.visiblePosition}
           visibleTotal={progress.visibleTotal}
           compact={compactProgress}
+          localeControl={<LocaleSwitcherV3 compact={compactProgress} />}
         />
       ) : (
         <HairProgressV3 progress={progress} sectionTitle={sectionTitle} />
@@ -76,22 +80,33 @@ export function QuestionnaireShellV3({
           onClick={onBack}
           disabled={!canGoBack || isSubmitting}
         >
-          <ArrowLeft size={18} aria-hidden="true" /> Back
+          <ArrowLeft size={18} aria-hidden="true" /> {t('common.back')}
         </button>
 
         <div className={styles.actionEnd}>
           {selectedCount > 0 && (
-            <span className={styles.selectionCount}>{selectedCount} selected</span>
+            <span className={styles.selectionCount}>
+              {t('questionnaire.selectedCount', { count: selectedCount })}
+            </span>
           )}
           {canContinue && !isSubmitting && (
             <span className={styles.enterHint} aria-hidden="true">
-              Press <kbd>Enter</kbd> to continue
+              {t('questionnaire.enterHintPrefix')} <kbd>Enter</kbd>{' '}
+              {t('questionnaire.enterHintSuffix')}
             </span>
           )}
           {onSkip && !canContinue && (
             <button className={styles.skipButton} type="button" onClick={onSkip}>
-              Skip
+              {t('common.skip')}
             </button>
+          )}
+          {/* A required, unanswered question previously showed nothing here —
+              the forward control was simply disabled, leaving the patient to
+              infer why. Say it instead, in their language. */}
+          {!onSkip && !canContinue && !isSubmitting && (
+            <span className={styles.requiredHint} role="status">
+              {t('validation.required')}
+            </span>
           )}
         </div>
       </footer>

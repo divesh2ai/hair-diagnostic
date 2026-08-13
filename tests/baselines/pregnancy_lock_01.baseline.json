@@ -1,6 +1,6 @@
 {
   "fixtureId": "pregnancy_lock_01",
-  "generatedAt": "2026-07-03T07:14:18.090Z",
+  "generatedAt": "2026-08-10T13:00:39.688Z",
   "pipelineVersion": "1.0.0",
   "primaryDiagnosis": "PREGNANCY",
   "scalpStates": [
@@ -10,14 +10,14 @@
   "therapyNeeds": [],
   "severity": "MILD",
   "rankedKitIds": [
-    "HEALTHY - 9"
+    "HEALTHY-9"
   ],
   "appliedRules": [
     "PREGNANCY_LOCK: pregnancy is exclusive — all other kits suppressed."
   ],
   "protocolLabel": "Recovery protocol for Pregnancy.",
   "recommendations": [
-    "HEALTHY - 9"
+    "HEALTHY-9"
   ],
   "narratives": {
     "narratives": {
@@ -26,10 +26,10 @@
     },
     "orchestration": {
       "pipelineVersion": "1.0.0",
-      "executionId": "e8d4fa4e-b884-417d-9c37-ad6ba7d63eb6",
-      "startedAt": "2026-07-03T07:14:18.091Z",
-      "completedAt": "2026-07-03T07:14:18.091Z",
-      "durationMs": 0,
+      "executionId": "18e6a9ca-9472-4020-a612-05a9abb62b73",
+      "startedAt": "2026-08-10T13:00:39.688Z",
+      "completedAt": "2026-08-10T13:00:39.689Z",
+      "durationMs": 1,
       "completedStages": [
         "questionnaire",
         "clinical",

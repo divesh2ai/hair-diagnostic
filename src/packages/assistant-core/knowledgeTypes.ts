@@ -56,6 +56,10 @@ export type GeneralKnowledgeEntry = {
     reviewedAt?: string;
     missingInformation?: string[];
     conflictingInformation?: string[];
+    ingredient?: string;
+    role?: string;
+    pathway?: string;
+    kitSpecificRationale?: string;
   };
   claims: GovernedClaim[];
 };

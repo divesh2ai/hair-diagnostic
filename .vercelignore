@@ -1,0 +1,29 @@
+node_modules
+.pnpm-store
+dist
+build
+.next
+.next-stale-*
+**/.next
+**/.next-stale-*
+out
+outputs
+hairos_output
+hairos_unpacked
+.tmp-kit-mapping-audit
+.tmp-review-pathway-check
+tests/fixtures/replay-corpus-v2/_runs
+tests/baselines
+pre_revert_checkpoint.patch
+diff_*.txt
+*.log
+.env
+.env.local
+.env.*.local
+Grade Pic
+HAIROS_MASTER_CONTEXT
+doc
+docs
+"All Kits  Info.docx"
+"Kits & Product.xlsx"
+Dockerfile

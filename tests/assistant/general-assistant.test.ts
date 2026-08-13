@@ -311,8 +311,8 @@ describe("five-kit exact composition routing", () => {
     expect(response.intent).toBe("MIXED_KIT_INFORMATION");
     expect(response.cards[0]).toMatchObject({ type: "composition", title: "Inflammation Phenotype ingredients" });
     expect(response.toolCalls[0].name).toBe("getKitIngredientFacts");
-    expect(response.toolCalls[1]).toMatchObject({ name: "retrieveApprovedKnowledge", status: "not_found" });
-    expect(response.retrieval?.insufficiencyReasons).toContain("NO_CURRENT_PATIENT_PUBLISHED_HAIR_SOURCE");
+    expect(response.toolCalls[1]).toMatchObject({ name: "retrieveApprovedKnowledge", status: "ok" });
+    expect(response.retrieval?.evidenceSufficient).toBe(true);
     expect(response.answer).toContain("Inflammation Phenotype has 101 verified product-level ingredient rows");
     expect(response.answer).not.toMatch(unrelatedFallbackTerms);
     expect(response.answer).not.toMatch(/MRP|INR|price/i);

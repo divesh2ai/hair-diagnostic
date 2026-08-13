@@ -1,6 +1,8 @@
 'use client';
 
-import { useEffect, useState, type CSSProperties } from 'react';
+import { useEffect, useState, type CSSProperties, type ReactNode } from 'react';
+
+import { useAssessmentTranslator } from '@/lib/assessment-i18n';
 
 import { BRIDGE_TRIGGERS, triggerForProgress } from './bridgeStages';
 import { MobileProgressiveBridge } from './MobileProgressiveBridge';
@@ -25,6 +27,8 @@ export interface BiologicalBridgeProgressV3Props {
   visibleTotal: number;
   reducedMotion?: boolean;
   compact?: boolean;
+  /** Language control rendered in the band's meta row (the assessment header). */
+  localeControl?: ReactNode;
 }
 
 export function BiologicalBridgeProgressV3({
@@ -34,9 +38,14 @@ export function BiologicalBridgeProgressV3({
   visibleTotal,
   reducedMotion,
   compact,
+  localeControl,
 }: BiologicalBridgeProgressV3Props) {
   const clamped = Math.max(0, Math.min(100, progress));
+  // Zone maths is unchanged — only the trigger's patient-visible name is
+  // localised, via its stable `id`.
   const active = triggerForProgress(clamped);
+  const { t } = useAssessmentTranslator();
+  const activeLabel = t(`bridgeStages.${active.id}`);
 
   const [imageOk, setImageOk] = useState(true);
   useEffect(() => {
@@ -55,15 +64,18 @@ export function BiologicalBridgeProgressV3({
     '--frontier': `${clamped}%`,
   } as CSSProperties;
 
-  const label = `Question ${visiblePosition} of ${visibleTotal}`;
-  const ariaText = `${label} · ${active.label}`;
+  const label = t('questionnaire.progressCounter', {
+    position: visiblePosition,
+    total: visibleTotal,
+  });
+  const ariaText = `${label} · ${activeLabel}`;
 
   return (
     <section
       className={`${styles.band} ${reducedMotion ? styles.reduced : ''} ${compact ? styles.compact : ''}`}
       style={style}
       role="progressbar"
-      aria-label="Assessment progress"
+      aria-label={t('questionnaire.progressAriaLabel')}
       aria-valuemin={0}
       aria-valuemax={100}
       aria-valuenow={Math.round(clamped)}
@@ -73,9 +85,12 @@ export function BiologicalBridgeProgressV3({
     >
       <div className={styles.meta}>
         <span className={styles.metaLabel}>{sectionTitle}</span>
-        <strong className={styles.metaCount} aria-live="polite">
-          {label}
-        </strong>
+        <div className={styles.metaEnd}>
+          <strong className={styles.metaCount} aria-live="polite">
+            {label}
+          </strong>
+          {localeControl}
+        </div>
       </div>
 
       <div className={styles.mobileArt} aria-hidden="true">
@@ -136,13 +151,13 @@ export function BiologicalBridgeProgressV3({
 
         {imageOk && (
           <div className={styles.stageOverlay} aria-hidden="true">
-            <h2 className={styles.stageTitle}>{active.label}</h2>
+            <h2 className={styles.stageTitle}>{activeLabel}</h2>
           </div>
         )}
       </div>
 
       <span className={styles.srOnly}>
-        {`${label} · ${active.index} of ${BRIDGE_TRIGGERS.length} · ${active.label}`}
+        {`${label} · ${active.index} / ${BRIDGE_TRIGGERS.length} · ${activeLabel}`}
       </span>
     </section>
   );

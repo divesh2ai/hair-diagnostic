@@ -30,7 +30,11 @@ export type AuditAction =
   | "REPORT_GENERATED"
   | "KIT_ORDER_INTENT_CREATED"
   | "KIT_ORDER_INTENT_CANCELLED"
-  | "PHASE_A_RECLAIMED";
+  | "PHASE_A_RECLAIMED"
+  | "DOCTOR_INVITATION_CREATED"
+  | "DOCTOR_INVITATION_RESENT"
+  | "DOCTOR_INVITATION_CANCELLED"
+  | "DOCTOR_INVITATION_EXPIRED";
 
 export type AuditActorType = "doctor" | "admin" | "system" | "patient";
 

@@ -1,6 +1,6 @@
 {
   "fixtureId": "alopecia_areata_01",
-  "generatedAt": "2026-07-03T07:14:17.861Z",
+  "generatedAt": "2026-08-10T13:00:39.590Z",
   "pipelineVersion": "1.0.0",
   "primaryDiagnosis": "ALOPECIA_AREATA",
   "scalpStates": [
@@ -14,13 +14,15 @@
   "rankedKitIds": [
     "HAIR FACT ALOPECIA AREATA",
     "PHENOTYPE INFLAMATION",
+    "PRO IMMUNE GOLD",
     "FPHL"
   ],
   "appliedRules": [],
-  "protocolLabel": "Recovery protocol for 3 condition(s): Female pattern hair loss · Scalp / perifollicular inflammation · Alopecia areata (autoimmune).",
+  "protocolLabel": "Recovery protocol for 4 condition(s): Female pattern hair loss · Scalp / perifollicular inflammation · Alopecia areata (autoimmune) · Immune depletion / regrowth support.",
   "recommendations": [
     "HAIR FACT ALOPECIA AREATA",
     "PHENOTYPE INFLAMATION",
+    "PRO IMMUNE GOLD",
     "FPHL"
   ],
   "narratives": {
@@ -30,10 +32,10 @@
     },
     "orchestration": {
       "pipelineVersion": "1.0.0",
-      "executionId": "798df79b-80f8-42d8-9d51-965626054922",
-      "startedAt": "2026-07-03T07:14:17.861Z",
-      "completedAt": "2026-07-03T07:14:17.864Z",
-      "durationMs": 3,
+      "executionId": "b02a736a-e5f7-41a1-bfee-3441f7d9f06d",
+      "startedAt": "2026-08-10T13:00:39.590Z",
+      "completedAt": "2026-08-10T13:00:39.591Z",
+      "durationMs": 1,
       "completedStages": [
         "questionnaire",
         "clinical",

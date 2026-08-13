@@ -16,6 +16,8 @@ export * from "./generalKnowledgeSeed";
 export * from "./hybridRetrieval";
 export * from "./modes";
 export * from "./questionUnderstanding";
+export * from "./responsePresentation";
 
 export * from "./domainConfig";
 export * from "./knowledgeTypes";
+export * from "./conversationContext";

@@ -23,6 +23,13 @@ export interface ClinicLandingData {
   slug: string;
   name: string;
   language: string;
+  /**
+   * Patient-facing locales this clinic offers, as `SupportedLanguage` enum
+   * members (e.g. `["EN", "HI", "MR"]`). Empty means "all locales the platform
+   * supports" — the schema default. Safe to serialise: it is a public offering,
+   * not configuration.
+   */
+  supportedLanguages: string[];
   address: string | null;
   tagline: string | null;
   isActive: boolean;
@@ -55,6 +62,7 @@ async function fetchClinicLandingUncached(slug: string): Promise<ClinicLandingDa
       slug: true,
       name: true,
       language: true,
+      supportedLanguages: true,
       address: true,
       tagline: true,
       isActive: true,

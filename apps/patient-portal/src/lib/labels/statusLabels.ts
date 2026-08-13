@@ -64,7 +64,9 @@ export function composeWorkflowLabel(input: Input): WorkflowLabel {
     status === "COMPLETED" ||
     status === "GENERATING_REPORT"
   ) {
-    return { label: "Ready for doctor review", tone: "warning" };
+    // The doctor is already inside their own workspace — "for doctor review"
+    // states the obvious and reads like orchestration jargon.
+    return { label: "Ready for review", tone: "warning" };
   }
   if (status === "PENDING" || status === "QUEUED") {
     return { label: "Awaiting assessment", tone: "neutral" };
@@ -83,30 +85,15 @@ export function composeWorkflowLabel(input: Input): WorkflowLabel {
   return { label: "In review", tone: "neutral" };
 }
 
-// Operational reason for the queue "Reason" column.
+// composeOperationalReason() was removed deliberately.
 //
-// This is not a clinical classifier — it explains *what stage* is holding the
-// case, not *what illness* the patient has. Real clinical priority arrives in
-// Phase 1A via the priority classifier and a dedicated Assessment field.
-export function composeOperationalReason(input: Input): string | null {
-  const status = (input.assessmentStatus ?? "").toUpperCase();
-  const decision = (input.reviewDecision ?? "").toUpperCase();
-  const approval = (input.approvalStatus ?? "").toUpperCase();
-
-  if (input.informationRequired) return "Information incomplete";
-  if (status === "FAILED" || status === "PARTIAL_FAILURE") {
-    return "Report generation needs attention";
-  }
-  if (approval === "REVISION_REQUESTED" || decision === "EDITS_REQUESTED") {
-    return "Revision requested";
-  }
-  if (
-    (decision === "PENDING" || decision === "" ) &&
-    (status === "CLINICAL_READY" ||
-      status === "COMPLETED" ||
-      status === "GENERATING_REPORT")
-  ) {
-    return "Doctor approval pending";
-  }
-  return null;
-}
+// It computed a second line from the same three enums composeWorkflowLabel()
+// already reads, so every queue row carried the state twice — "Ready for
+// doctor review" next to "Doctor approval pending", "Revision requested"
+// under "Revision requested". Two labels for one fact reads as a bug, and it
+// crowded out the line that actually earns its space: *why* this case needs
+// looking at, which comes from the review-pathway classifier via
+// lib/doctor/reviewPriority.
+//
+// Workflow state → composeWorkflowLabel (one label, above).
+// Clinical reason → reviewPriority().reason.

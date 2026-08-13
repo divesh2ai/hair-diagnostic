@@ -1,7 +1,8 @@
 import { findCatalogueEntityMatches, normalizeEntityName } from "./fullCatalogue";
 import { detectRequestedDomain, type PlatformDomain } from "./domainConfig";
+import type { GeneralConversationContext } from "./conversationContext";
 
-export type GeneralIntent = "HAIR_EDUCATION" | "PROMPT_INJECTION" | "MIXED_KIT_INFORMATION" | "CATALOGUE_PRICE" | "KIT_OVERVIEW" | "KIT_MECHANISM" | "KIT_COMPOSITION" | "PRODUCT_LOOKUP" | "COMPARISON" | "CONDITION_EXPLANATION" | "LIFESTYLE_FACTOR_IMPACT" | "INGREDIENT_INFORMATION" | "TOPICAL_INFORMATION" | "LIFESTYLE_NUTRITION" | "OUT_OF_SCOPE_DOMAIN" | "GENERAL_SAFETY" | "PERSONAL_PLAN_REQUEST" | "DIAGNOSIS_REQUEST" | "KIT_SUITABILITY_REQUEST" | "UNSAFE_TREATMENT_CHANGE";
+export type GeneralIntent = "HAIR_EDUCATION" | "PROMPT_INJECTION" | "MIXED_KIT_INFORMATION" | "CATALOGUE_PRICE" | "KIT_OVERVIEW" | "KIT_MECHANISM" | "KIT_COMPOSITION" | "PRODUCT_LOOKUP" | "COMPARISON" | "CONDITION_EXPLANATION" | "LIFESTYLE_FACTOR_IMPACT" | "INGREDIENT_INFORMATION" | "TOPICAL_INFORMATION" | "LIFESTYLE_NUTRITION" | "OUT_OF_SCOPE_DOMAIN" | "GENERAL_SAFETY" | "PERSONAL_PLAN_REQUEST" | "DIAGNOSIS_REQUEST" | "KIT_SUITABILITY_REQUEST" | "UNSAFE_TREATMENT_CHANGE" | "INGREDIENT_RATIONALE" | "KIT_PATHWAYS" | "KIT_CLINICAL_RELEVANCE" | "KIT_SUMMARY" | "FORMULATION_RATIONALE" | "SOURCE_INSPECTION" | "FOLLOW_UP_REFERENCE";
 
 export type UnderstoodQuestion = {
   original: string;
@@ -13,7 +14,20 @@ export type UnderstoodQuestion = {
   intent: GeneralIntent;
   entities: ReturnType<typeof findCatalogueEntityMatches>;
   usedFollowUpContext: boolean;
+  depth: AnswerDepth;
+  inheritedProductFamily?: string;
+  ingredient?: string;
+  lifestyleFactor?: string;
 };
+
+export type AnswerDepth = "QUICK" | "EXPLAIN" | "DEEP_DIVE";
+
+export function inferAnswerDepth(text: string): AnswerDepth {
+  const normalized = normalizeEntityName(text.toLowerCase());
+  if (/deep dive|complete rationale|full ingredient|full formulation|detailed formulation|detailed clinical|deep clinical|complete explanation|in detail/.test(normalized)) return "DEEP_DIVE";
+  if (/\bwhy\b|\bhow\b|explain|mechanism|rationale|work together|pathway/.test(normalized)) return "EXPLAIN";
+  return "QUICK";
+}
 
 const HINGLISH: Record<string, string> = {
   baal: "hair", bal: "hair", jhad: "shed", jhadna: "shedding", girna: "shedding", gir: "shed", khujli: "itching", khushki: "dandruff", tel: "oil", daam: "price", kimat: "price", kitna: "what", kya: "what", kyu: "why", kyun: "why", kaise: "how", fark: "difference", farak: "difference", safed: "greying", ganjapan: "hair loss", dawa: "medicine", lena: "take", lu: "take", chahiye: "should", mera: "my", meri: "my", mere: "my", iska: "this", uska: "that", wala: "one",
@@ -41,6 +55,12 @@ function intentFor(text: string, domain: PlatformDomain, entities: ReturnType<ty
   if (/do i have|diagnose|is this alopecia|what condition do i have|am i balding/.test(text)) return "DIAGNOSIS_REQUEST";
   if (/which kit|what kit.*take|kit.*should.*take|which .* should .*take|should i take .*kit|best kit|recommend.*kit/.test(text)) return "KIT_SUITABILITY_REQUEST";
   if (/emergency|chest pain|faint|breathing|severe swelling|allergic|seek medical|side effect|safe|pregnan|breastfeed/.test(text)) return "GENERAL_SAFETY";
+  if (/what source|which source|source are you using|show (?:me )?(?:the )?sources?/.test(text)) return "SOURCE_INSPECTION";
+  if (/complete formulation rationale|full formulation rationale|formulation rationale/.test(text)) return "FORMULATION_RATIONALE";
+  if (/why (?:is |are )?(?:nac|n acetyl|curcumin|resveratrol|vitamin d)|(?:nac|n acetyl|curcumin|resveratrol|vitamin d).*(?:role|rationale|included)|other ingredients.*oxidative/.test(text)) return "INGREDIENT_RATIONALE";
+  if (/what pathways|which pathways|pathways? does|pathways?.*target/.test(text)) return "KIT_PATHWAYS";
+  if (/clinical factors|clinically relevant|clinical relevance|factors.*assess/.test(text)) return "KIT_CLINICAL_RELEVANCE";
+  if (/(?:explain|summari[sz]e).*(?:kit|phenotype).*(?:bullet|points)|(?:kit|phenotype).*(?:in )?\d+ bullets?/.test(text)) return "KIT_SUMMARY";
   if (hasKitEntity && /ingredient|ingredients|formulation/.test(text) && /explain|work together|how|why|mechanism|rationale|role|roles/.test(text)) return "MIXED_KIT_INFORMATION";
   if (/(price|mrp|cost|how much|composition|contains|inside kit|products in|what comes in)/.test(text) && /(why|purpose|used for|addresses|mechanism|objective)/.test(text)) return "MIXED_KIT_INFORMATION";
   if (/price|mrp|cost|how much/.test(text)) return "CATALOGUE_PRICE";
@@ -59,14 +79,22 @@ function intentFor(text: string, domain: PlatformDomain, entities: ReturnType<ty
   if (/kit|product/.test(text) || shortEntityOnly) return "PRODUCT_LOOKUP";
   return "HAIR_EDUCATION";
 }
-export function understandQuestion(query: string, history: Array<{ role: string; content: string }> = []): UnderstoodQuestion {
+const contextLabel = (id?: string) => id === "KIT_INFLAMMATION_PHENOTYPE" ? "Inflammation Phenotype" : id?.replace(/^KIT_/, "").replaceAll("_", " ");
+const ingredientFor = (text: string) => /\bn[-\s]?a[-\s]?c\b|n acetyl cysteine/.test(text) ? "NAC" : /curcumin/.test(text) ? "CURCUMIN" : /resveratrol/.test(text) ? "RESVERATROL" : /vitamin d/.test(text) ? "VITAMIN_D" : undefined;
+const lifestyleFactorFor = (text: string) => /smok|tobacco|vaping/.test(text) ? "SMOKING" : /alcohol|drinking/.test(text) ? "ALCOHOL" : /\bstress\b/.test(text.replace(/oxidative stress/g, "")) ? "STRESS" : /sleep|night shift/.test(text) ? "SLEEP" : undefined;
+
+export function understandQuestion(query: string, history: Array<{ role: string; content: string }> = [], context?: GeneralConversationContext): UnderstoodQuestion {
   const current = canonicalize(query);
   const prior = [...history].reverse().find((item) => item.role === "user")?.content ?? "";
-  const followUp = /^(and |what about|how about|it |that |this |iska|usme|aur )/.test(current.text) || /\b(it|that one|this one|iska|usme)\b/.test(current.text);
-  const retrievalQuery = followUp && prior ? `${canonicalize(prior).text} ${current.text}` : current.text;
+  const explicitEntities = findCatalogueEntityMatches(current.text);
+  const contextualReference = /\b(it|this kit|the kit|this phenotype|that one|this one|its|it target)\b/.test(current.text)
+    || /^(and |what about|how about|it |that |this |iska|usme|aur )/.test(current.text)
+    || (!explicitEntities.some((entity) => entity.type === "KIT") && !!context?.activeProductFamily && /ingredient|nac|pathway|clinical factor|formulation|source|price|smok|oxidative stress|bullet/.test(current.text));
+  const inheritedLabel = contextualReference ? contextLabel(context?.activeProductFamily) : undefined;
+  const retrievalQuery = inheritedLabel ? `${inheritedLabel} ${current.text}` : contextualReference && prior ? `${canonicalize(prior).text} ${current.text}` : current.text;
   const requestedDomain = detectRequestedDomain(retrievalQuery);
   const rewrittenQueries = [...new Set([retrievalQuery, retrievalQuery.replace(/\bmphl\b/g, "male pattern hair loss").replace(/\bfphl\b/g, "female pattern hair loss").replace(/\bte\b/g, "telogen effluvium")])];
   const entities = findCatalogueEntityMatches(retrievalQuery);
-  return { original: query, normalized: current.text, retrievalQuery, rewrittenQueries, requestedDomain, language: current.language, intent: intentFor(current.text, requestedDomain, entities), entities, usedFollowUpContext: followUp && !!prior };
+  return { original: query, normalized: current.text, retrievalQuery, rewrittenQueries, requestedDomain, language: current.language, intent: intentFor(current.text, requestedDomain, entities), entities, usedFollowUpContext: !!inheritedLabel || (contextualReference && !!prior), depth: inferAnswerDepth(current.text), inheritedProductFamily: inheritedLabel ? context?.activeProductFamily : undefined, ingredient: ingredientFor(current.text), lifestyleFactor: lifestyleFactorFor(current.text) };
 }
 

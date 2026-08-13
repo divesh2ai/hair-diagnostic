@@ -3,6 +3,7 @@
 import { useEffect, useState, use } from "react";
 import { PageContainer } from "@/components/app-shell";
 import { ClinicForm, type ClinicFormValues } from "../../ClinicForm";
+import { ClinicLocationsPanel } from "../../ClinicLocationsPanel";
 import { LoadingState, ErrorState } from "@/components/ui/states";
 
 export default function EditClinicPage({
@@ -63,6 +64,9 @@ export default function EditClinicPage({
         <p className="text-sm text-muted-foreground">Edit clinic</p>
       </div>
       <ClinicForm mode="edit" initial={initial} />
+      {/* Sits outside ClinicForm's <form> — branches save independently of the
+          clinic record, and nesting forms would break both submits. */}
+      <ClinicLocationsPanel clinicId={id} />
     </PageContainer>
   );
 }

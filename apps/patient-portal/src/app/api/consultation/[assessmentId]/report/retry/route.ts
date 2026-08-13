@@ -26,8 +26,7 @@
 import { NextResponse, after } from "next/server";
 import { AssessmentStatus } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
-import { getClinicContext, handleAuthError } from "@/lib/auth";
-import { isSuperAdmin } from "@/lib/auth/roles";
+import { requireDoctorContext, assertDoctorInClinic } from "@/lib/auth";
 import { safeDispatchOrchestration } from "@/lib/orchestration/dispatch";
 import { writeAuditLog } from "@/lib/audit/writeAuditLog";
 import { logLifecycleEvent } from "@/lib/observability/lifecycle";
@@ -43,14 +42,9 @@ export async function POST(
   _req: Request,
   ctxParam: { params: Promise<{ assessmentId: string }> },
 ) {
-  let auth;
-  try {
-    auth = await getClinicContext();
-  } catch (err) {
-    const resp = handleAuthError(err);
-    if (resp) return resp;
-    throw err;
-  }
+  const authResult = await requireDoctorContext();
+  if (authResult instanceof NextResponse) return authResult;
+  const { doctor, authUserId, authRole, mode } = authResult;
 
   const { assessmentId } = await ctxParam.params;
 
@@ -61,17 +55,14 @@ export async function POST(
   if (!assessment) {
     return NextResponse.json({ error: "not_found" }, { status: 404 });
   }
-  if (!isSuperAdmin(auth.role) && assessment.clinicId !== auth.clinicId) {
+  if (assertDoctorInClinic(doctor, assessment.clinicId)) {
     logLifecycleEvent({
       event: "report_retry.denied",
       assessmentId,
-      clinicId: auth.clinicId ?? null,
+      clinicId: doctor.clinicId,
       failureCode: "cross_clinic",
     });
-    return NextResponse.json(
-      { error: "forbidden", message: "Cross-clinic access denied" },
-      { status: 403 },
-    );
+    return NextResponse.json({ error: "not_found" }, { status: 404 });
   }
 
   // Step A: compare-and-set to REPORT_GENERATING. Single winner among racing
@@ -114,12 +105,14 @@ export async function POST(
     action: "REPORT_RETRIED",
     entityType: "Assessment",
     entityId: assessmentId,
-    actorId: auth.userId ?? null,
-    actorRole: auth.role,
-    actorType: isSuperAdmin(auth.role) ? "admin" : "doctor",
+    actorId: authUserId,
+    actorRole: authRole,
+    actorType: mode,
     assessmentId,
     metadata: {
       clinicId: assessment.clinicId,
+      actingDoctorId: doctor.id,
+      mode,
       previousStatus: assessment.status,
     },
   }).catch((err) => console.error("[report-retry] audit failed", err));

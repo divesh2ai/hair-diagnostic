@@ -1,6 +1,6 @@
 {
   "fixtureId": "crown_thinning_no_visible_fall_01",
-  "generatedAt": "2026-07-03T07:14:17.882Z",
+  "generatedAt": "2026-08-10T13:00:39.598Z",
   "pipelineVersion": "1.0.0",
   "primaryDiagnosis": "AGA_MALE_123",
   "scalpStates": [
@@ -13,15 +13,17 @@
   "severity": "MODERATE",
   "rankedKitIds": [
     "PHENOTYPE INFLAMATION",
-    "PRO IMMUNE GOLD",
-    "MPHL"
+    "MPHL",
+    "PRO IMMUNE GOLD"
   ],
-  "appliedRules": [],
-  "protocolLabel": "Recovery protocol for 3 condition(s): Male pattern hair loss · Scalp / perifollicular inflammation · Immune depletion / regrowth support.",
+  "appliedRules": [
+    "PRO_IMMUNE_CONSOLIDATION_FILLER: stack had only 2 kits — PRO IMMUNE added as consolidation layer."
+  ],
+  "protocolLabel": "Recovery protocol for 2 condition(s): Male pattern hair loss · Scalp / perifollicular inflammation.",
   "recommendations": [
     "PHENOTYPE INFLAMATION",
-    "PRO IMMUNE GOLD",
-    "MPHL"
+    "MPHL",
+    "PRO IMMUNE GOLD"
   ],
   "narratives": {
     "narratives": {
@@ -30,10 +32,10 @@
     },
     "orchestration": {
       "pipelineVersion": "1.0.0",
-      "executionId": "fbc1b5ad-f421-49f8-9de7-121666200426",
-      "startedAt": "2026-07-03T07:14:17.882Z",
-      "completedAt": "2026-07-03T07:14:17.884Z",
-      "durationMs": 2,
+      "executionId": "ebf93444-68a2-427f-99b6-554606a3426c",
+      "startedAt": "2026-08-10T13:00:39.599Z",
+      "completedAt": "2026-08-10T13:00:39.600Z",
+      "durationMs": 1,
       "completedStages": [
         "questionnaire",
         "clinical",

@@ -1,6 +1,6 @@
 {
   "fixtureId": "pcos_diabetes_upgrade_01",
-  "generatedAt": "2026-07-03T07:14:18.031Z",
+  "generatedAt": "2026-08-10T13:00:39.668Z",
   "pipelineVersion": "1.0.0",
   "primaryDiagnosis": "PCOS_ONLY",
   "scalpStates": [
@@ -13,17 +13,17 @@
   "therapyNeeds": [],
   "severity": "MILD",
   "rankedKitIds": [
-    "PHENOTYPE INFLAMATION",
     "PRO FACT META B PCOS",
+    "PRO IMMUNE GOLD",
     "FPHL"
   ],
   "appliedRules": [
     "PCOS_METABOLIC: PRO FACT META B PCOS already covers the metabolic axis."
   ],
-  "protocolLabel": "Recovery protocol for 3 condition(s): Female pattern hair loss · Scalp / perifollicular inflammation · PCOS / PCOD.",
+  "protocolLabel": "Recovery protocol for 3 condition(s): Female pattern hair loss · PCOS / PCOD · Immune depletion / regrowth support.",
   "recommendations": [
-    "PHENOTYPE INFLAMATION",
     "PRO FACT META B PCOS",
+    "PRO IMMUNE GOLD",
     "FPHL"
   ],
   "narratives": {
@@ -33,9 +33,9 @@
     },
     "orchestration": {
       "pipelineVersion": "1.0.0",
-      "executionId": "63da01db-5b62-4f7d-a228-4d2dc9a0b818",
-      "startedAt": "2026-07-03T07:14:18.031Z",
-      "completedAt": "2026-07-03T07:14:18.031Z",
+      "executionId": "daabcfda-824d-46a1-bbd5-5dd5f9d4bdf3",
+      "startedAt": "2026-08-10T13:00:39.668Z",
+      "completedAt": "2026-08-10T13:00:39.668Z",
       "durationMs": 0,
       "completedStages": [
         "questionnaire",

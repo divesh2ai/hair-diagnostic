@@ -1,6 +1,6 @@
 {
   "fixtureId": "pro_immune_last_invariant_01",
-  "generatedAt": "2026-07-03T07:14:18.094Z",
+  "generatedAt": "2026-08-10T13:00:39.690Z",
   "pipelineVersion": "1.0.0",
   "primaryDiagnosis": "TE_ILLNESS",
   "scalpStates": [
@@ -32,10 +32,10 @@
     },
     "orchestration": {
       "pipelineVersion": "1.0.0",
-      "executionId": "71a5a657-fd7b-42e0-af3d-c1438b075738",
-      "startedAt": "2026-07-03T07:14:18.094Z",
-      "completedAt": "2026-07-03T07:14:18.095Z",
-      "durationMs": 1,
+      "executionId": "1c477aaf-24c5-448a-ae99-544001cbd831",
+      "startedAt": "2026-08-10T13:00:39.691Z",
+      "completedAt": "2026-08-10T13:00:39.691Z",
+      "durationMs": 0,
       "completedStages": [
         "questionnaire",
         "clinical",

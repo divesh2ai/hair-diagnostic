@@ -1,0 +1,7 @@
+{
+  "id": "dr-fact-v2",
+  "displayName": "Dr. FACT",
+  "description": "Premium interactive doctor companion with authored clinical expressions, walking, greeting, and personality animation.",
+  "spriteVersionNumber": 2,
+  "spritesheetPath": "spritesheet.webp"
+}

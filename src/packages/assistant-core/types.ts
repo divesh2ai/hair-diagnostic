@@ -55,6 +55,7 @@ export type SourceRef = {
   label: string;
   field?: string;
   version?: number;
+  sourceVersion?: string;
   effectiveFrom?: string | null;
   approvalStatus?: string;
   url?: string;

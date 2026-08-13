@@ -1,6 +1,6 @@
 {
   "fixtureId": "ojas_glp1_stress_no_genetics_01",
-  "generatedAt": "2026-07-03T07:14:18.024Z",
+  "generatedAt": "2026-08-10T13:00:39.663Z",
   "pipelineVersion": "1.0.0",
   "primaryDiagnosis": "THYROID_HYPO",
   "scalpStates": [
@@ -44,9 +44,9 @@
     },
     "orchestration": {
       "pipelineVersion": "1.0.0",
-      "executionId": "f0e09d3d-a4d7-4290-b43d-d69b27fe6c31",
-      "startedAt": "2026-07-03T07:14:18.024Z",
-      "completedAt": "2026-07-03T07:14:18.025Z",
+      "executionId": "568a9fae-be0e-4358-b0d4-077a8189c55a",
+      "startedAt": "2026-08-10T13:00:39.663Z",
+      "completedAt": "2026-08-10T13:00:39.664Z",
       "durationMs": 1,
       "completedStages": [
         "questionnaire",

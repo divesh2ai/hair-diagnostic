@@ -1,4 +1,6 @@
 import type { GeneralKnowledgeEntry, HairKnowledgeTopic, KnowledgeContentType, KnowledgeTaxonomyDomain } from "./knowledgeTypes";
+import { findCatalogueKit } from "./fullCatalogue";
+import { getKitIngredientFacts, PRODUCT_FORMULATION_CATALOGUE } from "./productFormulations";
 
 const REVIEWED_AT = "2026-08-05";
 const REVIEWED_BY = "Dr. FACT governed five-kit RAG audit";
@@ -21,6 +23,12 @@ type EntryInput = {
   authorityScore?: number;
   missingInformation?: string[];
   conflictingInformation?: string[];
+  ingredient?: string;
+  role?: string;
+  pathway?: string;
+  kitSpecificRationale?: string;
+  sourceVersion?: string;
+  sourceUrl?: string;
 };
 
 function entry(input: EntryInput): GeneralKnowledgeEntry {
@@ -38,8 +46,8 @@ function entry(input: EntryInput): GeneralKnowledgeEntry {
     sourceType: "CLINICAL_PROTOCOL",
     sourceStatus: "ACTIVE",
     sourceLabel: `${input.sourceDocument} / ${input.sourceSection}`,
-    sourceUrl: "repo:src/packages/assistant-core/fiveKitKnowledge.ts",
-    sourceVersion: SOURCE_VERSION,
+    sourceUrl: input.sourceUrl ?? "repo:src/packages/assistant-core/fiveKitKnowledge.ts",
+    sourceVersion: input.sourceVersion ?? SOURCE_VERSION,
     effectiveFrom: REVIEWED_AT,
     metadata: {
       taxonomyDomain: input.taxonomyDomain,
@@ -55,6 +63,10 @@ function entry(input: EntryInput): GeneralKnowledgeEntry {
       reviewedAt: REVIEWED_AT,
       missingInformation: input.missingInformation,
       conflictingInformation: input.conflictingInformation,
+      ingredient: input.ingredient,
+      role: input.role,
+      pathway: input.pathway,
+      kitSpecificRationale: input.kitSpecificRationale,
     },
     claims: [{
       claimId: `${input.id}_CLAIM_1`,
@@ -67,6 +79,14 @@ function entry(input: EntryInput): GeneralKnowledgeEntry {
     }],
   };
 }
+
+const phenotypeKit = findCatalogueKit("Inflammation Phenotype");
+const phenotypeIngredientFacts = phenotypeKit ? getKitIngredientFacts(phenotypeKit) : undefined;
+const rationaleIngredientNames = new Set(["n acetyl cysteine", "nac", "curcumin", "resveratrol", "vitamin d"]);
+const normalizeIngredient = (value: string) => value.toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
+const missingRationaleIngredients = [...new Map((phenotypeIngredientFacts?.products.flatMap((product) => product.ingredients) ?? [])
+  .filter((row) => !rationaleIngredientNames.has(normalizeIngredient(row.ingredientName)))
+  .map((row) => [normalizeIngredient(row.ingredientName), row])).values()];
 
 export const FIVE_KIT_CONTROLLED_KNOWLEDGE: GeneralKnowledgeEntry[] = [
   entry({
@@ -125,6 +145,107 @@ export const FIVE_KIT_CONTROLLED_KNOWLEDGE: GeneralKnowledgeEntry[] = [
     content: "Inflammation Phenotype is the five-kit pilot family for chronic low-grade inflammatory signals that may contribute to persistent shedding, weak follicles and poor cycle recovery. Its documented pathways include inflammatory cytokine control, immune modulation, oxidative protection, androgen-sensitivity support and stress regulation. The prior source prose lists nine named items while the pilot kit-product sheet lists eight kit products; exact ingredient answers must use the structured formulation workbook and show discrepancies rather than silently reconciling them.",
     keywords: ["inflammation phenotype", "phenotype inflammation", "inflammation", "oxidative stress", "curcumin", "nac", "mechanism"],
     conflictingInformation: ["Pilot knowledge prose and kit-product rows use different counting levels for Inflammation Phenotype."],
+  }),
+  entry({
+    id: "FIVEKIT_INFLAMMATION_PATHWAYS_V1",
+    title: "Inflammation Phenotype therapeutic pathways",
+    topic: "HAIR_BIOLOGY",
+    taxonomyDomain: "KIT",
+    canonicalEntity: "KIT_INFLAMMATION_PHENOTYPE",
+    aliases: ["Inflammation Phenotype pathways", "this phenotype pathways"],
+    contentType: "THERAPEUTIC_PATHWAY",
+    productFamily: "Inflammation Phenotype",
+    sourceDocument: "Clinical Chunks sheet",
+    sourceSection: "PHENOTYPE INFLAMMATION strategy",
+    content: "The approved Inflammation Phenotype strategy targets five documented support pathways: inflammatory cytokine control, immune modulation, oxidative protection, androgen-sensitivity support and stress regulation. These are formulation objectives, not proof that the kit treats a disease or is selected for an individual patient.",
+    keywords: ["inflammation phenotype", "pathways", "cytokines", "immune modulation", "oxidative protection", "androgen sensitivity", "stress regulation"],
+  }),
+  entry({
+    id: "FIVEKIT_INFLAMMATION_CLINICAL_RELEVANCE_V1",
+    title: "Inflammation Phenotype clinical relevance assessment",
+    topic: "SCALP_CONDITION",
+    taxonomyDomain: "KIT",
+    canonicalEntity: "KIT_INFLAMMATION_PHENOTYPE",
+    aliases: ["Inflammation Phenotype clinical factors", "inflammatory phenotype assessment"],
+    contentType: "PATIENT_FACTOR",
+    productFamily: "Inflammation Phenotype",
+    sourceDocument: "Clinical Chunks sheet",
+    sourceSection: "PHENOTYPE INFLAMMATION indication and clinical note",
+    content: "Clinical relevance assessment should look for persistent shedding or poor cycle recovery alongside chronic low-grade inflammatory signals, scalp irritation or inflammation, oxidative-stress burden, immune-related context and stress load. Severe inflammation can be prioritised over hormonal drivers only when the governed deterministic rules confirm it; these factors alone do not select the kit.",
+    keywords: ["clinical factors", "assess", "persistent shedding", "scalp irritation", "inflammation", "oxidative stress", "immune", "stress"],
+  }),
+  entry({
+    id: "FIVEKIT_INFLAMMATION_FORMULATION_RATIONALE_V1",
+    title: "Inflammation Phenotype formulation rationale",
+    topic: "INGREDIENT",
+    taxonomyDomain: "KIT",
+    canonicalEntity: "KIT_INFLAMMATION_PHENOTYPE",
+    aliases: ["Inflammation Phenotype rationale", "complete formulation rationale"],
+    contentType: "FORMULATION_RATIONALE",
+    productFamily: "Inflammation Phenotype",
+    sourceDocument: "Clinical Chunks sheet",
+    sourceSection: "PHENOTYPE INFLAMMATION formulation rationale",
+    content: "The approved formulation rationale groups Curcumin, NAC, Resveratrol and Vitamin D with immune modulators, androgen-sensitivity modulators, antioxidants and stress regulators to support inflammatory control, immune balance, oxidative protection, androgen-sensitivity support and stress regulation. The source does not assign a complete individual mechanism to every verified formulation row, so unrecorded ingredient rationales must not be invented.",
+    keywords: ["formulation rationale", "curcumin", "nac", "resveratrol", "vitamin d", "immune modulators", "antioxidants"],
+    missingInformation: ["The approved narrative does not provide an individual rationale for every structured formulation row."],
+  }),
+  ...[
+    ["NAC", "N-acetyl cysteine", "oxidative protection"],
+    ["CURCUMIN", "Curcumin", "inflammatory control and oxidative protection"],
+    ["RESVERATROL", "Resveratrol", "oxidative protection"],
+    ["VITAMIN_D", "Vitamin D", "immune modulation"],
+  ].map(([ingredient, display, pathway]) => entry({
+    id: `FIVEKIT_INFLAMMATION_INGREDIENT_${ingredient}_V1`,
+    title: `${display} rationale in Inflammation Phenotype`,
+    topic: "INGREDIENT",
+    taxonomyDomain: "INGREDIENT",
+    canonicalEntity: "KIT_INFLAMMATION_PHENOTYPE",
+    aliases: [display, ingredient, `${display} in Inflammation Phenotype`],
+    contentType: "INGREDIENT_ROLE",
+    productFamily: "Inflammation Phenotype",
+    ingredient,
+    role: "Named component in the approved formulation-rationale group",
+    pathway,
+    kitSpecificRationale: `${display} is included in the approved Inflammation Phenotype rationale as part of the group supporting ${pathway}.`,
+    sourceDocument: "Clinical Chunks sheet",
+    sourceSection: "PHENOTYPE INFLAMMATION formulation rationale",
+    content: `${display} is named in the approved Inflammation Phenotype formulation rationale as part of the ingredient group supporting ${pathway}. The approved source does not provide a more specific standalone mechanism or patient-selection rule for ${display}, so none should be inferred.`,
+    keywords: [display.toLowerCase(), ingredient.toLowerCase(), "inflammation phenotype", "ingredient rationale", pathway],
+  })),
+  ...missingRationaleIngredients.map((row) => entry({
+    id: `FIVEKIT_INFLAMMATION_INGREDIENT_UNDOCUMENTED_${normalizeIngredient(row.ingredientName).replaceAll(" ", "_").toUpperCase()}_V1`,
+    title: `${row.ingredientName} rationale status in Inflammation Phenotype`,
+    topic: "INGREDIENT",
+    taxonomyDomain: "INGREDIENT",
+    canonicalEntity: "KIT_INFLAMMATION_PHENOTYPE",
+    aliases: [row.ingredientName, `${row.ingredientName} in Inflammation Phenotype`],
+    contentType: "INGREDIENT_LIST",
+    productFamily: "Inflammation Phenotype",
+    ingredient: normalizeIngredient(row.ingredientName).replaceAll(" ", "_").toUpperCase(),
+    role: "NOT_DOCUMENTED",
+    pathway: "NOT_DOCUMENTED",
+    kitSpecificRationale: "NOT_DOCUMENTED",
+    sourceDocument: PRODUCT_FORMULATION_CATALOGUE.source.file,
+    sourceSection: `${row.sourceSheet} row ${row.sourceRow}`,
+    sourceVersion: `structured-formulation-v${PRODUCT_FORMULATION_CATALOGUE.schemaVersion}`,
+    sourceUrl: `repo:${PRODUCT_FORMULATION_CATALOGUE.source.repoPath}`,
+    content: `${row.ingredientName} is a verified structured formulation row for an Inflammation Phenotype component. No approved kit-specific role, pathway or rationale is documented for this ingredient, so the assistant must not invent one.`,
+    keywords: [row.ingredientName.toLowerCase(), "inflammation phenotype", "rationale not documented"],
+    missingInformation: ["Approved kit-specific role, pathway and rationale are not documented."],
+  })),
+  entry({
+    id: "FIVEKIT_INFLAMMATION_SMOKING_RELEVANCE_V1",
+    title: "Smoking relevance to Inflammation Phenotype assessment",
+    topic: "LIFESTYLE",
+    taxonomyDomain: "KIT",
+    canonicalEntity: "KIT_INFLAMMATION_PHENOTYPE",
+    aliases: ["smoking and Inflammation Phenotype", "smoker phenotype relevance"],
+    contentType: "LIFESTYLE_IMPACT",
+    productFamily: "Inflammation Phenotype",
+    sourceDocument: "Controlled lifestyle-factor knowledge update",
+    sourceSection: "Smoking relevance to Inflammation Phenotype",
+    content: "For an active Inflammation Phenotype discussion, heavy smoking is relevant as an assessment factor because approved smoking knowledge describes added oxidative stress, vascular stress and inflammatory burden, which overlap with the phenotype's documented inflammatory and oxidative-protection context. Smoking does not automatically select this kit; only an approved deterministic rule or clinician decision can do that.",
+    keywords: ["smoking", "inflammation phenotype", "oxidative stress", "inflammatory burden", "assessment", "not kit selection"],
   }),
   entry({
     id: "FIVEKIT_META_B_OVERVIEW_V1",

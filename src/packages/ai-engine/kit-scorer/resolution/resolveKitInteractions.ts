@@ -79,9 +79,20 @@ export function resolveKitInteractions(
     drop('HYPOTHYROID', 'HYPO_METABOLIC: Hypothyroid + metabolic → plain PRO FACT META B (METABOLIC kit covers both).');
   }
 
-  // ── HYPOTHYROID + menopause kit → menopause kit carries metabolic ──────────
-  if (has('HYPOTHYROID') && (has('PERI_MENOPAUSE') || has('POST_MENOPAUSE'))) {
-    drop('HYPOTHYROID', 'HYPO_MENO: menopause kit already carries metabolic correction — hypothyroid variant dropped.');
+  // ── HYPOTHYROID + POST-MENOPAUSE → post-menopause kit carries metabolic ────
+  // POST_MENOPAUSE → PRO FACT META B POSTMENOPAUSE (a META B variant that
+  // covers T3 + AMPK/insulin). HYPOTHYROID is redundant there.
+  //
+  // PERI_MENOPAUSE → HAIR FACT PERI MENOPAUSE (a hormonal-driver kit for
+  // estrogen/androgen balance — NOT a META B variant, does NOT cover T3).
+  // Declared hypothyroidism must still get PRO FACT META B HYPOTHYROID
+  // alongside the peri kit, otherwise the T3 metabolic axis is left
+  // untreated. Fixed 2026-08-10 — earlier rule dropped hypothyroid for both
+  // peri and post, causing thyroid to be silently missed on peri patients
+  // (e.g. tests/fixtures/patients/hypothyroid_peri_menopause_01.json,
+  // whose fixture description explicitly locks in the expectation).
+  if (has('HYPOTHYROID') && has('POST_MENOPAUSE')) {
+    drop('HYPOTHYROID', 'HYPO_POSTMENO: post-menopause META B kit already carries the T3 metabolic axis — hypothyroid variant dropped.');
   }
 
   // ── PCOS supersedes generic METABOLIC (META B PCOS covers metabolic) ───────

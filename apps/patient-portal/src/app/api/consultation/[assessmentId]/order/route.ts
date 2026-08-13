@@ -12,7 +12,7 @@
 
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { getClinicContext, handleAuthError } from "@/lib/auth";
+import { requireDoctorContext, assertDoctorInClinic } from "@/lib/auth";
 import {
   approveAndCreateOrder,
   ApproveAndCreateOrderError,
@@ -28,16 +28,23 @@ export async function POST(
   req: Request,
   ctxParam: { params: Promise<{ assessmentId: string }> },
 ) {
-  let auth;
-  try {
-    auth = await getClinicContext();
-  } catch (err) {
-    const resp = handleAuthError(err);
-    if (resp) return resp;
-    throw err;
-  }
+  const authResult = await requireDoctorContext();
+  if (authResult instanceof NextResponse) return authResult;
+  const { doctor } = authResult;
 
   const { assessmentId } = await ctxParam.params;
+
+  // Cross-clinic safety: kit order creation is a clinical mutation with
+  // downstream fulfilment side-effects. Reject before the command runs.
+  const target = await prisma.assessment.findUnique({
+    where: { id: assessmentId },
+    select: { clinicId: true },
+  });
+  if (!target) {
+    return NextResponse.json({ error: "not_found" }, { status: 404 });
+  }
+  const scopeError = assertDoctorInClinic(doctor, target.clinicId);
+  if (scopeError) return scopeError;
   const body = (await req.json().catch(() => ({}))) as {
     expectedContentVersion?: number;
     notes?: string;
@@ -69,9 +76,12 @@ export async function POST(
       {
         assessmentId,
         actor: {
-          userId: auth.userId ?? null,
-          role: auth.role,
-          clinicId: auth.clinicId ?? null,
+          // Command receives the ACTING Doctor identity. Cross-clinic
+          // safety was already asserted above; the command's own scoping
+          // acts as a second wall.
+          userId: doctor.id,
+          role: "DOCTOR",
+          clinicId: doctor.clinicId,
         },
         expectedContentVersion: body.expectedContentVersion,
         notes,
@@ -82,7 +92,7 @@ export async function POST(
     logLifecycleEvent({
       event: "consultation.approved_with_order",
       assessmentId,
-      clinicId: auth.clinicId ?? null,
+      clinicId: doctor.clinicId,
       statusAfter: "APPROVED",
     });
 

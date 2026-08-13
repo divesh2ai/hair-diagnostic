@@ -1,6 +1,6 @@
 {
   "fixtureId": "female_aga_stress_01",
-  "generatedAt": "2026-07-03T07:14:17.912Z",
+  "generatedAt": "2026-08-10T13:00:39.608Z",
   "pipelineVersion": "1.0.0",
   "primaryDiagnosis": "AGA_FEMALE_123",
   "scalpStates": [
@@ -15,14 +15,14 @@
   "severity": "MILD",
   "rankedKitIds": [
     "PHENOTYPE INFLAMATION",
-    "PRO IMMUNE GOLD",
+    "PRO FACT META B",
     "FPHL"
   ],
   "appliedRules": [],
-  "protocolLabel": "Recovery protocol for 3 condition(s): Female pattern hair loss · Scalp / perifollicular inflammation · Immune depletion / regrowth support.",
+  "protocolLabel": "Recovery protocol for 3 condition(s): Female pattern hair loss · Scalp / perifollicular inflammation · Metabolic dysfunction.",
   "recommendations": [
     "PHENOTYPE INFLAMATION",
-    "PRO IMMUNE GOLD",
+    "PRO FACT META B",
     "FPHL"
   ],
   "narratives": {
@@ -32,10 +32,10 @@
     },
     "orchestration": {
       "pipelineVersion": "1.0.0",
-      "executionId": "26fdc087-8750-4acc-bd65-603a7280e666",
-      "startedAt": "2026-07-03T07:14:17.912Z",
-      "completedAt": "2026-07-03T07:14:17.915Z",
-      "durationMs": 3,
+      "executionId": "4e3d1804-3b81-46d1-97d2-5c82b8de4f5c",
+      "startedAt": "2026-08-10T13:00:39.608Z",
+      "completedAt": "2026-08-10T13:00:39.609Z",
+      "durationMs": 1,
       "completedStages": [
         "questionnaire",
         "clinical",

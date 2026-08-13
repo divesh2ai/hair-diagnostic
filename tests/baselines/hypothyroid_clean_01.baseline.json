@@ -1,6 +1,6 @@
 {
   "fixtureId": "hypothyroid_clean_01",
-  "generatedAt": "2026-07-03T07:14:17.958Z",
+  "generatedAt": "2026-08-10T13:00:39.631Z",
   "pipelineVersion": "1.0.0",
   "primaryDiagnosis": "THYROID_HYPO",
   "scalpStates": [
@@ -12,16 +12,18 @@
   "therapyNeeds": [],
   "severity": "MILD",
   "rankedKitIds": [
-    "PHENOTYPE INFLAMATION",
     "PRO FACT META B HYPOTHYROID",
-    "FPHL"
+    "FPHL",
+    "PRO IMMUNE GOLD"
   ],
-  "appliedRules": [],
-  "protocolLabel": "Recovery protocol for 3 condition(s): Female pattern hair loss · Scalp / perifollicular inflammation · Hypothyroidism.",
+  "appliedRules": [
+    "PRO_IMMUNE_CONSOLIDATION_FILLER: stack had only 2 kits — PRO IMMUNE added as consolidation layer."
+  ],
+  "protocolLabel": "Recovery protocol for 2 condition(s): Female pattern hair loss · Hypothyroidism.",
   "recommendations": [
-    "PHENOTYPE INFLAMATION",
     "PRO FACT META B HYPOTHYROID",
-    "FPHL"
+    "FPHL",
+    "PRO IMMUNE GOLD"
   ],
   "narratives": {
     "narratives": {
@@ -30,10 +32,10 @@
     },
     "orchestration": {
       "pipelineVersion": "1.0.0",
-      "executionId": "ed403e58-5146-4507-ac6f-f70d2e70164e",
-      "startedAt": "2026-07-03T07:14:17.958Z",
-      "completedAt": "2026-07-03T07:14:17.965Z",
-      "durationMs": 7,
+      "executionId": "42b3cafc-0a6c-4c18-b625-f69e65d46fd8",
+      "startedAt": "2026-08-10T13:00:39.631Z",
+      "completedAt": "2026-08-10T13:00:39.631Z",
+      "durationMs": 1,
       "completedStages": [
         "questionnaire",
         "clinical",
