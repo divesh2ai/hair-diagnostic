@@ -20,6 +20,7 @@ import {
   ClipboardList,
   Package,
   Sparkles,
+  ArrowRight,
 } from "lucide-react";
 import { toast } from "sonner";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
@@ -29,6 +30,7 @@ import type {
   ConsultationOperationalState,
 } from "@/lib/consultation/meta";
 import { ReportActions } from "@/components/ui/ReportActions";
+import { reviewHref } from "@/lib/doctor/reviewHref";
 import { KitLineupEditor } from "./KitLineupEditor";
 import {
   DiagnosisSummaryCard,
@@ -125,6 +127,19 @@ const FEEDBACK_ISSUE_LABELS: Record<FeedbackIssue, string> = {
   OTHER: "Other",
 };
 
+/**
+ * The patient after this one, for the post-decision handoff.
+ *
+ * An id, a name and the concern that decides which review surface to open —
+ * nothing clinical. The next case is loaded by its own page, not previewed
+ * here.
+ */
+interface NextPatient {
+  id: string;
+  patientName: string;
+  concern: string | null;
+}
+
 export function DoctorReviewClient({
   assessmentId,
   shareToken,
@@ -144,6 +159,32 @@ export function DoctorReviewClient({
   const [note, setNote] = useState("");
   const [savingNote, setSavingNote] = useState(false);
   const [approving, setApproving] = useState(false);
+
+  // The next patient in the FIFO queue, resolved once a decision lands.
+  //
+  // Fetched after the fact, never on page load: a doctor reading a case does
+  // not need to know who is behind them, and asking before it matters would
+  // put a query on every review open for a link most of them never click.
+  // `null` after a decision means the queue is empty — the doctor is done, and
+  // the card says so instead of offering a button that goes nowhere.
+  const [nextPatient, setNextPatient] = useState<NextPatient | null>(null);
+  const [nextResolved, setNextResolved] = useState(false);
+
+  const resolveNextPatient = useCallback(async () => {
+    try {
+      const res = await fetch(
+        `/api/doctor/queue/next?exclude=${encodeURIComponent(assessmentId)}`,
+      );
+      const j = await res.json().catch(() => ({}));
+      setNextPatient(res.ok && j.next ? (j.next as NextPatient) : null);
+    } catch {
+      // A failed handoff lookup must not look like an empty queue. Leaving
+      // `nextResolved` false keeps the card silent rather than announcing
+      // "all caught up" on the strength of a dropped request.
+      return;
+    }
+    setNextResolved(true);
+  }, [assessmentId]);
   const [retryingReport, setRetryingReport] = useState(false);
   const [revisionOpen, setRevisionOpen] = useState(false);
   const [feedbackOpen, setFeedbackOpen] = useState(false);
@@ -252,6 +293,9 @@ export function DoctorReviewClient({
           setNote("");
           setReadinessBlock(null);
           await load();
+          // Not awaited: the approved state must paint immediately, and the
+          // handoff card appears a moment later when the answer arrives.
+          void resolveNextPatient();
           return;
         }
         if (res.status === 409) {
@@ -284,7 +328,7 @@ export function DoctorReviewClient({
         setApproving(false);
       }
     },
-    [assessmentId, meta, note, load],
+    [assessmentId, meta, note, load, resolveNextPatient],
   );
 
   const submitNeedsRevision = useCallback(
@@ -310,8 +354,11 @@ export function DoctorReviewClient({
       toast.success("Marked as needing revision");
       setRevisionOpen(false);
       await load();
+      // Needs-revision is a decision too: this case leaves the queue and the
+      // doctor should be handed the next one, exactly as after an approval.
+      void resolveNextPatient();
     },
-    [assessmentId, meta, load],
+    [assessmentId, meta, load, resolveNextPatient],
   );
 
   const retryReport = useCallback(async () => {
@@ -609,6 +656,11 @@ export function DoctorReviewClient({
               )}
               {isApproved ? "Approved" : "Approve & create kit order"}
             </button>
+
+            {/* The handoff. Appears only after a decision has actually landed
+                and the queue has been asked — never speculatively, and never
+                as a guess when the lookup failed. */}
+            {nextResolved && <NextPatientHandoff next={nextPatient} />}
             {isApproved && operational?.orderIntentId && (
               <div className="mt-2 space-y-2">
                 <p className="text-[11px] text-emerald-700">
@@ -1280,6 +1332,45 @@ function SectionGroup({
       <h2 className="font-serif text-lg text-slate-900">{title}</h2>
       {children}
     </section>
+  );
+}
+
+/**
+ * "Review next patient" — the whole point of a queue.
+ *
+ * The doctor has just decided; the natural next act is the next patient, not a
+ * trip back to a list to find them. Naming them makes it a decision the doctor
+ * can accept or decline, rather than a mystery button.
+ *
+ * When the queue is empty this says so and stops. Offering "next" with nothing
+ * behind it, or bouncing the doctor into an empty list, is the small
+ * dishonesty that teaches people to ignore an affordance.
+ */
+function NextPatientHandoff({ next }: { next: NextPatient | null }) {
+  if (!next) {
+    return (
+      <p className="mt-3 rounded-lg bg-stone-50 px-3 py-2.5 text-xs text-stone-600">
+        No one else is waiting for review.{" "}
+        <Link href="/doctor" className="font-medium text-slate-800 underline">
+          Back to dashboard
+        </Link>
+      </p>
+    );
+  }
+
+  return (
+    <Link
+      href={reviewHref({ id: next.id, concern: next.concern })}
+      className="mt-3 flex w-full items-center justify-between gap-2 rounded-lg border border-slate-300 bg-white px-3 py-2.5 text-sm font-medium text-slate-800 transition-colors hover:border-slate-900 hover:bg-slate-900 hover:text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-slate-900/25"
+    >
+      <span className="min-w-0 text-left">
+        <span className="block text-[10px] font-semibold uppercase tracking-[0.14em] opacity-70">
+          Next in queue
+        </span>
+        <span className="block truncate">{next.patientName}</span>
+      </span>
+      <ArrowRight className="h-4 w-4 shrink-0" aria-hidden />
+    </Link>
   );
 }
 

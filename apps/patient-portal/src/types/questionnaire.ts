@@ -1,3 +1,5 @@
+import type { AssessmentLocale } from '@/lib/assessment-i18n/types';
+
 export type QuestionCategory =
   | 'about_you'
   | 'hair_health'
@@ -159,11 +161,40 @@ export interface ClinicData {
   name: string;
   theme: string;
   language: string;
+  /**
+   * Patient-facing locales this clinic offers, as `SupportedLanguage` enum
+   * members (`["EN", "HI"]`). Empty/absent = all platform locales, matching the
+   * schema default. Resolved for display by `resolveAvailableLocales`.
+   */
+  supportedLanguages?: string[];
 }
 
 export interface DoctorData {
   id: string;
   name: string;
+}
+
+/**
+ * What the pre-assessment intake gate captured.
+ *
+ * `relationship` and `visitType` are provisional: the lookup that produced them
+ * is an unverified phone match, and the server re-resolves identity at
+ * submission, where it is binding. Both are null when the lookup could not be
+ * completed — an unknown answer is recorded as unknown rather than filled in.
+ */
+export interface PatientIntakeState {
+  name: string;
+  /** Canonical E.164, normalised by lib/patient/phone. */
+  phone: string;
+  relationship: 'NEW' | 'RETURNING' | null;
+  visitType: string | null;
+  /**
+   * The signed intake session, carried to submission so the server can close
+   * the ClinicVisit it opened. Opaque here — only the server reads it, and it
+   * grants a caller nothing beyond the clinic it was already handed by the QR
+   * code. Null when no session could be issued.
+   */
+  intakeToken: string | null;
 }
 
 export interface ProgressState {
@@ -200,6 +231,15 @@ export interface AssessmentState {
   isSubmitting: boolean;
 
   /**
+   * Patient-facing display language. Presentation only — it never reaches
+   * scoring, visibility, skip, diagnosis or kit logic, and answers are stored
+   * as canonical English answer codes at every locale. `null` means the patient
+   * has not chosen yet, which is what gates the language screen.
+   */
+  locale: AssessmentLocale;
+  hasChosenLocale: boolean;
+
+  /**
    * Records the most recent mutual-exclusivity deselection event.
    * Set by QuestionRenderer when applyGroupExclusivity removes a conflicting selection.
    * Consumed by DebugPanel for sandbox validation.
@@ -211,6 +251,16 @@ export interface AssessmentState {
     /** Options that were automatically removed because they conflict with selected. */
     deselected: string[];
   } | null;
+
+  /**
+   * Result of the pre-assessment intake gate: who this is and why they came.
+   *
+   * Operational, not clinical. It is not an answer, it does not appear in the
+   * protocol, and it changes neither the question count nor progress. Null
+   * means the gate has not been completed for this session, which is what keeps
+   * it in front of the questionnaire.
+   */
+  intake: PatientIntakeState | null;
 
   // Context
   clinicData: ClinicData | null;
@@ -236,6 +286,17 @@ export interface AssessmentState {
   // Sandbox / replay
   replayFixture: (fixture: Record<string, any>) => void;
 
+  /**
+   * Change the display language. Deliberately touches nothing but `locale` —
+   * switching mid-assessment must preserve the current question, every answer
+   * and every uploaded image.
+   */
+  setLocale: (locale: AssessmentLocale) => void;
+
+  /** Dismisses the language gate. Separate from `setLocale` so picking a
+   *  language can preview it without ending the screen. */
+  confirmLocale: () => void;
+
   // Lifecycle
   reset: () => void;
   setSubmitting: (isSubmitting: boolean) => void;
@@ -243,4 +304,7 @@ export interface AssessmentState {
   // Context setters
   setClinicData: (data: ClinicData) => void;
   setDoctorData: (data: DoctorData) => void;
+
+  /** Record (or clear) the pre-assessment intake result. */
+  setIntake: (intake: PatientIntakeState | null) => void;
 }

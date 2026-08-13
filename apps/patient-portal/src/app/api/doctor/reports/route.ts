@@ -1,28 +1,32 @@
 import { NextResponse } from "next/server";
 import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
-import { getClinicContext, handleAuthError, isSuperAdmin } from "@/lib/auth";
+import { requireDoctorContext } from "@/lib/auth";
+
+// Pathways that mean "more than a routine read". Kept here rather than
+// inlined so the filter and the dashboard's priority count agree.
+const PRIORITY_PATHWAYS = [
+  "RESOLUTION_REQUIRED",
+  "EXAMINATION_REQUIRED",
+  "FOCUSED_REVIEW",
+];
 
 export const dynamic = "force-dynamic";
 
 export async function GET(req: Request) {
-  let ctx;
-  try {
-    ctx = await getClinicContext();
-  } catch (err) {
-    const resp = handleAuthError(err);
-    if (resp) return resp;
-    throw err;
-  }
+  const authResult = await requireDoctorContext();
+  if (authResult instanceof NextResponse) return authResult;
+  const { doctor } = authResult;
 
   const url = new URL(req.url);
   const q = url.searchParams;
 
   const dateFrom = q.get("dateFrom");
   const dateTo = q.get("dateTo");
-  // Non-Super-Admins are pinned to their own clinic regardless of query param.
-  const requestedClinicId = q.get("clinicId");
-  const clinicId = isSuperAdmin(ctx.role) ? requestedClinicId : ctx.clinicId;
+  // Doctor-scoped queries are pinned to the caller's own clinic — the
+  // former `?clinicId=` override for SUPER_ADMIN is intentionally removed.
+  // Cross-clinic reads live on /api/admin/* under a super-admin gate.
+  const clinicId = doctor.clinicId;
   const doctorId = q.get("doctorId");
   const status = q.get("status");
   const includeSkinPigmentationPending = q.get("includeSkinPigmentationPending") === "1";
@@ -30,6 +34,20 @@ export async function GET(req: Request) {
   const severity = q.get("severity");
   const assignedTo = q.get("assignedTo");
   const decision = q.get("decision");
+  const priorityOnly = q.get("priority") === "1";
+  // Minimum hours a case must have been waiting. Purely a scheduling filter —
+  // it never promotes a case's clinical priority.
+  const waitingOverHours = Number(q.get("waitingOverHours") ?? 0);
+  // "oldest" is FIFO — the Review Queue's ordering, and the only ordering a
+  // waiting room can be run on. Anything else keeps newest-first, which is
+  // what a historical list ("all", "approved") should show.
+  //
+  // There is deliberately no clinical-priority sort. Ranking the queue by the
+  // review-pathway classifier meant a patient's position could change while
+  // they sat in the waiting room, for reasons neither they nor reception could
+  // see. The classifier still runs and still labels the row — see
+  // lib/doctor/reviewPriority.clinicalAttention — it just does not reorder.
+  const sort = q.get("sort");
   const limit = Math.min(Number(q.get("limit") ?? 100), 500);
   const offset = Math.max(Number(q.get("offset") ?? 0), 0);
 
@@ -55,8 +73,29 @@ export async function GET(req: Request) {
   if (decision) where.push(Prisma.sql`a."reviewDecision"::text = ${decision}`);
   if (diagnosis) where.push(Prisma.sql`sev.content->>'primaryDiagnosis' = ${diagnosis}`);
   if (severity) where.push(Prisma.sql`sev.content->>'severity' = ${severity}`);
+  if (priorityOnly) {
+    where.push(
+      Prisma.sql`a."reviewPathway"::text IN (${Prisma.join(PRIORITY_PATHWAYS)})`,
+    );
+  }
+  if (Number.isFinite(waitingOverHours) && waitingOverHours > 0) {
+    where.push(
+      // ::int is required — make_interval's named-argument form cannot infer a
+      // bind parameter's type and errors out without the cast.
+      Prisma.sql`a."submittedAt" < now() - make_interval(hours => ${Math.floor(waitingOverHours)}::int)`,
+    );
+  }
 
   const whereSql = Prisma.sql`WHERE ${Prisma.join(where, ` AND `)}`;
+
+  // Ordering must happen in Postgres, not in the browser. The page fetches a
+  // capped window (limit 200) out of a backlog that is currently 441 deep —
+  // re-sorting that window client-side made the "longest waiting first" view
+  // silently wrong, because the genuinely oldest cases were never in it.
+  const orderSql =
+    sort === "oldest"
+      ? Prisma.sql`ORDER BY a."submittedAt" ASC NULLS LAST`
+      : Prisma.sql`ORDER BY a."submittedAt" DESC NULLS LAST`;
 
   try {
     const rows = await prisma.$queryRaw<
@@ -67,6 +106,10 @@ export async function GET(req: Request) {
         patientId: string;
         patientName: string;
         patientPhone: string | null;
+        patientAge: number | null;
+        patientGender: string | null;
+        reviewPathway: string | null;
+        reviewPathwayReasons: string[] | null;
         clinicId: string;
         clinicName: string;
         careDoctorId: string | null;
@@ -98,6 +141,10 @@ export async function GET(req: Request) {
         p.id                                           AS "patientId",
         p.name                                         AS "patientName",
         p.phone                                        AS "patientPhone",
+        p.age                                          AS "patientAge",
+        p.gender                                       AS "patientGender",
+        a."reviewPathway"::text                        AS "reviewPathway",
+        a."reviewPathwayReasons"                       AS "reviewPathwayReasons",
         c.id                                           AS "clinicId",
         c.name                                         AS "clinicName",
         cd.id                                          AS "careDoctorId",
@@ -130,7 +177,7 @@ export async function GET(req: Request) {
       LEFT JOIN "Consultation" cons ON cons."assessmentId" = a.id
       LEFT JOIN "ConsultationVersion" cv ON cv.id = cons."currentVersionId"
       ${whereSql}
-      ORDER BY a."submittedAt" DESC NULLS LAST
+      ${orderSql}
       LIMIT ${limit} OFFSET ${offset}
     `);
 

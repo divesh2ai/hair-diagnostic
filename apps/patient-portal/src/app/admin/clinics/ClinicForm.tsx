@@ -9,6 +9,13 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { LogoUploader } from "@/components/ui/logo-uploader";
 import { toast } from "@/components/ui/toast";
+import {
+  CLINIC_SLUG_MAX,
+  clinicAssessmentUrl,
+  isValidClinicSlug,
+  normaliseClinicSlugInput,
+  slugifyClinicName,
+} from "@/lib/clinic/slug";
 
 export type ClinicFormValues = {
   id?: string;
@@ -74,10 +81,48 @@ export function ClinicForm({
   const [v, setV] = useState<ClinicFormValues>({ ...EMPTY, ...initial });
   const [busy, setBusy] = useState(false);
 
+  // The URL follows the clinic name until someone edits it by hand. After that
+  // it stops tracking — an admin who typed a URL meant it, and having the next
+  // keystroke in the name field silently overwrite it is how you end up with a
+  // QR code pointing somewhere nobody chose.
+  const [urlEdited, setUrlEdited] = useState(mode === "edit");
+
+  // The origin the Super Admin is actually looking at — the only honest thing
+  // to show them, since a stale or unset NEXT_PUBLIC_APP_URL would print a URL
+  // that does not work. Read directly rather than held in state: the server
+  // has no window and renders the path alone, which the client then replaces.
+  // That mismatch is expected and is suppressed at the one element it affects.
+  const origin = typeof window === "undefined" ? null : window.location.origin;
+
   const set = <K extends keyof ClinicFormValues>(k: K, val: ClinicFormValues[K]) =>
     setV((s) => ({ ...s, [k]: val }));
 
+  // Name and URL move together, so they are set in one update rather than two.
+  const setName = (name: string) =>
+    setV((s) => ({
+      ...s,
+      name,
+      slug: urlEdited ? s.slug : slugifyClinicName(name),
+    }));
+
+  const setUrl = (raw: string) => {
+    setUrlEdited(true);
+    // Normalise as they type rather than rejecting afterwards: spaces become
+    // hyphens, capitals fold, and anything a URL cannot carry is dropped.
+    set("slug", normaliseClinicSlugInput(raw));
+  };
+
   async function save() {
+    // Trailing hyphens are legal to type and illegal to store, so the final
+    // trim happens here rather than fighting the admin mid-keystroke.
+    const slug = mode === "create" ? slugifyClinicName(v.slug || v.name) : v.slug;
+    if (mode === "create" && !isValidClinicSlug(slug)) {
+      toast.error(
+        "This clinic name doesn't produce a usable URL. Type one in the Clinic URL field.",
+      );
+      return;
+    }
+
     setBusy(true);
     try {
       // Logo upload is plumbed but not connected to storage in this phase —
@@ -86,7 +131,7 @@ export function ClinicForm({
       // in Sprint 2 (Supabase Storage signed-upload).
       const body = {
         name: v.name,
-        slug: v.slug,
+        slug,
         region: v.region,
         language: v.language,
         timezone: v.timezone,
@@ -120,7 +165,13 @@ export function ClinicForm({
       });
       if (!r.ok) {
         const j = await r.json().catch(() => ({}));
-        toast.error(j.error ?? "Save failed");
+        // "slug_taken" is the one failure a Super Admin can act on, and the
+        // raw code says nothing about what to do next.
+        toast.error(
+          j.error === "slug_taken"
+            ? `The URL /q/${slug} is already used by another clinic. Choose a different Clinic URL.`
+            : (j.error ?? "Save failed"),
+        );
         return;
       }
       toast.success(mode === "create" ? "Clinic created" : "Clinic saved");
@@ -144,16 +195,42 @@ export function ClinicForm({
         </CardHeader>
         <CardContent className="grid sm:grid-cols-2 gap-4">
           <Field label="Clinic name" required>
-            <Input value={v.name} onChange={(e) => set("name", e.target.value)} required />
+            <Input value={v.name} onChange={(e) => setName(e.target.value)} required />
           </Field>
-          <Field label="Slug" required hint="URL key — lowercase, hyphens.">
+          <Field
+            label="Clinic URL"
+            required
+            hint={
+              mode === "edit"
+                ? "Fixed after creation — QR codes already in the clinic point here."
+                : "Filled in from the clinic name. Edit it if you need something shorter."
+            }
+          >
             <Input
               value={v.slug}
-              onChange={(e) => set("slug", e.target.value.toLowerCase())}
+              onChange={(e) => setUrl(e.target.value)}
               disabled={mode === "edit"}
+              maxLength={CLINIC_SLUG_MAX}
               required
             />
           </Field>
+          {/* The whole point of the field above: what a patient's QR code will
+              open. Shown rather than described, so nobody has to picture it. */}
+          <div className="sm:col-span-2 -mt-1">
+            <p className="text-xs text-muted-foreground">
+              Patients will scan a QR code for{" "}
+              {v.slug ? (
+                <code
+                  suppressHydrationWarning
+                  className="rounded bg-muted px-1 py-0.5 font-mono text-[11px] text-foreground"
+                >
+                  {clinicAssessmentUrl(v.slug, origin)}
+                </code>
+              ) : (
+                <span className="italic">— enter a clinic name to see the URL</span>
+              )}
+            </p>
+          </div>
           <Field label="Tagline" className="sm:col-span-2">
             <Input value={v.tagline} onChange={(e) => set("tagline", e.target.value)} />
           </Field>

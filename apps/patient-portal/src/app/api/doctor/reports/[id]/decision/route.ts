@@ -1,11 +1,12 @@
 import { NextResponse } from "next/server";
-import { ReviewDecision, SystemRole } from "@prisma/client";
+import { ReviewDecision } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
-import { requireRole } from "@/lib/auth";
+import { requireDoctorContext, assertDoctorInClinic } from "@/lib/auth";
 
 // Authenticated counterpart to POST /api/review/[token]/ — used by the
-// Doctor Workspace at /doctor/reports/[id]. Same validation rules as the
-// token route; reviewer name/email come from the JWT instead of free-text.
+// Doctor Workspace at /doctor/reports/[id]. Reviewer identity comes from
+// the verified Doctor row (not the JWT email), so an admin acting via a
+// linked Doctor row is recorded as the doctor they actually are.
 
 const VALID = new Set(["APPROVED", "EDITS_REQUESTED", "REJECTED"]);
 const MAX_NOTES = 2000;
@@ -14,12 +15,9 @@ export async function POST(
   req: Request,
   { params }: { params: Promise<{ id: string }> },
 ) {
-  const auth = await requireRole(
-    SystemRole.DOCTOR,
-    SystemRole.CLINIC_ADMIN,
-    SystemRole.SUPER_ADMIN,
-  );
-  if (auth instanceof NextResponse) return auth;
+  const authResult = await requireDoctorContext();
+  if (authResult instanceof NextResponse) return authResult;
+  const { doctor } = authResult;
 
   const { id } = await params;
 
@@ -41,8 +39,9 @@ export async function POST(
     );
   }
 
-  // Scope check — doctor / clinic_admin can only decide on cases in their
-  // clinic. SUPER_ADMIN bypasses this.
+  // Doctor-scoped mutation — cross-clinic access is not permitted, even
+  // for admins with a linked Doctor row. The 404 masks existence for
+  // cases outside the doctor's clinic.
   const assessment = await prisma.assessment.findUnique({
     where: { id },
     select: { id: true, clinicId: true, deletedAt: true, status: true },
@@ -50,19 +49,22 @@ export async function POST(
   if (!assessment || assessment.deletedAt) {
     return NextResponse.json({ error: "not_found" }, { status: 404 });
   }
-  if (
-    auth.user_role !== SystemRole.SUPER_ADMIN &&
-    auth.clinic_id !== assessment.clinicId
-  ) {
-    return NextResponse.json({ error: "forbidden" }, { status: 403 });
+  if (assertDoctorInClinic(doctor, assessment.clinicId)) {
+    return NextResponse.json({ error: "not_found" }, { status: 404 });
   }
 
   const updated = await prisma.assessment.update({
     where: { id },
     data: {
       reviewDecision: body.decision as ReviewDecision,
-      reviewerName: auth.email ?? auth.sub,
-      reviewerEmail: auth.email ?? null,
+      // The review claim — see the same stamp in
+      // /api/consultation/[assessmentId]/approve. Clinic-QR submissions are
+      // unassigned by design; the doctor who decides is the reviewer of
+      // record, and this is the first moment that is known rather than
+      // guessed.
+      reviewingDoctorId: doctor.id,
+      reviewerName: doctor.name,
+      reviewerEmail: doctor.email,
       reviewNotes: notes,
       reviewedAt: new Date(),
     },

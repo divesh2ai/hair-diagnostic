@@ -22,7 +22,7 @@
 import { NextResponse } from "next/server";
 import { ReviewDecision } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
-import { getClinicContext, handleAuthError } from "@/lib/auth";
+import { requireDoctorContext, assertDoctorInClinic } from "@/lib/auth";
 import {
   makeOrchestrator,
   OrchestratorError,
@@ -98,16 +98,25 @@ export async function POST(
   req: Request,
   ctxParam: { params: Promise<{ assessmentId: string }> },
 ) {
-  let auth;
-  try {
-    auth = await getClinicContext();
-  } catch (err) {
-    const resp = handleAuthError(err);
-    if (resp) return resp;
-    throw err;
-  }
+  const authResult = await requireDoctorContext();
+  if (authResult instanceof NextResponse) return authResult;
+  const { doctor, authUserId, authRole, mode } = authResult;
 
   const { assessmentId } = await ctxParam.params;
+
+  // Cross-clinic safety: verify the target assessment belongs to the
+  // doctor's clinic BEFORE calling into the orchestrator. Approval is a
+  // clinical mutation — "acting as a doctor" only means in that doctor's
+  // own clinic. Cross-clinic reads/writes belong to super-admin surfaces.
+  const target = await prisma.assessment.findUnique({
+    where: { id: assessmentId },
+    select: { clinicId: true },
+  });
+  if (!target) {
+    return NextResponse.json({ error: "not_found" }, { status: 404 });
+  }
+  const scopeError = assertDoctorInClinic(doctor, target.clinicId);
+  if (scopeError) return scopeError;
   const body = (await req.json().catch(() => ({}))) as {
     status?: string;
     notes?: string;
@@ -163,21 +172,34 @@ export async function POST(
     const stored = await orchestrator.approve({
       assessmentId,
       ctx: {
-        actorId: auth.userId ?? "system",
-        role: auth.role,
-        clinicId: auth.clinicId ?? null,
+        // Orchestrator receives the ACTING Doctor identity so version
+        // ownership + tenant scope key off the Doctor row (not the JWT).
+        actorId: doctor.id,
+        role: "DOCTOR",
+        clinicId: doctor.clinicId,
       },
       status,
       notes: persistedNotes,
     });
 
     // Mirror onto the legacy workflow flag so the reports inbox stays in sync.
+    // `reviewerName` is the Doctor's display name, resolved from the verified
+    // Doctor row — not the JWT email, which was previously misleading when
+    // a SUPER_ADMIN with a linked Doctor row approved a case.
     await prisma.assessment
       .update({
         where: { id: assessmentId },
         data: {
           reviewDecision: DECISION_MAP[status],
-          reviewerName: auth.userId ?? null,
+          // The review claim. Clinic-QR submissions arrive unassigned — the
+          // queue is shared and the platform has no basis for naming a
+          // reviewer in advance — so the doctor who decides becomes the
+          // reviewer of record here, at the one moment it is a fact rather
+          // than a guess. Without this, per-doctor productivity
+          // (/api/clinic/productivity groups by reviewingDoctorId) would read
+          // zero for every case submitted after clinic-QR routing landed.
+          reviewingDoctorId: doctor.id,
+          reviewerName: doctor.name,
           reviewNotes: notes,
           reviewedAt: new Date(),
         },
@@ -187,16 +209,22 @@ export async function POST(
         // truth; a legacy-flag write failure must not fail the request.
       });
 
+    // Audit preserves BOTH the authenticated caller AND the acting Doctor
+    // identity. A SUPER_ADMIN operating in admin_view is recorded as
+    // SUPER_ADMIN, NOT relabelled as the doctor they operated as.
     await writeAuditLog({
       action: auditActionFor(apiStatus),
       entityType: "Consultation",
       entityId: stored.consultationId,
-      actorId: auth.userId ?? null,
-      actorRole: auth.role,
-      actorType: "doctor",
+      actorId: authUserId,
+      actorRole: authRole,
+      actorType: mode,
       assessmentId,
       metadata: {
-        clinicId: auth.clinicId ?? null,
+        clinicId: doctor.clinicId,
+        actingDoctorId: doctor.id,
+        actingDoctorName: doctor.name,
+        mode,
         contentVersion: stored.contentVersion,
         approvalStatus: stored.metadata.approvalStatus ?? null,
         revisionReason,
@@ -212,7 +240,7 @@ export async function POST(
           ? "consultation.approved"
           : "consultation.rejected",
       assessmentId,
-      clinicId: auth.clinicId ?? null,
+      clinicId: doctor.clinicId,
       statusAfter: status,
     });
 
@@ -225,7 +253,7 @@ export async function POST(
       logLifecycleEvent({
         event: "consultation.approval_blocked",
         assessmentId,
-        clinicId: auth.clinicId ?? null,
+        clinicId: doctor.clinicId,
         failureCode: err.decision.blockingCodes.includes("GROUNDING_VIOLATION_PRESENT")
           ? "grounding_violation"
           : "reasoning_gap",
@@ -249,7 +277,7 @@ export async function POST(
       logLifecycleEvent({
         event: "consultation.approval_blocked",
         assessmentId,
-        clinicId: auth.clinicId ?? null,
+        clinicId: doctor.clinicId,
         failureCode:
           err.code === "not_found"
             ? "not_found"

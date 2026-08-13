@@ -1,5 +1,6 @@
 import { NextResponse, after } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { describeSchemaDrift, isSchemaDriftError } from '@/lib/prismaErrors';
 import { rateLimit } from '@/lib/rate-limit';
 import { safeDispatchOrchestration } from '@/lib/orchestration/dispatch';
 import { signReviewToken } from '@/lib/reviewToken';
@@ -7,7 +8,11 @@ import { AssessmentSource, AssessmentStatus, Prisma } from '@prisma/client';
 import {
   buildAssessmentResponseRows,
   withConcernMetadata,
+  withLocaleMetadata,
 } from './persistence';
+import { resolvePatientForIntake, toRelationship } from '@/lib/patient/identity';
+import { resolveVisitType, toRelationshipState } from '@/lib/patient/visit';
+import { readIntakeSessionForLinking } from '@/lib/patient/intakeSession';
 
 // ─── Patient name + age normalisation ────────────────────────────────────────
 // Names must be letters/spaces/.'- only and stored in Proper Case.
@@ -60,10 +65,44 @@ function normaliseConcern(raw: unknown): Concern | null {
     : null;
 }
 
+// Patient-facing display locales. Mirrors ASSESSMENT_LOCALES in
+// apps/patient-portal/src/lib/assessment-i18n/types.ts and the SupportedLanguage
+// Prisma enum — duplicated as a plain literal set for the same reason as
+// CONCERN_VALUES above: this route must not import browser-runtime modules.
+const LOCALE_VALUES = ['en', 'hi'] as const;
+type SubmitLocale = (typeof LOCALE_VALUES)[number];
+
+/**
+ * Locale is presentation metadata, never clinical input. An unknown or absent
+ * value degrades to English rather than rejecting the submission — a patient
+ * must never lose a completed assessment over a display preference.
+ */
+function normaliseLocale(raw: unknown): SubmitLocale {
+  return typeof raw === 'string' && (LOCALE_VALUES as readonly string[]).includes(raw)
+    ? (raw as SubmitLocale)
+    : 'en';
+}
+
 interface SubmitBody {
   clinicSlug: string;
   answers: Record<string, unknown>;
   concern?: Concern;
+  /** Language the patient answered in. Optional — older clients omit it. */
+  locale?: string;
+  /**
+   * Why the patient is here today, as stated at the intake gate. Advisory:
+   * the server re-resolves identity itself and will not accept an intent that
+   * contradicts the relationship it resolved. Absent for older clients and for
+   * flows with no intake gate (skin), which persist null rather than a guess.
+   */
+  visitType?: string;
+  /**
+   * The signed intake session the patient started under, when they came
+   * through the intake gate. Used for exactly one thing: closing the
+   * ClinicVisit opened at intake, in the transaction that creates this
+   * Assessment. It authorises nothing and carries no clinical input.
+   */
+  intakeToken?: string;
   patientInfo?: {
     name?: string;
     phone?: string;
@@ -75,6 +114,33 @@ interface SubmitBody {
 
 function getSubmitErrorResponse(err: unknown) {
   const message = err instanceof Error ? err.message : String(err);
+
+  // Identity resolution and the visit-intent columns are both written on the
+  // submit path, so this route carries the same migration dependency as
+  // /api/patient/lookup — and it fails at the *end* of a completed assessment
+  // rather than at the start.
+  //
+  // It fails loudly and on purpose. The tempting alternative — fall back to a
+  // plain patient.create without the identity key — would silently recreate the
+  // one-Patient-row-per-submission behaviour that D1 exists to eliminate, and
+  // would do it invisibly in production. A submission that cannot be filed
+  // against a resolved identity must not be filed at all.
+  if (isSchemaDriftError(err)) {
+    console.error(
+      `[SUBMIT] identity/visit schema not migrated — missing ${describeSchemaDrift(err)}. ` +
+        `Apply prisma/migrations/20260812_patient_mobile_identity and ` +
+        `prisma/migrations/20260812_visit_intent before serving this route.`,
+    );
+    return {
+      status: 503,
+      body: {
+        success: false,
+        code: 'ASSESSMENT_SCHEMA_UNAVAILABLE',
+        error:
+          'This clinic is being updated and cannot accept assessments right now. Please tell the reception desk.',
+      },
+    };
+  }
 
   if (
     err instanceof Prisma.PrismaClientInitializationError ||
@@ -121,14 +187,21 @@ export async function POST(req: Request) {
     return NextResponse.json({ success: false, error: 'Invalid JSON body' }, { status: 400 });
   }
 
+  // Shape only. `patientInfo` now carries the mobile number from the intake
+  // gate, and a phone number in a log line is a patient identifier sitting in
+  // Vercel's log retention where nothing scopes it to the clinic. What is
+  // useful for debugging is whether the fields arrived, not what they said.
   console.log('[SUBMIT] BODY', {
     clinicSlug: body.clinicSlug,
     concern: body.concern,
     answerCount: Object.keys(body.answers ?? {}).length,
-    patientInfo: body.patientInfo,
+    visitType: body.visitType,
+    hasPatientName: Boolean(body.patientInfo?.name),
+    hasPatientPhone: Boolean(body.patientInfo?.phone),
   });
 
   const { clinicSlug, answers, patientInfo = {} } = body;
+  const locale = normaliseLocale(body.locale);
   const concern = normaliseConcern(body.concern);
   if (!concern) {
     return NextResponse.json(
@@ -175,14 +248,24 @@ export async function POST(req: Request) {
 
     console.log('[SUBMIT] CLINIC', clinic.id);
 
-    // ── STEP 2b: Resolve doctor (optional — first active doctor in clinic) ─────
-    // Doctor is optional at submission. Can be assigned by clinic admin later.
-    const doctor = await prisma.doctor.findFirst({
-      where: { clinicId: clinic.id, isActive: true },
-      select: { id: true },
-    });
-
-    console.log('[SUBMIT] DOCTOR', doctor?.id ?? 'none — will assign later');
+    // ── STEP 2b: Reviewing doctor — deliberately NOT assigned here ────────────
+    //
+    // This used to be `doctor.findFirst({ clinicId, isActive })`, which handed
+    // every patient in the clinic to whichever doctor Postgres returned first.
+    // In a single-doctor clinic that looked like it worked. In a HairOS clinic
+    // with several doctors it is simply wrong: it names a reviewer nobody
+    // chose, and the other doctors' queues read empty while one doctor's fills
+    // with cases they never agreed to take.
+    //
+    // The clinic QR is a CLINIC entry point. It leads to the clinic's shared
+    // Review Queue, and any authorised doctor there may pick the case up.
+    // `reviewingDoctorId` therefore stays null until a doctor actually decides
+    // on the case, at which point the decision routes stamp themselves as the
+    // reviewer of record — that stamp IS the claim, and it is the only moment
+    // at which the platform knows the answer rather than guessing it.
+    //
+    // Nothing here does round-robin or load balancing. An unassigned case is a
+    // truthful representation of a shared queue, not a gap to be filled.
 
     // ── STEP 3: Persist assessment atomically ──────────────────────────────────
     // Extract patient demographics from answers (real protocol IDs: age, sex, name)
@@ -219,11 +302,14 @@ export async function POST(req: Request) {
     // `__meta` is a reserved key for cross-cutting session metadata that lives
     // alongside the answer keys but is NOT a question. It is filtered out
     // before persisting per-question AssessmentResponse rows below.
-    const normalisedAnswers = withConcernMetadata({
-      ...answers,
-      name: patientName,
-      ...(patientAge !== null ? { age: patientAge } : {}),
-    }, concern);
+    const normalisedAnswers = withLocaleMetadata(
+      withConcernMetadata({
+        ...answers,
+        name: patientName,
+        ...(patientAge !== null ? { age: patientAge } : {}),
+      }, concern),
+      locale,
+    );
 
     const patientGender =
       (answers.sex as string | undefined) ??
@@ -244,36 +330,67 @@ export async function POST(req: Request) {
         })
       : null;
 
-    const assessment = await prisma.$transaction(async (tx) => {
+    // The ClinicVisit to close, if this patient came through the intake gate.
+    // Signature-checked but NOT expiry-checked: a 30-minute session can expire
+    // under an unhurried assessment, and refusing the link then would leave
+    // the patient rendered as still-filling-in the assessment they just
+    // submitted. It grants nothing — see readIntakeSessionForLinking.
+    const linkedVisit = body.intakeToken
+      ? readIntakeSessionForLinking(body.intakeToken)
+      : null;
+
+    const { assessment, identityState } = await prisma.$transaction(async (tx) => {
       // Widened window: on Supabase pooled connections a cold Prisma engine
       // + Patient/Assessment/AssessmentResponse write can breach the 5s default.
 
-      // Create a new Patient record for every assessment submission.
-      // Patients without auth accounts are anonymous clinic visitors.
-      const patient = linkedSkinAssessment
-        ? { id: linkedSkinAssessment.patientId }
-        : await tx.patient.create({
-            data: {
-              clinicId: clinic.id,
-              doctorId:  doctor?.id ?? null,
-              name:      patientName,
-              phone:     patientPhone,
-              email:     patientEmail,
-              age:       patientAge,
-              gender:    patientGender,
-            },
-          });
+      // Identity resolution, not blind creation. A returning patient must land
+      // on their existing record or the doctor has no previous care to show.
+      // Runs inside the transaction so a double-submit can't interleave into
+      // two patient rows. See lib/patient/identity.
+      const resolved = await resolvePatientForIntake(tx, {
+        clinicId: clinic.id,
+        // Patient.doctorId is the patient's doctor of care, and it is read
+        // only when a NEW patient row is created — a returning patient keeps
+        // whoever they already have. There is nobody to name at a clinic-QR
+        // walk-in, so a new record starts without a doctor of care rather than
+        // with an arbitrary one.
+        doctorId: null,
+        rawPhone: patientPhone,
+        linkedPatientId: linkedSkinAssessment?.patientId ?? null,
+        details: {
+          name:   patientName,
+          age:    patientAge,
+          gender: patientGender,
+          email:  patientEmail,
+        },
+      });
 
-      // Create the Assessment record.
-      // reviewingDoctorId is optional — set to the first clinic doctor if available.
+      // Relationship is taken from the identity resolution that just ran, never
+      // from the request. A client can claim to be a returning patient; only
+      // the lookup can establish it. AMBIGUOUS is preserved as itself — a
+      // quarantined visit is not a confirmed returning patient, and filing it
+      // as one would erase the single fact reception needs.
+      const relationshipState = toRelationshipState(resolved.identityState);
+      // Intent, in contrast, is only knowable from the patient. It is accepted
+      // as submitted for a returning visit, derived for a new one, and left
+      // null when a returning submission carries none.
+      const visitType = resolveVisitType(relationshipState, body.visitType);
+
+      // Create the Assessment record. This — and only this — is the moment an
+      // Assessment row exists: the invariant that Assessment means SUBMITTED
+      // is what every count, queue and engine downstream depends on.
+      //
+      // reviewingDoctorId is left null on purpose; see STEP 2b.
       const newAssessment = await tx.assessment.create({
         data: {
           clinicId:          clinic.id,
-          patientId:         patient.id,
-          reviewingDoctorId: doctor?.id ?? null,
+          patientId:         resolved.patientId,
+          reviewingDoctorId: null,
           status:            AssessmentStatus.PENDING,
           source:            AssessmentSource.WEB,
           rawResponses:      normalisedAnswers as Prisma.InputJsonValue,
+          visitType,
+          patientRelationship: relationshipState,
         },
       });
 
@@ -289,7 +406,29 @@ export async function POST(req: Request) {
         await tx.assessmentResponse.createMany({ data: responseRows });
       }
 
-      return newAssessment;
+      // Close the in-clinic visit. Inside the transaction so the two facts
+      // move together: a submission that rolls back must not leave a patient
+      // shown as finished, and a patient shown as finished must have an
+      // assessment to show for it.
+      //
+      // updateMany, not update, and guarded three ways:
+      //   * clinicId  — a token from another clinic cannot claim this visit
+      //   * assessmentId IS NULL — a visit is claimed once; a replayed
+      //     submission matches zero rows instead of violating the unique index
+      //   * zero matches are fine — older clients, the skin flow, and any
+      //     intake whose visit was never opened all submit without one
+      if (linkedVisit) {
+        await tx.clinicVisit.updateMany({
+          where: {
+            intakeSessionId: linkedVisit.sessionId,
+            clinicId: clinic.id,
+            assessmentId: null,
+          },
+          data: { assessmentId: newAssessment.id },
+        });
+      }
+
+      return { assessment: newAssessment, identityState: resolved.identityState };
     }, { maxWait: 10_000, timeout: 20_000 });
 
     console.log('[SUBMIT] ASSESSMENT CREATED', assessment.id);
@@ -321,6 +460,13 @@ export async function POST(req: Request) {
       success: true,
       assessmentId: assessment.id,
       previewToken,
+      // NEW | RETURNING as resolved at intake. Coarse by design, and
+      // deliberately NOT the same value as the `patientRelationship` column
+      // written above: the column keeps AMBIGUOUS, this response collapses it
+      // to RETURNING. Telling an anonymous caller that their number appears on
+      // two records is a statement about someone's clinic attendance; the
+      // clinic reads the real state from the row and the audit log.
+      patientRelationship: toRelationship(identityState),
     });
 
   } catch (err) {

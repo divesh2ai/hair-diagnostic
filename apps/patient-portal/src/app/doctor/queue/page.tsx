@@ -1,29 +1,19 @@
-import { ClipboardList } from "lucide-react";
-import { PageContainer } from "@/components/app-shell";
+import { redirect } from "next/navigation";
+
+// /doctor/queue was a "coming in Sprint 2" placeholder while the real queue
+// already existed and was already in daily use at /doctor/reports. Two URLs,
+// one of which told a doctor their queue did not exist yet.
+//
+// This redirects instead of moving the implementation. The queue is ~900 lines
+// of filters, facets, tabs, skin-concern rendering and deep links that work;
+// relocating all of it to win a prettier path would be pure route churn with a
+// real chance of breaking a surface clinicians depend on. The URL is the least
+// important thing about a Review Queue.
+//
+// The naming is settled in the UI, which is what people actually read: every
+// heading, link and empty state says "Review Queue". If the path is ever worth
+// moving, it is its own slice, with redirects going the other way.
 
 export default function DoctorQueuePage() {
-  return (
-    <PageContainer className="space-y-6">
-      <div>
-        <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-teal-700">
-          DrFACT · Live queue
-        </p>
-        <h1 className="font-serif text-3xl font-medium tracking-tight text-slate-900">
-          Today&apos;s queue
-        </h1>
-        <p className="text-sm text-slate-500">
-          Real-time consultation flow — coming soon.
-        </p>
-      </div>
-      <section className="rounded-2xl border border-stone-200 bg-white shadow-sm px-6 py-12 text-center">
-        <div className="mx-auto h-12 w-12 rounded-full bg-stone-100 grid place-items-center">
-          <ClipboardList className="h-5 w-5 text-stone-400" />
-        </div>
-        <p className="mt-3 text-sm font-medium text-slate-700">Live queue arrives in Sprint 2</p>
-        <p className="mt-1 text-xs text-slate-500">
-          For now, jump to <a href="/doctor/reports" className="text-sky-600">Reports</a> to triage completed cases.
-        </p>
-      </section>
-    </PageContainer>
-  );
+  redirect("/doctor/reports?tab=needs_review");
 }

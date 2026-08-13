@@ -3,8 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import {
-  AlertTriangle,
-  ArrowUpRight,
+  ArrowRight,
   CheckCircle2,
   ChevronDown,
   ChevronRight,
@@ -16,27 +15,46 @@ import {
   Search,
 } from "lucide-react";
 import { StatusBadge } from "@/components/ui/status-badge";
-import {
-  composeWorkflowLabel,
-  composeOperationalReason,
-} from "@/lib/labels/statusLabels";
+import { composeWorkflowLabel } from "@/lib/labels/statusLabels";
 import { labelForDiagnosis } from "@/lib/labels/diagnosisLabels";
-import { waitingTime } from "@/lib/format/waitingTime";
+import { absoluteTimestamp, elapsedLabel } from "@/lib/format/waitingTime";
+import {
+  clinicalAttention,
+  demographicLabel,
+  type ClinicalAttention,
+} from "@/lib/doctor/reviewPriority";
+import { reviewHref } from "@/lib/doctor/reviewHref";
+import { useMinuteTick } from "@/lib/doctor/useLiveDashboard";
 
-// Editorial clinical inbox.
+// Review Queue.
 //
-// The old page was a dense table with an 8-facet filter block on top. That
-// competes with the real work (reading + approving cases). This rewrite:
+// Each row has to answer four questions and nothing else:
 //
-//   • Puts the tabs + total count in a quiet hero, not a wall of chrome.
-//   • Filters collapse into a single expandable panel that doesn't dominate
-//     the initial scan.
-//   • Rows become editorial cards — patient name is the primary object,
-//     diagnosis + severity + decision live in a calm meta strip beneath.
-//     The whole card is the click target; no per-row buttons.
-//   • Warm stone palette + serif accents for headers. Numbers stay tabular.
+//   WHO?          patient name + age/sex
+//   WHAT WAS      primary diagnosis, in clinician prose
+//   FOUND?
+//   HOW LONG?     waiting time, measured from submission
+//   WHAT NOW?     an explicit "Review" button, not an ambiguous arrow
 //
-// API contract identical: /api/doctor/reports?..., /api/doctor/reports/facets.
+// ── FIFO, and nothing else ───────────────────────────────────────────────────
+// The needs-review tab is ordered by submittedAt ascending: whoever finished
+// first is seen first. That is the rule a waiting room can actually be run on,
+// and the one patients and reception already believe is in force. The
+// review-pathway classifier still labels a row when it has something to say,
+// but it cannot move anyone up or down — a queue that silently reorders itself
+// is one nobody can predict and everybody stops trusting.
+//
+// Removed deliberately:
+//   • Clinical-priority sorting, and the priority-only filter that went with
+//     it. See above; also, the classifier is disabled in production, so the
+//     filter matched nothing while implying it had looked.
+//   • "URGENT · 763h" — that badge derived clinical urgency from elapsed time,
+//     so given enough backlog every case became urgent and none of them were.
+//   • "Standard review" / "Review" chips on ordinary cases — a severity
+//     hierarchy applied to a waiting room, saying nothing.
+//   • The workflow badge on the needs-review tab, where every row is in the
+//     same state and the row already says "Ready for review".
+//   • "Care: <doctor>" when every visible row names the same doctor.
 
 interface ReportRow {
   id: string;
@@ -45,6 +63,8 @@ interface ReportRow {
   patientId: string;
   patientName: string;
   patientPhone: string | null;
+  patientAge: number | null;
+  patientGender: string | null;
   clinicId: string;
   clinicName: string;
   careDoctorId: string | null;
@@ -56,6 +76,8 @@ interface ReportRow {
   decisionAt: string | null;
   primaryDiagnosis: string | null;
   severity: string | null;
+  reviewPathway: string | null;
+  reviewPathwayReasons: string[] | null;
   consultationVersion: number | null;
   consultationApprovalStatus: string | null;
   concern: string | null;
@@ -89,6 +111,7 @@ interface Filters {
   assignedTo: string;
   decision: string;
   assignedToMe: boolean;
+  waitingOverHours: string;
 }
 
 const EMPTY: Filters = {
@@ -103,6 +126,7 @@ const EMPTY: Filters = {
   assignedTo: "",
   decision: "",
   assignedToMe: false,
+  waitingOverHours: "",
 };
 
 type Tab = "needs_review" | "all" | "approved";
@@ -113,14 +137,71 @@ const TABS: { id: Tab; label: string; icon: typeof Inbox }[] = [
   { id: "approved", label: "Approved", icon: CheckCircle2 },
 ];
 
+const WAITING_OPTIONS: { value: string; label: string }[] = [
+  { value: "", label: "Any wait" },
+  { value: "24", label: "Over 24 hours" },
+  { value: "72", label: "Over 3 days" },
+  { value: "168", label: "Over 1 week" },
+];
+
+function isTab(v: string | null): v is Tab {
+  return v === "needs_review" || v === "all" || v === "approved";
+}
+
+// Deep-link params are read from window.location on mount rather than with
+// useSearchParams().
+//
+// useSearchParams() forces the App Router to bail this route out to
+// client-side rendering behind a Suspense boundary. In practice that left the
+// server-rendered fallback mounted inside <main> while React rendered the real
+// tree into a sibling container — two copies of the queue in one document, and
+// the visible one never fetched. Reading the URL after mount keeps a single
+// server-rendered tree and costs nothing: these params only matter on the
+// first paint after a click from the dashboard.
 export default function ReportsPage() {
+  const [mounted, setMounted] = useState(false);
   const [tab, setTab] = useState<Tab>("needs_review");
   const [filters, setFilters] = useState<Filters>(EMPTY);
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const urlTab = params.get("tab");
+    if (isTab(urlTab)) setTab(urlTab);
+    // `?priority=1` is deliberately ignored rather than removed from the
+    // parser's history: old bookmarks and any link still carrying it now open
+    // the ordinary FIFO queue instead of an empty one.
+    setMounted(true);
+  }, []);
+
+  // Server render and first client render are byte-identical, so there is no
+  // hydration mismatch to recover from. Rows are client-fetched regardless, so
+  // nothing meaningful is lost from the server-rendered HTML.
+  if (!mounted) return <QueuePageSkeleton />;
+
+  return <ReviewQueue tab={tab} setTab={setTab} filters={filters} setFilters={setFilters} />;
+}
+
+function ReviewQueue({
+  tab,
+  setTab,
+  filters,
+  setFilters,
+}: {
+  tab: Tab;
+  setTab: (t: Tab) => void;
+  filters: Filters;
+  setFilters: React.Dispatch<React.SetStateAction<Filters>>;
+}) {
   const [facets, setFacets] = useState<Facets | null>(null);
   const [rows, setRows] = useState<ReportRow[]>([]);
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
   const [filtersOpen, setFiltersOpen] = useState(false);
+
+  // One clock for the page, so every "waiting 6 min" advances together and
+  // none of them cost a request.
+  const minuteTick = useMinuteTick();
 
   const [doctorMe, setDoctorMe] = useState<{ id: string } | null>(null);
   const [doctorMeLoading, setDoctorMeLoading] = useState(true);
@@ -146,23 +227,32 @@ export default function ReportsPage() {
   const set = (k: keyof Filters, v: string | boolean) =>
     setFilters((f) => ({ ...f, [k]: v }));
 
-  const activeFilterCount = Object.entries(filters).filter(([, v]) =>
-    typeof v === "boolean" ? v : Boolean(v),
-  ).length;
+  // Search is applied client-side, so it is not an "active filter" for the
+  // More-filters badge; everything else round-trips to the server.
+  const advancedFilterCount = (
+    ["clinicId", "doctorId", "diagnosis", "severity", "assignedTo", "dateFrom", "dateTo"] as const
+  ).filter((k) => Boolean(filters[k])).length;
 
   const effectiveQuery = useMemo(() => {
     const p = new URLSearchParams();
     for (const [k, v] of Object.entries(filters)) {
       if (k === "search" || k === "assignedToMe") continue;
+      if (k === "waitingOverHours") continue;
       if (typeof v === "string" && v) p.set(k, v);
     }
     if (filters.assignedToMe && doctorMe?.id) {
       p.set("assignedTo", doctorMe.id);
     }
+    if (filters.waitingOverHours) p.set("waitingOverHours", filters.waitingOverHours);
     if (tab === "needs_review") {
       p.set("status", "CLINICAL_READY,REPORT_GENERATING,COMPLETED,PENDING");
       p.set("includeSkinPigmentationPending", "1");
       p.set("decision", "PENDING");
+      // FIFO, ordered in Postgres. It has to happen server-side: this page
+      // fetches a capped window out of a backlog several hundred deep, so
+      // re-sorting that window in the browser would show the newest 200 and
+      // label them "longest waiting".
+      p.set("sort", "oldest");
     } else if (tab === "approved") {
       p.set("decision", "APPROVED");
     }
@@ -172,32 +262,35 @@ export default function ReportsPage() {
 
   const visibleRows = useMemo(() => {
     const q = filters.search.trim().toLowerCase();
-    const filtered = !q
-      ? rows
-      : rows.filter((r) =>
-          [r.patientName, r.patientPhone, r.primaryDiagnosis, r.clinicName]
-            .filter(Boolean)
-            .some((v) => (v as string).toLowerCase().includes(q)),
-        );
-    // Needs-review tab: oldest waiting first so the "bleeding" cases surface.
-    if (tab !== "needs_review") return filtered;
-    return [...filtered].sort((a, b) => {
-      const ta = a.submittedAt ? new Date(a.submittedAt).getTime() : Infinity;
-      const tb = b.submittedAt ? new Date(b.submittedAt).getTime() : Infinity;
-      return ta - tb;
-    });
-  }, [rows, filters.search, tab]);
+    if (!q) return rows;
+    return rows.filter((r) =>
+      [r.patientName, r.patientPhone, r.primaryDiagnosis, r.clinicName]
+        .filter(Boolean)
+        .some((v) => (v as string).toLowerCase().includes(q)),
+    );
+  }, [rows, filters.search]);
+
+  // "Care: Dr X" on every row of a single-doctor queue is pure noise. Show it
+  // only when it actually distinguishes one row from another.
+  const showCareDoctor = useMemo(() => {
+    const ids = new Set(visibleRows.map((r) => r.careDoctorId ?? "—"));
+    return ids.size > 1;
+  }, [visibleRows]);
 
   const load = useCallback(async () => {
     setLoading(true);
+    setLoadError(false);
     try {
       const res = await fetch(`/api/doctor/reports?${effectiveQuery}`);
+      if (!res.ok) throw new Error(String(res.status));
       const data = await res.json();
+      if (data.error) throw new Error(data.error);
       setRows(data.rows ?? []);
       setTotal(data.total ?? 0);
     } catch {
       setRows([]);
       setTotal(0);
+      setLoadError(true);
     } finally {
       setLoading(false);
     }
@@ -214,11 +307,17 @@ export default function ReportsPage() {
     load();
   }, [load]);
 
-  const reset = () => setFilters(EMPTY);
+  const reset = () =>
+    setFilters((f) => ({ ...EMPTY, search: f.search }));
+
+  const hasAnyFilter =
+    advancedFilterCount > 0 ||
+    Boolean(filters.waitingOverHours) ||
+    filters.assignedToMe;
 
   return (
     <div className="min-h-full bg-stone-50">
-      <div className="mx-auto w-full max-w-6xl px-6 lg:px-10 py-10 lg:py-14 space-y-8">
+      <div className="mx-auto w-full max-w-6xl px-5 sm:px-6 lg:px-10 py-8 lg:py-12 space-y-7">
         {/* ── HERO ─────────────────────────────────────────────────────── */}
         <header className="space-y-3">
           <div className="flex items-center gap-3">
@@ -228,53 +327,78 @@ export default function ReportsPage() {
             </span>
           </div>
           <h1 className="font-serif text-3xl lg:text-4xl leading-[1.05] tracking-tight text-slate-900">
-            Clinical Review Queue
+            Review Queue
           </h1>
-          <p className="text-sm text-stone-600">
+          <p className="text-sm text-stone-600" aria-live="polite">
             {loading ? (
               "Loading…"
+            ) : loadError ? (
+              "Queue unavailable."
             ) : (
               <>
                 <span className="tabular-nums font-medium text-slate-800">
                   {total.toLocaleString()}
                 </span>{" "}
-                cases ·{" "}
-                <span className="tabular-nums text-slate-700">
-                  {visibleRows.length}
-                </span>{" "}
-                shown
+                {total === 1 ? "case" : "cases"}
+                {visibleRows.length !== total && (
+                  <>
+                    {" · "}
+                    <span className="tabular-nums text-slate-700">
+                      {visibleRows.length}
+                    </span>{" "}
+                    shown
+                  </>
+                )}
               </>
             )}
           </p>
         </header>
 
-        {/* ── PRIMARY FILTER STRIP (always visible) ────────────────────── */}
+        {/* ── PRIMARY FILTERS ──────────────────────────────────────────── */}
         <div className="flex flex-wrap items-center gap-2">
-          <div className="relative flex-1 min-w-[220px] max-w-md">
+          <div className="relative min-w-[220px] flex-1 max-w-md">
             <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-stone-400" />
             <input
               type="search"
               value={filters.search}
               onChange={(e) => set("search", e.target.value)}
               placeholder="Search patient, phone, condition…"
-              className="block w-full rounded-full border border-stone-200 bg-white pl-9 pr-3 py-2 text-sm text-slate-800 shadow-sm focus:border-slate-900 focus:outline-none focus:ring-2 focus:ring-slate-900/10"
+              aria-label="Search patients"
+              className="block w-full rounded-full border border-stone-200 bg-white py-2 pl-9 pr-3 text-sm text-slate-800 shadow-sm focus:border-slate-900 focus:outline-none focus:ring-2 focus:ring-slate-900/10"
             />
           </div>
-          <input
-            type="date"
-            value={filters.dateFrom}
-            onChange={(e) => set("dateFrom", e.target.value)}
-            className="rounded-full border border-stone-200 bg-white px-3 py-1.5 text-xs text-slate-700 shadow-sm focus:border-slate-900 focus:outline-none"
-            aria-label="Submitted from"
-          />
-          <input
-            type="date"
-            value={filters.dateTo}
-            onChange={(e) => set("dateTo", e.target.value)}
-            className="rounded-full border border-stone-200 bg-white px-3 py-1.5 text-xs text-slate-700 shadow-sm focus:border-slate-900 focus:outline-none"
-            aria-label="Submitted to"
-          />
-          <label className={`inline-flex items-center gap-2 rounded-full border border-stone-200 bg-white px-3 py-1.5 text-xs text-slate-700 shadow-sm cursor-pointer hover:border-stone-400 ${doctorMeLoading ? "opacity-60 cursor-not-allowed" : doctorMeError ? "border-red-200 bg-red-50 text-red-700" : ""}`}>
+
+          {/* No "Priority only" toggle. It filtered on the review-pathway
+              classifier, which is disabled in production and populates no
+              rows — so the control emptied the queue and implied it had
+              looked. When the classifier is enabled and history backfilled,
+              a filter can come back; it still must not reorder. */}
+
+          <label className="sr-only" htmlFor="waiting-filter">
+            Minimum waiting time
+          </label>
+          <select
+            id="waiting-filter"
+            value={filters.waitingOverHours}
+            onChange={(e) => set("waitingOverHours", e.target.value)}
+            className="rounded-full border border-stone-300 bg-white px-3.5 py-2 text-sm text-slate-700 shadow-sm focus:border-slate-900 focus:outline-none focus-visible:ring-2 focus-visible:ring-slate-900/25"
+          >
+            {WAITING_OPTIONS.map((o) => (
+              <option key={o.value} value={o.value}>
+                {o.label}
+              </option>
+            ))}
+          </select>
+
+          <label
+            className={`inline-flex cursor-pointer items-center gap-2 rounded-full border border-stone-300 bg-white px-3.5 py-2 text-sm text-slate-700 shadow-sm hover:border-stone-400 ${
+              doctorMeLoading
+                ? "cursor-not-allowed opacity-60"
+                : doctorMeError
+                  ? "border-red-200 bg-red-50 text-red-700"
+                  : ""
+            }`}
+          >
             <input
               type="checkbox"
               checked={filters.assignedToMe}
@@ -282,14 +406,18 @@ export default function ReportsPage() {
               onChange={(e) => set("assignedToMe", e.target.checked)}
               className="h-3.5 w-3.5 rounded border-stone-300 text-slate-900 focus:ring-slate-900/20 disabled:opacity-50"
             />
-            {doctorMeLoading ? "Loading profile…" : doctorMeError ? "Profile error" : "Assigned to me"}
+            {doctorMeLoading
+              ? "Loading profile…"
+              : doctorMeError
+                ? "Profile error"
+                : "Assigned to me"}
           </label>
         </div>
 
         {/* ── TAB STRIP ─────────────────────────────────────────────────── */}
         <nav
           role="tablist"
-          aria-label="Report status"
+          aria-label="Queue view"
           className="flex flex-wrap items-center gap-1 border-b border-stone-200"
         >
           {TABS.map(({ id, label, icon: Icon }) => {
@@ -300,13 +428,11 @@ export default function ReportsPage() {
                 role="tab"
                 aria-selected={active}
                 onClick={() => setTab(id)}
-                className={`relative -mb-px inline-flex items-center gap-2 px-4 py-3 text-sm font-medium transition-colors ${
-                  active
-                    ? "text-slate-900"
-                    : "text-stone-500 hover:text-slate-700"
+                className={`relative -mb-px inline-flex items-center gap-2 px-4 py-3 text-sm font-medium transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-slate-900/25 ${
+                  active ? "text-slate-900" : "text-stone-500 hover:text-slate-700"
                 }`}
               >
-                <Icon className="h-4 w-4" />
+                <Icon className="h-4 w-4" aria-hidden />
                 {label}
                 {active && (
                   <span className="absolute inset-x-4 -bottom-px h-px bg-slate-900" />
@@ -318,43 +444,59 @@ export default function ReportsPage() {
           <div className="ml-auto flex items-center gap-2 pb-1">
             <button
               onClick={() => setFiltersOpen((v) => !v)}
-              className={`inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-xs font-medium transition-colors ${
-                activeFilterCount > 0
+              aria-expanded={filtersOpen}
+              className={`inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-xs font-medium transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-slate-900/25 ${
+                advancedFilterCount > 0
                   ? "border-slate-900 bg-slate-900 text-white hover:bg-slate-800"
                   : "border-stone-300 bg-white text-slate-700 hover:border-stone-400"
               }`}
             >
               More filters
-              {activeFilterCount > 0 && (
+              {advancedFilterCount > 0 && (
                 <span className="rounded-full bg-white/20 px-1.5 text-[10px] tabular-nums">
-                  {activeFilterCount}
+                  {advancedFilterCount}
                 </span>
               )}
               <ChevronDown
-                className={`h-3.5 w-3.5 transition-transform ${
-                  filtersOpen ? "rotate-180" : ""
-                }`}
+                className={`h-3.5 w-3.5 transition-transform ${filtersOpen ? "rotate-180" : ""}`}
+                aria-hidden
               />
             </button>
-            {activeFilterCount > 0 && (
+            {hasAnyFilter && (
               <button
                 onClick={reset}
-                className="inline-flex items-center gap-1 text-xs text-stone-500 hover:text-slate-700"
+                className="inline-flex items-center gap-1 rounded text-xs text-stone-500 hover:text-slate-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-slate-900/25"
               >
-                <RotateCcw className="h-3 w-3" />
+                <RotateCcw className="h-3 w-3" aria-hidden />
                 Reset
               </button>
             )}
           </div>
         </nav>
 
-        {/* ── MORE FILTERS (collapsed by default, secondary controls) ─── */}
+        {/* ── MORE FILTERS ─────────────────────────────────────────────── */}
         {filtersOpen && (
-          <div className="rounded-2xl border border-stone-200 bg-white p-5 space-y-4">
+          <div className="space-y-4 rounded-2xl border border-stone-200 bg-white p-5">
             <p className="text-[11px] font-medium uppercase tracking-wider text-stone-500">
               Advanced
             </p>
             <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+              <Field label="Submitted from">
+                <input
+                  type="date"
+                  value={filters.dateFrom}
+                  onChange={(e) => set("dateFrom", e.target.value)}
+                  className={INPUT}
+                />
+              </Field>
+              <Field label="Submitted to">
+                <input
+                  type="date"
+                  value={filters.dateTo}
+                  onChange={(e) => set("dateTo", e.target.value)}
+                  className={INPUT}
+                />
+              </Field>
               <Field label="Clinic">
                 <select
                   value={filters.clinicId}
@@ -430,15 +572,26 @@ export default function ReportsPage() {
         )}
 
         {/* ── RESULTS ─────────────────────────────────────────────────── */}
-        <section className="rounded-2xl border border-stone-200 bg-white overflow-hidden">
+        <section className="overflow-hidden rounded-2xl border border-stone-200 bg-white">
           {loading ? (
             <SkeletonList />
+          ) : loadError ? (
+            <QueueError onRetry={load} />
           ) : visibleRows.length === 0 ? (
-            <EmptyState tab={tab} />
+            <EmptyState tab={tab} filtered={hasAnyFilter || Boolean(filters.search)} onReset={reset} />
           ) : (
             <ul className="divide-y divide-stone-100">
               {visibleRows.map((r) => (
-                <ReportCard key={r.id} row={r} />
+                <ReportCard
+                  key={r.id}
+                  row={r}
+                  showCareDoctor={showCareDoctor}
+                  isQueueTab={tab === "needs_review"}
+                  // Re-render on the local minute tick so "waiting 6 min"
+                  // advances without a request. Read as a prop rather than a
+                  // hook per row: one timer for the page, not one per patient.
+                  tick={minuteTick}
+                />
               ))}
             </ul>
           )}
@@ -450,7 +603,20 @@ export default function ReportsPage() {
 
 /* ────────────────────────────────────────────────────────────────────── */
 
-function ReportCard({ row }: { row: ReportRow }) {
+function ReportCard({
+  row,
+  showCareDoctor,
+  isQueueTab,
+  tick,
+}: {
+  row: ReportRow;
+  showCareDoctor: boolean;
+  /** True on the needs-review tab, where every row is pending by definition. */
+  isQueueTab: boolean;
+  /** Page-level minute clock. Read only so this row re-renders its wait text. */
+  tick: number;
+}) {
+  void tick;
   const initials =
     row.patientName
       ?.split(/\s+/)
@@ -464,137 +630,192 @@ function ReportCard({ row }: { row: ReportRow }) {
     reviewDecision: row.decision,
     approvalStatus: row.consultationApprovalStatus,
   });
-  const reason = composeOperationalReason({
+  // Display only — see lib/doctor/reviewPriority.clinicalAttention. Null for
+  // routine and unclassified cases, which is nearly all of them, and the row
+  // then says nothing rather than inventing a tier for a waiting patient.
+  const attention = clinicalAttention({
     assessmentStatus: row.status,
-    reviewDecision: row.decision,
-    approvalStatus: row.consultationApprovalStatus,
+    reviewPathway: row.reviewPathway,
+    reviewPathwayReasons: row.reviewPathwayReasons,
   });
-  const isDedicatedSkinReview = row.concern === "skin_pigmentation" || row.concern === "skin_anti_ageing";
-  const diagnosis = isDedicatedSkinReview ? null : labelForDiagnosis(row.primaryDiagnosis);
-  const waited = waitingTime(row.submittedAt);
+  const demographic = demographicLabel(row.patientAge, row.patientGender);
+  const isDedicatedSkinReview =
+    row.concern === "skin_pigmentation" || row.concern === "skin_anti_ageing";
+  const diagnosis = isDedicatedSkinReview
+    ? null
+    : labelForDiagnosis(row.primaryDiagnosis);
 
   return (
-    <li>
-      <Link
-        href={row.concern === "skin_pigmentation" ? `/doctor/reports/${row.id}/skin/pigmentation` : row.concern === "skin_anti_ageing" ? `/doctor/reports/${row.id}/skin/anti-ageing` : `/doctor/reports/${row.id}`}
-        className="group grid grid-cols-[auto_1fr_auto] items-center gap-4 px-5 py-4 hover:bg-stone-50/70 transition-colors"
-      >
-        {/* avatar */}
-        <span className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-stone-100 to-stone-200 text-xs font-medium text-stone-600">
+    <li className="group relative transition-colors hover:bg-stone-50/70 focus-within:bg-stone-50">
+      <div className="flex flex-wrap items-start gap-x-4 gap-y-3 px-4 py-4 sm:px-5">
+        <span
+          aria-hidden
+          className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-stone-100 to-stone-200 text-xs font-medium text-stone-600"
+        >
           {initials}
         </span>
 
-        {/* main column */}
-        <div className="min-w-0">
-          <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
+        {/* WHO / WHAT WAS FOUND / WHY / HOW LONG */}
+        <div className="min-w-0 flex-1 basis-64 space-y-1.5">
+          <div className="flex flex-wrap items-baseline gap-x-2.5 gap-y-1">
             <p className="truncate font-medium text-slate-900">
               {row.patientName}
+              {demographic && (
+                <span className="font-normal text-stone-400"> · {demographic}</span>
+              )}
             </p>
-            {row.concern === "skin_acne" && (
-              <span className="inline-flex items-center rounded-full bg-rose-50 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-rose-800 ring-1 ring-rose-200">
-                Acne
+            {row.concern === "skin_acne" && <ConcernTag tone="rose">Acne</ConcernTag>}
+            {row.concern === "skin_pigmentation" && (
+              <>
+                <ConcernTag tone="amber">Dr Skin FACT</ConcernTag>
+                <ConcernTag tone="orange">Pigmentation</ConcernTag>
+              </>
+            )}
+            {row.concern === "skin_anti_ageing" && (
+              <>
+                <ConcernTag tone="violet">Dr Skin FACT</ConcernTag>
+                <ConcernTag tone="indigo">Anti-Ageing</ConcernTag>
+              </>
+            )}
+            {row.skinIntakeId && row.skinConcernCount > 1 && (
+              <ConcernTag tone="violet">
+                Multi-concern Skin FACT · {row.skinIntakeId.slice(0, 8)}
+              </ConcernTag>
+            )}
+          </div>
+
+          {diagnosis && <p className="truncate text-sm text-stone-600">{diagnosis}</p>}
+
+          {row.concern === "skin_pigmentation" && (
+            <div className="flex flex-wrap gap-x-2 gap-y-1 text-[11px] text-amber-900">
+              <span>Images: {row.imageCount} uploaded</span>
+              <span>·</span>
+              <span>
+                Video consultation{" "}
+                {(row.consultationStatus ?? "REQUIRED").toLowerCase().replaceAll("_", " ")}
+              </span>
+              {row.previousPrescriptionUploaded && <span>· Prescription uploaded</span>}
+              {row.medicationDeclared && <span>· Medication declared</span>}
+              {row.medicalHistoryDeclared && <span>· Medical history declared</span>}
+              {row.bodyPigmentationSelected && <span>· Body pigmentation</span>}
+            </div>
+          )}
+
+          <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1.5 pt-0.5">
+            <WaitChip submittedAt={row.submittedAt} readyForReview={isQueueTab} />
+            {attention && <AttentionChip attention={attention} />}
+            <span className="truncate text-xs text-stone-500">{row.clinicName}</span>
+            {showCareDoctor && row.careDoctorName && (
+              <span className="truncate text-xs text-stone-500">
+                Care: {row.careDoctorName}
               </span>
             )}
-            {row.skinIntakeId && row.skinConcernCount > 1 && <span className="inline-flex items-center rounded-full bg-violet-50 px-2 py-0.5 text-[10px] font-semibold text-violet-800 ring-1 ring-violet-200">Part of multi-concern Skin FACT · {row.skinIntakeId.slice(0, 8)}</span>}
-            {row.concern === "skin_pigmentation" && <>
-              <span className="inline-flex items-center rounded-full bg-amber-50 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-amber-900 ring-1 ring-amber-200">Dr Skin FACT</span>
-              <span className="inline-flex items-center rounded-full bg-orange-50 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-orange-900 ring-1 ring-orange-200">Pigmentation</span>
-            </>}
-            {row.concern === "skin_anti_ageing" && <>
-              <span className="inline-flex items-center rounded-full bg-violet-50 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-violet-900 ring-1 ring-violet-200">Dr Skin FACT</span>
-              <span className="inline-flex items-center rounded-full bg-indigo-50 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-indigo-900 ring-1 ring-indigo-200">Anti-Ageing</span>
-            </>}
-            {diagnosis && <span className="text-sm text-stone-500 truncate">{diagnosis}</span>}
           </div>
 
-          {reason && !isDedicatedSkinReview && (
-            <p className="mt-1 text-xs font-medium text-slate-700">{reason}</p>
+          {attention?.reason && (
+            <p className="text-xs text-stone-500">{attention.reason}</p>
           )}
-          {row.concern === "skin_pigmentation" && <div className="mt-1 flex flex-wrap gap-2 text-[11px] text-amber-900">
-            <span>Images: {row.imageCount} uploaded</span><span>·</span><span>Video consultation {(row.consultationStatus ?? "REQUIRED").toLowerCase().replaceAll("_"," ")}</span>
-            {row.previousPrescriptionUploaded && <span>· Prescription uploaded</span>}{row.medicationDeclared && <span>· Medication declared</span>}{row.medicalHistoryDeclared && <span>· Medical history declared</span>}{row.bodyPigmentationSelected && <span>· Body pigmentation</span>}
-          </div>}
-
-          <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1.5 text-xs text-stone-500">
-            <span className="inline-flex items-center gap-1">
-              <Clock className="h-3 w-3" />
-              {waited}
-            </span>
-            <Dot />
-            <span className="truncate">{row.clinicName}</span>
-            {row.careDoctorName && (
-              <>
-                <Dot />
-                <span className="truncate">Care: {row.careDoctorName}</span>
-              </>
-            )}
-            {row.consultationVersion != null && (
-              <>
-                <Dot />
-                <span className="tabular-nums">v{row.consultationVersion}</span>
-              </>
-            )}
-          </div>
         </div>
 
-        {/* right column: urgency + workflow badge + arrow. */}
-        <div className="flex items-center gap-3">
-          <div className="hidden sm:flex flex-col items-end gap-1.5">
-            <UrgencyBadge submittedAt={row.submittedAt} decision={row.decision} />
-            <StatusBadge tone={workflow.tone}>{workflow.label}</StatusBadge>
-          </div>
-          <ArrowUpRight className="h-4 w-4 text-stone-300 transition-all group-hover:text-slate-700 group-hover:-translate-y-0.5 group-hover:translate-x-0.5" />
+        {/* WHAT SHOULD I DO */}
+        <div className="ml-auto flex shrink-0 items-center gap-3 self-center">
+          {/* The workflow badge earns its place on "All" and "Approved",
+              where rows differ. On the queue every row is pending by
+              definition and the wait chip already says "Ready for review" —
+              printing it twice is the duplicate status language this slice
+              exists to remove. */}
+          {!isQueueTab && (
+            <StatusBadge tone={workflow.tone} className="hidden sm:inline-flex">
+              {workflow.label}
+            </StatusBadge>
+          )}
+          <Link
+            href={reviewHref(row)}
+            aria-label={`Review ${row.patientName}`}
+            // Stretched link: the whole row is clickable, but the row still
+            // has exactly one tab stop and one accessible name.
+            className="inline-flex items-center gap-1.5 rounded-full border border-stone-300 bg-white px-4 py-2 text-sm font-medium text-slate-800 transition-colors hover:border-slate-900 hover:bg-slate-900 hover:text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-slate-900/25 after:absolute after:inset-0 after:content-['']"
+          >
+            Review
+            <ArrowRight className="h-3.5 w-3.5" aria-hidden />
+          </Link>
         </div>
-      </Link>
+      </div>
     </li>
   );
 }
 
-// Urgency band — hours since submission for still-pending cases.
-// >48h → red · 24-48h → amber · <24h → subtle. Suppressed for approved / no submit.
-function UrgencyBadge({
-  submittedAt,
-  decision,
-}: {
-  submittedAt: string | null;
-  decision: string | null;
-}) {
-  if (!submittedAt) return null;
-  if (decision && decision !== "PENDING") return null;
-  const hours = (Date.now() - new Date(submittedAt).getTime()) / 3_600_000;
-  if (hours >= 48) {
-    return (
-      <span className="inline-flex items-center gap-1 rounded-full bg-red-100 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-red-800 ring-1 ring-red-200">
-        <AlertTriangle className="size-2.5" />
-        Urgent · {Math.round(hours)}h
-      </span>
-    );
-  }
-  if (hours >= 24) {
-    return (
-      <span className="inline-flex items-center rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-amber-800 ring-1 ring-amber-200">
-        {Math.round(hours)}h waiting
-      </span>
-    );
-  }
+// A case the classifier flagged — and only such a case. Always carries text,
+// never colour alone. Never affects order.
+function AttentionChip({ attention }: { attention: ClinicalAttention }) {
+  const styles =
+    attention.tone === "danger"
+      ? "bg-red-50 text-red-800 ring-red-200"
+      : "bg-amber-50 text-amber-900 ring-amber-200";
   return (
-    <span className="inline-flex items-center rounded-full bg-teal-50 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-teal-800 ring-1 ring-teal-100">
-      New
+    <span
+      className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.08em] ring-1 ${styles}`}
+    >
+      <span aria-hidden className="text-[11px] leading-none">
+        !
+      </span>
+      {attention.label}
     </span>
   );
 }
 
-function Dot() {
-  return <span className="h-0.5 w-0.5 rounded-full bg-stone-300" />;
+// Waiting time — its own axis. Never coloured by how long it has been.
+function WaitChip({
+  submittedAt,
+  readyForReview,
+}: {
+  submittedAt: string | null;
+  /** On the queue, the wait carries the row's state too — one phrase, one fact. */
+  readyForReview: boolean;
+}) {
+  if (!submittedAt) return null;
+  return (
+    <span
+      className="inline-flex items-center gap-1 text-xs text-stone-500"
+      title={`Submitted ${absoluteTimestamp(submittedAt)}`}
+    >
+      <Clock className="h-3 w-3" aria-hidden />
+      {readyForReview ? (
+        <>Ready for review · waiting {elapsedLabel(submittedAt)}</>
+      ) : (
+        <>
+          <span className="sr-only">Waiting </span>
+          {elapsedLabel(submittedAt)}
+        </>
+      )}
+    </span>
+  );
 }
 
-function Field({
-  label,
+function ConcernTag({
+  tone,
   children,
 }: {
-  label: string;
+  tone: "rose" | "amber" | "orange" | "violet" | "indigo";
   children: React.ReactNode;
 }) {
+  const styles = {
+    rose: "bg-rose-50 text-rose-800 ring-rose-200",
+    amber: "bg-amber-50 text-amber-900 ring-amber-200",
+    orange: "bg-orange-50 text-orange-900 ring-orange-200",
+    violet: "bg-violet-50 text-violet-900 ring-violet-200",
+    indigo: "bg-indigo-50 text-indigo-900 ring-indigo-200",
+  }[tone];
+  return (
+    <span
+      className={`inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide ring-1 ${styles}`}
+    >
+      {children}
+    </span>
+  );
+}
+
+function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <label className="space-y-1.5 text-xs">
       <span className="block font-medium text-stone-600">{label}</span>
@@ -608,50 +829,116 @@ const INPUT =
 
 function SkeletonList() {
   return (
-    <ul className="divide-y divide-stone-100 animate-pulse">
+    <ul className="animate-pulse divide-y divide-stone-100">
       {Array.from({ length: 6 }).map((_, i) => (
-        <li key={i} className="grid grid-cols-[auto_1fr_auto] gap-4 px-5 py-4">
+        <li key={i} className="flex items-start gap-4 px-4 py-4 sm:px-5">
           <div className="h-11 w-11 rounded-full bg-stone-100" />
-          <div className="space-y-2">
+          <div className="flex-1 space-y-2">
             <div className="h-4 w-52 rounded bg-stone-100" />
-            <div className="h-3 w-72 rounded bg-stone-100" />
+            <div className="h-3.5 w-64 rounded bg-stone-100" />
+            <div className="h-5 w-40 rounded-full bg-stone-100" />
           </div>
-          <div className="h-4 w-16 rounded bg-stone-100" />
+          <div className="h-9 w-24 self-center rounded-full bg-stone-100" />
         </li>
       ))}
     </ul>
   );
 }
 
-function EmptyState({ tab }: { tab: Tab }) {
+function QueuePageSkeleton() {
+  return (
+    <div className="min-h-full bg-stone-50">
+      <div className="mx-auto w-full max-w-6xl px-5 sm:px-6 lg:px-10 py-8 lg:py-12 space-y-7">
+        <div className="h-10 w-64 animate-pulse rounded bg-stone-100" />
+        <div className="overflow-hidden rounded-2xl border border-stone-200 bg-white">
+          <SkeletonList />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function QueueError({ onRetry }: { onRetry: () => void }) {
+  return (
+    <div role="alert" className="px-6 py-14 text-center">
+      <p className="font-medium text-slate-900">Review Queue unavailable</p>
+      <p className="mx-auto mt-1 max-w-md text-sm text-stone-600">
+        We couldn&rsquo;t refresh your queue.
+      </p>
+      <button
+        type="button"
+        onClick={onRetry}
+        className="mt-5 inline-flex items-center gap-1.5 rounded-full border border-stone-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:border-stone-400 focus:outline-none focus-visible:ring-2 focus-visible:ring-slate-900/25"
+      >
+        <RotateCcw className="h-3.5 w-3.5" aria-hidden />
+        Try again
+      </button>
+    </div>
+  );
+}
+
+function EmptyState({
+  tab,
+  filtered,
+  onReset,
+}: {
+  tab: Tab;
+  filtered: boolean;
+  onReset: () => void;
+}) {
+  if (filtered) {
+    return (
+      <div className="px-6 py-16 text-center">
+        <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-stone-100">
+          <FileText className="h-5 w-5 text-stone-400" aria-hidden />
+        </div>
+        <p className="mt-4 font-serif text-lg text-slate-800">
+          No cases match these filters.
+        </p>
+        <p className="mx-auto mt-1 max-w-md text-sm text-stone-500">
+          Adjust your filters, or clear them and start again.
+        </p>
+        <button
+          type="button"
+          onClick={onReset}
+          className="mt-6 inline-flex items-center gap-1.5 rounded-full border border-stone-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:border-stone-400 focus:outline-none focus-visible:ring-2 focus-visible:ring-slate-900/25"
+        >
+          <RotateCcw className="h-3.5 w-3.5" aria-hidden />
+          Clear filters
+        </button>
+      </div>
+    );
+  }
+
   const copy =
     tab === "needs_review"
       ? {
-          title: "A rare quiet moment.",
-          body: "Every completed case has a decision. New consultations will appear here as patients submit assessments.",
+          title: "You’re all caught up.",
+          body: "No patients need your review. New consultations appear here as patients submit assessments.",
         }
       : tab === "approved"
         ? {
-            title: "No approved reports yet.",
-            body: "As you approve consultations they'll collect here for reference.",
+            title: "No approved cases yet.",
+            body: "As you approve consultations they’ll collect here for reference.",
           }
         : {
-            title: "No reports match these filters.",
-            body: "Adjust your filters, or clear them and start again.",
+            title: "No cases yet.",
+            body: "Consultations appear here as patients complete their assessments.",
           };
+
   return (
     <div className="px-6 py-16 text-center">
-      <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-stone-100">
-        <FileText className="h-5 w-5 text-stone-400" />
+      <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-emerald-50">
+        <CheckCircle2 className="h-5 w-5 text-emerald-600" aria-hidden />
       </div>
       <p className="mt-4 font-serif text-lg text-slate-800">{copy.title}</p>
       <p className="mx-auto mt-1 max-w-md text-sm text-stone-500">{copy.body}</p>
       <Link
         href="/doctor"
-        className="mt-6 inline-flex items-center gap-1 text-xs text-slate-700 hover:text-slate-900"
+        className="mt-6 inline-flex items-center gap-1 rounded text-xs text-slate-700 hover:text-slate-900 focus:outline-none focus-visible:ring-2 focus-visible:ring-slate-900/25"
       >
-        Back to workspace
-        <ChevronRight className="h-3 w-3" />
+        Back to dashboard
+        <ChevronRight className="h-3 w-3" aria-hidden />
       </Link>
     </div>
   );

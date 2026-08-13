@@ -10,11 +10,16 @@ import {
 } from '@/components/questionnaire/v2/insightRules';
 import {
   ChapterTransitionV3,
+  LanguageGateV3,
   QuestionnaireShellV3,
   QuestionRendererV3,
   type QuestionnaireVisualMode,
 } from '@/components/questionnaire/v3';
 import styles from '@/components/questionnaire/v3/assessment-v3.module.css';
+import {
+  useAssessmentTranslator,
+  useSyncDocumentLocale,
+} from '@/lib/assessment-i18n';
 import { isQuestionVisible } from '@/runtime/visibilityEngine';
 import { useAssessmentStore } from '@/stores/useAssessmentStore';
 import type { Question } from '@/types/questionnaire';
@@ -85,7 +90,34 @@ export interface AssessmentV3JourneyProps {
   clinicSlugOverride?: string;
   compactProgress?: boolean;
   compactShell?: boolean;
-  patientInfoOverride?: { name: string; phone?: string; email?: string; gender: string };
+  /**
+   * Patient details captured outside the questionnaire.
+   *
+   * Every field is optional, and an omitted one falls through to the answer the
+   * patient gives in the protocol. That matters for `name`: the intake gate
+   * asks for a first name, question one asks for a full name, and the fuller
+   * value must win. The gate therefore seeds the answer and passes only the
+   * phone here, while the skin intake — which collects the full set up front —
+   * keeps passing everything.
+   */
+  patientInfoOverride?: { name?: string; phone?: string; email?: string; gender?: string };
+  /**
+   * Why the patient is here today, from the pre-assessment intake gate.
+   * Advisory: the server re-resolves identity at submission and refuses an
+   * intent that contradicts the relationship it resolves. Null/undefined
+   * persists as "not captured" rather than a guess.
+   */
+  visitType?: string | null;
+  /**
+   * The signed intake session, when the patient came through the intake gate.
+   * Sent to the submit route so the ClinicVisit opened at intake is closed in
+   * the same transaction that creates the Assessment — the patient leaves the
+   * Doctor Dashboard's In Clinic list exactly as they enter the Review Queue.
+   *
+   * Opaque and optional. Surfaces that mount the journey without an intake
+   * gate omit it and nothing else changes.
+   */
+  intakeToken?: string | null;
   onSubmitted?: (result: { assessmentId: string; previewToken?: string }) => void | Promise<void>;
 }
 
@@ -95,6 +127,8 @@ export function AssessmentV3Journey({
   compactProgress = false,
   compactShell = false,
   patientInfoOverride,
+  visitType,
+  intakeToken,
   onSubmitted,
 }: AssessmentV3JourneyProps) {
   const params = useParams();
@@ -111,7 +145,11 @@ export function AssessmentV3Journey({
     isSubmitting,
     setSubmitting,
     clinicData,
+    locale,
+    hasChosenLocale,
   } = useAssessmentStore();
+  const { t, tSection } = useAssessmentTranslator();
+  useSyncDocumentLocale(locale);
   const [acknowledgedSections, setAcknowledgedSections] = useState<Set<string>>(
     () => new Set(),
   );
@@ -163,19 +201,24 @@ export function AssessmentV3Journey({
         body: 'A few final questions to complete your hair profile.',
       },
     };
+    // The English overrides above stay the master copy; tSection swaps in the
+    // patient's language when a content pack has an entry for this section and
+    // otherwise returns the English fallback untouched.
     const override = OVERRIDES[currentSectionKey];
     if (override) {
-      return { id: currentSectionKey, title: override.title, body: override.body };
+      const localised = tSection(currentSectionKey, override);
+      return { id: currentSectionKey, title: localised.title, body: localised.body };
     }
-    return {
-      id: currentSectionKey,
+    const fallback = {
       title: question.sectionTitle ?? base?.title ?? question.category.replace(/_/g, ' '),
       body:
         question.sectionDescription ??
         base?.body ??
         'A few focused questions to complete this part of your assessment.',
     };
-  }, [currentSectionKey, isFirstOfSection, previousQuestion?.category, question]);
+    const localised = tSection(currentSectionKey, fallback);
+    return { id: currentSectionKey, title: localised.title, body: localised.body };
+  }, [currentSectionKey, isFirstOfSection, previousQuestion?.category, question, tSection]);
 
   const showingSectionIntro = Boolean(
     sectionIntroContent &&
@@ -206,7 +249,18 @@ export function AssessmentV3Journey({
       const response = await fetch('/api/assessment/submit', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ answers, clinicSlug: effectiveClinicSlug, concern, ...(patientInfoOverride ? { patientInfo: patientInfoOverride } : {}) }),
+        // `locale` travels as session metadata only. `answers` still carries
+        // canonical English answer codes at every locale, so the clinical
+        // payload is byte-identical between an English and a Hindi run.
+        body: JSON.stringify({
+          answers,
+          clinicSlug: effectiveClinicSlug,
+          concern,
+          locale,
+          ...(visitType ? { visitType } : {}),
+          ...(intakeToken ? { intakeToken } : {}),
+          ...(patientInfoOverride ? { patientInfo: patientInfoOverride } : {}),
+        }),
       });
       const data = await response.json();
       if (!response.ok || !data.success) {
@@ -227,12 +281,24 @@ export function AssessmentV3Journey({
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Unknown error';
       console.error('[ASSESSMENT] Submit failed:', message);
-      toast.error('Submission failed', { description: message });
+      toast.error(t('submission.failedTitle'), { description: message });
       setAssessmentComplete(false);
     } finally {
       setSubmitting(false);
     }
-  }, [answers, concern, effectiveClinicSlug, onSubmitted, patientInfoOverride, router, setSubmitting]);
+  }, [
+    answers,
+    concern,
+    effectiveClinicSlug,
+    intakeToken,
+    locale,
+    onSubmitted,
+    patientInfoOverride,
+    router,
+    setSubmitting,
+    t,
+    visitType,
+  ]);
 
   // Enter-to-continue: select an option first, then press Enter to advance.
   // Runs in the capture phase so preventDefault() cancels the browser's native
@@ -250,9 +316,15 @@ export function AssessmentV3Journey({
         const tag = el.tagName;
         if (tag === 'TEXTAREA') return;
         if (el.isContentEditable) return;
+        // Enter on a focused language button must switch the language, not
+        // advance the question. Every other focused control keeps the existing
+        // capture+preventDefault behaviour.
+        if (el.closest('[data-locale-switcher]')) return;
       }
 
       if (isSubmitting || assessmentComplete) return;
+      // The language gate owns Enter while it is up.
+      if (!hasChosenLocale) return;
 
       if (showingSectionIntro) {
         event.preventDefault();
@@ -275,6 +347,7 @@ export function AssessmentV3Journey({
     acknowledgeSection,
     assessmentComplete,
     handleSubmit,
+    hasChosenLocale,
     isAnswered,
     isLast,
     isSubmitting,
@@ -285,22 +358,34 @@ export function AssessmentV3Journey({
 
   if (assessmentComplete) {
     return (
-      <main className={styles.completionScreen} role="status" aria-live="polite">
+      <main className={styles.completionScreen} role="status" aria-live="polite" lang={locale}>
         <div className={styles.completionContent}>
           <span className={styles.completionMark} aria-hidden="true">✓</span>
-          <h1>Assessment complete</h1>
-          <p>Thank you. Your answers are ready for clinical review.</p>
+          {/* This screen is shown the moment submission starts, so while the
+              request is still in flight it must say so rather than claim the
+              assessment is already filed. */}
+          <h1>
+            {isSubmitting ? t('submission.submitting') : t('submission.completeTitle')}
+          </h1>
+          <p>{isSubmitting ? t('submission.doNotClose') : t('submission.completeBody')}</p>
         </div>
       </main>
     );
   }
 
+  // Language first: chapter zero. Rendered before the loading branch so a
+  // patient on a slow connection reads the picker in both scripts rather than
+  // an English spinner.
+  if (!hasChosenLocale) {
+    return <LanguageGateV3 />;
+  }
+
   if (!question) {
     return (
-      <main className={styles.loadingScreen}>
+      <main className={styles.loadingScreen} lang={locale}>
         <div className={styles.loadingContent}>
           <span className={styles.loadingDot} aria-hidden="true" />
-          <p>Loading your assessment…</p>
+          <p>{t('questionnaire.loading')}</p>
         </div>
       </main>
     );
@@ -324,7 +409,14 @@ export function AssessmentV3Journey({
   return (
     <QuestionnaireShellV3
       clinicName={clinicData?.name}
-      sectionTitle={question.sectionTitle ?? question.category.replace(/_/g, ' ')}
+      // Section title in the progress band uses the same localised chapter name
+      // the patient just read on the chapter card, so the two never disagree.
+      sectionTitle={
+        tSection(currentSectionKey, {
+          title: question.sectionTitle ?? question.category.replace(/_/g, ' '),
+          body: '',
+        }).title
+      }
       progress={progress}
       canGoBack={progress.visiblePosition > 1}
       canContinue={isAnswered}

@@ -136,6 +136,68 @@ enum ClinicStatus {
   ARCHIVED
 }
 
+// Operational status of a single physical branch. Deliberately NOT ClinicStatus:
+// a clinic organisation can be ACTIVE while one of its branches is still
+// ONBOARDING or has CLOSED. ONBOARDING has no ClinicStatus equivalent and is
+// what the Super Admin network map needs to distinguish.
+enum ClinicLocationStatus {
+  ONBOARDING
+  ACTIVE
+  INACTIVE
+  CLOSED
+}
+
+// Whether a Patient row's identity is settled or still needs a human.
+//
+// RESOLVED is the ordinary state: the row was created for an unseen number, or
+// matched a single existing record. AMBIGUOUS means intake found two or more
+// records carrying the same number, refused to pick one, and quarantined this
+// visit onto a fresh row — see lib/patient/identity.
+//
+// This exists so "show me every unresolved identity in clinic X" is a query
+// rather than an AuditLog scrape. It is a flag, not a workflow: there is no
+// merge engine behind it yet, and reception resolves the row by hand.
+enum IdentityResolutionStatus {
+  RESOLVED
+  AMBIGUOUS
+}
+
+// Why the patient is here on THIS visit. Captured at intake, before the
+// questionnaire, and never inferred from clinical content or order history.
+//
+// Kept separate from PatientRelationshipState: "we have seen you before" is a
+// fact about the record, "I am here to collect my remaining kits" is a fact
+// about today. Collapsing the two is what makes every returning patient look
+// like a FOLLOW_UP.
+enum VisitType {
+  INITIAL
+  FOLLOW_UP
+  KIT_FULFILMENT
+  REASSESSMENT
+  NEW_CONCERN
+  CONDITION_CHANGED
+}
+
+// How intake resolved this visit's patient identity, recorded per assessment.
+//
+// AMBIGUOUS is a first-class value rather than being folded into RETURNING: a
+// quarantined visit is NOT a confirmed returning patient, and a report that
+// counts it as one is wrong about the thing that matters most here.
+enum PatientRelationshipState {
+  NEW
+  RETURNING
+  AMBIGUOUS
+}
+
+// Whether a location can be plotted on the national map, and on what basis.
+// UNSET is the honest default: a branch with no verified coordinates is absent
+// from the map rather than guessed onto it.
+enum LocationGeoStatus {
+  UNSET
+  PINNED // placed by a human on the map
+  GEOCODED // derived from a complete structured address
+}
+
 // Lifecycle of a Consultation aggregate. A Consultation always has exactly one
 // "current" ConsultationVersion; older versions are retained for audit.
 enum ConsultationStatus {
@@ -251,6 +313,10 @@ model Clinic {
   language String @default("en")
   timezone String @default("Asia/Kolkata")
 
+  // Legacy free-text address. Superseded by ClinicLocation for anything
+  // operational (map, branch routing, QR). Retained because it is the only
+  // address on file for existing clinics and is the text a Super Admin
+  // structures when setting up the first location. No new consumers.
   address String?
   phone   String?
   email   String?
@@ -290,7 +356,9 @@ model Clinic {
   doctors                Doctor[]
   patients               Patient[]
   assessments            Assessment[]
+  visits                 ClinicVisit[]
   members                ClinicMember[]
+  locations              ClinicLocation[]
   invitations            ClinicInvitation[]
   consultations          Consultation[]
   kitOrderIntents        KitOrderIntent[]
@@ -302,6 +370,144 @@ model Clinic {
 
   @@index([organizationId])
   @@index([slug])
+}
+
+// A physical branch of a Clinic. One Clinic organisation owns one or more
+// ClinicLocations â€” "Dr ABC Hair Clinic" in Mumbai with branches in Bandra and
+// Andheri is one Clinic and two ClinicLocations.
+//
+// Scope: this model is the geography and premises of a branch, nothing else.
+// Identity, branding, locale, subscription and settings stay on Clinic and are
+// deliberately not repeated here. `phone` IS repeated because a branch has its
+// own reception line; that is a property of the premises, not the brand.
+//
+// Every address component is optional. Existing clinics carry only a free-text
+// address, and a half-known address must be storable as half-known rather than
+// forcing someone to invent a district or a pincode to save the row. What the
+// map needs is coordinates, and those are gated separately by `geoStatus`.
+model ClinicLocation {
+  id String @id @default(cuid())
+
+  clinicId String
+  clinic   Clinic @relation(fields: [clinicId], references: [id])
+
+  // Branch label within the clinic, e.g. "Bandra West". Not the clinic name.
+  branchName String
+  // The branch a patient reaches from the clinic-level QR or link when no
+  // specific branch is named. At most one live primary per clinic.
+  //
+  // Enforced BOTH in the API (demote-then-promote inside a transaction, plus a
+  // 409 on demoting the last primary) and in the database:
+  //
+  //   CREATE UNIQUE INDEX "ClinicLocation_clinicId_primary_key"
+  //     ON "ClinicLocation" ("clinicId")
+  //     WHERE "isPrimary" = true AND "deletedAt" IS NULL;
+  //
+  // Prisma cannot express a partial unique index, so it lives in
+  // migrations/20260812_clinic_locations and is invisible to `@@unique` here.
+  // Do not "fix" that by adding a full @@unique — it would forbid a clinic from
+  // having more than one non-primary branch.
+  isPrimary  Boolean @default(false)
+
+  addressLine1 String?
+  addressLine2 String?
+  city         String?
+  district     String?
+  state        String?
+  pincode      String?
+  // ISO 3166-1 alpha-2. India-first, but the column exists so a non-IN branch
+  // is representable without a schema change.
+  country      String  @default("IN")
+
+  // Never populated by inference. A coordinate is written only when a human
+  // pins it or a geocoder resolves a complete structured address â€” see
+  // `geoStatus`, which records which of those happened.
+  latitude   Float?
+  longitude  Float?
+  geoStatus  LocationGeoStatus @default(UNSET)
+  geocodedAt DateTime?
+
+  status ClinicLocationStatus @default(ONBOARDING)
+
+  // Branch reception line. Distinct from Clinic.phone (organisation contact).
+  phone String?
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  @@index([clinicId])
+  @@index([clinicId, status])
+  // Drill-down queries: India â†’ state â†’ city â†’ clinic.
+  @@index([country, state, city])
+  // Viewport queries for the national map. A plain btree on the pair is enough
+  // for bounding-box scans at the scale we are planning for; PostGIS is not a
+  // dependency we need yet.
+  @@index([latitude, longitude])
+  @@index([geoStatus])
+}
+
+// "A named patient is sitting in the clinic right now, filling in the
+// assessment." That single operational fact, and nothing else.
+//
+// ── Why this is not a Patient row, and not an Assessment row ────────────────
+// Assessment means SUBMITTED. That invariant is load-bearing: every count,
+// queue, engine and report in the platform reads Assessment as completed
+// clinical work, and a row created at question one would corrupt all of them.
+// A Patient row is equally wrong — identity is resolved and written at
+// submission (lib/patient/identity), and creating a person because someone
+// scanned a QR code would fill the clinic's records with people who walked out
+// halfway through.
+//
+// So the in-progress state gets its own tiny table, deliberately shaped so
+// nothing clinical can ever be hung off it.
+//
+// ── Deliberately absent ─────────────────────────────────────────────────────
+// No phone. The Doctor Dashboard shows a name so the doctor knows who is in
+// the waiting room; it has no use for the number, and storing an identifier
+// "in case" is how a scratch table becomes a second patient database.
+// No status enum, no scheduling, no abandonment workflow, no cleanup worker.
+// A visit is open when assessmentId is null; the dashboard simply stops
+// showing visits older than a clinic session (see lib/doctor/clinicVisits).
+// Long-term purge of abandoned rows is tracked as P2.
+//
+// No clinicLocationId. The intake session token carries a clinicId and nothing
+// else, so a branch would have to be plumbed through the QR link, the landing
+// page and the signed token before it could be recorded here. That is a
+// separate slice; adding a column now would only guarantee it is null.
+model ClinicVisit {
+  id String @id @default(cuid())
+
+  clinicId String
+  clinic   Clinic @relation(fields: [clinicId], references: [id])
+
+  // The signed intake session (lib/patient/intakeSession) this visit belongs
+  // to. Unique because it IS the idempotency key: a patient who edits their
+  // name and continues, or a client that retries, must update one visit rather
+  // than fill the dashboard with duplicates of the same person.
+  intakeSessionId String @unique
+
+  // As typed at intake. A display label for the waiting-room list, never an
+  // identity — the patient's real record is resolved at submission.
+  displayName String
+
+  // When identity capture succeeded. This is the ONLY thing it is used for:
+  //   "Assessment in progress · started 6 min ago"
+  // Doctor-review waiting time is measured from Assessment.submittedAt and
+  // never from here. See lib/format/waitingTime.
+  startedAt DateTime @default(now())
+
+  // Set once, by the submission workflow, in the same transaction that creates
+  // the Assessment. Unique so one visit can never be claimed by two
+  // submissions. Non-null means the visit is finished: it leaves In Clinic and
+  // the assessment appears in the Review Queue.
+  assessmentId String?     @unique
+  assessment   Assessment? @relation(fields: [assessmentId], references: [id])
+
+  // The dashboard's only query: open visits at this clinic within the session
+  // window. Postgres can use all three columns — equality on clinicId, IS NULL
+  // on assessmentId, range on startedAt.
+  @@index([clinicId, assessmentId, startedAt])
 }
 
 // Non-doctor clinic staff (CLINIC_ADMIN, STAFF) bound to a single Clinic and
@@ -379,6 +585,13 @@ model ClinicInvitation {
   acceptedAt               DateTime?
   acceptedBySupabaseUserId String?
   revokedAt                DateTime?
+
+  // Slice-1 lifecycle-hardening fields. Resend rotates the tokenHash + bumps
+  // these counters via a compare-and-swap so concurrent Resend clicks cannot
+  // both deliver messages. `resendCount` also enforces a per-invitation
+  // ceiling (P0: 10). `lastResentAt` enforces the 60s cool-down.
+  resendCount  Int       @default(0)
+  lastResentAt DateTime?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -458,6 +671,13 @@ model Doctor {
   signatureUrl      String?
   preferredLanguage SupportedLanguage @default(EN)
 
+  // Per-doctor workspace-identity accent (amber, teal, rose, indigo,
+  // emerald, slate, gold, plum). Nullable — a null value renders the
+  // default theme. Server-persisted so the pick survives across devices,
+  // browsers, and Vercel preview URLs (which each have their own origin
+  // and therefore their own localStorage).
+  badgeTheme String?
+
   // Clinical credentials shown on reports + PDF. `bio` (legacy) and
   // `biography` coexist â€” `biography` is the editable long-form used in the
   // Clinic Admin profile editor; `bio` remains the short public string.
@@ -496,11 +716,31 @@ model Patient {
 
   supabaseUserId String? @unique
 
-  name   String
-  phone  String?
-  email  String?
-  age    Int?
-  gender String?
+  name            String
+  // As typed at intake. Kept verbatim so an unparseable entry (landline,
+  // mistyped digit) survives for a receptionist to correct.
+  phone           String?
+  // Canonical E.164 â€” the identity key. Written only via
+  // lib/patient/phone.toE164; null when the input could not be normalised.
+  //
+  // Deliberately NOT unique on (clinicId, phoneNormalized): submissions
+  // created a fresh Patient row per assessment before identity resolution
+  // existed, so live data already contains duplicates. Resolution picks the
+  // most recent match; historical merging is a separate reviewed job.
+  phoneNormalized String?
+  email           String?
+  age             Int?
+  gender          String?
+
+  // Set to AMBIGUOUS when intake found two or more records carrying this
+  // number and quarantined the visit onto this fresh row instead of guessing.
+  // The row is usable — the patient keeps their completed assessment — but a
+  // human still has to say which person it belongs to.
+  //
+  // Queried as: identityResolutionStatus = 'AMBIGUOUS' AND clinicId = ?
+  identityResolutionStatus IdentityResolutionStatus @default(RESOLVED)
+  // When the ambiguity was recorded. Null on every RESOLVED row.
+  identityFlaggedAt        DateTime?
 
   identifiers   PatientIdentifier[]
   assessments   Assessment[]
@@ -515,6 +755,9 @@ model Patient {
   @@index([clinicId])
   @@index([clinicId, doctorId])
   @@index([phone])
+  @@index([clinicId, phoneNormalized])
+  // The unresolved-identity worklist: clinic first, then the flag.
+  @@index([clinicId, identityResolutionStatus])
 }
 
 // External identifier mapping â€” links a patient to QR tokens, WhatsApp IDs, EMR IDs, etc.
@@ -570,6 +813,18 @@ model Assessment {
   status AssessmentStatus @default(PENDING)
   source AssessmentSource @default(QR)
 
+  // ── Intake context (D2) ────────────────────────────────────────────────────
+  // Both are captured by the pre-assessment intake gate, before question one,
+  // and are operational facts about the visit — never clinical input. No
+  // engine, scorer or kit rule may read them.
+  //
+  // Nullable with NO backfill. Every assessment submitted before the intake
+  // gate existed genuinely has no recorded intent, and defaulting those rows to
+  // INITIAL would invent a fact about hundreds of past visits. Readers treat
+  // null as "not captured", which is true.
+  visitType           VisitType?
+  patientRelationship PatientRelationshipState?
+
   orchestrationStage String?
   orchestrationMeta  Json?
   executionId        String?
@@ -592,6 +847,11 @@ model Assessment {
   startedAt   DateTime?
   completedAt DateTime?
 
+  // The in-clinic visit this submission closed, when the patient came through
+  // the intake gate. Absent for every assessment submitted before ClinicVisit
+  // existed, and for any client that submits without an intake session.
+  clinicVisit ClinicVisit?
+
   responses              AssessmentResponse[]
   artifacts              AIArtifact[]
   events                 AssessmentEvent[]
@@ -612,6 +872,9 @@ model Assessment {
   @@index([reviewingDoctorId])
   @@index([clinicId, status])
   @@index([status, phaseALeaseExpiresAt])
+  // "Today's kit-fulfilment visits at this clinic" and the returning-patient
+  // split, without scanning the clinic's whole assessment history.
+  @@index([clinicId, visitType])
 }
 
 model AssessmentResponse {
@@ -1590,6 +1853,18 @@ model AssistantThread {
   updatedAt    DateTime   @updatedAt
 
   @@index([clinicId, createdBy, updatedAt])
+}
+
+// Opaque, server-owned context for unauthenticated general-knowledge conversations.
+// The browser holds only the random id; trusted entity and source state stays here.
+model GeneralAssistantConversation {
+  id        String   @id @default(uuid())
+  context   Json
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([expiresAt])
 }
 
 model AssistantMessage {
