@@ -13,6 +13,7 @@ import {
   Undo2,
 } from "lucide-react";
 import type { Consultation, TreatmentPhase } from "@shared/types/consultation";
+import { loadKitCatalog, type KitCatalogItem } from "@/lib/doctor/kitCatalog";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Kit lineup editor — the doctor's clinical authority over the AI's suggestion.
@@ -36,16 +37,6 @@ import type { Consultation, TreatmentPhase } from "@shared/types/consultation";
 //   • Nothing is destructive until Save. "Reset" restores the AI lineup.
 // ─────────────────────────────────────────────────────────────────────────────
 
-type KitCatalogItem = {
-  kitId: string;
-  displayName: string;
-  treatmentObjective: string | null;
-  therapeuticStrategy: string[];
-  formulationRationale: { group: string; ingredients: string[]; action: string }[];
-  priceInr: number;
-  priceLabel: string;
-};
-
 interface Props {
   consultation: Consultation;
   expectedContentVersion: number;
@@ -53,6 +44,14 @@ interface Props {
   onConflict: () => Promise<void> | void;
   assessmentId: string;
   disabled?: boolean;
+  /**
+   * Reports whether the staged lineup differs from the saved one.
+   *
+   * Approval snapshots the SAVED consultation server-side, so a doctor with
+   * unsaved kit edits who approves would be approving the previous lineup.
+   * The decision bar uses this to say so and hold the approval until saved.
+   */
+  onDirtyChange?: (dirty: boolean) => void;
 }
 
 export function KitLineupEditor({
@@ -62,6 +61,7 @@ export function KitLineupEditor({
   onConflict,
   assessmentId,
   disabled,
+  onDirtyChange,
 }: Props) {
   const enginePhases = consultation.treatmentPlan.kitPhases;
 
@@ -82,15 +82,23 @@ export function KitLineupEditor({
     [phases, enginePhases],
   );
 
+  // Surface staged edits to the parent. Effect rather than a call inside the
+  // handlers so it stays correct however `phases` changed — including the
+  // re-sync above, which clears the flag after a successful save.
+  //
+  // The cleanup matters: this editor unmounts when the consultation becomes
+  // approved, and a dirty flag left set behind it would keep the decision bar
+  // warning about edits that no longer have anywhere to live.
+  useEffect(() => {
+    onDirtyChange?.(dirty);
+    return () => onDirtyChange?.(false);
+  }, [dirty, onDirtyChange]);
+
   const loadCatalog = async () => {
     if (catalog) return;
-    try {
-      const res = await fetch("/api/kits", { cache: "no-store" });
-      const j = await res.json().catch(() => ({ items: [] }));
-      setCatalog(j.items ?? []);
-    } catch {
-      setCatalog([]);
-    }
+    // Shared with ProtocolSection's objective lookup, so the catalog is
+    // fetched once per page rather than once per consumer.
+    setCatalog(await loadKitCatalog());
   };
 
   const move = (index: number, dir: -1 | 1) => {
