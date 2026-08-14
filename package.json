@@ -18,6 +18,7 @@
     "db:seed": "tsx prisma/seed.ts",
     "seed:demo": "tsx scripts/seed-demo.ts",
     "seed:demo:inspect": "tsx scripts/inspect-demo-seed.ts",
+    "db:provision:staging": "tsx scripts/provision-staging.ts",
     "db:migrate": "prisma migrate deploy",
     "db:baseline": "prisma migrate diff --from-empty --to-url $DIRECT_URL --script",
     "db:studio": "prisma studio",
