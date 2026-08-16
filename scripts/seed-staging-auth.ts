@@ -36,6 +36,13 @@ import {
 const prisma = new PrismaClient();
 const CRED_FILE = path.resolve(__dirname, "..", ".env.staging.qa.local");
 
+/** Organisation the QA Super Admin belongs to — the hook's role source. */
+const ORG_QA = {
+  id: "staging-qa-org",
+  name: "DrFACT Staging QA Org",
+  slug: "drfact-staging-qa",
+};
+
 /** Second clinic — exists solely so cross-tenant denial is testable. */
 const CLINIC_B = {
   id: "staging-qa-clinic-b",
@@ -128,6 +135,41 @@ async function main(): Promise<void> {
       });
       if (error) throw new Error(`${id.label}: ${error.message}`);
       userId = data.user.id;
+    }
+
+    if (id.label === "SUPER_ADMIN") {
+      // The hook derives SUPER_ADMIN from OrganizationMember, not from the
+      // auth user. Creating the auth identity alone produces a token with no
+      // user_role at all, which every admin surface correctly rejects — so the
+      // role has to be granted through the same canonical table production
+      // uses, never by special-casing the role in application code.
+      const org = await prisma.organization.upsert({
+        where: { id: ORG_QA.id },
+        update: {},
+        create: { ...ORG_QA, updatedAt: new Date() },
+      });
+      const existingMember = await prisma.organizationMember.findFirst({
+        where: { supabaseUserId: userId },
+        select: { id: true },
+      });
+      if (existingMember) {
+        await prisma.organizationMember.update({
+          where: { id: existingMember.id },
+          data: { organizationId: org.id, role: "SUPER_ADMIN" },
+        });
+      } else {
+        await prisma.organizationMember.create({
+          data: {
+            organizationId: org.id,
+            supabaseUserId: userId,
+            role: "SUPER_ADMIN",
+            name: "QA Super Admin",
+            email: id.email,
+            phone: "+919900019000",
+            updatedAt: new Date(),
+          },
+        });
+      }
     }
 
     if (id.doctorName) {
