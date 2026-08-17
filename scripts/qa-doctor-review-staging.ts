@@ -102,27 +102,60 @@ async function main(): Promise<void> {
 
   for (const s of shots) {
     await page.setViewportSize({ width: s.width, height: s.height });
-    const resp = await page.goto(s.url, { waitUntil: "domcontentloaded", timeout: 90_000 });
-    // The review composes a consultation on first open, which is slow.
-    await page.waitForTimeout(6000);
+    const failedRequests: string[] = [];
+    const onFailed = (r: import("playwright").Request) =>
+      failedRequests.push(`${r.method()} ${new URL(r.url()).pathname} — ${r.failure()?.errorText ?? "?"}`);
+    page.on("requestfailed", onFailed);
 
-    const status = resp?.status() ?? 0;
+    const started = Date.now();
+    let status = 0;
+    let navError = "";
+    try {
+      const resp = await page.goto(s.url, { waitUntil: "domcontentloaded", timeout: 180_000 });
+      status = resp?.status() ?? 0;
+    } catch (e) {
+      navError = e instanceof Error ? e.message.split("\n")[0] : String(e);
+    }
+
+    // Settle on the real end state rather than an arbitrary sleep: the review
+    // composes its consultation on first open and the queue fetches after
+    // mount, so a fixed 6s wait was measuring a loading spinner and calling it
+    // a page. Wait for the network to go quiet, then for the word "Loading" to
+    // leave the document — whichever resolves, the timeout is generous enough
+    // that a genuinely stuck state still reports as stuck.
+    await page.waitForLoadState("networkidle", { timeout: 120_000 }).catch(() => {});
+    await page
+      .waitForFunction(
+        `!/Loading|Loading your queue/i.test(document.body.innerText)`,
+        undefined,
+        { timeout: 60_000 },
+      )
+      .catch(() => {});
+    const elapsed = Date.now() - started;
+
     const title = await page.title();
     const bodyText = (await page.locator("body").innerText().catch(() => "")).replace(/\s+/g, " ");
+    const stillLoading = /Loading/i.test(bodyText);
 
-    // Horizontal overflow is the defect this viewport exists to catch.
-    const overflow = await page.evaluate(
-      () => document.documentElement.scrollWidth > document.documentElement.clientWidth,
-    );
+    const metrics = (await page.evaluate(
+      `({ sw: document.documentElement.scrollWidth, cw: document.documentElement.clientWidth })`,
+    )) as { sw: number; cw: number };
 
-    const file = path.join(OUT, `${s.name}.png`);
-    await page.screenshot({ path: file, fullPage: false });
+    await page.screenshot({ path: path.join(OUT, `${s.name}.png`), fullPage: false });
+    page.off("requestfailed", onFailed);
 
     const line =
-      `${s.name.padEnd(28)} HTTP ${status}  ${String(s.width).padStart(4)}px  ` +
-      `hscroll=${overflow ? "YES" : "no"}  chars=${bodyText.length}`;
+      `${s.name.padEnd(28)} HTTP ${String(status).padStart(3)}  ${String(s.width).padStart(4)}px  ` +
+      `sw=${metrics.sw} cw=${metrics.cw} hscroll=${metrics.sw > metrics.cw ? "YES" : "no"}  ` +
+      `${String(elapsed).padStart(6)}ms  chars=${String(bodyText.length).padStart(5)}  ` +
+      `${stillLoading ? "STILL-LOADING" : "settled"}${navError ? `  NAV-ERR: ${navError}` : ""}`;
     console.log(`  ${line}`);
-    report.push(`${line}\n  title: ${title}\n  text : ${bodyText.slice(0, 400)}\n`);
+    if (failedRequests.length) {
+      for (const f of failedRequests.slice(0, 4)) console.log(`        failed: ${f}`);
+    }
+    report.push(
+      `${line}\n  title: ${title}\n  failedRequests: ${failedRequests.length}\n  text : ${bodyText.slice(0, 500)}\n`,
+    );
   }
 
   writeFileSync(path.join(OUT, "qa-report.txt"), report.join("\n"), "utf8");

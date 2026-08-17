@@ -143,6 +143,31 @@ async function main(): Promise<void> {
   });
   console.log(`\n  legacy/degraded (rawResponses left null): ${legacy.id}`);
 
+  // ── Review decision states ────────────────────────────────────────────────
+  //
+  // The clinic seed leaves every assessment APPROVED, and the review queue
+  // filters on reviewDecision = 'PENDING'. So the dashboard correctly reported
+  // "0 ready for review" over 13 assessments — the queue was right and the
+  // fixture was wrong, which is the more dangerous way round to get it: it
+  // looks like an application bug.
+  //
+  // Most go to PENDING so there is something to review; the newest stays
+  // APPROVED so the already-decided terminal state is still testable.
+  const approvedShowcase = reviewable[reviewable.length - 1];
+  const pendingIds = reviewable.filter((a) => a.id !== approvedShowcase.id).map((a) => a.id);
+
+  await prisma.assessment.updateMany({
+    where: { id: { in: [...pendingIds, legacy.id] } },
+    data: { reviewDecision: "PENDING" },
+  });
+  await prisma.assessment.update({
+    where: { id: approvedShowcase.id },
+    data: { reviewDecision: "APPROVED" },
+  });
+
+  console.log(`  pending (queue-visible): ${pendingIds.length + 1}`);
+  console.log(`  already-approved case  : ${approvedShowcase.id}`);
+
   const composable = await prisma.assessment.count({
     where: { deletedAt: null, NOT: { rawResponses: { equals: undefined } } },
   });

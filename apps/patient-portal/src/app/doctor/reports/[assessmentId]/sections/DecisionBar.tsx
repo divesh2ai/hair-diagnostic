@@ -91,7 +91,18 @@ export function DecisionBar({
 
   return (
     <div
-      className="sticky bottom-0 z-30 -mx-4 mt-2 border-t border-stone-200 bg-white/95 px-4 py-3 backdrop-blur supports-[backdrop-filter]:bg-white/80 sm:-mx-6 sm:px-6"
+      // Spans its own column rather than bleeding past it. The previous
+      // `-mx-4 sm:-mx-6` assumed a parent whose horizontal padding the bar
+      // could bleed into; where that padding is smaller than the negative
+      // margin the bar simply hangs off the edge, and the page scrolls
+      // sideways. Measured: 390px viewport scrolled to 406 (+16, the -mx-4)
+      // and 1024 to 1048 (+24, the sm:-mx-6), while 1366 and 1440 were clean
+      // because the capped content column left slack for the bleed to land in.
+      //
+      // Dropping the bleed also drops the padding that only existed to cancel
+      // it, so the divider now aligns with the case content above it — which is
+      // what the bar is a decision about.
+      className="sticky bottom-0 z-30 mt-2 border-t border-stone-200 bg-white/95 py-3 backdrop-blur supports-[backdrop-filter]:bg-white/80"
       // Announced politely: the doctor is told the decision saved without
       // having their focus stolen mid-action.
       role="region"
