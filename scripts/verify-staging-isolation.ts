@@ -25,9 +25,51 @@
  */
 import { readFileSync } from "node:fs";
 import path from "node:path";
-import { createClient } from "@supabase/supabase-js";
+import { createRequire } from "node:module";
 import { PrismaClient } from "@prisma/client";
 import { extractSupabaseRef, STAGING_SUPABASE_REF } from "../packages/shared/env/databaseTarget";
+
+// The application reads its session from cookies (`supabase.auth.getClaims()`
+// over the SSR cookie store) and never looks at an Authorization header, so a
+// Bearer token proves nothing here: every request answers 401, the allow-case
+// and the deny-case included, and the run "passes" while testing nothing.
+//
+// Sessions are therefore serialised into the very cookie a browser would
+// carry, using the app's own @supabase/ssr — the same encoding and chunking
+// the server will decode. It is resolved from the app's node_modules because
+// the package is a dependency of the app, not of the repo root; reimplementing
+// the cookie format here would be a copy that silently rots.
+//
+// The client is typed structurally rather than via `typeof import(...)`: the
+// package resolves at runtime from the app, but the root tsconfig cannot see
+// it, and a bare require would leave the cookie callbacks implicitly `any`.
+interface SsrCookie {
+  name: string;
+  value: string;
+}
+type CreateServerClient = (
+  url: string,
+  key: string,
+  opts: {
+    cookies: {
+      getAll: () => SsrCookie[];
+      setAll: (list: SsrCookie[]) => void;
+    };
+  },
+) => {
+  auth: {
+    signInWithPassword: (c: { email: string; password: string }) => Promise<{
+      error: { message: string } | null;
+    }>;
+  };
+};
+
+const appRequire = createRequire(
+  path.resolve(__dirname, "..", "apps", "patient-portal", "package.json"),
+);
+const { createServerClient } = appRequire("@supabase/ssr") as {
+  createServerClient: CreateServerClient;
+};
 
 const prisma = new PrismaClient();
 const BASE = process.argv[2] ?? "http://localhost:4000";
@@ -54,20 +96,26 @@ function check(label: string, ok: boolean, detail: string): void {
   console.log(`  ${ok ? "PASS" : "FAIL"}  ${label.padEnd(46)} ${detail}`);
 }
 
+/** Sign in and return the `Cookie` header a signed-in browser would send. */
 async function signIn(email: string, password: string): Promise<string> {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL!;
   const anon = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
-  const supabase = createClient(url, anon, {
-    auth: { autoRefreshToken: false, persistSession: false },
+  const jar = new Map<string, string>();
+  const supabase = createServerClient(url, anon, {
+    cookies: {
+      getAll: () => [...jar].map(([name, value]) => ({ name, value })),
+      setAll: (list) => list.forEach(({ name, value }) => jar.set(name, value)),
+    },
   });
-  const { data, error } = await supabase.auth.signInWithPassword({ email, password });
-  if (error || !data.session) throw new Error(`${email}: ${error?.message ?? "no session"}`);
-  return data.session.access_token;
+  const { error } = await supabase.auth.signInWithPassword({ email, password });
+  if (error) throw new Error(`${email}: ${error.message}`);
+  if (jar.size === 0) throw new Error(`${email}: signed in but no session cookie was written`);
+  return [...jar].map(([k, v]) => `${k}=${encodeURIComponent(v)}`).join("; ");
 }
 
-async function get(assessmentId: string, token: string | null) {
+async function get(assessmentId: string, cookie: string | null) {
   const res = await fetch(`${BASE}/api/consultation/${assessmentId}`, {
-    headers: token ? { Authorization: `Bearer ${token}` } : {},
+    headers: cookie ? { cookie } : {},
   });
   return { status: res.status, body: await res.text() };
 }
@@ -82,26 +130,35 @@ async function main(): Promise<void> {
 
   const c = creds();
 
-  // One composable assessment per clinic, plus the patient names that must
+  // One composable assessment in clinic A, plus the patient name that must
   // never surface in a denial.
-  const clinicA = await prisma.assessment.findFirst({
-    where: { deletedAt: null, NOT: { rawResponses: { equals: undefined } }, clinic: { slug: "drfact-mumbai-test" } },
-    select: { id: true, clinicId: true, patient: { select: { name: true } } },
+  //
+  // Composability is filtered in JS, not in the `where`: a Prisma JSON-null
+  // predicate on `rawResponses` selected legacy rows too, and a legacy row
+  // cannot be composed into a Consultation — so the positive control answered
+  // 404 and the whole run looked like an isolation failure.
+  const candidates = await prisma.assessment.findMany({
+    where: { deletedAt: null, clinic: { slug: "drfact-mumbai-test" } },
+    select: { id: true, clinicId: true, rawResponses: true, patient: { select: { name: true } } },
     orderBy: { submittedAt: "asc" },
   });
+  const clinicA = candidates.find((a) => a.rawResponses !== null);
   if (!clinicA) throw new Error("No composable assessment found in clinic A.");
 
   console.log(`  clinic A assessment ${clinicA.id}\n`);
 
-  const tokenA = await signIn(c.DOCTOR_A_EMAIL, c.DOCTOR_A_PASSWORD);
-  const tokenB = await signIn(c.DOCTOR_B_EMAIL, c.DOCTOR_B_PASSWORD);
+  const cookieA = await signIn(c.DOCTOR_A_EMAIL, c.DOCTOR_A_PASSWORD);
+  const cookieB = await signIn(c.DOCTOR_B_EMAIL, c.DOCTOR_B_PASSWORD);
 
   // ── Doctor A → own clinic ────────────────────────────────────────────────
-  const aOwn = await get(clinicA.id, tokenA);
+  // The positive control, and the reason the denials below mean anything: if
+  // this is not a 200, every "denied" result underneath is just the same
+  // failure wearing a different label.
+  const aOwn = await get(clinicA.id, cookieA);
   check("Doctor A → own-clinic assessment", aOwn.status === 200, `HTTP ${aOwn.status}`);
 
   // ── Doctor B → Doctor A's clinic ─────────────────────────────────────────
-  const bCross = await get(clinicA.id, tokenB);
+  const bCross = await get(clinicA.id, cookieB);
   check(
     "Doctor B → other-clinic assessment denied",
     bCross.status === 404 || bCross.status === 403,
