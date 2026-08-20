@@ -44,12 +44,23 @@ const consultationFindUnique = jest.fn<
 >();
 
 jest.mock("@prisma/client", () => ({
-  PrismaClient: jest.fn().mockImplementation(() => ({
-    assessment: { findUnique: assessmentFindUnique, findFirst: jest.fn(), update: jest.fn() },
-    aIArtifact: { findUnique: artifactFindUnique, findFirst: jest.fn(), upsert: jest.fn() },
-    consultation: { findUnique: consultationFindUnique },
-    auditLog: { create: jest.fn() },
-  })),
+  PrismaClient: jest.fn().mockImplementation(() => {
+    // `lib/prisma.ts` wraps the real client in `$extends` to add a one-shot
+    // retry on transient connection failures. This mock has no query engine,
+    // so the extension is a passthrough that returns the same object — enough
+    // for the wrapper to construct. Without it the module throws
+    // "client.$extends is not a function" at import time and the suite cannot
+    // even load, which is how these gate assertions stopped running.
+    const client: Record<string, unknown> = {
+      assessment: { findUnique: assessmentFindUnique, findFirst: jest.fn(), update: jest.fn() },
+      aIArtifact: { findUnique: artifactFindUnique, findFirst: jest.fn(), upsert: jest.fn() },
+      consultation: { findUnique: consultationFindUnique },
+      auditLog: { create: jest.fn() },
+      $disconnect: jest.fn(),
+    };
+    client.$extends = () => client;
+    return client;
+  }),
   ArtifactType: {
     REPORT: "REPORT",
     CLINICAL_REASONING: "CLINICAL_REASONING",

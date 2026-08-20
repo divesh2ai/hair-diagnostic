@@ -59,6 +59,9 @@ async function getReportAuthContext(
             userId: "local-one-page-report-export",
             role: "SUPER_ADMIN",
             clinicId: null,
+            // Synthetic local-export identity — there is no signed-in person
+            // and therefore no address to report.
+            email: null,
           },
         };
       }
@@ -122,6 +125,27 @@ export async function loadOnePageReportData(
   }
 
   const consultationVersion = assessment.consultations[0]?.currentVersion;
+
+  // Doctor approval, resolved once and used for both the access decision and
+  // the label. `ConsultationVersion.approvalStatus` is authoritative when a
+  // consultation exists; `Assessment.reviewDecision` is the legacy fallback
+  // for rows that predate the consultation aggregate. Both spell the approved
+  // state "APPROVED", and anything else — DRAFT, PENDING_REVIEW,
+  // REVISION_REQUESTED, REJECTED, EDITS_REQUESTED — is not approved.
+  const approvalState: string | null =
+    consultationVersion?.approvalStatus ?? assessment.reviewDecision ?? null;
+  const isDoctorApproved = approvalState === "APPROVED";
+
+  // A conference token is patient-equivalent access: it is presented by
+  // someone with no clinic session, and it is the only way this loader can be
+  // reached without staff authorisation. Patient-equivalent callers get the
+  // report only once a doctor has approved it. Clinic and Super Admin sessions
+  // keep pre-approval access — reviewing an unapproved draft is their job —
+  // but they see it labelled for what it is, below.
+  if (auth.kind === "conference_token" && !isDoctorApproved) {
+    throw new ReportAccessError(403, "Consultation is not approved");
+  }
+
   const versionContent = jsonObject(consultationVersion?.content);
   const nextReviewDate =
     versionContent.nextReviewDate ??
@@ -161,11 +185,17 @@ export async function loadOnePageReportData(
         assessment.reviewingDoctor?.name ??
         assessment.reviewerName ??
         (typeof consultationVersion?.approvedBy === "string" ? consultationVersion.approvedBy : null),
-      title: "Doctor approved plan",
-      signatureUrl: assessment.reviewingDoctor?.signatureUrl ?? null,
+      // Never claim approval that has not happened. Only a clinic or Super
+      // Admin session can reach this branch unapproved (the conference-token
+      // path is refused above), and they must not be shown a draft dressed as
+      // a signed plan either — the same document is what gets printed.
+      title: isDoctorApproved ? "Doctor approved plan" : "Draft — pending doctor review",
+      signatureUrl: isDoctorApproved
+        ? assessment.reviewingDoctor?.signatureUrl ?? null
+        : null,
     },
     approval: {
-      status: consultationVersion?.approvalStatus ?? assessment.reviewDecision,
+      status: approvalState,
       approvedAt: consultationVersion?.approvedAt ?? assessment.reviewedAt,
       approvedBy:
         assessment.reviewingDoctor?.name ??

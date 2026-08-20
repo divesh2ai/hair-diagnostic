@@ -47,12 +47,20 @@ const consultationFindUnique = jest.fn<
 >();
 
 jest.mock("@prisma/client", () => ({
-  PrismaClient: jest.fn().mockImplementation(() => ({
-    assessment: { findUnique: assessmentFindUnique, findFirst: jest.fn(), update: jest.fn() },
-    aIArtifact: { findUnique: artifactFindUnique, findFirst: jest.fn(), upsert: jest.fn() },
-    consultation: { findUnique: consultationFindUnique },
-    auditLog: { create: jest.fn() },
-  })),
+  PrismaClient: jest.fn().mockImplementation(() => {
+    // See the identical note in pdf-release-gate.test.ts: `lib/prisma.ts`
+    // wraps the client in `$extends`, and a mock without it fails at import
+    // time rather than at an assertion.
+    const client: Record<string, unknown> = {
+      assessment: { findUnique: assessmentFindUnique, findFirst: jest.fn(), update: jest.fn() },
+      aIArtifact: { findUnique: artifactFindUnique, findFirst: jest.fn(), upsert: jest.fn() },
+      consultation: { findUnique: consultationFindUnique },
+      auditLog: { create: jest.fn() },
+      $disconnect: jest.fn(),
+    };
+    client.$extends = () => client;
+    return client;
+  }),
   ArtifactType: {
     REPORT: "REPORT",
     CLINICAL_REASONING: "CLINICAL_REASONING",

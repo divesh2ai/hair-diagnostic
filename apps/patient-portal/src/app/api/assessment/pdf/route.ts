@@ -204,29 +204,44 @@ export async function GET(req: Request) {
     });
     return NextResponse.json({ error: 'Cross-clinic access denied' }, { status: 403 });
   }
-  // Testing-phase relaxation: patient-token, clinic, and super-admin
-  // callers may download the PDF before the doctor approves the
-  // consultation. The approval gate will be re-enabled once the
-  // doctor workflow is dogfooded end-to-end. The readiness gate below
-  // still runs for clinic/super-admin.
-  const isPatientTokenCaller = audience === 'patient_token';
+  // First gate: the consultation must be APPROVED. An AI recommendation that
+  // no doctor has signed is not a clinical document, and this endpoint streams
+  // the full detailed report — so a draft, rejected or revision-requested
+  // consultation is refused for every audience, patient token included.
+  //
+  // This gate and the readiness gate below were both disabled behind
+  // "testing-phase relaxation" carve-outs while the doctor workflow was being
+  // built. The tests that describe the intended behaviour were never relaxed:
+  // tests/api/pdf-release-gate.test.ts still asserts 403 for PENDING_REVIEW
+  // and for a missing consultation, and tests/api/pdf-readiness-gate.test.ts
+  // still asserts 422 for a blocked or missing snapshot. Restoring the route
+  // to what those tests already demand is the whole of this change.
+  const approvalStatus = consultation?.currentVersion?.approvalStatus ?? null;
+  if (approvalStatus !== 'APPROVED') {
+    logLifecycleEvent({
+      event: 'pdf.release_denied',
+      assessmentId,
+      clinicId: assessment.clinicId,
+      failureCode: 'not_approved',
+      audience,
+    });
+    return NextResponse.json(
+      { error: 'Consultation is not approved', code: 'not_approved' },
+      { status: 403 },
+    );
+  }
   // Second gate: even an APPROVED consultation must not release the PDF if
   // the persisted readiness snapshot no longer clears — historically the
   // orchestrator blocks unready approvals at write time, but a manual
   // migration or a future engine change could leave an APPROVED row whose
   // snapshot went stale. The evaluator fails closed for missing/malformed
-  // snapshots so pre-D historical rows are refused here too. Skip for
-  // patient-token during testing.
+  // snapshots so pre-D historical rows are refused here too.
   const consultationContent = consultation?.currentVersion?.content as
     | Consultation
     | null
     | undefined;
   const readiness = evaluateClinicalReadinessForApproval(consultationContent ?? null);
-  // Testing-phase relaxation (matches the approval-gate carve-out above):
-  // clinic + super-admin may preview PDFs on legacy assessments that predate
-  // the readiness-snapshot contract. Re-enable before dogfooding.
-  const enforceReadiness = false;
-  if (enforceReadiness && !isPatientTokenCaller && !readiness.ready) {
+  if (!readiness.ready) {
     logLifecycleEvent({
       event: 'pdf.release_denied',
       assessmentId,

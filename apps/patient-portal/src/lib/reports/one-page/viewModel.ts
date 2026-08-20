@@ -2180,7 +2180,11 @@ export function mapClinicalReportToPrintPresentation(clinicalReport: ClinicalRep
     },
     clinician: {
       name: shortText(context.clinician?.name, "Reviewing doctor", 40),
-      title: shortText(context.clinician?.title, "Doctor approved plan", 32),
+      // Neutral fallback. A caller that supplies no title has told us nothing
+      // about approval, and defaulting to "Doctor approved plan" made silence
+      // read as a signed-off clinical decision. Callers that know the
+      // approval state pass it explicitly (see loadReport.ts).
+      title: shortText(context.clinician?.title, "Reviewing doctor", 32),
     },
     clinicalResult: clinicalResultBundle.clinicalResult,
     narrative: clinicalResultBundle.narrative,
