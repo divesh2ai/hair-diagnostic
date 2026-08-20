@@ -267,17 +267,25 @@ export function AssessmentV3Journey({
         throw new Error(data.error ?? `Submit failed (HTTP ${response.status})`);
       }
       if (onSubmitted) {
-        await onSubmitted({ assessmentId: data.assessmentId, previewToken: data.previewToken });
+        await onSubmitted({ assessmentId: data.assessmentId });
         return;
       }
-      const tokenQuery = data.previewToken
-        ? `?t=${encodeURIComponent(data.previewToken)}`
-        : '';
-      window.setTimeout(() => {
-        router.push(
-          `/q/${effectiveClinicSlug}/processing/${data.assessmentId}${tokenQuery}`,
-        );
-      }, 1400);
+      // The patient journey ends here.
+      //
+      // This used to wait 1400ms and then push to
+      // /q/[slug]/processing/[assessmentId], which polled the assessment
+      // status every two seconds and, on completion, forwarded to a preview of
+      // the engine's findings and recommendation — output no doctor had yet
+      // looked at. The clinical work now happens entirely behind the
+      // submission: `after(() => safeDispatchOrchestration(...))` in the
+      // submit route keeps it running server-side whether or not this browser
+      // is still open.
+      //
+      // `replace`, not `push`: the assessment is filed and cannot be
+      // resubmitted, so Back must not return the patient to their answers.
+      // No assessmentId in the target — there is nothing patient-specific for
+      // the Thank You page to read, and an id in the URL is an id in history.
+      router.replace(`/q/${effectiveClinicSlug}/thank-you`);
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Unknown error';
       console.error('[ASSESSMENT] Submit failed:', message);

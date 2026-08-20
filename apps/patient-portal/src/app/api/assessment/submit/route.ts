@@ -3,7 +3,6 @@ import { prisma } from '@/lib/prisma';
 import { describeSchemaDrift, isSchemaDriftError } from '@/lib/prismaErrors';
 import { rateLimit } from '@/lib/rate-limit';
 import { safeDispatchOrchestration } from '@/lib/orchestration/dispatch';
-import { signReviewToken } from '@/lib/reviewToken';
 import { AssessmentSource, AssessmentStatus, Prisma } from '@prisma/client';
 import {
   buildAssessmentResponseRows,
@@ -449,17 +448,23 @@ export async function POST(req: Request) {
     }
 
     // ── STEP 4: Return success immediately ─────────────────────────────────────
-    // Signed token so the patient's own processing/preview pages (which are
-    // anonymous public routes) can read the full assessment status payload.
-    // Without it, /api/assessment/status falls through to the anonymous
-    // branch that strips out narratives and the clinical report never
-    // renders on /q/[clinicSlug]/preview/[assessmentId].
-    const previewToken = signReviewToken(assessment.id);
-
+    // No preview token. This response used to carry a signed HMAC bound to the
+    // assessment, which the patient's processing and preview pages presented
+    // to read the full status payload — narratives, clinical report and all.
+    // That was the mechanism by which a patient saw engine output before any
+    // doctor had opened the case.
+    //
+    // The patient journey now ends at /q/[clinicSlug]/thank-you, so there is
+    // no patient-facing page left that needs to read this assessment, and a
+    // token handed to the browser is a capability that outlives the tab. The
+    // clinic reads the case through an authenticated session instead.
+    //
+    // Skin FACT posts to this same route and never read the token — its
+    // questionnaires use `assessmentId` only — so its response shape is
+    // unchanged in every field it consumes.
     return NextResponse.json({
       success: true,
       assessmentId: assessment.id,
-      previewToken,
       // NEW | RETURNING as resolved at intake. Coarse by design, and
       // deliberately NOT the same value as the `patientRelationship` column
       // written above: the column keeps AMBIGUOUS, this response collapses it
