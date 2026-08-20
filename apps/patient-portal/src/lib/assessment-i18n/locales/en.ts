@@ -111,6 +111,16 @@ export const en: AssessmentDictionary = {
     completeBody: 'Thank you. Your answers are ready for clinical review.',
     failedTitle: 'Submission failed',
   },
+  thankYou: {
+    eyebrow: 'Assessment received',
+    title: 'Thank you. Your assessment has been received.',
+    body: 'Your answers have been sent securely to the clinical team at your clinic.',
+    nextTitle: 'What happens next',
+    nextReview: 'A doctor at the clinic reviews your assessment personally.',
+    nextPlan: 'Your treatment plan is prepared only after that review is complete.',
+    nextContact: 'The clinic will contact you with your next step.',
+    closeNote: 'You can close this page now — there is nothing further for you to do.',
+  },
   processing: {
     warmupEyebrow: 'Preparing',
     warmupHead: 'Preparing your assessment',

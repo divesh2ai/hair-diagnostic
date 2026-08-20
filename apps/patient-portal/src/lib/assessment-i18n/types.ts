@@ -174,6 +174,27 @@ export type AssessmentDictionary = {
     completeBody: string;
     failedTitle: string;
   };
+  /**
+   * The last screen a patient sees. The assessment journey ends here — there
+   * is no processing wait, no findings, no recommendation and no report.
+   *
+   * Copy discipline for this block, in every locale: it may confirm receipt
+   * and describe what the clinic will do next, and it may not imply that any
+   * clinical conclusion has been reached or approved. A patient reading this
+   * has been examined by nobody yet.
+   */
+  thankYou: {
+    eyebrow: string;
+    title: string;
+    body: string;
+    nextTitle: string;
+    /** Three plain statements of what happens after this page. */
+    nextReview: string;
+    nextPlan: string;
+    nextContact: string;
+    /** Permission to leave — the patient has nothing left to do. */
+    closeNote: string;
+  };
   processing: {
     warmupEyebrow: string;
     warmupHead: string;
