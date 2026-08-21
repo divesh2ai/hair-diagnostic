@@ -98,6 +98,19 @@ function reducer(snapshot: CompanionSnapshot, event: CompanionEvent) {
 
 const SUPPORTED_PATHS = ["/assistant", "/doctor", "/patient", "/assessment", "/reports"];
 
+/**
+ * Routes the companion must never appear on, checked after SUPPORTED_PATHS.
+ *
+ * The doctor's clinical review is a decision surface. The companion is
+ * position:fixed at z-60, so it floats above the sticky decision bar and can
+ * sit on top of Approve / Request changes — an animated mascot overlapping the
+ * control that authorises a patient's treatment.
+ *
+ * Scoped to the case-detail route, not all of /doctor: the dashboard and queue
+ * are navigation surfaces where it remains harmless.
+ */
+const COMPANION_EXCLUDED = [/^\/doctor\/reports\/[^/]+/];
+
 export function AssistantCompanionProvider({ children }: { children: ReactNode }) {
   const [snapshot, dispatch] = useReducer(reducer, initialSnapshot);
   const pathname = usePathname();
@@ -220,7 +233,9 @@ export function AssistantCompanionProvider({ children }: { children: ReactNode }
     toggleReducedMotion: () => dispatch({ type: "TOGGLE_MOTION" }),
   }), [snapshot, transition]);
 
-  const isSupportedPage = SUPPORTED_PATHS.some((prefix) => pathname.startsWith(prefix));
+  const isSupportedPage =
+    SUPPORTED_PATHS.some((prefix) => pathname.startsWith(prefix)) &&
+    !COMPANION_EXCLUDED.some((pattern) => pattern.test(pathname));
 
   return (
     <AssistantCompanionContext.Provider value={value}>

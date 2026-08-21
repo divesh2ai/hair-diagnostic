@@ -2,6 +2,7 @@
 
 import { use, useEffect, useState } from "react";
 import Image from "next/image";
+import Link from "next/link";
 import { toast } from "sonner";
 import { AnimatePresence } from "framer-motion";
 import {
@@ -11,6 +12,7 @@ import {
   MessageCircle,
   ShieldCheck,
   Stethoscope,
+  LayoutDashboard,
 } from "lucide-react";
 import CartCheckoutAnimation from "./CartCheckoutAnimation";
 
@@ -191,7 +193,7 @@ export default function PatientCartPage({
             <div className="flex-1 min-w-0">
               <p className="font-serif text-lg text-slate-900 leading-tight">{li.displayName}</p>
               <p className="mt-1 text-[11px] font-semibold uppercase tracking-wider text-teal-700">
-                2-month protocol · 1 kit
+                1-month protocol · 1 kit
               </p>
               {li.description && (
                 <p className="mt-2 text-sm text-stone-700 leading-relaxed line-clamp-3">
@@ -212,15 +214,20 @@ export default function PatientCartPage({
       {/* ── TOTAL + CTA ────────────────────────────────────────── */}
       <section className="mt-4 rounded-2xl border border-stone-200 bg-white p-4 space-y-3">
         <div className="flex items-baseline justify-between">
-          <span className="text-base text-stone-700">Subtotal · {cart.lineItems.length * 2}-month plan</span>
+          <span className="text-base text-stone-700">
+            Subtotal · {cart.lineItems.length}-month plan
+          </span>
           <span className="font-serif text-3xl text-slate-900 tabular-nums">
             {cart.subtotalLabel}
           </span>
         </div>
         <p className="text-xs text-stone-500 leading-relaxed">
-          Each kit is a 2-month supply of your doctor-approved protocol ({cart.lineItems.length} {cart.lineItems.length === 1 ? "kit" : "kits"} = {cart.lineItems.length * 2} months).
-          Prices indicative — final invoice arrives from the clinic. Shipping
-          is included.
+          Each kit is a 1-month supply of your doctor-approved protocol (
+          {cart.lineItems.length}{" "}
+          {cart.lineItems.length === 1 ? "kit" : "kits"} ={" "}
+          {cart.lineItems.length}{" "}
+          {cart.lineItems.length === 1 ? "month" : "months"}). Prices indicative
+          — final invoice arrives from the clinic. Shipping is included.
         </p>
         {confirmed ? (
           <div className="flex items-center gap-2 rounded-xl bg-teal-50 px-3 py-2.5 text-sm text-teal-900 ring-1 ring-teal-200">
@@ -242,15 +249,32 @@ export default function PatientCartPage({
             {confirming ? "Confirming…" : "Confirm my order"}
           </button>
         )}
-        <a
-          href={`https://wa.me/${clinicPhone.replace(/[^0-9]/g, "")}?text=${waMsg}`}
-          target="_blank"
-          rel="noreferrer"
-          className="inline-flex w-full items-center justify-center gap-2 rounded-full border border-stone-300 bg-white px-4 py-2.5 text-sm font-medium text-slate-700 hover:border-stone-400"
-        >
-          <MessageCircle className="size-4" />
-          Ask a question on WhatsApp
-        </a>
+        {/* The secondary action swaps at exactly one moment.
+
+            BEFORE confirming, the open question is the patient's, so the exit
+            is WhatsApp. AFTER confirming, this page is a dead end: the order is
+            placed, there is nothing left to do here, and on a clinic device the
+            doctor was closing the tab and signing in again to reach their
+            queue. The confirmed state offers the way back instead. */}
+        {confirmed ? (
+          <Link
+            href="/doctor"
+            className="inline-flex w-full items-center justify-center gap-2 rounded-full border border-stone-300 bg-white px-4 py-2.5 text-sm font-medium text-slate-700 hover:border-stone-400"
+          >
+            <LayoutDashboard className="size-4" />
+            Back to dashboard
+          </Link>
+        ) : (
+          <a
+            href={`https://wa.me/${clinicPhone.replace(/[^0-9]/g, "")}?text=${waMsg}`}
+            target="_blank"
+            rel="noreferrer"
+            className="inline-flex w-full items-center justify-center gap-2 rounded-full border border-stone-300 bg-white px-4 py-2.5 text-sm font-medium text-slate-700 hover:border-stone-400"
+          >
+            <MessageCircle className="size-4" />
+            Ask a question on WhatsApp
+          </a>
+        )}
       </section>
     </Frame>
   );
