@@ -148,6 +148,12 @@ const TOPICAL_ALIASES: ReadonlyArray<readonly [RegExp, string]> = [
   [/EMUGROW.*MC ?R\b/, "F_EMUGROW_MC_R"],
   [/EMUGROW.*MCR/, "F_EMUGROW_MCR"],
   [/EMUGROW.*MC/, "F_EMUGROW_MC"],
+  // PRO before the base: "F-Trichosure Pro" contains "TRICHOSURE", so a bare
+  // TRICHOSURE rule placed first would claim the PRO carton and print the
+  // 5% box for a 0.25%-finasteride prescription. Same longest-first
+  // discipline as the Emugrow chain below.
+  [/TRICHOSURE.*PRO/, "F_TRICHOSURE_PRO"],
+  [/TRICHOSURE/, "F_TRICHOSURE"],
   [/TRICHOSILK.*FNH/, "F_TRICHOSILK_FNH"],
   [/TRICHOSILK/, "F_TRICHOSILK"],
   [/TRICHOGAIN/, "F_TRICHOGAIN"],

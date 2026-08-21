@@ -105,6 +105,13 @@ const topicals = {
   F_TRICHOSILK_FNH: { key: "F_TRICHOSILK_FNH", src: `${KIT_ASSET_BASE}/f_trichosilk_fnh.png`, alt: "F-Trichosilk FNH topical packshot" },
   F_EXTEND_2: { key: "F_EXTEND_2", src: `${KIT_ASSET_BASE}/f_extend_2.png`, alt: "F-Extend 2% Minoxidil topical packshot" },
   F_EXTEND_5: { key: "F_EXTEND_5", src: `${KIT_ASSET_BASE}/f_extend_5.png`, alt: "F-Extend 5% Minoxidil topical packshot" },
+  // F-Trichosure is a Minoxidil + Finasteride topical solution and comes in
+  // two strengths that must not be swapped: the base carton is "Minoxidil &
+  // Finasteride 5%", the PRO carton is "Minoxidil 5% & 0.25% Finasteride".
+  // Different finasteride content, so a doctor spotting the wrong box is a
+  // real check — see the ordering note in TOPICAL_ALIASES.
+  F_TRICHOSURE_PRO: { key: "F_TRICHOSURE_PRO", src: `${KIT_ASSET_BASE}/f_trichosure_pro.png`, alt: "F-Trichosure Pro topical packshot" },
+  F_TRICHOSURE: { key: "F_TRICHOSURE", src: `${KIT_ASSET_BASE}/f_trichosure_5.png`, alt: "F-Trichosure 5% topical packshot" },
   F_TRICHOGAIN: { key: "F_TRICHOGAIN", src: `${KIT_ASSET_BASE}/f_trichogain.png`, alt: "F-Trichogain topical packshot" },
   // ── Oral combination tablets (Oroxidil family) ────────────────────────────
   // These are SYSTEMIC tablets, not scalp solutions. They previously fell
