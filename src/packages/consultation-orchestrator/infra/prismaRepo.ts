@@ -29,10 +29,28 @@ export function prismaConsultationRepo(prisma: PrismaClient): ConsultationRepo {
       return toStored(consultationId, consultation.clinicId, v);
     },
 
+    /**
+     * Create the consultation and its first version — or recover one that is
+     * already half-built.
+     *
+     * ── The three states this has to handle ────────────────────────────────
+     *  1. Nothing on disk                → create both, normal path.
+     *  2. Consultation + currentVersion  → return it, compose was wasted work.
+     *  3. Consultation, NO currentVersion → **orphan**. Recover it.
+     *
+     * State 3 used to fall straight through to `consultation.create` on a
+     * column with `@@unique([assessmentId])`, so it raised P2002 — and it did
+     * so on *every* subsequent request, because nothing about the failure
+     * changed the row. One interrupted transaction made an assessment
+     * permanently unopenable, and the doctor saw "We could not load this
+     * consultation" forever.
+     *
+     * An orphan can also hold versions that were written before the
+     * `currentVersionId` update landed. Those carry real clinical content, so
+     * recovery re-points the pointer at the newest one rather than composing a
+     * replacement — see `adoptOrphan`.
+     */
     async createWithInitialVersion(args): Promise<StoredVersion> {
-      // Idempotency: if a consultation already exists, return its current
-      // version rather than failing on the unique constraint. The caller
-      // composes again only when there's no version on disk.
       const existing = await prisma.consultation.findUnique({
         where: { assessmentId: args.assessmentId },
         include: { currentVersion: true },
@@ -40,39 +58,64 @@ export function prismaConsultationRepo(prisma: PrismaClient): ConsultationRepo {
       if (existing?.currentVersion) {
         return toStored(existing.id, existing.clinicId, existing.currentVersion);
       }
+      if (existing) {
+        return adoptOrphan(prisma, existing.id, existing.clinicId, args);
+      }
 
-      return prisma.$transaction(async (tx) => {
-        const consultation = await tx.consultation.create({
-          data: {
-            assessmentId: args.assessmentId,
-            clinicId: args.clinicId,
-            patientId: args.patientId,
-            createdBy: args.actorId,
-            status: "AWAITING_DOCTOR_REVIEW",
-          },
+      try {
+        return await prisma.$transaction(async (tx) => {
+          const consultation = await tx.consultation.create({
+            data: {
+              assessmentId: args.assessmentId,
+              clinicId: args.clinicId,
+              patientId: args.patientId,
+              createdBy: args.actorId,
+              status: "AWAITING_DOCTOR_REVIEW",
+            },
+          });
+
+          const version = await tx.consultationVersion.create({
+            data: {
+              consultationId: consultation.id,
+              contentVersion: 1,
+              content: args.content as unknown as Prisma.InputJsonValue,
+              engineVersions: args.engineVersions as Prisma.InputJsonValue,
+              contentHash: args.contentHash,
+              createdBy: args.actorId,
+              ...metadataToData(args.metadata),
+            },
+          });
+
+          await tx.consultation.update({
+            where: { id: consultation.id },
+            data: { currentVersionId: version.id },
+          });
+
+          await writeEvents(tx, consultation.id, version.id, args.events);
+
+          return toStored(consultation.id, args.clinicId, version);
         });
+      } catch (err) {
+        // Two first-opens of the same assessment raced and the other one won.
+        // The unique constraint is doing exactly its job; converge on the row
+        // it created instead of surfacing a database error to a doctor.
+        if (!isUniqueViolation(err)) throw err;
 
-        const version = await tx.consultationVersion.create({
-          data: {
-            consultationId: consultation.id,
-            contentVersion: 1,
-            content: args.content as unknown as Prisma.InputJsonValue,
-            engineVersions: args.engineVersions as Prisma.InputJsonValue,
-            contentHash: args.contentHash,
-            createdBy: args.actorId,
-            ...metadataToData(args.metadata),
-          },
+        const winner = await prisma.consultation.findUnique({
+          where: { assessmentId: args.assessmentId },
+          include: { currentVersion: true },
         });
-
-        await tx.consultation.update({
-          where: { id: consultation.id },
-          data: { currentVersionId: version.id },
-        });
-
-        await writeEvents(tx, consultation.id, version.id, args.events);
-
-        return toStored(consultation.id, args.clinicId, version);
-      });
+        if (winner?.currentVersion) {
+          return toStored(winner.id, winner.clinicId, winner.currentVersion);
+        }
+        if (winner) {
+          // The winner is itself mid-flight or orphaned.
+          return adoptOrphan(prisma, winner.id, winner.clinicId, args);
+        }
+        // The row is genuinely gone (rolled back between our two reads).
+        // Rethrow rather than loop — the caller retries the whole request.
+        throw err;
+      }
     },
 
     async appendVersion(args): Promise<StoredVersion> {
@@ -149,6 +192,92 @@ export function prismaConsultationRepo(prisma: PrismaClient): ConsultationRepo {
       });
     },
   };
+}
+
+/**
+ * Recognise a unique-constraint violation without an `instanceof` check.
+ *
+ * The app's Prisma client is wrapped in `$extends` (see lib/prisma), and this
+ * module is also driven by test doubles, so the error crossing this boundary
+ * is not reliably an instance of the `PrismaClientKnownRequestError` class
+ * this file could import. The code is the stable contract.
+ */
+function isUniqueViolation(err: unknown): boolean {
+  return (
+    typeof err === "object" &&
+    err !== null &&
+    (err as { code?: unknown }).code === "P2002"
+  );
+}
+
+/**
+ * Recover a Consultation row that exists without a `currentVersionId`.
+ *
+ * Prefers re-pointing at an existing version over writing a new one: a version
+ * that was created just before the pointer update failed holds real composed
+ * clinical content, and replacing it would discard a doctor-visible record and
+ * renumber the version history.
+ *
+ * Concurrency-safe without row locks. Two callers recovering the same orphan
+ * both attempt `contentVersion = max + 1`, and `@@unique([consultationId,
+ * contentVersion])` lets exactly one through; the loser re-reads and returns
+ * the winner's row.
+ */
+async function adoptOrphan(
+  prisma: PrismaClient,
+  consultationId: string,
+  clinicId: string,
+  args: Parameters<ConsultationRepo["createWithInitialVersion"]>[0],
+): Promise<StoredVersion> {
+  const orphanedVersion = await prisma.consultationVersion.findFirst({
+    where: { consultationId },
+    orderBy: { contentVersion: "desc" },
+  });
+
+  if (orphanedVersion) {
+    await prisma.consultation.update({
+      where: { id: consultationId },
+      data: { currentVersionId: orphanedVersion.id },
+    });
+    return toStored(consultationId, clinicId, orphanedVersion);
+  }
+
+  try {
+    return await prisma.$transaction(async (tx) => {
+      const version = await tx.consultationVersion.create({
+        data: {
+          consultationId,
+          contentVersion: 1,
+          content: args.content as unknown as Prisma.InputJsonValue,
+          engineVersions: args.engineVersions as Prisma.InputJsonValue,
+          contentHash: args.contentHash,
+          createdBy: args.actorId,
+          ...metadataToData(args.metadata),
+        },
+      });
+
+      await tx.consultation.update({
+        where: { id: consultationId },
+        data: { currentVersionId: version.id },
+      });
+
+      await writeEvents(tx, consultationId, version.id, args.events);
+
+      return toStored(consultationId, clinicId, version);
+    });
+  } catch (err) {
+    if (!isUniqueViolation(err)) throw err;
+    const winner = await prisma.consultationVersion.findFirst({
+      where: { consultationId },
+      orderBy: { contentVersion: "desc" },
+    });
+    if (!winner) throw err;
+    await prisma.consultation.update({
+      where: { id: consultationId },
+      data: { currentVersionId: winner.id },
+    });
+    return toStored(consultationId, clinicId, winner);
+  }
 }
 
 function metadataToData(m?: VersionMetadata) {

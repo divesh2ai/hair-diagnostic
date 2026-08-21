@@ -34,9 +34,29 @@ export type AuditAction =
   | "DOCTOR_INVITATION_CREATED"
   | "DOCTOR_INVITATION_RESENT"
   | "DOCTOR_INVITATION_CANCELLED"
-  | "DOCTOR_INVITATION_EXPIRED";
+  | "DOCTOR_INVITATION_EXPIRED"
+  /**
+   * A clinical record was opened for review. Reads were previously unaudited,
+   * so a super admin viewing a patient's consultation through a Doctor
+   * identity left no trace — the one access a compliance reviewer most needs
+   * to find. Written fire-and-forget: never on the critical path.
+   */
+  | "CLINICAL_RECORD_VIEWED";
 
-export type AuditActorType = "doctor" | "admin" | "system" | "patient";
+/**
+ * `admin_view` is a distinct actor type, not a synonym for `admin`: it marks a
+ * super admin reading a clinic's consultation across the tenant boundary,
+ * which is the access an audit reader most needs to be able to pick out. The
+ * consultation routes have been writing it since they were built — it was
+ * simply missing from this union, so every one of those call sites was a type
+ * error (harmless at runtime, since AuditLog.actorType is a plain String).
+ */
+export type AuditActorType =
+  | "doctor"
+  | "admin"
+  | "admin_view"
+  | "system"
+  | "patient";
 
 export interface WriteAuditLogInput {
   action: AuditAction;

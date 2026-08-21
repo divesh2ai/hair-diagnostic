@@ -114,6 +114,23 @@ export class ConsultationOrchestrator {
     if (!a) throw new OrchestratorError("not_found", `Assessment ${input.assessmentId} not found`);
     this.assertCanReadClinic(a.clinicId, input.ctx);
 
+    // Reached only when nothing is persisted yet. A record whose questionnaire
+    // is missing cannot be composed from — and must not be composed from an
+    // empty object, which would run the clinical engines over invented input
+    // and persist the result as this patient's immutable v1.
+    //
+    // Note the ordering: `getOrCreateDetailed` returns any stored version
+    // before it ever gets here, so a legacy assessment that already has a
+    // consultation stays fully reviewable. This guard only refuses to
+    // *manufacture* one.
+    if (a.composability === "LEGACY_DEGRADED") {
+      throw new OrchestratorError(
+        "not_composable",
+        `Assessment ${input.assessmentId} has no stored questionnaire ` +
+          `(${(a.degradedReasons ?? []).join(", ") || "unknown"}) and no persisted consultation`,
+      );
+    }
+
     const [branding, doctorPrefs, orgDefaults, prevs] = await Promise.all([
       this.deps.branding.load(a.clinicId),
       this.deps.doctorPrefs.load(a.reviewingDoctorId),
@@ -492,11 +509,30 @@ function applyBranding(c: Consultation, branding: { name: string } | null): Cons
 }
 
 export class OrchestratorError extends Error {
-  constructor(public readonly code: "not_found" | "forbidden" | "invalid", message: string) {
+  constructor(
+    public readonly code: OrchestratorErrorCode,
+    message: string,
+  ) {
     super(message);
     this.name = "OrchestratorError";
   }
 }
+
+/**
+ * `not_composable` is deliberately separate from `not_found`.
+ *
+ * It means: this assessment exists, the caller is allowed to see it, and there
+ * is no consultation on disk — but its stored questionnaire is missing, so a
+ * fresh one cannot be composed without inventing the answers. Folding that
+ * into `not_found` is what told doctors a real historical record did not
+ * exist. Folding it into `invalid` would make the UI offer a retry for
+ * something no retry can fix.
+ */
+export type OrchestratorErrorCode =
+  | "not_found"
+  | "forbidden"
+  | "invalid"
+  | "not_composable";
 
 // Distinct error class so route handlers can return a stable 422 and a
 // structured payload without string-matching messages. Carries the full

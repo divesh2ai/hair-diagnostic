@@ -29,6 +29,7 @@ import {
   readOperationalState,
   type ConsultationMeta,
   type ConsultationOperationalState,
+  type ConsultationOptionalFailure,
 } from "@/lib/consultation/meta";
 import {
   logLifecycleEvent,
@@ -55,7 +56,24 @@ export type ConsultationErrorCode =
 export type ReviewDegradedReason =
   | "LEGACY_RAW_RESPONSES_MISSING"
   | "REPORT_STATE_UNAVAILABLE"
-  | "ORDER_STATE_UNAVAILABLE";
+  | "ORDER_STATE_UNAVAILABLE"
+  | "ONE_PAGER_STATE_UNAVAILABLE";
+
+/**
+ * Which reason each optional dependency contributes when it cannot be read.
+ *
+ * A map rather than a ternary: the ternary this replaced labelled anything
+ * that was not the report as an order failure, so the third dependency would
+ * have been reported as the wrong one from the day it was added.
+ */
+const DEGRADED_REASON_BY_DEPENDENCY: Record<
+  ConsultationOptionalFailure["dependency"],
+  ReviewDegradedReason
+> = {
+  report: "REPORT_STATE_UNAVAILABLE",
+  order: "ORDER_STATE_UNAVAILABLE",
+  onePager: "ONE_PAGER_STATE_UNAVAILABLE",
+};
 
 export interface ReviewCore {
   status: "ready" | "degraded";
@@ -267,9 +285,7 @@ export async function loadConsultationReview(
     operational = await readOperationalState(prisma, assessmentId);
     for (const failure of operational.degraded) {
       warnings.push({ code: `OPTIONAL_${failure.dependency.toUpperCase()}_UNAVAILABLE`, stage: failure.stage });
-      degradedReasons.push(
-        failure.dependency === "report" ? "REPORT_STATE_UNAVAILABLE" : "ORDER_STATE_UNAVAILABLE",
-      );
+      degradedReasons.push(DEGRADED_REASON_BY_DEPENDENCY[failure.dependency]);
       logLifecycleEvent({
         ...logBase,
         event: "consultation.optional_degraded",

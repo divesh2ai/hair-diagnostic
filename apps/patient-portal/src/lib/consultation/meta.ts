@@ -54,6 +54,18 @@ export function consultationMeta(stored: StoredVersion): ConsultationMeta {
  */
 export interface ConsultationOperationalState {
   reportState: "not_started" | "generating" | "ready" | "failed" | "unavailable";
+  /**
+   * Whether `/reports/[id]/one-page` — the sheet the patient is actually
+   * handed — can render for this assessment.
+   *
+   * It is a SEPARATE fact from `reportState`. The long-form PDF is a REPORT
+   * artifact; the one-pager reads the NARRATIVES artifact and needs a
+   * `clinical_report` object inside it. Assessments exist with one and not the
+   * other (every seeded case has neither; a PARTIAL_FAILURE case can have
+   * narratives and no PDF), so a UI that gates the one-pager on `reportState`
+   * — or on nothing at all — offers a link to a page that cannot render.
+   */
+  onePagerState: "not_started" | "generating" | "ready" | "failed" | "unavailable";
   orderIntentId: string | null;
   orderIntentStatus: string | null;
   /**
@@ -66,7 +78,7 @@ export interface ConsultationOperationalState {
 }
 
 export interface ConsultationOptionalFailure {
-  dependency: "report" | "order";
+  dependency: "report" | "order" | "onePager";
   stage: ConsultationLoadStage;
   errorClass: string;
 }
@@ -103,7 +115,7 @@ export async function readOperationalState(
 ): Promise<ConsultationOperationalState> {
   const degraded: ConsultationOptionalFailure[] = [];
 
-  const [statusResult, reportResult, intentResult] = await Promise.all([
+  const [statusResult, reportResult, intentResult, onePagerResult] = await Promise.all([
     settle(
       () =>
         prisma.assessment.findUnique({
@@ -132,9 +144,14 @@ export async function readOperationalState(
       "order",
       "OPTIONAL_ORDER_STATE",
     ),
+    settle(
+      () => readOnePagerNarrative(prisma, assessmentId),
+      "onePager",
+      "OPTIONAL_ONE_PAGER_STATE",
+    ),
   ]);
 
-  for (const r of [statusResult, reportResult, intentResult]) {
+  for (const r of [statusResult, reportResult, intentResult, onePagerResult]) {
     if (r.failure) degraded.push(r.failure);
   }
 
@@ -156,12 +173,62 @@ export async function readOperationalState(
     }
   }
 
+  // The one-pager's own dependency answers first: a NARRATIVES artifact that
+  // already carries a clinical_report makes the page renderable whatever the
+  // assessment status says, and two of the three cases that have one are
+  // PARTIAL_FAILURE. Only when the artifact is absent does the status explain
+  // whether it is still coming.
+  let onePagerState: ConsultationOperationalState["onePagerState"];
+  if (onePagerResult.failure) {
+    onePagerState = "unavailable";
+  } else if (onePagerResult.value === true) {
+    onePagerState = "ready";
+  } else if (statusResult.failure) {
+    onePagerState = "unavailable";
+  } else {
+    const status = statusResult.value?.status ?? null;
+    if (status === AssessmentStatus.PARTIAL_FAILURE || status === AssessmentStatus.FAILED) {
+      onePagerState = "failed";
+    } else if (status && REPORT_GENERATING_STATUSES.has(status)) {
+      onePagerState = "generating";
+    } else {
+      onePagerState = "not_started";
+    }
+  }
+
   return {
     reportState,
+    onePagerState,
     orderIntentId: intentResult.value?.id ?? null,
     orderIntentStatus: intentResult.value?.status ?? null,
     degraded,
   };
+}
+
+/**
+ * Does the latest NARRATIVES artifact carry a composed `clinical_report`?
+ *
+ * Mirrors what `loadOnePageReportData` actually requires, so the answer here
+ * and the behaviour of the page cannot disagree: newest-first rather than the
+ * compound-unique lookup (that index is missing in some environments), and the
+ * same "is it an object" test the loader applies before it throws its 202.
+ *
+ * The check runs in Postgres rather than pulling the narrative blob back for
+ * a key lookup — the doctor review page loads this on every open.
+ */
+async function readOnePagerNarrative(
+  prisma: PrismaClient,
+  assessmentId: string,
+): Promise<boolean> {
+  const rows = await prisma.$queryRaw<Array<{ ready: boolean | null }>>`
+    SELECT (jsonb_typeof("content" -> 'clinical_report') = 'object') AS "ready"
+    FROM "AIArtifact"
+    WHERE "assessmentId" = ${assessmentId}
+      AND "type" = ${ArtifactType.NARRATIVES}::"ArtifactType"
+    ORDER BY "createdAt" DESC
+    LIMIT 1
+  `;
+  return rows[0]?.ready === true;
 }
 
 /** Run one optional read, converting a throw into a described failure. */

@@ -15,7 +15,7 @@ import { evaluateClinicalProfile } from "../../ai-engine/clinical-engine/evaluat
 import { mapTherapyNeeds } from "../../ai-engine/therapy-engine/mapTherapyNeeds";
 import { scoreKits } from "../../ai-engine/kit-scorer/scoreKits";
 import { buildClinicalReport } from "../../ai-engine/report-engine";
-import { OPEN_CLINIC } from "../../../sandbox/loaders/fixtureLoader";
+import { DEFAULT_CLINIC_DISPENSING } from "../../ai-engine/kit-scorer/dispensingCatalogue";
 import type { PatientAnswers } from "../../types";
 import type { BudgetProfile } from "../../ai-engine/kit-scorer/types";
 import type { ClinicalProfile } from "../../ai-engine/clinical-engine/types";
@@ -106,7 +106,7 @@ export function buildConsultation(input: BuildConsultationInput): Consultation {
   const clinical = evaluateClinicalProfile(answers);
   const therapy = mapTherapyNeeds(clinical);
   const budget = BUDGET_MAP[budgetTier];
-  const kits = scoreKits(clinical, therapy, answers, OPEN_CLINIC, budget);
+  const kits = scoreKits(clinical, therapy, answers, DEFAULT_CLINIC_DISPENSING, budget);
   const report = buildClinicalReport(
     { name: patient.name, age: patient.age, sex: patient.sex },
     clinical,

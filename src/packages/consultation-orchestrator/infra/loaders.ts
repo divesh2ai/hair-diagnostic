@@ -3,6 +3,8 @@
 
 import type { PrismaClient } from "@prisma/client";
 import type {
+  AssessmentComposability,
+  AssessmentDegradedReason,
   AssessmentLoader,
   AssessmentLoad,
   ClinicBrandingLoader,
@@ -14,6 +16,34 @@ import type {
   PreviousConsultationsLoader,
 } from "../ports";
 
+/**
+ * Classify what the stored questionnaire actually contains.
+ *
+ * `rawResponses` is `Json?`. Three things live in that column across the
+ * history of this table: a proper answers object, `null` on every row created
+ * before the 20260521 migration added the column, and — rarely — a JSON value
+ * that is not an object at all. Only the first can be composed from; the other
+ * two are still real clinical records with a patient, a doctor and often a
+ * persisted consultation.
+ */
+function classifyAnswers(raw: unknown): {
+  answers: Record<string, unknown>;
+  composability: AssessmentComposability;
+  degradedReasons: AssessmentDegradedReason[];
+} {
+  if (raw === null || raw === undefined) {
+    return { answers: {}, composability: "LEGACY_DEGRADED", degradedReasons: ["RAW_RESPONSES_MISSING"] };
+  }
+  if (typeof raw !== "object" || Array.isArray(raw)) {
+    return { answers: {}, composability: "LEGACY_DEGRADED", degradedReasons: ["RAW_RESPONSES_MALFORMED"] };
+  }
+  const answers = raw as Record<string, unknown>;
+  if (Object.keys(answers).length === 0) {
+    return { answers, composability: "LEGACY_DEGRADED", degradedReasons: ["RAW_RESPONSES_EMPTY"] };
+  }
+  return { answers, composability: "FULL", degradedReasons: [] };
+}
+
 export function prismaAssessmentLoader(prisma: PrismaClient): AssessmentLoader {
   return {
     async load(assessmentId): Promise<AssessmentLoad | null> {
@@ -21,8 +51,16 @@ export function prismaAssessmentLoader(prisma: PrismaClient): AssessmentLoader {
         where: { id: assessmentId, deletedAt: null },
         include: { patient: true },
       });
-      if (!a || !a.rawResponses) return null;
-      const answers = a.rawResponses as Record<string, unknown>;
+
+      // `null` from this loader means one thing only: there is no such
+      // assessment. It used to also mean "the questionnaire column is empty",
+      // which made every pre-20260521 record indistinguishable from a deleted
+      // one — the orchestrator raised `not_found` and the doctor was told the
+      // case did not exist, on a row the API had already read.
+      if (!a) return null;
+
+      const { answers, composability, degradedReasons } = classifyAnswers(a.rawResponses);
+
       return {
         id: a.id,
         clinicId: a.clinicId,
@@ -32,9 +70,14 @@ export function prismaAssessmentLoader(prisma: PrismaClient): AssessmentLoader {
         rawAnswers: answers,
         reviewingDoctorId: a.reviewingDoctorId,
         status: String(a.status),
+        composability,
+        degradedReasons,
         patient: {
           id: a.patient.id,
           name: a.patient.name ?? "Patient",
+          // The `answers` fallbacks are unreachable when the questionnaire is
+          // missing, which is correct: age/sex are then simply unknown rather
+          // than invented.
           age: a.patient.age ?? (Number(answers.age ?? 0) || 0),
           sex: a.patient.gender ?? String(answers.sex ?? "unknown"),
           phone: a.patient.phone ?? null,
