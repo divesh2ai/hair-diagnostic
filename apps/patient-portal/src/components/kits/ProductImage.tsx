@@ -29,6 +29,10 @@ import {
 // an empty frame is merely a missing photograph.
 
 const SIZES = {
+  // List row — the kit lineup editor, where the packshot rides the row height.
+  // Any larger and five kits stop fitting on one screen, which is the whole
+  // point of that list.
+  xs: { box: "h-11 w-11", px: 44 },
   // Row thumbnail — protocol lists, queue rows.
   sm: { box: "h-24 w-24", px: 96 },
   // Card image — the recommended-solution card.
@@ -63,7 +67,14 @@ export function ProductImage({
   // Topicals sit slightly smaller inside the same outer box: a bottle
   // photographed full-height would otherwise read as larger than the carton
   // beside it, and the carton is the more significant of the two.
-  const inset = category === "topical" ? "p-4" : "p-3";
+  // The inset scales with the frame: `p-3` inside a 44px box would leave the
+  // carton about 20px wide. Small frames get a hairline, large ones breathe.
+  const tight = size === "xs";
+  const inset = tight
+    ? "p-1"
+    : category === "topical"
+      ? "p-4"
+      : "p-3";
 
   const shell =
     `relative ${box} shrink-0 overflow-hidden rounded-xl border border-stone-200 ` +

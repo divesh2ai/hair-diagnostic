@@ -16,9 +16,12 @@ export const KIT_PRICE_INR: Record<string, number> = {
   POST_MENOPAUSE_VEG: 6400,
   TE_GOLD: 5900,
   TE_GOLD_VEG: 5900,
+  // IRON_UP_1 and IRON_UP_4_VEG were removed: both are superseded by
+  // IRON_UP_GOLD ("PRO FACT IRON UP"). Neither resolved to a documented kit,
+  // so the lineup editor listed them by their raw id — a doctor picking from
+  // that dropdown saw three Iron Up entries, two of them internal codes for a
+  // product that no longer ships.
   IRON_UP_GOLD: 5200,
-  IRON_UP_1: 5200,
-  IRON_UP_4_VEG: 5200,
   GI_GOLD: 5500,
   PHENOTYPE_INFLAMMATION: 5500,
   OXIDATIVE_STRESS: 5100,

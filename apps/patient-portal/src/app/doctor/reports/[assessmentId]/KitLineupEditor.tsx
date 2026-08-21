@@ -14,6 +14,7 @@ import {
 } from "lucide-react";
 import type { Consultation, TreatmentPhase } from "@shared/types/consultation";
 import { loadKitCatalog, type KitCatalogItem } from "@/lib/doctor/kitCatalog";
+import { ProductImage } from "@/components/kits/ProductImage";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Kit lineup editor — the doctor's clinical authority over the AI's suggestion.
@@ -221,6 +222,11 @@ export function KitLineupEditor({
                     {i + 1}
                   </span>
                   <GripVertical className="hidden sm:block size-4 shrink-0 text-stone-300" />
+                  {/* Row-scale packshot: the doctor is reordering a list, so
+                      the carton is here for recognition, not display. `xs` is
+                      sized to the row height — a larger frame would push each
+                      row apart and turn a five-item lineup into a scroll. */}
+                  <ProductImage id={p.kitId} category="kit" size="xs" />
                   <div className="min-w-0 flex-1">
                     <p className="truncate text-sm font-medium text-slate-900">
                       {p.displayName}
@@ -323,7 +329,12 @@ export function KitLineupEditor({
               void loadCatalog();
             }}
             disabled={disabled}
-            className="inline-flex w-full items-center justify-center gap-1.5 rounded-lg border border-dashed border-stone-300 bg-white px-3 py-2 text-xs font-medium text-slate-600 hover:border-teal-400 hover:text-teal-700 disabled:opacity-50"
+            // A dashed grey outline read as a disabled placeholder rather
+            // than the control that adds a kit. It is the only action in this
+            // panel, so it carries the HairOS accent — still bordered, not
+            // filled, because the one filled button on the page stays the
+            // decision bar's Approve.
+            className="inline-flex w-full items-center justify-center gap-1.5 rounded-lg border border-[color:var(--hd-primary)] bg-[color:var(--hd-primary-tint)] px-3 py-2.5 text-xs font-semibold text-[color:var(--hd-primary-dark)] transition-colors hover:bg-[color:var(--hd-primary)] hover:text-white disabled:opacity-50"
           >
             <Plus className="size-3.5" />
             Add a kit

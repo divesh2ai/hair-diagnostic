@@ -21,18 +21,32 @@ export async function GET() {
   );
   if (auth instanceof NextResponse) return auth;
 
-  const items = Object.keys(KIT_PRICE_INR).map((kitId) => {
-    const info = getKitInfo(kitId);
-    return {
+  // Only kits with a documented registry entry are offerable.
+  //
+  // The catalog was keyed off the PRICE table, and several ids there have no
+  // KitInfo — so the lineup editor listed them by their raw internal code
+  // ("TE_GOLD_VEG", "HEALTHY_9") with a price and no description. A doctor
+  // choosing from that dropdown could not tell what those were, or that two of
+  // them were the same product as an entry three rows above.
+  //
+  // They are filtered from the ADD list rather than deleted from the price
+  // table: an id that is not offerable today may still appear on a historic
+  // KitOrderIntent, and that order must keep pricing correctly.
+  //
+  // The fix for a kit that SHOULD be offerable is to give it a registry entry,
+  // not to relax this filter.
+  const items = Object.keys(KIT_PRICE_INR)
+    .map((kitId) => ({ kitId, info: getKitInfo(kitId) }))
+    .filter((e): e is { kitId: string; info: NonNullable<typeof e.info> } => e.info !== null)
+    .map(({ kitId, info }) => ({
       kitId,
-      displayName: info?.displayName ?? kitId,
-      treatmentObjective: info?.treatmentObjective ?? null,
-      therapeuticStrategy: info?.therapeuticStrategy ?? [],
-      formulationRationale: info?.formulationRationale ?? [],
+      displayName: info.displayName,
+      treatmentObjective: info.treatmentObjective ?? null,
+      therapeuticStrategy: info.therapeuticStrategy ?? [],
+      formulationRationale: info.formulationRationale ?? [],
       priceInr: priceForKit(kitId),
       priceLabel: formatInr(priceForKit(kitId)),
-    };
-  });
+    }));
 
   return NextResponse.json({ items });
 }
