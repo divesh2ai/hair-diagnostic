@@ -11,10 +11,10 @@ import {
   CheckCircle2,
   MessageCircle,
   ShieldCheck,
-  Stethoscope,
   LayoutDashboard,
 } from "lucide-react";
 import CartCheckoutAnimation from "./CartCheckoutAnimation";
+import { ProductImage } from "@/components/kits/ProductImage";
 
 // Patient-facing cart. Renders the doctor-approved kit lineup with prices
 // so the patient can review, ask questions, or confirm. Deep-linkable —
@@ -157,19 +157,25 @@ export default function PatientCartPage({
       {/* ── DOCTOR STRIP ───────────────────────────────────────── */}
       {cart.doctor && (
         <section className="mt-4 flex items-center gap-3 rounded-2xl border border-stone-200 bg-white p-3">
-          <div className="relative size-11 shrink-0 overflow-hidden rounded-full bg-stone-100 ring-1 ring-stone-200">
+          <div className="relative size-14 shrink-0 overflow-hidden rounded-full bg-stone-100 ring-1 ring-stone-200">
             {cart.doctor.photoUrl ? (
               <Image
                 src={cart.doctor.photoUrl}
                 alt={cart.doctor.name ?? "Doctor"}
                 fill
-                sizes="44px"
+                sizes="56px"
                 className="object-cover"
                 unoptimized
               />
             ) : (
-              <div className="flex h-full w-full items-center justify-center text-stone-400">
-                <Stethoscope className="size-5" />
+              // Initials, not a stethoscope.
+              //
+              // This strip exists to tell the patient WHO approved their plan,
+              // and a stock clip-art icon says the opposite — it reads as
+              // "no real person here". Initials carry the doctor's identity
+              // even with no photograph on file.
+              <div className="flex h-full w-full items-center justify-center bg-teal-50 text-sm font-semibold text-teal-800">
+                {doctorInitials(cart.doctor.name)}
               </div>
             )}
           </div>
@@ -189,23 +195,40 @@ export default function PatientCartPage({
       {/* ── LINE ITEMS ─────────────────────────────────────────── */}
       <section className="mt-4 rounded-2xl border border-stone-200 bg-white divide-y divide-stone-100">
         {cart.lineItems.map((li) => (
-          <div key={li.kitId} className="p-5 flex items-start gap-4">
-            <div className="flex-1 min-w-0">
-              <p className="font-serif text-lg text-slate-900 leading-tight">{li.displayName}</p>
-              <p className="mt-1 text-[11px] font-semibold uppercase tracking-wider text-teal-700">
-                1-month protocol · 1 kit
-              </p>
+          <div key={li.kitId} className="flex items-start gap-4 p-4 sm:p-5">
+            {/* The carton the patient will actually receive. Without it this
+                page asked someone to confirm a few thousand rupees against a
+                name and a paragraph. */}
+            <ProductImage id={li.kitId} category="kit" size="sm" />
+
+            <div className="min-w-0 flex-1">
+              <div className="flex items-start justify-between gap-3">
+                <p className="font-serif text-lg leading-tight text-slate-900">
+                  {li.displayName}
+                </p>
+                <p className="shrink-0 text-base font-medium tabular-nums text-slate-900">
+                  {li.unitPriceLabel}
+                </p>
+              </div>
+
+              <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1">
+                <span className="text-[11px] font-semibold uppercase tracking-wider text-teal-700">
+                  1-month protocol
+                </span>
+                {/* Quantity is shown, never edited.
+                    This lineup was authorised by a doctor and the order is cut
+                    from exactly this list, so a stepper here would let a
+                    patient alter a prescription after approval. */}
+                <span className="text-[11px] text-stone-500">
+                  &middot; Qty {li.quantity}
+                </span>
+              </div>
+
               {li.description && (
-                <p className="mt-2 text-sm text-stone-700 leading-relaxed line-clamp-3">
+                <p className="mt-2 line-clamp-3 text-sm leading-relaxed text-stone-700">
                   {li.description}
                 </p>
               )}
-            </div>
-            <div className="text-right shrink-0">
-              <p className="text-base font-medium text-slate-900 tabular-nums">
-                {li.unitPriceLabel}
-              </p>
-              <p className="text-xs text-stone-500 mt-0.5">Qty {li.quantity}</p>
             </div>
           </div>
         ))}
@@ -278,6 +301,25 @@ export default function PatientCartPage({
       </section>
     </Frame>
   );
+}
+
+/**
+ * Up to two initials from a doctor's name, ignoring the title.
+ *
+ * "Dr Test B" -> "TB". A name that is only a title falls back to a neutral
+ * glyph rather than rendering "DR", which would read as a stray abbreviation
+ * rather than a person.
+ */
+function doctorInitials(name: string | null | undefined): string {
+  const parts = (name ?? "")
+    .replace(/^\s*(dr|doctor|prof)\.?\s+/i, "")
+    .split(/\s+/)
+    .filter(Boolean);
+  const initials = parts
+    .slice(0, 2)
+    .map((w) => w[0]?.toUpperCase() ?? "")
+    .join("");
+  return initials || "·";
 }
 
 function Frame({
