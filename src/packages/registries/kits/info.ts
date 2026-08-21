@@ -1053,6 +1053,37 @@ const ENTRIES: Record<string, KitInfo> = {
   // ───────────────────────────────────────────────────────────────────────────
   // Lactihealth (Postpartum Recovery & Hair Support)
   // ───────────────────────────────────────────────────────────────────────────
+  /**
+   * HEALTHY-9 — pregnancy support. A SEPARATE kit, not a Lactihealth variant.
+   *
+   * The two are routinely confused because both are maternal: Healthy-9 runs
+   * DURING pregnancy and is the only kit permitted then (every other rule is
+   * suppressed), while Lactihealth runs AFTER delivery. They must not share
+   * artwork or copy.
+   *
+   * Clinical content below is sourced, not authored here: the meaning and
+   * support lines are lifted from the dermatology-authored `healthy_9` entry
+   * in lib/reports/one-page/clinicalCopy.ts, and the exclusivity rule from
+   * CONDITION_KIT_MAPPING_REFERENCE (HR-2). Ingredient-level detail is
+   * deliberately absent — the source document has none for this kit, and
+   * inventing a formulation to fill the shape would be fabricating a product.
+   */
+  HEALTHY_9: {
+    displayName: "HEALTHY-9",
+    diagnosisInsight:
+      "Recommended during pregnancy, when raised metabolic and nutritional requirements can reduce the nutrients available to sustain normal hair-cycle activity.",
+    treatmentObjective:
+      "Support the raised metabolic and nutritional requirement of pregnancy and maintain the cellular environment for maternal health and hair growth.",
+    therapeuticStrategy: [
+      "Supports the raised metabolic and nutritional requirement of pregnancy",
+      "Maintains the cellular environment for maternal health and hair growth",
+    ],
+    formulationRationale: [],
+    expectedResponse: [],
+    clinicalNote:
+      "The only kit dispensed during pregnancy — no other kit ships alongside it. Distinct from LACTIHEALTH, which is for the postpartum and breastfeeding phase.",
+  },
+
   LACTIHEALTH: {
     displayName: "LACTIHEALTH",
     diagnosisInsight:
@@ -1241,7 +1272,55 @@ function resolveEntryKey(kitId: string): keyof typeof ENTRIES | null {
   return KIT_ID_TO_ENTRY[kitId] ?? NORMALISED_KIT_INDEX[normaliseKitId(kitId)] ?? null;
 }
 
+/**
+ * Orderable variants that share a canonical entry but ship as their own SKU.
+ *
+ * ── Why a label layer and not new entries ───────────────────────────────────
+ * This registry's contract is that "every KitId variant (veg / non-veg / plus)
+ * maps to one of these" canonical entries — the clinical content of a
+ * vegetarian formulation is the same clinical content, which is what makes it
+ * the same kit. Duplicating an entry per variant would create a second copy of
+ * every treatment objective and ingredient group, free to drift from the first.
+ *
+ * But a doctor picking from the lineup editor must still be able to tell a veg
+ * SKU from its parent, and before this they could not: both resolved to the
+ * parent's display name, or — for the short-key spellings — to nothing at all,
+ * so the picker printed the raw internal code.
+ *
+ * So the variant keeps the parent's clinical content and overrides only the
+ * NAME. Nothing clinical is authored here; a label is not a claim.
+ *
+ * Ingredient-level differences between a veg and non-veg formulation are real
+ * and are NOT modelled here. When the source document supplies them, the
+ * variant graduates to its own entry — this table is the honest interim, not
+ * the end state.
+ */
+const KIT_ID_VARIANTS: Record<string, { entry: keyof typeof ENTRIES; displayName: string }> = {
+  TE_GOLD_VEG: { entry: "TE_GOLD", displayName: "HAIR FACT TE GOLD (Veg)" },
+  PERI_MENOPAUSE_VEG: { entry: "PERI_MENOPAUSE", displayName: "HAIR FACT PERI MENOPAUSE (Veg)" },
+  LACTIHEALTH_VEG: { entry: "LACTIHEALTH", displayName: "LACTIHEALTH (Veg)" },
+  META_B_HYPOTHYROID_VEG: {
+    entry: "META_B_HYPOTHYROID",
+    displayName: "PRO FACT META B - HYPOTHYROID 3 (Veg)",
+  },
+  // Post-menopause is dispensed as its own SKU but routes to the same
+  // menopausal-continuum entry the long spelling already maps to
+  // ("PRO FACT META B POSTMENOPAUSE" -> PERI_MENOPAUSE).
+  POST_MENOPAUSE: { entry: "PERI_MENOPAUSE", displayName: "PRO FACT META B POST-MENOPAUSE" },
+  POST_MENOPAUSE_VEG: {
+    entry: "PERI_MENOPAUSE",
+    displayName: "PRO FACT META B POST-MENOPAUSE (Veg)",
+  },
+};
+
 export function getKitInfo(kitId: string): KitInfo | null {
+  // A variant is checked first: it resolves to the parent's clinical content
+  // with its own name, and the bare resolver would otherwise hand back the
+  // parent's name and hide the distinction.
+  const variant = KIT_ID_VARIANTS[kitId] ?? KIT_ID_VARIANTS[normaliseKitId(kitId)];
+  if (variant) {
+    return { ...ENTRIES[variant.entry], displayName: variant.displayName };
+  }
   const key = resolveEntryKey(kitId);
   if (!key) return null;
   return ENTRIES[key];
@@ -1252,5 +1331,5 @@ export function getKitInfo(kitId: string): KitInfo | null {
  * deciding which kits in the rankedKits list will produce a rich card.
  */
 export function hasKitInfo(kitId: string): boolean {
-  return resolveEntryKey(kitId) !== null;
+  return getKitInfo(kitId) !== null;
 }
