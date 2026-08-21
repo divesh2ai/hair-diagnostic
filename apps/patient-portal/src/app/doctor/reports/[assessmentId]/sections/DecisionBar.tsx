@@ -7,6 +7,7 @@ import {
   ClipboardCheck,
   Loader2,
   MessageSquareWarning,
+  SlidersHorizontal,
   TriangleAlert,
 } from "lucide-react";
 import { reviewHref } from "@/lib/doctor/reviewHref";
@@ -62,7 +63,18 @@ export interface DecisionBarProps {
   revisionRequested: boolean;
   errorMessage: string | null;
   onApprove: () => void;
-  onNeedsRevision: () => void;
+  /**
+   * Open the doctor's own adjustment controls on the protocol above.
+   *
+   * Distinct from `onNeedsRevision`, and the distinction is the point:
+   * "Request changes" is the doctor changing the plan themselves, which they
+   * have the authority to do; "Needs revision" hands the case back for
+   * regeneration. Only the second leaves the doctor's hands, so only the
+   * second is a decision.
+   */
+  onRequestChanges: () => void;
+  /** True while the panel is open, so the control reads as a toggle. */
+  adjustOpen: boolean;
   /** Whether the next-patient lookup has answered. */
   nextResolved: boolean;
   /** Null with `nextResolved` true means the queue really is empty. */
@@ -79,7 +91,8 @@ export function DecisionBar({
   revisionRequested,
   errorMessage,
   onApprove,
-  onNeedsRevision,
+  onRequestChanges,
+  adjustOpen,
   nextResolved,
   nextPatient,
   nextLookupFailed,
@@ -219,14 +232,29 @@ export function DecisionBar({
             </>
           ) : (
             <>
+              {/* The doctor's own authority over the plan. NOT a decision —
+                  it opens the editor above, and nothing is recorded until they
+                  save a lineup or approve. This is the answer to "what do I
+                  press if I disagree", which is why it sits beside Approve
+                  rather than being discoverable somewhere in the protocol. */}
+              {/* Exactly two controls, and their weights say which is which:
+                  a bordered secondary to change the plan, one filled primary
+                  to accept it. "Needs revision" — handing the case back for
+                  regeneration — is NOT here; it lives inside the adjustment
+                  panel, because reaching for it is an escalation from having
+                  tried to adjust. Three same-weight buttons on a decision bar
+                  is what makes a doctor stop and work out which one they
+                  want. */}
               <button
                 type="button"
-                onClick={onNeedsRevision}
+                onClick={onRequestChanges}
+                aria-expanded={adjustOpen}
+                aria-controls="adjust-protocol"
                 disabled={state === "saving"}
-                className="inline-flex items-center gap-1.5 rounded-lg border border-stone-300 bg-white px-3.5 py-2 text-sm font-medium text-slate-700 transition-colors hover:bg-stone-50 disabled:opacity-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-500"
+                className="hd-btn hd-btn-secondary"
               >
-                <MessageSquareWarning className="h-4 w-4" aria-hidden />
-                Needs revision
+                <SlidersHorizontal className="h-4 w-4" aria-hidden />
+                {adjustOpen ? "Hide changes" : "Request changes"}
               </button>
 
               <button

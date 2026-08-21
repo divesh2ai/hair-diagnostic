@@ -3,6 +3,7 @@
 import type { Consultation } from "@shared/types/consultation";
 import { KitLineupEditor } from "../KitLineupEditor";
 import { TopicalsCard } from "@/components/consultation";
+import { ProductImage } from "@/components/kits/ProductImage";
 import { useKitCatalog } from "@/lib/doctor/kitCatalog";
 import {
   buildProtocolItems,
@@ -42,6 +43,27 @@ export interface ProtocolSectionProps {
   onConflict: () => Promise<void> | void;
   /** Staged, unsaved lineup edits — surfaced so approval can be guarded. */
   onDirtyChange?: (dirty: boolean) => void;
+  /**
+   * Whether the doctor has opened the lineup for adjustment.
+   *
+   * The editor is not on screen by default. The common case by a wide margin
+   * is a doctor who agrees with the protocol and approves it, and for them a
+   * permanently open reorder/remove/add panel is a large block of controls
+   * sitting between the plan and the decision — read as something that must be
+   * dealt with before approving. "Request changes" on the decision bar opens
+   * it, which is also the answer to "what do I press to change this".
+   */
+  adjustOpen?: boolean;
+  /** Close the panel and return to the read-only protocol. */
+  onCloseAdjust?: () => void;
+  /**
+   * Hand the case back for regeneration.
+   *
+   * Lives inside the panel rather than on the decision bar because it is the
+   * escalation FROM adjusting: a doctor reaches for it once they have opened
+   * the lineup and concluded the problem is not one to fix by hand.
+   */
+  onEscalate?: () => void;
 }
 
 export function ProtocolSection({
@@ -52,6 +74,9 @@ export function ProtocolSection({
   onSaved,
   onConflict,
   onDirtyChange,
+  adjustOpen = false,
+  onCloseAdjust,
+  onEscalate,
 }: ProtocolSectionProps) {
   const { byKitId } = useKitCatalog();
   const phases = consultation.treatmentPlan.kitPhases;
@@ -63,11 +88,11 @@ export function ProtocolSection({
   return (
     <section aria-labelledby="protocol-heading" className="space-y-5">
       <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
-        <h2
-          id="protocol-heading"
-          className="text-[11px] font-semibold uppercase tracking-[0.16em] text-stone-500"
-        >
-          Treatment protocol
+        <h2 id="protocol-heading" className="hd-step-label">
+          <span className="hd-step-num" aria-hidden>
+            2
+          </span>
+          The plan
         </h2>
         {/* The decision summary. Counts only what the record can prove — see
             ProtocolSummary on why removals are not claimed here. */}
@@ -95,8 +120,16 @@ export function ProtocolSection({
           {items.map((item) => (
             <li
               key={`${item.kitId}-${item.phase}`}
-              className="rounded-xl border border-stone-200 bg-white px-4 py-4 sm:px-5"
+              className="hd-card flex gap-4 px-4 py-4 sm:px-5"
             >
+              {/* The packshot. It is here so the doctor recognises what is
+                  being dispensed and can spot a wrong product at a glance —
+                  a real check, and the reason it is rendered large enough to
+                  read the name printed on the carton. Sizing, padding and the
+                  no-crop rule live in components/kits/ProductImage. */}
+              <ProductImage id={item.kitId} category="kit" size="lg" />
+
+              <div className="min-w-0 flex-1">
               {/* CLINICAL DRIVER → THERAPEUTIC OBJECTIVE → PROTOCOL. The two
                   clinical lines sit above the product name deliberately. */}
               {item.drivers.length > 0 && (
@@ -160,6 +193,7 @@ export function ProtocolSection({
                   </div>
                 </details>
               )}
+              </div>
             </li>
           ))}
         </ol>
@@ -198,11 +232,29 @@ export function ProtocolSection({
           Lineup locked — this consultation is approved and the kit order was
           created from the protocol above.
         </p>
-      ) : (
-        <div className="space-y-2">
-          <h3 className="text-[11px] font-semibold uppercase tracking-[0.16em] text-stone-500">
-            Adjust protocol
-          </h3>
+      ) : !adjustOpen ? null : (
+        <div
+          id="adjust-protocol"
+          className="hd-card space-y-3 border-[color:var(--hd-attention)]/30 bg-[color:var(--hd-attention-tint)] p-4 sm:p-5"
+        >
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <h3 className="hd-eyebrow !text-[color:var(--hd-attention)]">
+              Adjust protocol — doctor authority
+            </h3>
+            {onCloseAdjust && (
+              <button
+                type="button"
+                onClick={onCloseAdjust}
+                className="hd-btn hd-btn-secondary !px-3 !py-1.5 !text-xs"
+              >
+                Done adjusting
+              </button>
+            )}
+          </div>
+          <p className="hd-label text-xs">
+            Reorder, remove or add kits. Saving creates a new version of this
+            consultation; approval then acts on the lineup you leave here.
+          </p>
           <KitLineupEditor
             assessmentId={assessmentId}
             consultation={consultation}
@@ -211,6 +263,18 @@ export function ProtocolSection({
             onConflict={onConflict}
             onDirtyChange={onDirtyChange}
           />
+          {onEscalate && (
+            <div className="hd-divide-t pt-3">
+              <p className="hd-label text-xs">Not something to fix by hand?</p>
+              <button
+                type="button"
+                onClick={onEscalate}
+                className="hd-btn hd-btn-secondary mt-1.5 !px-3 !py-1.5 !text-xs"
+              >
+                Send back for revision
+              </button>
+            </div>
+          )}
         </div>
       )}
     </section>

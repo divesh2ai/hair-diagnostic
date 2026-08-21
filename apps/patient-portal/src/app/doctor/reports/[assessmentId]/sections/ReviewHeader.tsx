@@ -4,6 +4,7 @@ import { User, Phone, Mail, Building2, MessageCircle } from "lucide-react";
 import type { ConsultationPatient } from "@shared/types/consultation";
 import type { ReviewVisitContext } from "@/lib/consultation/loadReview";
 import { waitingTime } from "@/lib/format/waitingTime";
+import { useHydrated } from "@/lib/format/useHydrated";
 
 // WHO IS THIS PATIENT? — the first question the review answers.
 //
@@ -73,6 +74,15 @@ export function ReviewHeader({
   contentVersion,
   statusSlot,
 }: ReviewHeaderProps) {
+  // Rendered by the browser, never by the server.
+  //
+  // `toLocaleString` formats in the runtime's locale and time zone. This page
+  // server-renders, so the server emitted ITS reading of the moment — a
+  // hydration mismatch locally, and on Vercel a UTC timestamp shown to a
+  // doctor who is not in UTC. Waiting for the client is what keeps the time
+  // the reader's own. `waitingTime` needs no gate: arithmetic on a UTC instant
+  // is already runtime-independent.
+  const hydrated = useHydrated();
   const relationship = visit?.patientRelationship ?? null;
   const intentLabel = visit?.visitType ? VISIT_INTENT_LABELS[visit.visitType] : null;
   const pathwayLabel = visit?.reviewPathway ? PATHWAY_LABELS[visit.reviewPathway] : null;
@@ -134,7 +144,7 @@ export function ReviewHeader({
           </div>
 
           <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-stone-500">
-            {submitted && (
+            {submitted && hydrated && (
               <span>
                 Submitted{" "}
                 <time dateTime={submitted.toISOString()}>

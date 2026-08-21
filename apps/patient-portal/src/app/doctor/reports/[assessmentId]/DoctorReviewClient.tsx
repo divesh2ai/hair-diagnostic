@@ -5,21 +5,26 @@ import Link from "next/link";
 import { ArrowLeft, Check, Flag, MessageCircle, ShieldAlert } from "lucide-react";
 import { toast } from "sonner";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
+import { useHydrated } from "@/lib/format/useHydrated";
+import "@/styles/doctor-tokens.css";
 import type { Consultation, DoctorNote } from "@shared/types/consultation";
 import type {
   ConsultationMeta,
   ConsultationOperationalState,
 } from "@/lib/consultation/meta";
 import type { ReviewVisitContext } from "@/lib/consultation/loadReview";
+import type {
+  ReviewPayload,
+  ReviewPayloadError,
+} from "@/lib/consultation/reviewPayload";
 import { ReportActions } from "@/components/ui/ReportActions";
 import { extractSafetyFlags } from "@/lib/doctor/clinicalAttention";
 import { summarizeProtocol } from "@/lib/doctor/protocolModel";
 import { ReviewHeader } from "./sections/ReviewHeader";
-import { FindingsSection } from "./sections/FindingsSection";
-import { WhySection } from "./sections/WhySection";
 import { ClinicalAttentionSection } from "./sections/ClinicalAttentionSection";
 import { ProtocolSection } from "./sections/ProtocolSection";
 import { SecondaryDetail } from "./sections/SecondaryDetail";
+import { ClinicalSummarySection } from "./sections/ClinicalSummarySection";
 import { DecisionBar, type DecisionState } from "./sections/DecisionBar";
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -27,18 +32,23 @@ import { DecisionBar, type DecisionState } from "./sections/DecisionBar";
 //
 // The page reads in the order a clinician actually thinks:
 //
-//   WHO      ReviewHeader
-//   WHAT     FindingsSection
-//   WHY      WhySection
-//   ATTENTION ClinicalAttentionSection   (renders nothing when nothing is wrong)
-//   TREATING ProtocolSection             (driver → objective → protocol + editor)
-//   DETAIL   SecondaryDetail             (reference only; never the answer)
-//   DECIDE   DecisionBar                 (sticky; states what it will approve)
+//   WHO      ReviewHeader — who is this, and how long have they waited
+//   1 · THE CASE       ClinicalSummarySection  — picture, evidence, meaning
+//   ! · ATTENTION      ClinicalAttentionSection (silent when nothing is wrong)
+//   2 · THE PLAN       ProtocolSection          — what is being dispensed
+//   3 · DECIDE         DecisionBar              — sticky, one primary action
+//       REFERENCE      SecondaryDetail          — never required to decide
 //
-// Everything above the decision bar is the case. Nothing in the detail tabs is
-// required to reach a decision — that was the whole defect of the previous
-// layout, where the treatment plan and the approve button lived in different
-// places and the doctor had to hold one in their head while looking at the other.
+// ── The numbering is the workflow ───────────────────────────────────────────
+// A doctor should never have to work out where to look or what to press next.
+// The steps are numbered on screen, they always appear in the same order, and
+// exactly one filled green button exists at any moment — the decision bar's.
+// Everything else is a bordered secondary control.
+//
+// The questionnaire is NOT on this page. ClinicalSummarySection shows only the
+// options the patient actually selected, grouped clinically, beside the
+// engine's own reading of them. The twenty-question transcript lives behind
+// "View full assessment" and nowhere else.
 //
 // This component owns data loading and the decision lifecycle. It does not own
 // clinical judgement: no scoring, no ranking, no rules. It renders persisted
@@ -171,25 +181,52 @@ function isRetryable(code: ReviewErrorCode | undefined): boolean {
 export function DoctorReviewClient({
   assessmentId,
   shareToken,
+  initialData = null,
+  initialError = null,
 }: {
   assessmentId: string;
   shareToken?: string;
+  /**
+   * The review, already resolved on the server. See page.tsx: with it, the
+   * case is in the server-rendered HTML instead of arriving one round trip
+   * after hydration.
+   */
+  initialData?: ReviewPayload | null;
+  /** A server-side failure, so the error state also renders without a fetch. */
+  initialError?: ReviewPayloadError | null;
 }) {
   // ── Review data (CORE) ────────────────────────────────────────────────────
-  const [consultation, setConsultation] = useState<Consultation | null>(null);
-  const [meta, setMeta] = useState<ConsultationMeta | null>(null);
-  const [error, setError] = useState<CoreLoadError | null>(null);
+  const [consultation, setConsultation] = useState<Consultation | null>(
+    initialData?.consultation ?? null,
+  );
+  const [meta, setMeta] = useState<ConsultationMeta | null>(initialData?.meta ?? null);
+  const [error, setError] = useState<CoreLoadError | null>(
+    initialError
+      ? {
+          code: initialError.error,
+          message: initialError.message,
+          requestId: initialError.requestId,
+          retryable: isRetryable(initialError.error),
+        }
+      : null,
+  );
   // Explicit domain state rather than a set of independent booleans: "loading"
   // and "core_error" are mutually exclusive, and modelling them as two flags
   // is what allowed an error screen and a skeleton to both be reachable.
-  const [loadState, setLoadState] = useState<ReviewLoadState>("loading");
+  const [loadState, setLoadState] = useState<ReviewLoadState>(
+    initialData ? "ready" : initialError ? "core_error" : "loading",
+  );
   /** Internal codes from the API describing thin/incomplete stored data. */
-  const [coreDegradedReasons, setCoreDegradedReasons] = useState<string[]>([]);
+  const [coreDegradedReasons, setCoreDegradedReasons] = useState<string[]>(
+    initialData?.core?.degradedReasons ?? [],
+  );
 
   // ── Optional context — a null here costs a chip, never the review ────────
   const [operational, setOperational] =
-    useState<ConsultationOperationalState | null>(null);
-  const [visit, setVisit] = useState<ReviewVisitContext | null>(null);
+    useState<ConsultationOperationalState | null>(initialData?.operational ?? null);
+  const [visit, setVisit] = useState<ReviewVisitContext | null>(
+    initialData?.visit ?? null,
+  );
 
   // ── Decision lifecycle ────────────────────────────────────────────────────
   //
@@ -205,6 +242,13 @@ export function DoctorReviewClient({
   // ── Protocol editing ──────────────────────────────────────────────────────
   /** Staged, unsaved kit edits. Guards approval — see DecisionBar. */
   const [lineupDirty, setLineupDirty] = useState(false);
+  /**
+   * Whether the doctor has opened the lineup for adjustment.
+   *
+   * Closed by default — see ProtocolSection. Staged edits hold it open:
+   * closing under an unsaved change would hide the reason approval is blocked.
+   */
+  const [adjustOpen, setAdjustOpen] = useState(false);
 
   // ── Notes / feedback (clinical supporting actions) ────────────────────────
   const [note, setNote] = useState("");
@@ -295,8 +339,14 @@ export function DoctorReviewClient({
     }
   }, [assessmentId]);
 
+  // The server already resolved this review (see page.tsx), so the first
+  // render is the finished case and there is nothing to fetch. Re-running the
+  // mount fetch would spend a round trip re-fetching bytes already on screen.
+  const needsClientLoad = useRef(!initialData && !initialError);
+
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
+    if (!needsClientLoad.current) return;
+    needsClientLoad.current = false;
     void load();
   }, [load]);
 
@@ -602,7 +652,9 @@ export function DoctorReviewClient({
     // leaving the case squeezed beside empty space would be an artefact of a
     // component that no longer exists. Prose inside each section is separately
     // capped so the lines stay readable at 1440.
-    <div className="mx-auto w-full max-w-4xl space-y-8">
+    // `data-surface="doctor"` scopes the HairOS Doctor token layer to this
+    // tree — see styles/doctor-tokens.css for why the tokens are not global.
+    <div data-surface="doctor" className="mx-auto w-full max-w-5xl space-y-7">
       <BackLink />
 
       {/* 1 · WHO IS THIS PATIENT? ──────────────────────────────────────────── */}
@@ -625,23 +677,10 @@ export function DoctorReviewClient({
 
       <ErrorBoundary title="Consultation could not be displayed">
         <div className="space-y-8">
-          {/* 2 · WHAT IS HAPPENING? ─────────────────────────────────────────── */}
-          <FindingsSection
-            diagnosis={consultation.diagnosis}
-            rootCause={consultation.rootCause}
-            clinicalFindings={consultation.clinicalFindings}
-          />
+          {/* 1 · THE CASE ─────────────────────────────────────────────── */}
+          <ClinicalSummarySection consultation={consultation} />
 
-          <hr className="border-stone-200" />
-
-          {/* 3 · WHY DOES DR FACT THINK THIS? ───────────────────────────────── */}
-          <WhySection
-            rootCause={consultation.rootCause}
-            evidence={consultation.evidence}
-            confidence={consultation.confidence}
-          />
-
-          {/* 4 · WHAT NEEDS ATTENTION? — renders nothing when nothing does. */}
+          {/* ATTENTION — renders nothing at all when nothing is wrong. */}
           <ClinicalAttentionSection
             confidence={consultation.confidence}
             readiness={meta.clinicalReadiness ?? null}
@@ -649,9 +688,12 @@ export function DoctorReviewClient({
             safety={safetyFlags}
           />
 
-          <hr className="border-stone-200" />
-
-          {/* 5+6 · WHAT ARE WE TREATING, AND WHY? ───────────────────────────── */}
+          {/* 2 · THE PLAN ─────────────────────────────────────────────────
+              The kit editor is NOT here by default. Most reviews end in
+              approval of the protocol as composed, and a permanently open
+              reorder/remove panel between the plan and the decision reads as
+              work that must be done before approving. "Request changes" on the
+              decision bar opens it. */}
           <ProtocolSection
             consultation={consultation}
             assessmentId={assessmentId}
@@ -663,9 +705,12 @@ export function DoctorReviewClient({
             }}
             onConflict={load}
             onDirtyChange={setLineupDirty}
+            adjustOpen={adjustOpen}
+            onCloseAdjust={lineupDirty ? undefined : () => setAdjustOpen(false)}
+            onEscalate={() => setRevisionOpen(true)}
           />
 
-          <hr className="border-stone-200" />
+          <hr className="hd-divide-t border-0" />
 
           {/* Secondary reference. Never required to reach a decision. */}
           <SecondaryDetail
@@ -708,7 +753,20 @@ export function DoctorReviewClient({
         revisionRequested={revisionRequested}
         errorMessage={decisionError}
         onApprove={() => approveAndCreateOrder()}
-        onNeedsRevision={() => setRevisionOpen(true)}
+        adjustOpen={adjustOpen}
+        onRequestChanges={() => {
+          const opening = !adjustOpen;
+          setAdjustOpen(opening);
+          // Opening a panel the doctor cannot see is the same as not opening
+          // it — the editor sits above a sticky decision bar.
+          if (opening) {
+            requestAnimationFrame(() => {
+              document
+                .getElementById("adjust-protocol")
+                ?.scrollIntoView({ behavior: "smooth", block: "center" });
+            });
+          }
+        }}
         nextResolved={nextResolved}
         nextPatient={nextPatient}
         nextLookupFailed={nextLookupFailed}
@@ -763,6 +821,13 @@ function DoctorNotesBlock({
   notes: DoctorNote[];
   onFlagIssue: () => void;
 }) {
+  // Note timestamps are locale- and time-zone-formatted, so the browser
+  // renders them, not the server. Now that this page server-renders, a
+  // consultation that already carries notes would otherwise emit the SERVER's
+  // reading of the moment — and the server runs in UTC, so a doctor would read
+  // a UTC time as their own.
+  const hydrated = useHydrated();
+
   return (
     <section aria-labelledby="notes-heading" className="space-y-3">
       <h2
@@ -810,7 +875,7 @@ function DoctorNotesBlock({
             <li key={n.id} className="text-xs text-slate-700">
               <p className="max-w-prose">{n.body}</p>
               <p className="text-[10px] text-stone-400">
-                {new Date(n.createdAt).toLocaleString()}
+                {hydrated ? new Date(n.createdAt).toLocaleString() : null}
               </p>
             </li>
           ))}
@@ -839,6 +904,27 @@ function DeliveryBlock({
   shareToken?: string;
   operational: ConsultationOperationalState | null;
 }) {
+  // ── Why the origin is read after mount ────────────────────────────────────
+  //
+  // This was inlined as
+  //   `${typeof window !== "undefined" ? window.location.origin : ""}`
+  // which is the first cause React lists for a hydration mismatch: the server
+  // renders the message with an EMPTY origin and the client with a real one,
+  // so the two hrefs disagree and React bails out of patching the tree.
+  //
+  // It is not merely cosmetic. The server-rendered href read
+  // `…confirm your kit order here: /cart/<id>` — a bare relative path. A
+  // doctor clicking before hydration would have sent a PATIENT a WhatsApp
+  // message containing a link that goes nowhere.
+  //
+  // Read from the browser rather than NEXT_PUBLIC_APP_URL, matching
+  // ClinicQrPanel: a stale or unset env var would put a host that does not
+  // serve this clinic into a message sent to a real patient.
+  const hydrated = useHydrated();
+  const cartUrl = hydrated
+    ? `${window.location.origin}/cart/${assessmentId}`
+    : null;
+
   return (
     <section aria-labelledby="delivery-heading" className="space-y-3">
       <h2
@@ -865,10 +951,12 @@ function DeliveryBlock({
               {operational.orderIntentStatus ?? "READY_FOR_FULFILMENT"}
             </p>
             <div className="flex flex-wrap gap-2">
-              {patient.phone && (
+              {/* Rendered only once the origin is known. A send button that
+                  composes a broken link is worse than one briefly absent. */}
+              {patient.phone && cartUrl && (
                 <a
                   href={`https://wa.me/${patient.phone.replace(/[^0-9]/g, "")}?text=${encodeURIComponent(
-                    `Hi ${patient.name?.split(" ")[0] ?? ""}, your Dr FACT plan is ready. Review and confirm your kit order here: ${typeof window !== "undefined" ? window.location.origin : ""}/cart/${assessmentId}`,
+                    `Hi ${patient.name?.split(" ")[0] ?? ""}, your Dr FACT plan is ready. Review and confirm your kit order here: ${cartUrl}`,
                   )}`}
                   target="_blank"
                   rel="noreferrer"
@@ -1444,13 +1532,20 @@ function ReportStatePill({
   );
 }
 
+/**
+ * Back to the Doctor Action Center — `/doctor`, not `/doctor/reports`.
+ *
+ * The dashboard is where a session starts and where "who needs me next" is
+ * answered; the review queue is one list inside it. Landing a doctor on the
+ * queue drops them a level below the screen they navigated from.
+ */
 function BackLink() {
   return (
     <Link
-      href="/doctor/reports"
-      className="inline-flex items-center gap-1 text-sm text-sky-600 hover:text-sky-700"
+      href="/doctor"
+      className="hd-label inline-flex items-center gap-1.5 hover:underline"
     >
-      <ArrowLeft className="h-4 w-4" aria-hidden /> Back to reports
+      <ArrowLeft className="h-4 w-4" aria-hidden /> Back to dashboard
     </Link>
   );
 }

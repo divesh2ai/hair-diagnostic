@@ -6,6 +6,7 @@ import {
   Noto_Sans_Devanagari,
   Plus_Jakarta_Sans,
   Inter,
+  DM_Serif_Display,
 } from "next/font/google";
 import { Toaster } from "@/components/ui/toast";
 import { AssistantCompanionProvider } from "@/components/assistant/AssistantCompanion";
@@ -39,6 +40,17 @@ const inter = Inter({
   subsets: ["latin"],
 });
 
+// Display accent for the Doctor workspace. Loaded here because next/font must
+// run at the root, but APPLIED only inside the scoped doctor token layer
+// (styles/doctor-tokens.css) — no other surface changes typeface because this
+// exists. Used sparingly: the leading clinical headline.
+const dmSerifDisplay = DM_Serif_Display({
+  variable: "--font-dm-serif",
+  subsets: ["latin"],
+  weight: ["400"],
+  display: "swap",
+});
+
 // Devanagari coverage for the Hindi patient assessment. None of the fonts above
 // ship Devanagari glyphs, so without this the browser silently falls back to a
 // system face (Nirmala UI / Noto) with different metrics and inconsistent
@@ -65,7 +77,7 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={`${geistSans.variable} ${geistMono.variable} ${fraunces.variable} ${jakarta.variable} ${inter.variable} ${notoDevanagari.variable} h-full antialiased`}
+      className={`${geistSans.variable} ${geistMono.variable} ${fraunces.variable} ${jakarta.variable} ${inter.variable} ${dmSerifDisplay.variable} ${notoDevanagari.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col">
         <AssistantCompanionProvider>

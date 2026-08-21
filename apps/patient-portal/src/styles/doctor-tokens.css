@@ -1,0 +1,328 @@
+/*
+ * HairOS Doctor design tokens — SCOPED, never global.
+ *
+ * ── Why a scoped layer and not globals.css ──────────────────────────────────
+ * globals.css is shared by the patient assessment, the report, the admin
+ * console and the clinic surfaces. Redefining the platform palette there to
+ * restyle one clinical screen would silently repaint five products, and the
+ * blast radius would only show up in review.
+ *
+ * Everything below is defined on `[data-surface="doctor"]`. A tree without
+ * that attribute is byte-for-byte unaffected. The Doctor Review page sets it
+ * on its root and is the reference implementation; future Doctor surfaces opt
+ * in by setting the same attribute.
+ *
+ * ── The colour thesis ───────────────────────────────────────────────────────
+ * A clinical workspace that is all grey reads as unfinished, and a doctor
+ * scanning it has nothing to navigate by. So colour is used generously here —
+ * but every hue MEANS something, and the meaning is stable:
+ *
+ *   HairOS green   the one action to take, and the treatment objective
+ *   Violet         hair & shedding — the presenting complaint
+ *   Cyan           scalp — the site
+ *   Amber          lifestyle — modifiable contributors
+ *   Blue           medical & metabolic — systemic contributors
+ *   Slate          previous treatments — history
+ *   Rose / amber   severity, and only severity
+ *
+ * A doctor learns "blue means systemic" once and then finds it instantly on
+ * every case. That is colour doing navigational work. What it must never do is
+ * decorate: no hue appears here that does not stand for a category or a state,
+ * and the accents are keyed off stable identities in the view model, not off
+ * display labels that could be renamed.
+ *
+ * Each family is a triple — `-ink` for text, `-tint` for fills, `-edge` for
+ * the rail on the left of a card. Same lightness relationship across all five,
+ * so no category shouts louder than another; the emphasis a finding carries
+ * comes from the engine, not from its colour.
+ *
+ * ── Typography ──────────────────────────────────────────────────────────────
+ * Inter carries the interface and all clinical body text. DM Serif Display is
+ * an accent — the leading clinical headline, nowhere else. The faces are
+ * loaded by the root layout (next/font); this file only decides where they
+ * apply, which is what keeps the change scoped.
+ */
+
+[data-surface="doctor"] {
+  /* ── Ground ── */
+  --hd-bg: #f6f8f9;
+  --hd-surface: #ffffff;
+  --hd-surface-sunken: #f1f5f5;
+  --hd-border: #e2e8e8;
+  --hd-border-strong: #cbd5d5;
+  --hd-text: #142027;
+  --hd-text-secondary: #5c6b73;
+  --hd-text-muted: #8697a0;
+
+  /* ── HairOS green — action and objective only ── */
+  --hd-primary: #087f68;
+  --hd-primary-dark: #056653;
+  --hd-primary-tint: #e3f3ef;
+
+  /* ── Clinical category accents ── */
+  --hd-hair-ink: #6d43a8;
+  --hd-hair-tint: #f2edfa;
+  --hd-hair-edge: #a685d4;
+
+  --hd-scalp-ink: #0f7490;
+  --hd-scalp-tint: #e4f4f8;
+  --hd-scalp-edge: #5eafc6;
+
+  --hd-lifestyle-ink: #9a5c11;
+  --hd-lifestyle-tint: #fdf3e2;
+  --hd-lifestyle-edge: #dda548;
+
+  --hd-medical-ink: #2258a8;
+  --hd-medical-tint: #e8f0fb;
+  --hd-medical-edge: #6f9ede;
+
+  --hd-history-ink: #4a5a68;
+  --hd-history-tint: #eef2f5;
+  --hd-history-edge: #93a5b3;
+
+  /* ── State ── */
+  --hd-attention: #b7791f;
+  --hd-attention-tint: #fdf6e8;
+  --hd-critical: #b54747;
+  --hd-critical-tint: #fbeeee;
+  --hd-success: #067a5b;
+  --hd-success-tint: #e5f4ef;
+  --hd-info: #4b6b7a;
+  --hd-info-tint: #eef3f5;
+
+  --hd-radius: 16px;
+  --hd-radius-sm: 10px;
+  --hd-shadow: 0 1px 2px rgba(20, 32, 39, 0.05);
+  --hd-shadow-lift: 0 6px 20px -12px rgba(20, 32, 39, 0.28);
+
+  --hd-font: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+  --hd-font-display: var(--font-dm-serif), Georgia, serif;
+
+  background-color: var(--hd-bg);
+  color: var(--hd-text);
+  font-family: var(--hd-font);
+}
+
+/* ── Category binding ─────────────────────────────────────────────────────────
+ * One attribute on the group element resolves all three roles, so a component
+ * writes `data-cat="MEDICAL"` and never names a colour.
+ */
+[data-surface="doctor"] [data-cat="HAIR"] { --cat-ink: var(--hd-hair-ink); --cat-tint: var(--hd-hair-tint); --cat-edge: var(--hd-hair-edge); }
+[data-surface="doctor"] [data-cat="SCALP"] { --cat-ink: var(--hd-scalp-ink); --cat-tint: var(--hd-scalp-tint); --cat-edge: var(--hd-scalp-edge); }
+[data-surface="doctor"] [data-cat="LIFESTYLE"] { --cat-ink: var(--hd-lifestyle-ink); --cat-tint: var(--hd-lifestyle-tint); --cat-edge: var(--hd-lifestyle-edge); }
+[data-surface="doctor"] [data-cat="MEDICAL"] { --cat-ink: var(--hd-medical-ink); --cat-tint: var(--hd-medical-tint); --cat-edge: var(--hd-medical-edge); }
+[data-surface="doctor"] [data-cat="TREATMENTS"] { --cat-ink: var(--hd-history-ink); --cat-tint: var(--hd-history-tint); --cat-edge: var(--hd-history-edge); }
+
+/* A category block: tinted ground, coloured rail, coloured heading. */
+[data-surface="doctor"] .hd-cat {
+  border-left: 3px solid var(--cat-edge, var(--hd-border-strong));
+  background: var(--cat-tint, transparent);
+  border-radius: 0 var(--hd-radius-sm) var(--hd-radius-sm) 0;
+  padding: 10px 12px;
+}
+
+[data-surface="doctor"] .hd-cat-title {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--cat-ink, var(--hd-text-secondary));
+}
+
+/* ── Step rhythm ─────────────────────────────────────────────────────────────
+ * The page is a sequence, not a collection. The numbers answer "where am I and
+ * what comes next" — 1 → 2 → decide, in that order, every time. Numbering is
+ * information here, not decoration: the order IS the workflow.
+ */
+
+[data-surface="doctor"] .hd-step-label {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  font-size: 11.5px;
+  font-weight: 700;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: var(--hd-text-secondary);
+}
+
+[data-surface="doctor"] .hd-step-num {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 20px;
+  height: 20px;
+  border-radius: 999px;
+  background: var(--hd-primary);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ── Surfaces ─────────────────────────────────────────────────────────────── */
+
+[data-surface="doctor"] .hd-card {
+  background: var(--hd-surface);
+  border: 1px solid var(--hd-border);
+  border-radius: var(--hd-radius);
+  box-shadow: var(--hd-shadow);
+}
+
+/* The hero band. A whisper of the brand hue behind the clinical picture so the
+   top of the case reads as the top of the case. */
+[data-surface="doctor"] .hd-hero {
+  background:
+    linear-gradient(180deg, var(--hd-primary-tint) 0%, rgba(255, 255, 255, 0) 62%),
+    var(--hd-surface);
+}
+
+[data-surface="doctor"] .hd-eyebrow {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: var(--hd-text-muted);
+}
+
+[data-surface="doctor"] .hd-label { font-size: 13px; color: var(--hd-text-secondary); }
+[data-surface="doctor"] .hd-value { font-size: 14px; color: var(--hd-text); }
+
+/* The only place the display face carries a clinical statement. */
+[data-surface="doctor"] .hd-headline {
+  font-family: var(--hd-font-display);
+  font-weight: 400;
+  font-size: 27px;
+  line-height: 1.18;
+  letter-spacing: -0.006em;
+  color: var(--hd-text);
+  text-wrap: balance;
+}
+
+[data-surface="doctor"] .hd-body {
+  font-size: 15px;
+  line-height: 1.62;
+  color: var(--hd-text-secondary);
+  max-width: 68ch;
+}
+
+[data-surface="doctor"] .hd-objective {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--hd-primary-dark);
+}
+
+/* The clinical pattern a signal was matched to. Set as the patient's own
+   report sets it, so a doctor reading both recognises the same line. */
+[data-surface="doctor"] .hd-condition {
+  display: inline-block;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: var(--hd-scalp-ink);
+  background: var(--hd-scalp-tint);
+  border-radius: 999px;
+  padding: 2px 8px;
+}
+
+[data-surface="doctor"] .hd-divide-t { border-top: 1px solid var(--hd-border); }
+[data-surface="doctor"] .hd-divide-b { border-bottom: 1px solid var(--hd-border); }
+
+@media (min-width: 1024px) {
+  [data-surface="doctor"] .hd-divide-b { border-bottom: 0; }
+  [data-surface="doctor"] .hd-divide-r-lg { border-right: 1px solid var(--hd-border); }
+}
+
+[data-surface="doctor"] .hd-bullet {
+  margin-top: 0.62em;
+  height: 5px;
+  width: 5px;
+  flex: none;
+  border-radius: 999px;
+  background: var(--cat-edge, var(--hd-border-strong));
+}
+
+/* ── Pills ───────────────────────────────────────────────────────────────── */
+
+[data-surface="doctor"] .hd-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border-radius: 999px;
+  padding: 3px 11px;
+  font-size: 11px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+[data-surface="doctor"] .hd-pill-neutral { background: var(--hd-surface-sunken); color: var(--hd-text-secondary); }
+[data-surface="doctor"] .hd-pill-attention { background: var(--hd-attention-tint); color: var(--hd-attention); }
+[data-surface="doctor"] .hd-pill-critical { background: var(--hd-critical-tint); color: var(--hd-critical); }
+[data-surface="doctor"] .hd-pill-primary { background: var(--hd-primary-tint); color: var(--hd-primary-dark); }
+[data-surface="doctor"] .hd-pill-success { background: var(--hd-success-tint); color: var(--hd-success); }
+[data-surface="doctor"] .hd-pill-info { background: var(--hd-info-tint); color: var(--hd-info); }
+
+/* ── Actions ──────────────────────────────────────────────────────────────────
+ * Exactly one primary per screen state. The doctor never has to work out which
+ * control is the next step: the filled green button is, and there is only ever
+ * one of it.
+ */
+
+[data-surface="doctor"] .hd-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  border-radius: var(--hd-radius-sm);
+  padding: 9px 16px;
+  font-size: 14px;
+  font-weight: 600;
+  transition: background-color 120ms ease, border-color 120ms ease,
+    box-shadow 120ms ease, transform 120ms ease;
+  white-space: nowrap;
+}
+
+[data-surface="doctor"] .hd-btn-primary {
+  background: var(--hd-primary);
+  color: #fff;
+  border: 1px solid var(--hd-primary);
+  box-shadow: var(--hd-shadow-lift);
+}
+[data-surface="doctor"] .hd-btn-primary:hover:not(:disabled) {
+  background: var(--hd-primary-dark);
+  border-color: var(--hd-primary-dark);
+}
+
+[data-surface="doctor"] .hd-btn-secondary {
+  background: var(--hd-surface);
+  color: var(--hd-text);
+  border: 1px solid var(--hd-border-strong);
+}
+[data-surface="doctor"] .hd-btn-secondary:hover:not(:disabled) {
+  background: var(--hd-surface-sunken);
+  border-color: var(--hd-primary);
+}
+
+[data-surface="doctor"] .hd-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+  box-shadow: none;
+}
+
+/* Motion is a courtesy, not a feature — and never at the cost of a clinician
+   who has asked the OS to stop it. */
+@media (prefers-reduced-motion: reduce) {
+  [data-surface="doctor"] .hd-btn { transition: none; }
+}
+
+/* ── Focus ────────────────────────────────────────────────────────────────── */
+
+/* One visible treatment for the whole surface. A keyboard user on a clinical
+   screen must always see where they are before pressing a key that authorises
+   treatment. */
+[data-surface="doctor"] :focus-visible {
+  outline: 2px solid var(--hd-primary);
+  outline-offset: 2px;
+  border-radius: 4px;
+}

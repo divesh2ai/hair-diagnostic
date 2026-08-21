@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useHydrated } from "@/lib/format/useHydrated";
 import { History, ShieldCheck } from "lucide-react";
 import type { Consultation } from "@shared/types/consultation";
 import {
@@ -47,6 +48,8 @@ export function SecondaryDetail({
   consultation,
   contentVersion,
 }: SecondaryDetailProps) {
+  // Audit timestamps are locale-formatted; same rule as ReviewHeader.
+  const hydrated = useHydrated();
   const [tab, setTab] = useState<DetailTab>("assessment");
 
   // Newest first — the last thing that happened is the thing being asked about.
@@ -93,10 +96,11 @@ export function SecondaryDetail({
       >
         {tab === "assessment" && (
           <>
-            <DetailBlock title="Assessment responses">
-              <QuestionnaireList answers={consultation.assessment.rawAnswers} />
-            </DetailBlock>
-
+            {/* "Assessment responses" is no longer here. The raw
+                Object.entries dump of every question — blank rows for empty
+                multi-selects included — was the original defect. Selections
+                now sit in ClinicalSummarySection, and the complete
+                questionnaire is behind "View full assessment". */}
             {consultation.clinicalFindings.length > 0 && (
               <DetailBlock title="Signal interpretation">
                 <ClinicalFindingsCard findings={consultation.clinicalFindings} />
@@ -190,7 +194,7 @@ export function SecondaryDetail({
                             {ev.kind.toLowerCase()}
                           </p>
                           <p className="text-[10px] text-stone-400">
-                            {new Date(ev.at).toLocaleString()}
+                            {hydrated ? new Date(ev.at).toLocaleString() : null}
                             {ev.note ? ` · ${ev.note}` : ""}
                           </p>
                         </div>
@@ -220,43 +224,4 @@ function DetailBlock({
       {children}
     </div>
   );
-}
-
-function QuestionnaireList({ answers }: { answers: Record<string, unknown> }) {
-  const entries = Object.entries(answers ?? {}).filter(
-    ([, v]) => v !== null && v !== undefined && v !== "",
-  );
-  if (entries.length === 0) {
-    return (
-      <p className="rounded-xl border border-stone-200 bg-stone-50 p-4 text-sm text-stone-600">
-        No questionnaire responses recorded.
-      </p>
-    );
-  }
-  return (
-    <dl className="divide-y divide-stone-100 rounded-xl border border-stone-200 bg-white">
-      {entries.map(([k, v]) => (
-        <div
-          key={k}
-          className="grid grid-cols-1 gap-1 px-4 py-2.5 sm:grid-cols-[220px_1fr] sm:gap-4"
-        >
-          <dt className="truncate text-xs font-medium text-stone-500">{k}</dt>
-          <dd className="break-words text-sm text-slate-800">{formatAnswer(v)}</dd>
-        </div>
-      ))}
-    </dl>
-  );
-}
-
-function formatAnswer(value: unknown): string {
-  if (value === null || value === undefined) return "—";
-  if (Array.isArray(value)) return value.map((x) => formatAnswer(x)).join(", ");
-  if (typeof value === "object") {
-    try {
-      return JSON.stringify(value);
-    } catch {
-      return String(value);
-    }
-  }
-  return String(value);
 }
