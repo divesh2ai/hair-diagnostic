@@ -90,6 +90,66 @@
   --hd-info: #4b6b7a;
   --hd-info-tint: #eef3f5;
 
+  /* ── Workflow status ──────────────────────────────────────────────────────
+   * WHERE A CASE STANDS, as distinct from what a finding is ABOUT. The
+   * category accents above answer "which part of the body"; these answer
+   * "whose turn is it". They never appear on the same element.
+   *
+   * The meanings are fixed and are the ones lib/doctor/clinicalStanding
+   * produces — a surface may not invent a seventh state or reuse one of these
+   * hues for anything else:
+   *
+   *   done      the doctor has signed off; nothing is owed
+   *   action    the DOCTOR is the blocker — a finished report is unread
+   *   working   the SYSTEM is busy; nothing owed by anyone
+   *   fail      failed or refused; a human must look
+   *   future    scheduled, not yet happened
+   *   idle      nothing has happened
+   *
+   * `done` and `fail` alias the state tokens above rather than introducing new
+   * hues, so a chip here and a severity mark on the review page cannot drift
+   * apart. `action` and `idle` deliberately do NOT alias — see below.
+   *
+   * NOTE on the two new hues: `working` shares its family with the SCALP
+   * category and `future` with HAIR. That is tolerable because no registry
+   * surface renders clinical categories and no review surface renders workflow
+   * status — but if the two ever meet on one screen, `future` is the one to
+   * move, since scheduling is the newer idea.
+   */
+  --hd-st-done-ink: var(--hd-success);
+  --hd-st-done-tint: var(--hd-success-tint);
+  --hd-st-done-edge: #34a383;
+
+  /* Darker than --hd-attention (#b7791f), and that is the whole point.
+   * These chips are 11.5px text on their own tint, where #b7791f measures
+   * 3.38:1 — under the 4.5:1 WCAG AA floor for normal text. --hd-attention
+   * itself is fine where it is used on the review page, as a mark rather than
+   * as small type on a fill, so it is left alone and this one is given its own
+   * value at 5.2:1. Amber is still amber; it is simply readable. */
+  --hd-st-action-ink: #8f5d0d;
+  --hd-st-action-tint: var(--hd-attention-tint);
+  --hd-st-action-edge: #dda548;
+
+  --hd-st-working-ink: #0f7490;
+  --hd-st-working-tint: #e4f4f8;
+  --hd-st-working-edge: #5eafc6;
+
+  --hd-st-fail-ink: var(--hd-critical);
+  --hd-st-fail-tint: var(--hd-critical-tint);
+  --hd-st-fail-edge: #d98080;
+
+  --hd-st-future-ink: #6d43a8;
+  --hd-st-future-tint: #f2edfa;
+  --hd-st-future-edge: #a685d4;
+
+  /* --hd-text-muted on the sunken surface is 2.75:1. Muted grey is the right
+   * INTENT for "nothing has happened", but a label nobody can read is not a
+   * quieter label, it is a missing one — so this steps up to the secondary ink
+   * at 5.0:1 and stays visually recessive through the tint instead. */
+  --hd-st-idle-ink: var(--hd-text-secondary);
+  --hd-st-idle-tint: var(--hd-surface-sunken);
+  --hd-st-idle-edge: var(--hd-border-strong);
+
   --hd-radius: 16px;
   --hd-radius-sm: 10px;
   --hd-shadow: 0 1px 2px rgba(20, 32, 39, 0.05);
@@ -187,6 +247,26 @@
 
 [data-surface="doctor"] .hd-label { font-size: 13px; color: var(--hd-text-secondary); }
 [data-surface="doctor"] .hd-value { font-size: 14px; color: var(--hd-text); }
+
+/* The page title on an OPERATIONAL doctor surface — a worklist, a registry.
+ *
+ * Sans, not the display serif. `.hd-headline` below states a clinical finding
+ * about one patient and earns a serif; "Patients" is a signpost on a tool the
+ * doctor uses forty times a day, and setting it in 52px Georgia made the page
+ * read as an article about patients rather than a place to work. Interface
+ * type, interface size. */
+[data-surface="doctor"] .hd-title {
+  font-family: var(--hd-font);
+  font-weight: 700;
+  font-size: 34px;
+  line-height: 1.1;
+  letter-spacing: -0.021em;
+  color: var(--hd-text);
+}
+
+@media (max-width: 640px) {
+  [data-surface="doctor"] .hd-title { font-size: 27px; }
+}
 
 /* The only place the display face carries a clinical statement. */
 [data-surface="doctor"] .hd-headline {

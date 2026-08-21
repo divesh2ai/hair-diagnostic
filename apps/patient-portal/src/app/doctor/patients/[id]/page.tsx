@@ -4,7 +4,8 @@ import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
 import { ArrowLeft, User, Phone, Mail, Stethoscope, Building2 } from "lucide-react";
-import { SeverityBadge, StatusBadge } from "@/components/ui/StatusBadges";
+import { SeverityBadge } from "@/components/ui/StatusBadges";
+import { standingOf } from "@/lib/doctor/clinicalStanding";
 
 interface PatientDetail {
   id: string;
@@ -18,6 +19,7 @@ interface PatientDetail {
   assessments: {
     id: string;
     status: string;
+    reviewDecision: string | null;
     submittedAt: string | null;
     primaryDiagnosis: string | null;
     severity: string | null;
@@ -107,7 +109,10 @@ export default function PatientTimelinePage() {
                   {a.submittedAt ? new Date(a.submittedAt).toLocaleString() : "—"}
                 </p>
                 <div className="mt-1 flex flex-wrap gap-2 text-xs text-slate-600">
-                  <StatusBadge status={a.status} />
+                  <StandingChip
+                    status={a.status}
+                    reviewDecision={a.reviewDecision}
+                  />
                   {a.primaryDiagnosis && (
                     <span className="inline-flex items-center rounded-md border border-sky-200 bg-sky-50 px-2 py-0.5 text-xs font-medium text-sky-700">
                       {a.primaryDiagnosis}
@@ -127,5 +132,50 @@ export default function PatientTimelinePage() {
         </ul>
       </section>
     </div>
+  );
+}
+
+/**
+ * Where this assessment stands, said the same way the registry says it.
+ *
+ * This replaced `StatusBadge status={a.status}`, which coloured any COMPLETED
+ * assessment green — including ones still sitting unread in the review queue.
+ * The same patient then read as "done" here and "awaiting review" in the
+ * registry. The label and the colour now both come from
+ * lib/doctor/clinicalStanding, so the two screens cannot disagree again.
+ *
+ * The tones are this page's own slate-family classes rather than the doctor
+ * token layer: restyling the whole detail screen is not part of this change,
+ * and a half-converted page would look worse than a consistent one. What
+ * matters is that the MEANING is shared, not the stylesheet.
+ */
+function StandingChip({
+  status,
+  reviewDecision,
+}: {
+  status: string;
+  reviewDecision: string | null;
+}) {
+  const { standing, label, detail } = standingOf({
+    assessmentCount: 1,
+    lastStatus: status,
+    lastReviewDecision: reviewDecision,
+  });
+
+  const tone = {
+    REVIEWED: "bg-emerald-50 text-emerald-700 border-emerald-200",
+    AWAITING_REVIEW: "bg-amber-50 text-amber-800 border-amber-200",
+    PROCESSING: "bg-cyan-50 text-cyan-800 border-cyan-200",
+    ATTENTION: "bg-rose-50 text-rose-700 border-rose-200",
+    NONE: "bg-slate-50 text-slate-600 border-slate-200",
+  }[standing];
+
+  return (
+    <span
+      aria-label={detail}
+      className={`inline-flex items-center rounded-md border px-2 py-0.5 text-xs font-medium whitespace-nowrap ${tone}`}
+    >
+      {label}
+    </span>
   );
 }

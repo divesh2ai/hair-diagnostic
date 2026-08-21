@@ -363,6 +363,7 @@ model Clinic {
   consultations          Consultation[]
   kitOrderIntents        KitOrderIntent[]
   recommendationFeedback RecommendationFeedback[]
+  appointments           Appointment[]
 
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
@@ -691,6 +692,7 @@ model Doctor {
 
   kitOrderIntents        KitOrderIntent[]
   recommendationFeedback RecommendationFeedback[]
+  appointments           Appointment[]
 
   isActive Boolean @default(true)
 
@@ -745,6 +747,7 @@ model Patient {
   identifiers   PatientIdentifier[]
   assessments   Assessment[]
   consultations Consultation[]
+  appointments  Appointment[]
 
   isActive Boolean @default(true)
 
@@ -777,6 +780,89 @@ model PatientIdentifier {
   @@unique([source, externalId])
   @@index([patientId])
   @@index([externalId])
+}
+
+//////////////////////////////////////////////////////
+// APPOINTMENT (scheduled future visit)
+//////////////////////////////////////////////////////
+
+// A patient is expected at the clinic at a stated future time.
+//
+// ── Why this is not ClinicVisit ─────────────────────────────────────────────
+// ClinicVisit records "a named patient is in the clinic RIGHT NOW, part-way
+// through the assessment" and explicitly refuses scheduling — see its comment.
+// That refusal was correct for that table and stays correct: a visit is proven
+// by someone physically starting an intake, an appointment is a promise about
+// a time that has not happened. Booking a slot must never create a row the
+// waiting-room list would render as a person who is present.
+//
+// The two meet only after the fact, and only in the reading direction: the
+// doctor calendar shows appointments as intent and assessments as what
+// actually happened on a day. Nothing links an Appointment to the Assessment
+// the patient eventually submits — inferring that link from timestamps would
+// be a guess, and a wrong guess would quietly rewrite clinical history.
+//
+// ── Why doctorId is required ────────────────────────────────────────────────
+// An appointment is with a clinician, not with a building. A row without a
+// doctor cannot be rendered on anyone's day, cannot be checked for conflicts,
+// and would surface on every doctor's calendar as unattributed work.
+//
+// ── scheduledAt is an instant, not a date + slot ────────────────────────────
+// Stored UTC, rendered in Clinic.timezone by the reader
+// (lib/format/clinicDay). Slot grids are a presentation choice that clinics
+// will change; the fact being recorded is a point in time.
+//
+// ── Deliberately absent ─────────────────────────────────────────────────────
+// No recurrence rule, no reminder/notification state, no room or resource, no
+// waitlist, no double-booking constraint. Each is a real product decision that
+// has not been made. A nullable column added "for later" is a column every
+// reader has to handle as null forever.
+enum AppointmentStatus {
+  SCHEDULED
+  COMPLETED
+  CANCELLED
+  NO_SHOW
+}
+
+model Appointment {
+  id String @id @default(cuid())
+
+  clinicId String
+  clinic   Clinic @relation(fields: [clinicId], references: [id])
+
+  patientId String
+  patient   Patient @relation(fields: [patientId], references: [id])
+
+  // The clinician the patient is booked with. Required — see model comment.
+  doctorId String
+  doctor   Doctor @relation(fields: [doctorId], references: [id])
+
+  // UTC instant. Rendered in the clinic's timezone by the reader.
+  scheduledAt     DateTime
+  durationMinutes Int      @default(20)
+
+  // Short free text shown on the calendar row, e.g. "3-month follow-up".
+  // Not clinical content and never read by any engine.
+  reason String?
+  notes  String?
+
+  status AppointmentStatus @default(SCHEDULED)
+
+  // Who booked it. Nullable because a future patient-facing or reception
+  // booking path would legitimately have no acting doctor, and backfilling
+  // this doctor's id onto those rows would be a false attribution.
+  createdByDoctorId String?
+
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  cancelledAt DateTime?
+
+  // The calendar's only query: one clinic's appointments inside a month
+  // window. Equality on clinicId, range on scheduledAt.
+  @@index([clinicId, scheduledAt])
+  // "This doctor's day" and "this patient's upcoming visit" respectively.
+  @@index([doctorId, scheduledAt])
+  @@index([patientId, scheduledAt])
 }
 
 //////////////////////////////////////////////////////

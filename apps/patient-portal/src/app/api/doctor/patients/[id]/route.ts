@@ -26,6 +26,12 @@ export async function GET(
           select: {
             id: true,
             status: true,
+            // Required, not decorative: without it this page can only report
+            // how far the PIPELINE got, and a report that finished generating
+            // but is still unread would render as finished work. The doctor's
+            // own decision is the fact that settles it. See
+            // lib/doctor/clinicalStanding.
+            reviewDecision: true,
             submittedAt: true,
             artifacts: {
               where: { type: "SEVERITY_ANALYSIS" },
@@ -64,6 +70,7 @@ export async function GET(
           return {
             id: a.id,
             status: a.status,
+            reviewDecision: a.reviewDecision,
             submittedAt: a.submittedAt?.toISOString() ?? null,
             primaryDiagnosis: sev?.primaryDiagnosis ?? null,
             severity: sev?.severity ?? null,
