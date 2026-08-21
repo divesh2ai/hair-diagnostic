@@ -165,8 +165,7 @@ export function ClinicalSummarySection({
 
           {(vm.primaryDriverExplanation ||
             vm.interpretations.length > 0 ||
-            vm.drivers.length > 0 ||
-            vm.clinicalObjective) && (
+            vm.drivers.length > 0) && (
             <div className="min-w-0 p-5 sm:p-6">
               <h3 className="hd-eyebrow">What it means</h3>
 
@@ -229,15 +228,10 @@ export function ClinicalSummarySection({
                 </div>
               )}
 
-              {vm.clinicalObjective && (
-                <div className="hd-divide-t mt-4 pt-3">
-                  <p className="hd-value text-[12px] font-semibold">Clinical objective</p>
-                  {/* One of only two places green is spent on this page. */}
-                  <p className="hd-objective mt-1 leading-relaxed">
-                    {vm.clinicalObjective}
-                  </p>
-                </div>
-              )}
+              {/* Clinical objective removed from this surface on request. It
+                  restated the treatment goal that the protocol section already
+                  carries per kit. Still present in the view model and in the
+                  patient's report. */}
             </div>
           )}
         </div>

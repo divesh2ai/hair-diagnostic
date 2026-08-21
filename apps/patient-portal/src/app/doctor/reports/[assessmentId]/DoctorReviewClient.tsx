@@ -25,6 +25,7 @@ import { ClinicalAttentionSection } from "./sections/ClinicalAttentionSection";
 import { ProtocolSection } from "./sections/ProtocolSection";
 import { SecondaryDetail } from "./sections/SecondaryDetail";
 import { ClinicalSummarySection } from "./sections/ClinicalSummarySection";
+import { OnePagerBlock } from "./sections/OnePagerBlock";
 import { DecisionBar, type DecisionState } from "./sections/DecisionBar";
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -32,18 +33,20 @@ import { DecisionBar, type DecisionState } from "./sections/DecisionBar";
 //
 // The page reads in the order a clinician actually thinks:
 //
-//   WHO      ReviewHeader — who is this, and how long have they waited
-//   1 · THE CASE       ClinicalSummarySection  — picture, evidence, meaning
-//   ! · ATTENTION      ClinicalAttentionSection (silent when nothing is wrong)
-//   2 · THE PLAN       ProtocolSection          — what is being dispensed
-//   3 · DECIDE         DecisionBar              — sticky, one primary action
-//       REFERENCE      SecondaryDetail          — never required to decide
+//   ReviewHeader   who is this, and how long have they waited
 //
-// ── The numbering is the workflow ───────────────────────────────────────────
-// A doctor should never have to work out where to look or what to press next.
-// The steps are numbered on screen, they always appear in the same order, and
-// exactly one filled green button exists at any moment — the decision bar's.
-// Everything else is a bordered secondary control.
+//   THREE TABS, in the order a review proceeds:
+//     Assessment & interpretation   the case — evidence beside its meaning
+//     Kits & topicals               the plan — what is being dispensed
+//     Recovery & record             one-pager, guidance, safety, audit
+//
+//   DecisionBar    sticky, BELOW all three tabs
+//
+// ── Why the decision bar is not in a tab ────────────────────────────────────
+// A doctor must be able to approve from wherever they are. Putting the button
+// inside one tab would mean hunting for the tab that holds it, which is the
+// exact confusion tabs were introduced to remove. It stays pinned under all
+// three, and there is exactly one filled green button on the page.
 //
 // The questionnaire is NOT on this page. ClinicalSummarySection shows only the
 // options the patient actually selected, grouped clinically, beside the
@@ -147,6 +150,15 @@ type ReviewErrorCode =
 
 type ReviewLoadState = "loading" | "ready" | "core_error";
 
+/** The three review tabs, in the order a review proceeds. */
+type ReviewTab = "case" | "plan" | "record";
+
+const REVIEW_TABS: { id: ReviewTab; label: string }[] = [
+  { id: "case", label: "Assessment & interpretation" },
+  { id: "plan", label: "Kits & topicals" },
+  { id: "record", label: "Recovery & record" },
+];
+
 interface CoreLoadError {
   code: ReviewErrorCode;
   message: string;
@@ -249,6 +261,19 @@ export function DoctorReviewClient({
    * closing under an unsaved change would hide the reason approval is blocked.
    */
   const [adjustOpen, setAdjustOpen] = useState(false);
+
+  /**
+   * Which of the three review tabs is open.
+   *
+   * The page was one long scroll, so "where does that live" had no answer
+   * except scrolling. Three tabs, in the order a review actually proceeds:
+   * understand the case, then read the plan, then the supporting record.
+   *
+   * The DECISION BAR IS NOT IN A TAB. It stays pinned below all three, because
+   * a doctor must be able to approve from wherever they are without hunting
+   * for the tab that holds the button.
+   */
+  const [reviewTab, setReviewTab] = useState<ReviewTab>("case");
 
   // ── Notes / feedback (clinical supporting actions) ────────────────────────
   const [note, setNote] = useState("");
@@ -677,46 +702,84 @@ export function DoctorReviewClient({
 
       <ErrorBoundary title="Consultation could not be displayed">
         <div className="space-y-8">
-          {/* 1 · THE CASE ─────────────────────────────────────────────── */}
-          <ClinicalSummarySection consultation={consultation} />
+          <div
+            role="tablist"
+            aria-label="Clinical review"
+            className="flex flex-wrap gap-1 border-b border-[color:var(--hd-border)]"
+          >
+            {REVIEW_TABS.map(({ id, label }) => {
+              const active = reviewTab === id;
+              return (
+                <button
+                  key={id}
+                  type="button"
+                  role="tab"
+                  id={`review-tab-${id}`}
+                  aria-selected={active}
+                  aria-controls={`review-panel-${id}`}
+                  onClick={() => setReviewTab(id)}
+                  className={`-mb-px border-b-2 px-3.5 py-2 text-sm font-semibold transition-colors ${
+                    active
+                      ? "border-[color:var(--hd-primary)] text-[color:var(--hd-primary-dark)]"
+                      : "border-transparent text-[color:var(--hd-text-secondary)] hover:text-[color:var(--hd-text)]"
+                  }`}
+                >
+                  {label}
+                </button>
+              );
+            })}
+          </div>
 
-          {/* ATTENTION — renders nothing at all when nothing is wrong. */}
-          <ClinicalAttentionSection
-            confidence={consultation.confidence}
-            readiness={meta.clinicalReadiness ?? null}
-            degradedReasons={coreDegradedReasons}
-            safety={safetyFlags}
-          />
+          <div
+            role="tabpanel"
+            id={`review-panel-${reviewTab}`}
+            aria-labelledby={`review-tab-${reviewTab}`}
+            className="space-y-7"
+          >
+            {reviewTab === "case" && (
+              <>
+                <ClinicalSummarySection consultation={consultation} />
+                {/* Attention is never hidden behind a tab switch — it renders
+                    in whichever panel is open. */}
+                <ClinicalAttentionSection
+                  confidence={consultation.confidence}
+                  readiness={meta.clinicalReadiness ?? null}
+                  degradedReasons={coreDegradedReasons}
+                  safety={safetyFlags}
+                />
+              </>
+            )}
 
-          {/* 2 · THE PLAN ─────────────────────────────────────────────────
-              The kit editor is NOT here by default. Most reviews end in
-              approval of the protocol as composed, and a permanently open
-              reorder/remove panel between the plan and the decision reads as
-              work that must be done before approving. "Request changes" on the
-              decision bar opens it. */}
-          <ProtocolSection
-            consultation={consultation}
-            assessmentId={assessmentId}
-            expectedContentVersion={meta.contentVersion}
-            isApproved={isApproved}
-            onSaved={async () => {
-              toast.success("Kit lineup saved — new version created");
-              await load();
-            }}
-            onConflict={load}
-            onDirtyChange={setLineupDirty}
-            adjustOpen={adjustOpen}
-            onCloseAdjust={lineupDirty ? undefined : () => setAdjustOpen(false)}
-            onEscalate={() => setRevisionOpen(true)}
-          />
+            {reviewTab === "plan" && (
+              <ProtocolSection
+                consultation={consultation}
+                assessmentId={assessmentId}
+                expectedContentVersion={meta.contentVersion}
+                isApproved={isApproved}
+                onSaved={async () => {
+                  toast.success("Kit lineup saved — new version created");
+                  await load();
+                }}
+                onConflict={load}
+                onDirtyChange={setLineupDirty}
+                adjustOpen={adjustOpen}
+                onCloseAdjust={
+                  lineupDirty ? undefined : () => setAdjustOpen(false)
+                }
+                onEscalate={() => setRevisionOpen(true)}
+              />
+            )}
 
-          <hr className="hd-divide-t border-0" />
-
-          {/* Secondary reference. Never required to reach a decision. */}
-          <SecondaryDetail
-            consultation={consultation}
-            contentVersion={meta.contentVersion}
-          />
+            {reviewTab === "record" && (
+              <>
+                <OnePagerBlock assessmentId={assessmentId} />
+                <SecondaryDetail
+                  consultation={consultation}
+                  contentVersion={meta.contentVersion}
+                />
+              </>
+            )}
+          </div>
 
           {/* Clinical supporting actions — notes and engine feedback. These are
               not the decision and are deliberately not in the decision bar. */}

@@ -8,7 +8,6 @@ import { useKitCatalog } from "@/lib/doctor/kitCatalog";
 import {
   buildProtocolItems,
   summarizeProtocol,
-  planReasoning,
 } from "@/lib/doctor/protocolModel";
 
 // WHAT ARE WE TREATING? — the protocol, and the reasoning that produced it.
@@ -82,7 +81,6 @@ export function ProtocolSection({
   const phases = consultation.treatmentPlan.kitPhases;
   const items = buildProtocolItems(phases, byKitId);
   const summary = summarizeProtocol(phases);
-  const reasoning = planReasoning(consultation);
   const topicals = consultation.treatmentPlan.topicals ?? [];
 
   return (
@@ -199,22 +197,13 @@ export function ProtocolSection({
         </ol>
       )}
 
-      {/* Why this combination, in this order — the only place the engine
-          explains the sequence rather than an individual kit. */}
-      {(reasoning.sequencing || reasoning.collective) && (
-        <div className="space-y-2 border-l-2 border-stone-200 pl-4">
-          {reasoning.collective && (
-            <p className="max-w-prose text-sm leading-relaxed text-slate-600">
-              {reasoning.collective}
-            </p>
-          )}
-          {reasoning.sequencing && (
-            <p className="max-w-prose text-sm leading-relaxed text-slate-600">
-              {reasoning.sequencing}
-            </p>
-          )}
-        </div>
-      )}
+      {/* The collective / sequencing narrative was removed from this surface.
+          It ran to two long paragraphs restating, in prose, the phase order
+          already visible in the list above — and it named kits in prose
+          ("Phase 1 leads with HAIR FACT PERI MENOPAUSE") directly beside the
+          same kits rendered as rows, so the doctor read the lineup twice.
+          `planReasoning` is untouched in the payload and still reaches the
+          patient's report; only this duplicate rendering is gone. */}
 
       {topicals.length > 0 && (
         <div className="space-y-2">

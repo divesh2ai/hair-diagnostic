@@ -1,14 +1,9 @@
 "use client";
 
-import { useState } from "react";
 import { useHydrated } from "@/lib/format/useHydrated";
 import { History, ShieldCheck } from "lucide-react";
 import type { Consultation } from "@shared/types/consultation";
 import {
-  ClinicalEvidenceCard,
-  ClinicalFindingsCard,
-  RootCauseCard,
-  RiskFactorsCard,
   SafetyCard,
   LifestyleCard,
   TimelineCard,
@@ -31,13 +26,6 @@ import {
 // evidence, recovery and lifestyle guidance, disclosures, and the audit trail.
 // A doctor should be able to approve without ever opening this.
 
-type DetailTab = "assessment" | "recovery" | "record";
-
-const TABS: { id: DetailTab; label: string }[] = [
-  { id: "assessment", label: "Assessment & evidence" },
-  { id: "recovery", label: "Recovery & lifestyle" },
-  { id: "record", label: "Record history" },
-];
 
 export interface SecondaryDetailProps {
   consultation: Consultation;
@@ -50,78 +38,17 @@ export function SecondaryDetail({
 }: SecondaryDetailProps) {
   // Audit timestamps are locale-formatted; same rule as ReviewHeader.
   const hydrated = useHydrated();
-  const [tab, setTab] = useState<DetailTab>("assessment");
 
   // Newest first — the last thing that happened is the thing being asked about.
   const auditEvents = [...(consultation.audit?.events ?? [])].reverse();
 
   return (
-    <section aria-labelledby="detail-heading" className="space-y-4">
-      <h2
-        id="detail-heading"
-        className="text-[11px] font-semibold uppercase tracking-[0.16em] text-stone-500"
-      >
-        More clinical detail
-      </h2>
-
-      <div role="tablist" aria-label="Secondary clinical detail" className="flex flex-wrap gap-1 border-b border-stone-200">
-        {TABS.map(({ id, label }) => {
-          const active = tab === id;
-          return (
-            <button
-              key={id}
-              type="button"
-              role="tab"
-              id={`detail-tab-${id}`}
-              aria-selected={active}
-              aria-controls={`detail-panel-${id}`}
-              onClick={() => setTab(id)}
-              className={`-mb-px border-b-2 px-3 py-2 text-sm font-medium transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-500 ${
-                active
-                  ? "border-slate-900 text-slate-900"
-                  : "border-transparent text-stone-500 hover:text-slate-800"
-              }`}
-            >
-              {label}
-            </button>
-          );
-        })}
-      </div>
-
-      <div
-        role="tabpanel"
-        id={`detail-panel-${tab}`}
-        aria-labelledby={`detail-tab-${tab}`}
-        className="space-y-6"
-      >
-        {tab === "assessment" && (
-          <>
-            {/* "Assessment responses" is no longer here. The raw
-                Object.entries dump of every question — blank rows for empty
-                multi-selects included — was the original defect. Selections
-                now sit in ClinicalSummarySection, and the complete
-                questionnaire is behind "View full assessment". */}
-            {consultation.clinicalFindings.length > 0 && (
-              <DetailBlock title="Signal interpretation">
-                <ClinicalFindingsCard findings={consultation.clinicalFindings} />
-              </DetailBlock>
-            )}
-
-            <DetailBlock title="Root cause detail">
-              <div className="space-y-4">
-                <RootCauseCard rootCause={consultation.rootCause} />
-                <RiskFactorsCard rootCause={consultation.rootCause} />
-              </div>
-            </DetailBlock>
-
-            <DetailBlock title="Evidence catalogue">
-              <ClinicalEvidenceCard evidence={consultation.evidence} />
-            </DetailBlock>
-          </>
-        )}
-
-        {tab === "recovery" && (
-          <>
+    <section aria-labelledby="detail-heading" className="space-y-6">
+      {/* No inner tab bar.
+          This whole component is now the CONTENT of one outer tab, and tabs
+          inside tabs is the nesting that makes a doctor hunt for where a thing
+          lives. Recovery and record simply stack. */}
+      <div className="space-y-6">
             {consultation.treatmentPlan.expectedTimeline.length > 0 && (
               <DetailBlock title="Recovery milestones">
                 <TimelineCard
@@ -146,11 +73,9 @@ export function SecondaryDetail({
                 <FollowUpCard followUp={consultation.followUp} />
               </DetailBlock>
             )}
-          </>
-        )}
+      </div>
 
-        {tab === "record" && (
-          <>
+      <div className="hd-divide-t space-y-6 pt-6">
             <DetailBlock title="Safety & disclosures">
               <SafetyCard consultation={consultation} />
             </DetailBlock>
@@ -204,8 +129,6 @@ export function SecondaryDetail({
                 )}
               </div>
             </DetailBlock>
-          </>
-        )}
       </div>
     </section>
   );
