@@ -57,7 +57,12 @@ const kits = {
   MPHL_PLUS: { key: "MPHL", src: `${KIT_ASSET_BASE}/mphl_v2.png`, alt: "MPHL Pro kit" },
   FPHL: { key: "FPHL", src: `${KIT_ASSET_BASE}/fphl_v2.png`, alt: "FPHL Pro kit" },
   FPHL_PLUS: { key: "FPHL", src: `${KIT_ASSET_BASE}/fphl_v2.png`, alt: "FPHL Pro kit" },
-  HAIR_FACT_ALOPECIA_AREATA: { key: "HAIR_FACT_ALOPECIA_AREATA", src: `${KIT_ASSET_BASE}/alopecia_areata_v1.png`, alt: "Hair Fact Alopecia Areata kit" },
+  // v2, not v1. `alopecia_areata_v1.png` is byte-identical to `mphl_v1.png`
+  // and `fphl_v1.png` — a shared placeholder, so the Alopecia Areata kit was
+  // illustrated with the pattern-hair-loss carton. The three real v2 packshots
+  // landed together on 30 Jul; MPHL and FPHL were re-pointed at theirs and
+  // this one was missed.
+  HAIR_FACT_ALOPECIA_AREATA: { key: "HAIR_FACT_ALOPECIA_AREATA", src: `${KIT_ASSET_BASE}/alopecia_areata_v2.png`, alt: "Hair Fact Alopecia Areata kit" },
   HAIR_FACT_PERI_MENOPAUSE: { key: "HAIR_FACT_PERI_MENOPAUSE", src: `${KIT_ASSET_BASE}/peri_menopause.png`, alt: "Hair Fact Peri Menopause kit" },
   PRO_FACT_META_B_POSTMENOPAUSE: { key: "PRO_FACT_META_B_POSTMENOPAUSE", src: `${KIT_ASSET_BASE}/pro_fact_meta_b_post_menopause.png`, alt: "Pro Fact Meta B Postmenopause kit" },
   F_PCOS_1: { key: "F_PCOS_1", src: `${KIT_ASSET_BASE}/f_pcos_1.png`, alt: "F-PCOS kit" },

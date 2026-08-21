@@ -106,6 +106,35 @@ describe('Final Clinical Assessment (4-scene video narration)', () => {
         // Direct-to-patient narration — at least one explicit you/your reference.
         expect(fca.fullNarration.toLowerCase()).toMatch(/\byou(r)?\b/);
       });
+
+      // ── Grammar regression ────────────────────────────────────────────────
+      //
+      // composeScene1 builds "…, at ${article} ${severity} stage." from
+      // severityPhrase(). Two defects shipped together, and both reached a
+      // doctor's screen and a patient's report as narrated clinical content:
+      //
+      //   1. severityPhrase("MILD") returned "early-stage", which already
+      //      carries the noun, so the clause read "at an early-stage stage".
+      //      Moderate and severe were unaffected — their words are bare
+      //      adjectives — which is exactly why it survived review.
+      //
+      //   2. The clause carried a trailing comma while the sentence appended
+      //      its own full stop, producing ",." on EVERY severity.
+      //
+      // Asserted across all fixtures rather than one hand-built profile, so a
+      // severity arm added later is covered the day it is added.
+      test('scene 1 severity clause is grammatical', () => {
+        expect(fca.scene1).not.toMatch(/stage stage\b/i);
+        expect(fca.scene1).not.toMatch(/,\s*\./);
+      });
+
+      test('narration has no doubled word or dangling comma', () => {
+        // The narration is read aloud by the video pipeline, where a doubled
+        // word is audible. This generalises the defect above beyond the single
+        // clause that produced it.
+        expect(fca.fullNarration).not.toMatch(/\b(\w+) \1\b/i);
+        expect(fca.fullNarration).not.toMatch(/,\s*[.!?]/);
+      });
     });
   });
 

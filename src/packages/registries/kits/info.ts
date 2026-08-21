@@ -1193,8 +1193,56 @@ const KIT_ID_TO_ENTRY: Record<string, keyof typeof ENTRIES> = {
  * to its KitInfo entry. Returns null when no entry is documented yet —
  * callers should render a minimal kit card from the KitId alone in that case.
  */
+/**
+ * Punctuation- and case-insensitive form of a kit id.
+ *
+ * "PRO FACT META B", "pro-fact-meta-b" and "PRO_FACT_META_B" are the same kit
+ * written by three different producers; only the spelling differs.
+ */
+function normaliseKitId(kitId: string): string {
+  return kitId
+    .toUpperCase()
+    .replace(/[^A-Z0-9]+/g, "_")
+    .replace(/^_+|_+$/g, "");
+}
+
+/**
+ * Normalised index over BOTH id spaces this registry has to answer for.
+ *
+ * ── Why this exists ─────────────────────────────────────────────────────────
+ * `KIT_ID_TO_ENTRY` is keyed by the long product spelling the recommendations
+ * artifact emits ("PRO FACT META B"). But a KitOrderIntent snapshots
+ * `kitPhases[].kitId`, and some of those carry the SHORT canonical key
+ * ("META_B"). An exact-match-only lookup returned null for the short form, so
+ * /cart rendered the raw code `META_B` — an internal identifier — as the
+ * product name on the page where a patient confirms a ₹5,800 order, with no
+ * description beside it.
+ *
+ * Indexing the entry keys themselves alongside the product spellings closes
+ * that gap for every kit at once rather than one hand-added alias at a time.
+ * The exact lookup still runs first, so no existing mapping changes meaning.
+ */
+const NORMALISED_KIT_INDEX: Record<string, keyof typeof ENTRIES> = (() => {
+  const index: Record<string, keyof typeof ENTRIES> = {};
+  // Canonical entry keys first, product spellings second: where both produce
+  // the same normalised string they already agree, and where they do not the
+  // explicit product mapping is the more specific statement.
+  for (const key of Object.keys(ENTRIES) as Array<keyof typeof ENTRIES>) {
+    index[normaliseKitId(key)] = key;
+  }
+  for (const [kitId, key] of Object.entries(KIT_ID_TO_ENTRY)) {
+    index[normaliseKitId(kitId)] = key;
+  }
+  return index;
+})();
+
+/** Resolve a runtime KitId to its canonical entry key, or null. */
+function resolveEntryKey(kitId: string): keyof typeof ENTRIES | null {
+  return KIT_ID_TO_ENTRY[kitId] ?? NORMALISED_KIT_INDEX[normaliseKitId(kitId)] ?? null;
+}
+
 export function getKitInfo(kitId: string): KitInfo | null {
-  const key = KIT_ID_TO_ENTRY[kitId];
+  const key = resolveEntryKey(kitId);
   if (!key) return null;
   return ENTRIES[key];
 }
@@ -1204,5 +1252,5 @@ export function getKitInfo(kitId: string): KitInfo | null {
  * deciding which kits in the rankedKits list will produce a rich card.
  */
 export function hasKitInfo(kitId: string): boolean {
-  return kitId in KIT_ID_TO_ENTRY;
+  return resolveEntryKey(kitId) !== null;
 }

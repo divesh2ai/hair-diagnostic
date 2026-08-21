@@ -102,10 +102,22 @@ function diagnosisPhrase(clinical: ClinicalProfile): string {
   return base;
 }
 
+/**
+ * The severity ADJECTIVE only — the noun is supplied by the caller.
+ *
+ * "MILD" used to return "early-stage", which already carries the noun. The one
+ * caller composes `${sev} stage`, so mild presentations were narrated to the
+ * doctor and the patient as "at an early-stage stage". Moderate and severe
+ * read correctly because their words are bare adjectives; mild was the odd one
+ * out, which is exactly why it survived review.
+ *
+ * Keep every arm a bare adjective. A caller that needs the noun appends its
+ * own, as composeScene1 does.
+ */
 function severityPhrase(s: Severity | undefined): string {
   if (!s) return "";
   switch (s) {
-    case "MILD":     return "early-stage";
+    case "MILD":     return "early";
     case "MODERATE": return "moderate";
     case "SEVERE":   return "advanced";
     default:         return "";
@@ -487,7 +499,10 @@ function composeScene1(
 ): string {
   const diag = diagnosisPhrase(clinical);
   const sev = severityPhrase(clinical.severity);
-  const sevPhrase = sev ? `, at ${prefixArticle(sev)} ${sev} stage,` : "";
+  // No trailing comma. The clause is parenthetical but it closes the sentence,
+  // so the caller's own full stop follows it directly — the trailing comma
+  // here produced ",." on EVERY severity, not just mild.
+  const sevPhrase = sev ? `, at ${prefixArticle(sev)} ${sev} stage` : "";
   const top = topFactorPhrases(analysis, clinical, 2);
   const factors = top.length > 0
     ? ` The main factors contributing to this are ${joinPhrases(top)}.`
