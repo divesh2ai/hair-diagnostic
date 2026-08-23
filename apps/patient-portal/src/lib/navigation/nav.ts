@@ -48,6 +48,7 @@ const NAV_SUPER_ADMIN: NavSection[] = [
     items: [
       { href: "/admin", labelKey: "nav.dashboard", icon: "dashboard" },
       { href: "/admin/clinics", labelKey: "nav.clinics", icon: "clinics" },
+      { href: "/admin/orders", labelKey: "nav.orders", icon: "reports" },
       { href: "/admin/knowledge-review", labelKey: "nav.reviewQueue", icon: "audit" },
       { href: "/admin/audit", labelKey: "nav.audit", icon: "audit" },
       {

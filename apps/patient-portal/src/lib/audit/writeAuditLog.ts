@@ -61,7 +61,20 @@ export type AuditAction =
   | "CLINIC_LOCATION_CREATED"
   | "CLINIC_LOCATION_UPDATED"
   | "CLINIC_LOCATION_DELETED"
-  | "PLATFORM_SETTINGS_UPDATED";
+  | "PLATFORM_SETTINGS_UPDATED"
+  /**
+   * A Super Admin downloaded the platform-wide kit order intent workbook.
+   *
+   * This is a bulk privileged read that crosses every tenant boundary at
+   * once, so it is audited like a mutation and the export FAILS CLOSED: if
+   * the audit row cannot be written the workbook is not returned. A
+   * privileged cross-tenant export that leaves no trace is precisely what an
+   * audit log exists to prevent.
+   *
+   * Metadata carries the filter envelope and row count only — never the
+   * exported contents, and never a patient identifier.
+   */
+  | "ADMIN_ORDER_EXPORT";
 
 /**
  * `admin_view` is a distinct actor type, not a synonym for `admin`: it marks a

@@ -27,5 +27,11 @@ module.exports = {
     // Same for @supabase/supabase-js — only present under the app.
     '^@supabase/supabase-js$':
       '<rootDir>/apps/patient-portal/node_modules/@supabase/supabase-js/dist/index.cjs',
+    // Same for exceljs — the admin order export builds its workbook with it,
+    // and the export test reads the generated buffer back to assert on cell
+    // types and tab structure.
+    // `excel.js` is the package's node main; the `browser` field points at a
+    // bundled build that must never be pulled into a server test.
+    '^exceljs$': '<rootDir>/apps/patient-portal/node_modules/exceljs/excel.js',
   },
 };
