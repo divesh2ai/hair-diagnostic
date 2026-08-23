@@ -4,6 +4,7 @@ import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { assertSuperAdmin, handleAuthError } from "@/lib/auth";
 import { locationSetupState } from "@/lib/clinic/location";
+import { writeAuditLog } from "@/lib/audit/writeAuditLog";
 
 export const dynamic = "force-dynamic";
 
@@ -110,7 +111,7 @@ const createSchema = z.object({
 // POST /api/admin/clinics — create
 export async function POST(req: Request) {
   try {
-    await assertSuperAdmin();
+    const ctx = await assertSuperAdmin();
     const body = await req.json();
     const parsed = createSchema.safeParse(body);
     if (!parsed.success) {
@@ -148,6 +149,19 @@ export async function POST(req: Request) {
         website: data.website ?? null,
       },
       select: { id: true, slug: true, name: true },
+    });
+
+    // Tenant creation is an accountable act. AuditLog has no clinicId column,
+    // so the clinic identity is repeated into metadata to keep the row
+    // searchable — see the note on WriteAuditLogInput.clinicId.
+    await writeAuditLog({
+      action: "CLINIC_CREATED",
+      entityType: "Clinic",
+      entityId: clinic.id,
+      actorId: ctx.userId,
+      actorRole: ctx.role,
+      actorType: "admin",
+      metadata: { clinicId: clinic.id, slug: clinic.slug, name: clinic.name },
     });
 
     return NextResponse.json({ clinic }, { status: 201 });

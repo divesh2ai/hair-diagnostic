@@ -5,6 +5,7 @@ import type { ClinicStatus } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { assertSuperAdmin, handleAuthError } from "@/lib/auth";
 import { clinicCacheTag } from "@/lib/clinics/getClinicLandingData";
+import { writeAuditLog, type AuditAction } from "@/lib/audit/writeAuditLog";
 
 export const dynamic = "force-dynamic";
 
@@ -75,7 +76,7 @@ export async function PATCH(
   { params }: { params: Promise<{ id: string }> },
 ) {
   try {
-    await assertSuperAdmin();
+    const ctx = await assertSuperAdmin();
     const { id } = await params;
     const body = await req.json();
     const parsed = patchSchema.safeParse(body);
@@ -109,6 +110,30 @@ export async function PATCH(
       });
     }
 
+    // Record WHICH fields changed, never their values — clinic config can
+    // carry contact details, and the audit envelope is deliberately small.
+    // A subscription plan/status change is called out separately because it
+    // is the commercially significant edit inside this handler.
+    await writeAuditLog({
+      action: "CLINIC_UPDATED",
+      entityType: "Clinic",
+      entityId: id,
+      actorId: ctx.userId,
+      actorRole: ctx.role,
+      actorType: "admin",
+      metadata: {
+        clinicId: id,
+        slug: clinic.slug,
+        fieldsChanged: Object.keys(clinicPatch).sort(),
+        ...(subscription
+          ? {
+              subscriptionPlan: subscription.plan ?? null,
+              subscriptionStatus: subscription.status ?? null,
+            }
+          : {}),
+      },
+    });
+
     return NextResponse.json({ clinic });
   } catch (err) {
     const resp = handleAuthError(err);
@@ -128,7 +153,7 @@ export async function POST(
   { params }: { params: Promise<{ id: string }> },
 ) {
   try {
-    await assertSuperAdmin();
+    const ctx = await assertSuperAdmin();
     const { id } = await params;
     const body = await req.json();
     const parsed = lifecycleSchema.safeParse(body);
@@ -170,6 +195,30 @@ export async function POST(
     // renders at all. Immediate purge — a suspended clinic must never
     // serve one more request from a stale entry.
     revalidateTag(clinicCacheTag(updated.slug), 'max');
+
+    // Archive is a soft-delete of an entire tenant and was previously
+    // completely silent. Awaited, not fire-and-forget: a tenant lifecycle
+    // change that cannot be attributed should fail loudly rather than
+    // succeed unrecorded.
+    const LIFECYCLE_ACTIONS: Record<typeof parsed.data.action, AuditAction> = {
+      suspend: "CLINIC_SUSPENDED",
+      activate: "CLINIC_ACTIVATED",
+      archive: "CLINIC_ARCHIVED",
+    };
+    await writeAuditLog({
+      action: LIFECYCLE_ACTIONS[parsed.data.action],
+      entityType: "Clinic",
+      entityId: id,
+      actorId: ctx.userId,
+      actorRole: ctx.role,
+      actorType: "admin",
+      metadata: {
+        clinicId: id,
+        slug: updated.slug,
+        status: updated.status,
+        softDeleted: updated.deletedAt !== null,
+      },
+    });
 
     return NextResponse.json({
       clinic: {

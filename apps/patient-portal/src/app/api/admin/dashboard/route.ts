@@ -9,6 +9,7 @@ export async function GET() {
   try {
     await assertSuperAdmin();
 
+    const now = new Date();
     const startOfToday = new Date();
     startOfToday.setHours(0, 0, 0, 0);
     const startOfMonth = new Date(
@@ -22,6 +23,23 @@ export async function GET() {
       1,
     );
 
+    // Month-to-date growth must compare like with like. Comparing a partial
+    // current month against a COMPLETE previous month made growth read
+    // negative for the first ~29 days of every month regardless of real
+    // performance. Cut last month at the same elapsed offset instead.
+    const elapsedMs = now.getTime() - startOfMonth.getTime();
+    const lastMonthCutoff = new Date(startOfLastMonth.getTime() + elapsedMs);
+
+    // Platform health is a RATE, so numerator and denominator must share one
+    // window. The previous formula divided all-time failures by this month's
+    // assessments — a ratio between two different periods, which grew without
+    // bound as the platform aged and floored the score at 0 ("Degraded") on a
+    // perfectly healthy platform. A 7-day rolling window is both self-
+    // consistent and actually current.
+    const startOfHealthWindow = new Date(
+      startOfToday.getTime() - 7 * 24 * 60 * 60 * 1000,
+    );
+
     // Deployed Prisma uses pgbouncer with connection_limit=1 (see DATABASE_URL).
     // A Promise.all of 12 independent queries starves that single connection
     // and blows the lambda timeout. $transaction runs the whole batch inside
@@ -32,13 +50,14 @@ export async function GET() {
       doctorsTotal,
       patientsTotal,
       assessmentsToday,
-      reportsToday,
+      assessmentsCompletedToday,
       assessmentsThisMonth,
       assessmentsLastMonth,
       recentClinics,
       recentDoctors,
       recentAssessments,
-      failures,
+      failuresInHealthWindow,
+      assessmentsInHealthWindow,
     ] = await prisma.$transaction([
       prisma.clinic.count({ where: { deletedAt: null } }),
       prisma.clinic.count({ where: { deletedAt: null, status: "ACTIVE" } }),
@@ -60,7 +79,7 @@ export async function GET() {
       prisma.assessment.count({
         where: {
           deletedAt: null,
-          submittedAt: { gte: startOfLastMonth, lt: startOfMonth },
+          submittedAt: { gte: startOfLastMonth, lt: lastMonthCutoff },
         },
       }),
       prisma.clinic.findMany({
@@ -102,8 +121,19 @@ export async function GET() {
           clinic: { select: { name: true } },
         },
       }),
+      // Both sides of the health rate share one 7-day window.
       prisma.assessment.count({
-        where: { deletedAt: null, status: "FAILED" },
+        where: {
+          deletedAt: null,
+          status: "FAILED",
+          createdAt: { gte: startOfHealthWindow },
+        },
+      }),
+      prisma.assessment.count({
+        where: {
+          deletedAt: null,
+          createdAt: { gte: startOfHealthWindow },
+        },
       }),
     ]);
 
@@ -118,14 +148,17 @@ export async function GET() {
           ? 100
           : 0;
 
+    // 7-day rolling failure rate. With no assessments in the window there is
+    // no evidence of failure, so health is 100 rather than 0 — a quiet week
+    // is not a degraded platform.
     const failureRate =
-      assessmentsThisMonth > 0
-        ? Math.round((failures / Math.max(1, assessmentsThisMonth)) * 100)
+      assessmentsInHealthWindow > 0
+        ? Math.round((failuresInHealthWindow / assessmentsInHealthWindow) * 100)
         : 0;
 
-    // Simple platform-health heuristic: 100 minus the rolling failure rate,
-    // floored at 0. UI labels >90 healthy, 70–90 watch, <70 degraded.
-    const platformHealth = Math.max(0, 100 - failureRate);
+    // 100 minus the rolling failure rate, clamped to 0–100. UI labels
+    // >90 healthy, 70–90 watch, <70 degraded.
+    const platformHealth = Math.min(100, Math.max(0, 100 - failureRate));
 
     return NextResponse.json({
       metrics: {
@@ -134,7 +167,11 @@ export async function GET() {
         doctorsTotal,
         patientsTotal,
         assessmentsToday,
-        reportsToday,
+        // Renamed from `reportsToday`: this counts Assessment rows that
+        // reached COMPLETED today, which is completed assessments, not
+        // generated reports. The old name asserted something the query
+        // never measured.
+        assessmentsCompletedToday,
         monthlyGrowth: growth,
         platformHealth,
       },

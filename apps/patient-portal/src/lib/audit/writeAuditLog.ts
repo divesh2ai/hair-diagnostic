@@ -41,7 +41,27 @@ export type AuditAction =
    * identity left no trace — the one access a compliance reviewer most needs
    * to find. Written fire-and-forget: never on the critical path.
    */
-  | "CLINICAL_RECORD_VIEWED";
+  | "CLINICAL_RECORD_VIEWED"
+  /**
+   * Super Admin console mutations. Every one of these was previously silent:
+   * a Super Admin could create, reconfigure, suspend or archive a tenant and
+   * leave no trace at all, which made the audit log blind to the most
+   * privileged actor on the platform. CLINIC_ARCHIVED is the sharpest of the
+   * set — it soft-deletes an entire tenant.
+   *
+   * These rows are written on the request path (awaited, not fire-and-forget):
+   * an admin mutation that cannot be attributed should fail rather than
+   * silently succeed unrecorded.
+   */
+  | "CLINIC_CREATED"
+  | "CLINIC_UPDATED"
+  | "CLINIC_SUSPENDED"
+  | "CLINIC_ACTIVATED"
+  | "CLINIC_ARCHIVED"
+  | "CLINIC_LOCATION_CREATED"
+  | "CLINIC_LOCATION_UPDATED"
+  | "CLINIC_LOCATION_DELETED"
+  | "PLATFORM_SETTINGS_UPDATED";
 
 /**
  * `admin_view` is a distinct actor type, not a synonym for `admin`: it marks a
@@ -65,6 +85,19 @@ export interface WriteAuditLogInput {
   actorId?: string | null;
   actorRole?: SystemRole | null;
   actorType?: AuditActorType | null;
+  /**
+   * NOT PERSISTED. `AuditLog` has no clinicId column — the audit reader
+   * derives clinic through `assessment.clinic`, so only assessment-linked
+   * rows carry a clinic. This field is accepted for call-site readability and
+   * silently dropped by the writer below.
+   *
+   * Consequence for admin mutations: a clinic create / suspend / archive has
+   * no assessment, so it cannot be linked to a clinic at all under the
+   * current schema, and shows "—" in the audit page's Clinic column. Admin
+   * callers therefore repeat the clinic id + slug inside `metadata` so the
+   * row is still searchable. Fixing this properly needs an AuditLog.clinicId
+   * column, which is a schema change and out of scope here.
+   */
   clinicId?: string | null;
   assessmentId?: string | null;
   /** Small structured envelope — never PII / tokens / raw answers. */

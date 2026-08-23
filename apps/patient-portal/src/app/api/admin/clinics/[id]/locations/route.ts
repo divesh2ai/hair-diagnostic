@@ -9,6 +9,7 @@ import {
   locationSetupState,
   seedFromLegacyClinic,
 } from "@/lib/clinic/location";
+import { writeAuditLog } from "@/lib/audit/writeAuditLog";
 
 export const dynamic = "force-dynamic";
 
@@ -89,7 +90,7 @@ export async function POST(
   { params }: { params: Promise<{ id: string }> },
 ) {
   try {
-    await assertSuperAdmin();
+    const ctx = await assertSuperAdmin();
     const { id: clinicId } = await params;
 
     const clinic = await prisma.clinic.findFirst({
@@ -126,7 +127,7 @@ export async function POST(
         });
       }
 
-      return tx.clinicLocation.create({
+      const created = await tx.clinicLocation.create({
         data: {
           clinicId,
           branchName: data.branchName,
@@ -151,6 +152,27 @@ export async function POST(
         },
         select: LOCATION_SELECT,
       });
+
+      // Inside the transaction so the audit row commits atomically with the
+      // location it describes — a committed branch with no audit trail, or an
+      // audit row for a rolled-back branch, would both be wrong.
+      await writeAuditLog({
+        action: "CLINIC_LOCATION_CREATED",
+        entityType: "ClinicLocation",
+        entityId: created.id,
+        actorId: ctx.userId,
+        actorRole: ctx.role,
+        actorType: "admin",
+        metadata: {
+          clinicId,
+          branchName: created.branchName,
+          isPrimary: created.isPrimary,
+          geoStatus: created.geoStatus,
+        },
+        prismaClient: tx,
+      });
+
+      return created;
     });
 
     return NextResponse.json({ location }, { status: 201 });

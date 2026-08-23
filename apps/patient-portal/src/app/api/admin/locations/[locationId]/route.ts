@@ -7,6 +7,7 @@ import {
   isDuplicatePrimaryLocation,
   updateLocationSchema,
 } from "@/lib/clinic/location";
+import { writeAuditLog } from "@/lib/audit/writeAuditLog";
 
 export const dynamic = "force-dynamic";
 
@@ -42,7 +43,7 @@ export async function PATCH(
   { params }: { params: Promise<{ locationId: string }> },
 ) {
   try {
-    await assertSuperAdmin();
+    const ctx = await assertSuperAdmin();
     const { locationId } = await params;
 
     let raw: unknown;
@@ -125,11 +126,31 @@ export async function PATCH(
         data.isPrimary = true;
       }
 
-      return tx.clinicLocation.update({
+      const updated = await tx.clinicLocation.update({
         where: { id: locationId },
         data,
         select: LOCATION_SELECT,
       });
+
+      await writeAuditLog({
+        action: "CLINIC_LOCATION_UPDATED",
+        entityType: "ClinicLocation",
+        entityId: locationId,
+        actorId: ctx.userId,
+        actorRole: ctx.role,
+        actorType: "admin",
+        metadata: {
+          clinicId: updated.clinicId,
+          fieldsChanged: Object.keys(data).sort(),
+          // Provenance matters on the map: a human re-pin and a geocoder run
+          // are different claims about how trustworthy the coordinate is.
+          geoStatus: updated.geoStatus,
+          isPrimary: updated.isPrimary,
+        },
+        prismaClient: tx,
+      });
+
+      return updated;
     });
 
     return NextResponse.json({ location });
@@ -160,7 +181,7 @@ export async function DELETE(
   { params }: { params: Promise<{ locationId: string }> },
 ) {
   try {
-    await assertSuperAdmin();
+    const ctx = await assertSuperAdmin();
     const { locationId } = await params;
 
     const existing = await prisma.clinicLocation.findFirst({
@@ -186,6 +207,23 @@ export async function DELETE(
     await prisma.clinicLocation.update({
       where: { id: locationId },
       data: { deletedAt: new Date(), status: "CLOSED", isPrimary: false },
+    });
+
+    // Retiring a branch removes it from the map and from QR routing. Record
+    // whether it was the clinic's last remaining branch — that is the case
+    // that silently drops a whole clinic off the national map.
+    await writeAuditLog({
+      action: "CLINIC_LOCATION_DELETED",
+      entityType: "ClinicLocation",
+      entityId: locationId,
+      actorId: ctx.userId,
+      actorRole: ctx.role,
+      actorType: "admin",
+      metadata: {
+        clinicId: existing.clinicId,
+        wasPrimary: existing.isPrimary,
+        remainingBranches: siblings,
+      },
     });
 
     return NextResponse.json({ ok: true });

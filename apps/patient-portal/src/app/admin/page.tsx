@@ -29,7 +29,7 @@ type Payload = {
     doctorsTotal: number;
     patientsTotal: number;
     assessmentsToday: number;
-    reportsToday: number;
+    assessmentsCompletedToday: number;
     monthlyGrowth: number;
     platformHealth: number;
   };
@@ -65,10 +65,11 @@ type Funnel = {
   funnel: {
     started: number;
     completed: number;
-    reviewed: number;
+    approved: number;
     orders: number;
     ordersActive: number;
   };
+  leaks: { editsRequested: number; rejected: number };
 };
 
 export default function AdminDashboardPage() {
@@ -159,8 +160,8 @@ export default function AdminDashboardPage() {
         />
         <MetricCard
           icon={<FileText className="size-4" />}
-          label="Reports today"
-          value={m.reportsToday}
+          label="Assessments completed today"
+          value={m.assessmentsCompletedToday}
         />
         <MetricCard
           icon={<TrendingUp className="size-4" />}
@@ -188,7 +189,7 @@ export default function AdminDashboardPage() {
             <CardTitle className="text-base">Conversion funnel</CardTitle>
           </CardHeader>
           <CardContent>
-            <FunnelStrip funnel={funnel.funnel} />
+            <FunnelStrip funnel={funnel.funnel} leaks={funnel.leaks} />
           </CardContent>
         </Card>
       )}
@@ -282,11 +283,17 @@ export default function AdminDashboardPage() {
   );
 }
 
-function FunnelStrip({ funnel }: { funnel: Funnel["funnel"] }) {
+function FunnelStrip({
+  funnel,
+  leaks,
+}: {
+  funnel: Funnel["funnel"];
+  leaks: Funnel["leaks"];
+}) {
   const stages: { label: string; count: number; tone: string }[] = [
     { label: "Started", count: funnel.started, tone: "bg-stone-100 text-slate-800" },
-    { label: "Submitted", count: funnel.completed, tone: "bg-teal-100 text-teal-900" },
-    { label: "Doctor reviewed", count: funnel.reviewed, tone: "bg-indigo-100 text-indigo-900" },
+    { label: "Completed", count: funnel.completed, tone: "bg-teal-100 text-teal-900" },
+    { label: "Doctor approved", count: funnel.approved, tone: "bg-indigo-100 text-indigo-900" },
     { label: "Kit orders", count: funnel.orders, tone: "bg-amber-100 text-amber-900" },
     { label: "Active orders", count: funnel.ordersActive, tone: "bg-emerald-100 text-emerald-900" },
   ];
@@ -311,7 +318,18 @@ function FunnelStrip({ funnel }: { funnel: Funnel["funnel"] }) {
         })}
       </div>
       <p className="text-[11px] text-muted-foreground">
-        Assessments started → submitted → doctor-reviewed → kit order intent → active (not cancelled).
+        Assessments started → completed → doctor-approved → kit order intent → active (not
+        cancelled). Excludes soft-deleted assessments.
+        {(leaks.editsRequested > 0 || leaks.rejected > 0) && (
+          <>
+            {" "}
+            <span className="text-amber-700">
+              {leaks.editsRequested.toLocaleString()} sent back for edits,{" "}
+              {leaks.rejected.toLocaleString()} rejected
+            </span>{" "}
+            — counted as leaks, not as approvals.
+          </>
+        )}
       </p>
     </div>
   );

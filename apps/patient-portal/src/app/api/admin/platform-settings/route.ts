@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { assertSuperAdmin, handleAuthError } from "@/lib/auth";
+import { writeAuditLog } from "@/lib/audit/writeAuditLog";
 
 export const dynamic = "force-dynamic";
 
@@ -51,7 +52,7 @@ const patchSchema = z.object({
 
 export async function PATCH(req: Request) {
   try {
-    await assertSuperAdmin();
+    const ctx = await assertSuperAdmin();
     const body = await req.json();
     const parsed = patchSchema.safeParse(body);
     if (!parsed.success) {
@@ -65,6 +66,19 @@ export async function PATCH(req: Request) {
       create: { singletonKey: SINGLETON, ...parsed.data },
       update: parsed.data,
     });
+
+    // These defaults apply across every clinic, so a change here has
+    // platform-wide blast radius. Field names only, not values.
+    await writeAuditLog({
+      action: "PLATFORM_SETTINGS_UPDATED",
+      entityType: "PlatformSettings",
+      entityId: updated.id,
+      actorId: ctx.userId,
+      actorRole: ctx.role,
+      actorType: "admin",
+      metadata: { fieldsChanged: Object.keys(parsed.data).sort() },
+    });
+
     return NextResponse.json({ settings: updated });
   } catch (err) {
     const resp = handleAuthError(err);
