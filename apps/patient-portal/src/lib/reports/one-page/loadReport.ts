@@ -32,9 +32,20 @@ function jsonObject(value: unknown): Record<string, unknown> {
  * caller presented a valid signed token bound to this exact assessment, so
  * there is no clinic to compare against; the token IS the scope.
  */
-type ReportAudience =
+export type ReportAudience =
   | { kind: "clinic"; ctx: ClinicContext }
-  | { kind: "conference_token" };
+  | { kind: "conference_token" }
+  /**
+   * A server-side caller that has already authenticated and tenant-checked the
+   * request it is acting on — today only the approval path, writing the
+   * snapshot of the sheet it is releasing.
+   *
+   * It carries the clinic it believes it is acting for rather than a bare
+   * "trust me" flag, so the cross-clinic check below still runs against a real
+   * value. An internal caller that names the wrong clinic is refused exactly
+   * like a doctor who does.
+   */
+  | { kind: "server_internal"; clinicId: string };
 
 async function getReportAuthContext(
   assessmentId: string,
@@ -86,7 +97,29 @@ export async function loadOnePageReportData(
   options?: { reviewToken?: string | null },
 ): Promise<OnePageReportViewModel> {
   const auth = await getReportAuthContext(assessmentId, options?.reviewToken);
+  return composeOnePageReportViewModel(assessmentId, auth);
+}
 
+/**
+ * Build the view model for an assessment whose caller is ALREADY authorised.
+ *
+ * ── Why this is separate, and why it takes the audience ─────────────────────
+ * The snapshot writer (lib/reports/one-page/snapshot) runs inside the approval
+ * path, which has already resolved a doctor and already checked the tenant. It
+ * needs the same document the patient will read, and re-running
+ * `getReportAuthContext` there would mean a second cookie-scoped auth on a
+ * code path that is not serving that reader's request.
+ *
+ * The split is deliberately NOT a "skipAuth" flag on the public loader: a
+ * boolean that turns off tenant checks on a PHI reader is the kind of
+ * parameter that eventually gets passed `true` by accident. Instead the
+ * audience is a required argument, so every caller has to say — and therefore
+ * has to have — an authorisation it can name.
+ */
+export async function composeOnePageReportViewModel(
+  assessmentId: string,
+  auth: ReportAudience,
+): Promise<OnePageReportViewModel> {
   const assessment = await prisma.assessment.findUnique({
     where: { id: assessmentId },
     include: {
@@ -110,6 +143,9 @@ export async function loadOnePageReportData(
   // conference token is already bound to this single assessmentId, so there is
   // no other clinic's data it could reach.
   if (auth.kind === "clinic" && !isSuperAdmin(auth.ctx.role) && auth.ctx.clinicId !== assessment.clinicId) {
+    throw new ReportAccessError(403, "Cross-clinic access denied");
+  }
+  if (auth.kind === "server_internal" && auth.clinicId !== assessment.clinicId) {
     throw new ReportAccessError(403, "Cross-clinic access denied");
   }
 

@@ -34,6 +34,7 @@ import {
   type StoredVersion,
 } from "@hairos/packages/consultation-orchestrator";
 import { writeAuditLog } from "@/lib/audit/writeAuditLog";
+import { saveOnePagerSnapshot, type SnapshotResult } from "@/lib/reports/one-page/snapshot";
 import { SystemRole } from "@prisma/client";
 
 export interface ApproveAndCreateOrderInput {
@@ -62,6 +63,14 @@ export interface ApproveAndCreateOrderResult {
   approval: StoredVersion;
   intent: KitOrderIntent;
   intentCreated: boolean; // false when a prior click already created it
+  /**
+   * Whether the patient's one-pager was preserved for this version.
+   *
+   * Reported rather than hidden: a failure here does not undo the approval,
+   * but "the record of what we released was not kept" is a fact the caller is
+   * entitled to see and act on.
+   */
+  snapshot: SnapshotResult;
 }
 
 export class ApproveAndCreateOrderError extends Error {
@@ -288,10 +297,37 @@ export async function approveAndCreateOrder(
     return { intent: intent!, intentCreated };
   });
 
+  // ── Step 3: preserve the sheet this approval released ─────────────────────
+  //
+  // Outside the transaction, and awaited but never able to fail the call.
+  // Approving is what hands the one-pager to a patient, so what was handed
+  // over is worth keeping; but the approval, the order intent and the
+  // assessment mirror are already committed by the time we get here, and none
+  // of them may be undone because an object store was slow or a bucket has not
+  // been created yet. `saveOnePagerSnapshot` is total — it describes failures
+  // rather than throwing — so the worst case is a logged line and no snapshot.
+  //
+  // Awaited rather than fire-and-forget so a serverless invocation cannot be
+  // frozen mid-upload the moment the response is returned.
+  const snapshot = await saveOnePagerSnapshot({
+    assessmentId: input.assessmentId,
+    clinicId: assessment.clinicId,
+    contentVersion: approved.contentVersion,
+    approvedBy: approved.metadata.approvedBy ?? null,
+  });
+  if (!snapshot.ok) {
+    console.warn(
+      `[one-pager-snapshot] ${input.assessmentId} v${approved.contentVersion} not preserved:`,
+      snapshot.reason,
+      snapshot.detail,
+    );
+  }
+
   return {
     approval: approved,
     intent: result.intent,
     intentCreated: result.intentCreated,
+    snapshot,
   };
 }
 
