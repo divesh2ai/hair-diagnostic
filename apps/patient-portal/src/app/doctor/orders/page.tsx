@@ -2,14 +2,57 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { Package, ChevronRight, Loader2 } from "lucide-react";
+import {
+  Package,
+  Loader2,
+  ExternalLink,
+  Stethoscope,
+  X,
+  Search,
+} from "lucide-react";
 import { PageContainer } from "@/components/app-shell";
+import { ProductImage } from "@/components/kits/ProductImage";
+import { useHydrated } from "@/lib/format/useHydrated";
+import "@/styles/doctor-tokens.css";
+
+// KIT ORDERS — what has been authorised, and what ops has to ship.
+//
+// ── What this page was ──────────────────────────────────────────────────────
+// A five-column table showing a patient name, a kit COUNT, a doctor, a status
+// pill and a date. So the one fact an order page exists to carry — WHAT was
+// ordered — was the one fact it did not show, and the row's only action opened
+// the clinical review, which is a different question entirely.
+//
+// ── What it answers now ─────────────────────────────────────────────────────
+// Three questions, in the order they get asked:
+//
+//   WHAT SHIPPED?   the kits by name, with their cartons
+//   WHAT IS IT      order value, from the same price table the patient's cart
+//   WORTH?          bills against
+//   IS IT RIGHT?    "View order" opens exactly what the patient sees
+//
+// ── One row, one order ──────────────────────────────────────────────────────
+// Deliberately not a dense data grid. An order is a small number of products
+// and a total; rendering it as a card with its cartons lets a doctor confirm
+// at a glance that Meera got the kits they authorised, which is the actual
+// review task. A table optimises for scanning fifty rows, and nobody scans
+// fifty kit orders.
+
+type LineItem = {
+  kitId: string;
+  displayName: string;
+  priceInr: number;
+  priceLabel: string;
+};
 
 type Order = {
   id: string;
   status: "READY_FOR_FULFILMENT" | "CANCELLED";
   kitCount: number;
   kitIds: string[];
+  lineItems: LineItem[];
+  totalInr: number;
+  totalLabel: string;
   patientName: string;
   assessmentId: string | null;
   doctorName: string;
@@ -20,6 +63,9 @@ type Order = {
 export default function DoctorOrdersPage() {
   const [items, setItems] = useState<Order[] | null>(null);
   const [loading, setLoading] = useState(true);
+  const [query, setQuery] = useState("");
+  const [open, setOpen] = useState<Order | null>(null);
+  const hydrated = useHydrated();
 
   useEffect(() => {
     fetch("/api/doctor/orders")
@@ -30,127 +76,294 @@ export default function DoctorOrdersPage() {
   }, []);
 
   const ready = useMemo(
-    () => items?.filter((i) => i.status === "READY_FOR_FULFILMENT").length ?? 0,
+    () => (items ?? []).filter((i) => i.status === "READY_FOR_FULFILMENT"),
     [items],
   );
-  const cancelled = useMemo(
-    () => items?.filter((i) => i.status === "CANCELLED").length ?? 0,
-    [items],
+
+  // Value of what is actually waiting to ship. Cancelled orders are excluded —
+  // counting them would overstate the pipeline.
+  const pipeline = useMemo(
+    () => ready.reduce((sum, o) => sum + (o.totalInr ?? 0), 0),
+    [ready],
   );
+
+  const filtered = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    if (!q) return items ?? [];
+    return (items ?? []).filter(
+      (o) =>
+        o.patientName.toLowerCase().includes(q) ||
+        o.doctorName.toLowerCase().includes(q) ||
+        o.lineItems.some((li) => li.displayName.toLowerCase().includes(q)),
+    );
+  }, [items, query]);
 
   return (
-    <PageContainer className="space-y-6 max-w-5xl">
-      <div>
-        <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-teal-700">
-          Doctor · Kit orders
-        </p>
-        <h1 className="font-serif text-3xl font-medium tracking-tight text-slate-900">
-          Kit orders
-        </h1>
-        <p className="text-sm text-slate-500">
-          Every consultation you approve creates an order intent for the ops
-          team. Fulfillment status shown below.
-        </p>
-      </div>
+    <PageContainer className="max-w-5xl">
+      <div data-surface="doctor" className="space-y-6">
+        <div>
+          <h1 className="hd-headline">Kit orders</h1>
+          <p className="hd-label mt-1 max-w-prose">
+            Approving a consultation creates an order for the ops team. Each one
+            below is exactly what the patient was shown.
+          </p>
+        </div>
 
-      <div className="grid gap-3 sm:grid-cols-2">
-        <StatChip label="Ready for fulfillment" value={ready} tone="teal" />
-        <StatChip label="Cancelled" value={cancelled} tone="slate" />
-      </div>
+        {/* Two numbers that mean something. "Cancelled: 0" was one of the two
+            headline figures before, and it is 0 on every clinic that has never
+            cancelled anything — a permanent zero is not a statistic. */}
+        <div className="grid gap-3 sm:grid-cols-2">
+          <Stat
+            label="Awaiting fulfilment"
+            value={loading ? "—" : String(ready.length)}
+            hint="orders with the ops team"
+          />
+          <Stat
+            label="Pipeline value"
+            value={loading ? "—" : formatInr(pipeline)}
+            hint="indicative, excludes cancelled"
+          />
+        </div>
 
-      <section className="rounded-2xl border border-stone-200 bg-white overflow-hidden">
+        {(items?.length ?? 0) > 6 && (
+          <label className="relative block">
+            <Search
+              className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-[color:var(--hd-text-muted)]"
+              aria-hidden
+            />
+            <input
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder="Search patient, doctor or kit"
+              aria-label="Search orders"
+              className="hd-card w-full py-2.5 pl-9 pr-3 text-sm outline-none"
+            />
+          </label>
+        )}
+
         {loading ? (
-          <div className="flex items-center justify-center py-12 text-stone-500">
-            <Loader2 className="size-4 animate-spin" />
+          <div className="hd-card flex items-center justify-center py-14">
+            <Loader2
+              className="size-4 animate-spin text-[color:var(--hd-text-muted)]"
+              aria-label="Loading orders"
+            />
           </div>
-        ) : !items || items.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-16 text-stone-500">
-            <Package className="size-8 mb-3 text-stone-300" />
-            <p className="text-sm">No kit orders yet.</p>
-            <p className="text-xs mt-1">
-              Approve a consultation from the inbox to create your first order.
+        ) : filtered.length === 0 ? (
+          <div className="hd-card flex flex-col items-center justify-center py-16 text-center">
+            <Package
+              className="mb-3 size-8 text-[color:var(--hd-border-strong)]"
+              aria-hidden
+            />
+            <p className="hd-value font-medium">
+              {query ? "No orders match that search." : "No kit orders yet."}
+            </p>
+            <p className="hd-label mt-1">
+              {query
+                ? "Try a patient, doctor or kit name."
+                : "Approve a consultation to create your first order."}
             </p>
           </div>
         ) : (
-          <table className="w-full text-sm">
-            <thead className="bg-stone-50 text-[11px] uppercase tracking-wider text-stone-500">
-              <tr>
-                <th className="px-4 py-2.5 text-left font-medium">Patient</th>
-                <th className="px-4 py-2.5 text-left font-medium">Kits</th>
-                <th className="px-4 py-2.5 text-left font-medium">Doctor</th>
-                <th className="px-4 py-2.5 text-left font-medium">Status</th>
-                <th className="px-4 py-2.5 text-left font-medium">Approved</th>
-                <th className="px-4 py-2.5" />
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-stone-100">
-              {items.map((o) => (
-                <tr key={o.id} className="hover:bg-stone-50">
-                  <td className="px-4 py-3 font-medium text-slate-800">
-                    {o.patientName}
-                  </td>
-                  <td className="px-4 py-3 text-stone-600">
-                    {o.kitCount} {o.kitCount === 1 ? "kit" : "kits"}
-                  </td>
-                  <td className="px-4 py-3 text-stone-600">{o.doctorName}</td>
-                  <td className="px-4 py-3">
-                    <StatusPill status={o.status} />
-                  </td>
-                  <td className="px-4 py-3 text-stone-500 text-xs">
-                    {fmtDate(o.createdAt)}
-                  </td>
-                  <td className="px-4 py-3">
-                    {o.assessmentId && (
-                      <Link
-                        href={`/doctor/reports/${o.assessmentId}`}
-                        className="inline-flex items-center gap-1 text-xs text-teal-700 hover:text-teal-900"
-                      >
-                        View
-                        <ChevronRight className="size-3" />
-                      </Link>
-                    )}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+          <ul className="space-y-3">
+            {filtered.map((o) => (
+              <li key={o.id} className="hd-card p-4 sm:p-5">
+                <div className="flex flex-wrap items-start justify-between gap-x-4 gap-y-2">
+                  <div className="min-w-0">
+                    <p className="hd-value text-[15px] font-semibold">
+                      {o.patientName}
+                    </p>
+                    <p className="hd-label mt-0.5 flex flex-wrap items-center gap-x-2 text-xs">
+                      <span className="inline-flex items-center gap-1">
+                        <Stethoscope className="size-3" aria-hidden />
+                        {o.doctorName}
+                      </span>
+                      {/* Locale-formatted, so the browser renders it. The
+                          server runs in UTC and would otherwise show a doctor
+                          a time that is not theirs. */}
+                      {hydrated && <span>· {fmtDate(o.createdAt)}</span>}
+                    </p>
+                  </div>
+
+                  <div className="flex items-center gap-3">
+                    <span
+                      className={
+                        "hd-pill " +
+                        (o.status === "READY_FOR_FULFILMENT"
+                          ? "hd-pill-primary"
+                          : "hd-pill-neutral")
+                      }
+                    >
+                      {o.status === "READY_FOR_FULFILMENT"
+                        ? "Ready for fulfilment"
+                        : "Cancelled"}
+                    </span>
+                    <span className="hd-value font-semibold tabular-nums">
+                      {o.totalLabel}
+                    </span>
+                  </div>
+                </div>
+
+                {/* The kits themselves — the reason this page exists. */}
+                <div className="mt-3 flex flex-wrap items-center gap-2">
+                  {o.lineItems.map((li, i) => (
+                    <span
+                      key={`${li.kitId}-${i}`}
+                      className="flex items-center gap-2 rounded-lg bg-[color:var(--hd-surface-sunken)] py-1 pl-1 pr-2.5"
+                    >
+                      <ProductImage id={li.kitId} category="kit" size="xs" />
+                      <span className="hd-value text-[13px]">
+                        {li.displayName}
+                      </span>
+                    </span>
+                  ))}
+                </div>
+
+                <div className="mt-3 flex flex-wrap items-center gap-2">
+                  {/* THE order view: what the patient actually sees. */}
+                  {o.assessmentId && (
+                    <button
+                      type="button"
+                      onClick={() => setOpen(o)}
+                      className="hd-btn hd-btn-secondary !px-3 !py-1.5 !text-xs"
+                    >
+                      View order
+                    </button>
+                  )}
+                  {/* The clinical case is a different question, so it is a
+                      different, quieter control — not the row's main action. */}
+                  {o.assessmentId && (
+                    <Link
+                      href={`/doctor/reports/${o.assessmentId}`}
+                      className="hd-label text-xs underline underline-offset-2 hover:text-[color:var(--hd-text)]"
+                    >
+                      Open clinical review
+                    </Link>
+                  )}
+                </div>
+              </li>
+            ))}
+          </ul>
         )}
-      </section>
+      </div>
+
+      {open && <OrderDialog order={open} onClose={() => setOpen(null)} />}
     </PageContainer>
   );
 }
 
-function StatChip({ label, value, tone }: { label: string; value: number; tone: "teal" | "slate" }) {
-  const cls =
-    tone === "teal"
-      ? "border-teal-200 bg-teal-50/70 text-teal-900"
-      : "border-stone-200 bg-stone-50 text-slate-800";
+/**
+ * The patient's final order, as the patient sees it.
+ *
+ * Rendered from the SAME line items and totals the cart bills against, so this
+ * dialog cannot show a different order from the one the patient confirmed. The
+ * link at the foot opens the real cart page for anyone who wants the live
+ * article; it is a new tab so an open orders list is not lost.
+ */
+function OrderDialog({ order, onClose }: { order: Order; onClose: () => void }) {
   return (
-    <div className={`rounded-xl border ${cls} px-4 py-3 flex items-baseline justify-between`}>
-      <span className="text-[10px] uppercase tracking-wider">{label}</span>
-      <span className="font-serif text-2xl">{value}</span>
+    <div
+      role="dialog"
+      aria-modal="true"
+      aria-label={`Order for ${order.patientName}`}
+      onClick={onClose}
+      className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-slate-900/40 p-4 sm:p-8"
+    >
+      <div
+        data-surface="doctor"
+        onClick={(e) => e.stopPropagation()}
+        className="hd-card w-full max-w-lg p-5 sm:p-6"
+      >
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <p className="hd-eyebrow">Patient order</p>
+            <p className="hd-value mt-1 text-lg font-semibold">
+              {order.patientName}
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            aria-label="Close order"
+            className="hd-btn hd-btn-secondary !p-2"
+          >
+            <X className="size-4" aria-hidden />
+          </button>
+        </div>
+
+        <ul className="mt-4 space-y-2">
+          {order.lineItems.map((li, i) => (
+            <li
+              key={`${li.kitId}-${i}`}
+              className="flex items-center gap-3 rounded-xl border border-[color:var(--hd-border)] p-2.5"
+            >
+              <ProductImage id={li.kitId} category="kit" size="sm" />
+              <div className="min-w-0 flex-1">
+                <p className="hd-value font-medium">{li.displayName}</p>
+                <p className="hd-label text-xs">1-month protocol · Qty 1</p>
+              </div>
+              <span className="hd-value tabular-nums">{li.priceLabel}</span>
+            </li>
+          ))}
+        </ul>
+
+        <div className="hd-divide-t mt-4 flex items-baseline justify-between pt-3">
+          <span className="hd-label">
+            Total · {order.kitCount}-month plan
+          </span>
+          <span className="hd-value text-xl font-semibold tabular-nums">
+            {order.totalLabel}
+          </span>
+        </div>
+
+        <p className="hd-label mt-1 text-xs">
+          Prices indicative — the final invoice comes from the clinic.
+        </p>
+
+        {order.assessmentId && (
+          <a
+            href={`/cart/${order.assessmentId}`}
+            target="_blank"
+            rel="noreferrer"
+            className="hd-btn hd-btn-secondary mt-4 w-full !text-xs"
+          >
+            <ExternalLink className="size-3.5" aria-hidden />
+            Open the patient&apos;s cart
+          </a>
+        )}
+      </div>
     </div>
   );
 }
 
-function StatusPill({ status }: { status: Order["status"] }) {
-  if (status === "READY_FOR_FULFILMENT") {
-    return (
-      <span className="inline-flex items-center rounded-full bg-teal-100 px-2 py-0.5 text-[11px] font-medium text-teal-800 ring-1 ring-teal-200">
-        Ready for fulfillment
-      </span>
-    );
-  }
+/** Rupee formatting, matching lib/pricing/kitPrices so totals read alike. */
+function formatInr(v: number): string {
+  return new Intl.NumberFormat("en-IN", {
+    style: "currency",
+    currency: "INR",
+    maximumFractionDigits: 0,
+  }).format(v);
+}
+
+function Stat({
+  label,
+  value,
+  hint,
+}: {
+  label: string;
+  value: string;
+  hint: string;
+}) {
   return (
-    <span className="inline-flex items-center rounded-full bg-stone-100 px-2 py-0.5 text-[11px] font-medium text-stone-700 ring-1 ring-stone-200">
-      Cancelled
-    </span>
+    <div className="hd-card p-4">
+      <p className="hd-eyebrow">{label}</p>
+      <p className="hd-value mt-1 font-serif text-2xl tabular-nums">{value}</p>
+      <p className="hd-label mt-0.5 text-xs">{hint}</p>
+    </div>
   );
 }
 
 function fmtDate(iso: string): string {
-  const d = new Date(iso);
-  return d.toLocaleDateString(undefined, {
+  return new Date(iso).toLocaleDateString(undefined, {
     day: "numeric",
     month: "short",
     hour: "numeric",
