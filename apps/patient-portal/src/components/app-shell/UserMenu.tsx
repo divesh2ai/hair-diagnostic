@@ -42,13 +42,52 @@ export function UserMenu({
         <span className="hidden sm:inline truncate max-w-[10rem]">{name}</span>
       </MenuPrimitive.Trigger>
       <MenuPrimitive.Portal>
-        <MenuPrimitive.Positioner sideOffset={6} align="end">
-          <MenuPrimitive.Popup className="z-50 min-w-[14rem] rounded-lg border border-border bg-popover text-popover-foreground shadow-lg p-1 outline-none">
+        {/* `collisionPadding` keeps the menu clear of the window edge. Without
+            it the popup sits flush against the right-hand side on a maximised
+            window, which is where the clipping starts. */}
+        {/* ── The z-index belongs HERE, not on the Popup ─────────────────
+            `z-index` only applies to POSITIONED elements. Base UI gives the
+            Positioner `position: absolute` and leaves the Popup `static`, so a
+            `z-50` written on the Popup was silently inert — the whole menu
+            participated at `z-auto` and the sticky header (`z-30`) painted
+            over its first row, which is why the doctor's name was sliced in
+            half. Putting it on the positioned ancestor is what actually lifts
+            the menu above the header. */}
+        <MenuPrimitive.Positioner
+          sideOffset={6}
+          align="end"
+          collisionPadding={12}
+          className="z-50"
+        >
+          {/* ── Why this width is BOUNDED ──────────────────────────────────
+              It was `min-w-[14rem]` with no maximum, so the box grew to fit
+              its widest child — and the widest child is
+              "<email> · <role> · <clinic name>", which for a real clinic is
+              easily 400px. The popup then ran off the right of the viewport
+              and the identity line was cut in half.
+
+              `truncate` was already on those lines and did nothing, because
+              an element with no upper width bound never overflows: it just
+              gets wider. Capping the width is what makes the ellipsis work.
+
+              The `max-w` keeps it inside a narrow window too, so the menu
+              degrades on a phone instead of extending past the screen. */}
+          <MenuPrimitive.Popup className="w-[17rem] max-w-[calc(100vw-1.5rem)] rounded-lg border border-border bg-popover text-popover-foreground shadow-lg p-1 outline-none">
             <div className="px-3 py-2 border-b border-border mb-1">
               <div className="text-sm font-medium truncate">{name}</div>
+              {/* Role and clinic move to their own line rather than being
+                  joined onto the email with "·". One long run of text can only
+                  ever truncate to the email; two lines let both facts survive,
+                  and the clinic is the one a doctor with several logins
+                  actually needs to read. */}
               <div className="text-xs text-muted-foreground truncate">
-                {email ? `${email} · ${roleLabel}` : roleLabel}
+                {email ?? roleLabel}
               </div>
+              {email && (
+                <div className="text-xs text-muted-foreground truncate">
+                  {roleLabel}
+                </div>
+              )}
             </div>
 
             <div className="px-1.5 pb-1">
@@ -67,10 +106,13 @@ export function UserMenu({
                     key={m}
                     type="button"
                     onClick={() => setMode(m)}
-                    className={`flex-1 inline-flex items-center justify-center gap-1 rounded-md py-1.5 text-xs hover:bg-muted ${mode === m ? "bg-muted text-foreground" : "text-muted-foreground"}`}
+                    className={`min-w-0 flex-1 inline-flex items-center justify-center gap-1 rounded-md px-1 py-1.5 text-xs hover:bg-muted ${mode === m ? "bg-muted text-foreground" : "text-muted-foreground"}`}
                   >
-                    <Icon className="size-3.5" />
-                    {m}
+                    {/* shrink-0 on the icon and truncate on the label: with
+                        three equal columns inside a fixed-width popup, it is
+                        the label that must give way, never the icon. */}
+                    <Icon className="size-3.5 shrink-0" />
+                    <span className="truncate">{m}</span>
                   </button>
                 ))}
               </div>

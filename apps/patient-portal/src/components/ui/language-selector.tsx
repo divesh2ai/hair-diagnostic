@@ -26,8 +26,10 @@ export function LanguageSelector({ className }: { className?: string }) {
         <span>{LOCALE_LABELS[locale].native}</span>
       </MenuPrimitive.Trigger>
       <MenuPrimitive.Portal>
-        <MenuPrimitive.Positioner sideOffset={6}>
-          <MenuPrimitive.Popup className="z-50 min-w-[10rem] rounded-lg border border-border bg-popover text-popover-foreground shadow-lg p-1 outline-none">
+        {/* z-index goes on the Positioner: the Popup is `position: static`,
+            where `z-index` has no effect. Same reason as UserMenu. */}
+        <MenuPrimitive.Positioner sideOffset={6} collisionPadding={12} className="z-50">
+          <MenuPrimitive.Popup className="min-w-[10rem] max-w-[calc(100vw-1.5rem)] rounded-lg border border-border bg-popover text-popover-foreground shadow-lg p-1 outline-none">
             {orderedLocales.map((l) => (
               <MenuPrimitive.Item
                 key={l}
