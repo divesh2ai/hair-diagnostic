@@ -9,6 +9,7 @@ import {
 import { listFulfilments } from "@/lib/fulfilment/fulfilmentStore";
 import { IN_FLIGHT_STATUSES, STALE_AFTER_MINUTES } from "@/lib/admin/jobHealth";
 import { loadPeopleDirectory } from "@/lib/admin/peopleDirectory";
+import { locationSetupState } from "@/lib/clinic/location";
 
 // GET /api/admin/action-centre
 //
@@ -81,6 +82,7 @@ export async function GET() {
     failedDeliveries,
     stalledAssessments,
     rolelessAccounts,
+    clinicsMissingLocation,
   ] = await Promise.all([
     // Assessments a doctor has not decided on yet. Reads the legacy workflow
     // flag rather than the consultation aggregate because it is the column the
@@ -188,6 +190,46 @@ export async function GET() {
           lastSignInAt: p.lastSignInAt,
         }));
     }),
+    // Clinics the national map cannot draw.
+    //
+    // Deliberately a housekeeping item, not a platform fault: nothing is broken
+    // and no patient is affected — the map is simply incomplete, which is a
+    // fact worth showing an operator and never worth colouring like an outage.
+    // It is also why this does not touch platform health, which reports on the
+    // assessment pipeline.
+    //
+    // `locationSetupState` is the same rule the clinic list badges use, so the
+    // count here and the badge there can never disagree.
+    settle(async () => {
+      const rows = await prisma.clinic.findMany({
+        where: { deletedAt: null, status: { not: "SUSPENDED" } },
+        orderBy: { name: "asc" },
+        take: 50,
+        select: {
+          id: true,
+          name: true,
+          locations: {
+            where: { deletedAt: null },
+            select: { geoStatus: true, city: true, state: true },
+          },
+        },
+      });
+      return rows
+        .filter((c) => locationSetupState(c.locations) !== "COMPLETE")
+        .map((c) => ({
+          clinicId: c.id,
+          clinicName: c.name,
+          // NONE means no branch at all; INCOMPLETE means branches exist with
+          // an address but no pin. The two need different work, so the item
+          // says which rather than lumping them together.
+          setupState: locationSetupState(c.locations),
+          // Whatever geography IS on record, so the operator can see the
+          // clinic is known even though it cannot be placed.
+          knownPlace:
+            [c.locations[0]?.city, c.locations[0]?.state].filter(Boolean).join(", ") ||
+            null,
+        }));
+    }),
   ]);
 
   const groups = {
@@ -199,6 +241,7 @@ export async function GET() {
     failedDeliveries,
     stalledAssessments,
     rolelessAccounts,
+    clinicsMissingLocation,
   };
 
   const available = Object.values(groups).filter((g) => g.available);

@@ -152,6 +152,16 @@ const ATTENTION: {
     why: "Sent to a patient and still unpaid.",
     href: "/admin/operations?tab=orders",
   },
+  {
+    // Housekeeping, and shown as such. Nothing is broken and no patient is
+    // affected — the national map is just incomplete. It sits last and is
+    // never marked severe, because colouring an unpinned clinic like a failed
+    // order would teach the operator to distrust the colours.
+    key: "clinicsMissingLocation",
+    label: (n) => `${n} clinic${n === 1 ? "" : "s"} missing a map location`,
+    why: "Recorded on the platform but not placeable, so they are absent from the national map.",
+    href: "/admin/clinics",
+  },
 ];
 
 export function NeedsAttention({ health }: { health?: HealthPayload }) {

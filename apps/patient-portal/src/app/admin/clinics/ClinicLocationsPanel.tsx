@@ -1,7 +1,20 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import dynamic from "next/dynamic";
 import { MapPin, MapPinOff, Plus, Star, Trash2 } from "lucide-react";
+
+// maplibre-gl touches `window` at module scope, so the picker cannot be server
+// rendered; ssr:false also keeps the map engine out of the clinic page's bundle
+// until an admin actually opens a branch form.
+const LocationPicker = dynamic(() => import("@/components/admin/LocationPicker"), {
+  ssr: false,
+  loading: () => (
+    <div className="grid h-[280px] w-full place-items-center rounded-lg border border-border bg-muted/40 text-sm text-muted-foreground">
+      Loading map…
+    </div>
+  ),
+});
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -431,13 +444,30 @@ function DraftForm({
         <LocField
           label="Map pin"
           className="sm:col-span-2"
-          hint="Paste coordinates from Google Maps as `latitude, longitude`. Leave blank if you don't have them yet — the branch saves without a pin and stays off the map."
+          hint="Click the map where the clinic stands, then check the marker before saving. A pin is recorded as confirmed by you — nothing is ever derived from the address, so a branch with no pin stays off the national map rather than being placed approximately."
         >
-          <Input
-            value={draft.coordinates}
-            onChange={(e) => set("coordinates", e.target.value)}
-            placeholder="19.0596, 72.8295"
-          />
+          <div className="space-y-2">
+            {/* Map first: the address is what the admin knows, but the pin is
+                what the national map draws, and the only way to check a
+                coordinate is to look at where it lands. */}
+            <LocationPicker
+              value={pickerValue(draft.coordinates)}
+              onChange={(next) =>
+                set(
+                  "coordinates",
+                  next ? `${next.latitude.toFixed(5)}, ${next.longitude.toFixed(5)}` : "",
+                )
+              }
+            />
+            {/* The same value, typed. Keeps the paste-from-Google-Maps route
+                that admins already use, and is the keyboard path to a pin. */}
+            <Input
+              value={draft.coordinates}
+              onChange={(e) => set("coordinates", e.target.value)}
+              placeholder="19.0596, 72.8295"
+              aria-label="Latitude, longitude"
+            />
+          </div>
         </LocField>
       </div>
 
@@ -536,6 +566,17 @@ function describeAddress(loc: ClinicLocation): string {
  * `19.0596, 72.8295` → coordinates. Returns null for blank (no pin) and
  * "invalid" for anything unparseable, so a typo can't be read as "cleared".
  */
+/**
+ * The draft stores coordinates as the string the admin sees, so the map and the
+ * text field cannot drift apart. This narrows it for the picker; a half-typed
+ * or out-of-range value simply shows no marker rather than throwing one onto
+ * the map at a nonsense position.
+ */
+function pickerValue(input: string): { latitude: number; longitude: number } | null {
+  const parsed = parseCoordinates(input);
+  return parsed === "invalid" || parsed === null ? null : parsed;
+}
+
 export function parseCoordinates(
   input: string,
 ): { latitude: number; longitude: number } | null | "invalid" {
