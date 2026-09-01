@@ -55,3 +55,7 @@ prisma/migrations_backup/
 # Disposable QA artifacts — screenshots, page dumps, browser state. These are
 # evidence for one run, not source; regenerate them with the qa-* scripts.
 .tmp-*/
+
+# Real clinicians' email addresses for scripts/onboard-launch-clinics.ts.
+# Personal contact data for named individuals — never committed.
+scripts/launch-doctors.emails.json
