@@ -14,67 +14,43 @@ import type { Prisma, PrismaClient } from "@prisma/client";
 import { SystemRole } from "@prisma/client";
 import { prisma as defaultPrisma } from "@/lib/prisma";
 
-export type AuditAction =
-  | "CONSULTATION_CREATED"
-  | "CLINICAL_PROCESSING_COMPLETED"
-  | "CLINICAL_PROCESSING_FAILED"
-  | "DOCTOR_NOTE_SAVED"
-  | "CONSULTATION_UPDATED"
-  | "CONSULTATION_APPROVED"
-  | "CONSULTATION_NEEDS_REVISION"
-  | "CONSULTATION_REJECTED"
-  | "RECOMMENDATION_FEEDBACK_SUBMITTED"
-  | "REPORT_GENERATION_STARTED"
-  | "REPORT_GENERATION_FAILED"
-  | "REPORT_RETRIED"
-  | "REPORT_GENERATED"
-  | "KIT_ORDER_INTENT_CREATED"
-  | "KIT_ORDER_INTENT_CANCELLED"
-  | "PHASE_A_RECLAIMED"
-  | "DOCTOR_INVITATION_CREATED"
-  | "DOCTOR_INVITATION_RESENT"
-  | "DOCTOR_INVITATION_CANCELLED"
-  | "DOCTOR_INVITATION_EXPIRED"
-  /**
-   * A clinical record was opened for review. Reads were previously unaudited,
-   * so a super admin viewing a patient's consultation through a Doctor
-   * identity left no trace — the one access a compliance reviewer most needs
-   * to find. Written fire-and-forget: never on the critical path.
-   */
-  | "CLINICAL_RECORD_VIEWED"
-  /**
-   * Super Admin console mutations. Every one of these was previously silent:
-   * a Super Admin could create, reconfigure, suspend or archive a tenant and
-   * leave no trace at all, which made the audit log blind to the most
-   * privileged actor on the platform. CLINIC_ARCHIVED is the sharpest of the
-   * set — it soft-deletes an entire tenant.
-   *
-   * These rows are written on the request path (awaited, not fire-and-forget):
-   * an admin mutation that cannot be attributed should fail rather than
-   * silently succeed unrecorded.
-   */
-  | "CLINIC_CREATED"
-  | "CLINIC_UPDATED"
-  | "CLINIC_SUSPENDED"
-  | "CLINIC_ACTIVATED"
-  | "CLINIC_ARCHIVED"
-  | "CLINIC_LOCATION_CREATED"
-  | "CLINIC_LOCATION_UPDATED"
-  | "CLINIC_LOCATION_DELETED"
-  | "PLATFORM_SETTINGS_UPDATED"
-  /**
-   * A Super Admin downloaded the platform-wide kit order intent workbook.
-   *
-   * This is a bulk privileged read that crosses every tenant boundary at
-   * once, so it is audited like a mutation and the export FAILS CLOSED: if
-   * the audit row cannot be written the workbook is not returned. A
-   * privileged cross-tenant export that leaves no trace is precisely what an
-   * audit log exists to prevent.
-   *
-   * Metadata carries the filter envelope and row count only — never the
-   * exported contents, and never a patient identifier.
-   */
-  | "ADMIN_ORDER_EXPORT";
+// The action names themselves now live in ./actions as a runtime array, so the
+// audit console can render a picker from them and the API can tell an unknown
+// action apart from a genuinely quiet one. The semantics of the sharper events
+// are documented below; the list itself is in that file.
+//
+//   CLINICAL_RECORD_VIEWED
+//     A clinical record was opened for review. Reads were previously
+//     unaudited, so a super admin viewing a patient's consultation through a
+//     Doctor identity left no trace — the one access a compliance reviewer
+//     most needs to find. Written fire-and-forget: never on the critical path.
+//
+//   CLINIC_* / PLATFORM_SETTINGS_UPDATED
+//     Super Admin console mutations. Every one of these was previously silent:
+//     a Super Admin could create, reconfigure, suspend or archive a tenant and
+//     leave no trace at all. CLINIC_ARCHIVED is the sharpest of the set — it
+//     soft-deletes an entire tenant. Written on the request path (awaited): an
+//     admin mutation that cannot be attributed should fail rather than
+//     silently succeed unrecorded.
+//
+//   ADMIN_ORDER_EXPORT / AUDIT_LOG_EXPORTED
+//     Bulk privileged reads that cross every tenant boundary at once, so they
+//     are audited like mutations and FAIL CLOSED: if the audit row cannot be
+//     written the export is not returned. A privileged cross-tenant export
+//     that leaves no trace is precisely what an audit log exists to prevent.
+//     AUDIT_LOG_EXPORTED covers the audit console's own CSV — the one export
+//     that reveals the platform's complete activity history.
+//
+//   DOCTOR_ORDER_SUMMARY_EXPORT
+//     A clinic-scoped download, so not a cross-tenant read like the two above
+//     — but it carries patient-level clinical context, so it is recorded.
+//
+//   PATIENT_REPORT_SHARED / PATIENT_CART_SHARED
+//     A clinician deliberately sending clinical information to a patient's
+//     phone. Metadata carries the subject and a short token fingerprint —
+//     never the token, never the phone number, never the link.
+export type { AuditAction } from "./actions";
+import type { AuditAction } from "./actions";
 
 /**
  * `admin_view` is a distinct actor type, not a synonym for `admin`: it marks a

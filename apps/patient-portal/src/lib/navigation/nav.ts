@@ -42,15 +42,60 @@ export type NavBadgeChannel =
   | "newPatients"
   | "platformAlerts";
 
+// Super Admin navigation — seven destinations, five groups.
+//
+// ── Why this shrank from ten items to seven ─────────────────────────────────
+// The sidebar had grown to expose the system's internal boundaries: Action
+// Centre, Kit Orders, Fulfilment and Review Queue were four separate top-level
+// entries describing four services rather than four jobs. A Super Admin should
+// not have to know how the platform is built in order to run it.
+//
+// The test each destination now answers:
+//   Dashboard ............ what is happening, and what needs me?
+//   Clinics / People ..... who is on the platform, and what can they reach?
+//   Operations ........... what is moving, stuck or waiting?
+//   Governance ........... what was decided, and who did what?
+//   Platform Settings .... how is the system configured?
+//
+// Action Centre is gone from the sidebar because its content now leads the
+// Dashboard — the exceptions belong where the operator already looks first,
+// not one click away. Its route and API survive untouched as a deep dive.
 const NAV_SUPER_ADMIN: NavSection[] = [
   {
     labelKey: null,
+    items: [{ href: "/admin", labelKey: "nav.dashboard", icon: "dashboard" }],
+  },
+  {
+    labelKey: "nav.sectionNetwork",
     items: [
-      { href: "/admin", labelKey: "nav.dashboard", icon: "dashboard" },
       { href: "/admin/clinics", labelKey: "nav.clinics", icon: "clinics" },
-      { href: "/admin/orders", labelKey: "nav.orders", icon: "reports" },
-      { href: "/admin/knowledge-review", labelKey: "nav.reviewQueue", icon: "audit" },
-      { href: "/admin/audit", labelKey: "nav.audit", icon: "audit" },
+      { href: "/admin/people", labelKey: "nav.people", icon: "doctors" },
+    ],
+  },
+  {
+    labelKey: "nav.sectionOperations",
+    items: [
+      // One destination, tabbed inside. Orders and Fulfilment keep their own
+      // routes as deep links; they are simply no longer top-level concepts.
+      { href: "/admin/operations", labelKey: "nav.operations", icon: "queue" },
+    ],
+  },
+  {
+    labelKey: "nav.sectionGovernance",
+    items: [
+      {
+        href: "/admin/clinical-governance",
+        labelKey: "nav.clinicalGovernance",
+        icon: "audit",
+      },
+      { href: "/admin/audit", labelKey: "nav.auditSecurity", icon: "audit" },
+    ],
+  },
+  {
+    // Configuration, not daily work. Its own group so it reads as a different
+    // kind of destination rather than the tenth thing in a list.
+    labelKey: "nav.sectionSystem",
+    items: [
       {
         href: "/admin/settings",
         labelKey: "nav.platformSettings",

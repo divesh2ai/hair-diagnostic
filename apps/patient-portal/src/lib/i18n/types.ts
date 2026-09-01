@@ -70,6 +70,16 @@ export type Dictionary = {
     whatsapp: string;
     orders: string;
     leads: string;
+    people: string;
+    clinicalGovernance: string;
+    actionCentre: string;
+    fulfilment: string;
+    operations: string;
+    auditSecurity: string;
+    sectionNetwork: string;
+    sectionOperations: string;
+    sectionGovernance: string;
+    sectionSystem: string;
   };
   shell: {
     searchPlaceholder: string;

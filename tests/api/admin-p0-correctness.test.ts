@@ -29,18 +29,44 @@ function recorder(model: string, op: string) {
   };
 }
 
+// Same recording, but resolves to an empty array. The audit route enriches its
+// rows at read time (actor identity, clinic attribution) with lookups that run
+// OUTSIDE $transaction, so those calls receive the real return value and must
+// be iterable. $transaction ignores the ops it is handed, so a list-returning
+// recorder is safe for models the dashboard also batches.
+function recorderList(model: string, op: string) {
+  return (args?: Where) => {
+    calls.push({ model, op, args: args ?? {} });
+    return Promise.resolve([] as unknown[]);
+  };
+}
+
 const prismaMock = {
   $transaction: (ops: unknown[]) => Promise.resolve(txResults),
   assessment: {
     count: recorder("assessment", "count"),
     findMany: recorder("assessment", "findMany"),
   },
-  clinic: { count: recorder("clinic", "count"), findMany: recorder("clinic", "findMany") },
-  doctor: { count: recorder("doctor", "count"), findMany: recorder("doctor", "findMany") },
+  clinic: { count: recorder("clinic", "count"), findMany: recorderList("clinic", "findMany") },
+  doctor: { count: recorder("doctor", "count"), findMany: recorderList("doctor", "findMany") },
   patient: { count: recorder("patient", "count") },
   kitOrderIntent: { count: recorder("kitOrderIntent", "count") },
   orchestrationLog: { findMany: recorder("orchestrationLog", "findMany") },
-  auditLog: { findMany: recorder("auditLog", "findMany"), count: recorder("auditLog", "count") },
+  auditLog: {
+    findMany: recorder("auditLog", "findMany"),
+    count: recorder("auditLog", "count"),
+    // The audit CSV export now records itself as AUDIT_LOG_EXPORTED and fails
+    // closed, so the export path writes a row before it returns the file.
+    create: recorder("auditLog", "create"),
+    // The action facet is the union of the canonical taxonomy and the distinct
+    // actions actually present, so pre-canonical values stay selectable. It
+    // runs on every audit read, including the export path.
+    groupBy: recorderList("auditLog", "groupBy"),
+  },
+  // Read-time actor resolution.
+  organizationMember: { findMany: recorderList("organizationMember", "findMany") },
+  clinicMember: { findMany: recorderList("clinicMember", "findMany") },
+  $queryRaw: () => Promise.resolve([] as unknown[]),
 };
 
 jest.mock("@/lib/prisma", () => ({ prisma: prismaMock }));
@@ -79,6 +105,8 @@ function dashboardTx(opts: {
   thisMonth?: number;
   lastMonth?: number;
   completedToday?: number;
+  partialFailuresInWindow?: number;
+  stalled?: number;
 }) {
   return [
     3, // clinicsTotal
@@ -94,6 +122,12 @@ function dashboardTx(opts: {
     [], // recentAssessments
     opts.failuresInWindow,
     opts.assessmentsInWindow,
+    // Health now also counts partial failures and work stalled mid-pipeline.
+    // Both default to 0 so every assertion below keeps its original meaning:
+    // with no partial failures and nothing stalled, the score is still the
+    // same-window failure-rate complement these tests were written to lock.
+    opts.partialFailuresInWindow ?? 0,
+    opts.stalled ?? 0,
   ];
 }
 
@@ -366,8 +400,15 @@ describe("GET /api/admin/audit?export=csv", () => {
     // RFC 4180: wrap in quotes, double any embedded quote.
     expect(text).toContain('"The ""Best"" Clinic\nBranch 2"');
 
+    // Column count is the guard against a quoted field shifting the row. It
+    // grew from 9 to 13 when the export gained read-time enrichment:
+    // actorEmail, actorName, actorRoleCurrent and clinicAttributionSource.
+    // actorRoleAtEvent (stored on the row) and actorRoleCurrent (looked up
+    // now) are separate columns on purpose — they are different claims.
     const header = text.split("\r\n")[0]!;
-    expect(header.split(",").length).toBe(9);
+    expect(header.split(",").length).toBe(13);
+    expect(header).toContain("actorEmail");
+    expect(header).toContain("clinicAttributionSource");
   });
 
   it("REGRESSION: a truncated export announces itself in the filename", async () => {
