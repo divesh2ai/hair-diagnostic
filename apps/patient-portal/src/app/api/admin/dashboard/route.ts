@@ -1,6 +1,11 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { assertSuperAdmin, handleAuthError } from "@/lib/auth";
+import {
+  computePlatformHealth,
+  IN_FLIGHT_STATUSES,
+  STALE_AFTER_MINUTES,
+} from "@/lib/admin/jobHealth";
 
 export const dynamic = "force-dynamic";
 
@@ -58,6 +63,8 @@ export async function GET() {
       recentAssessments,
       failuresInHealthWindow,
       assessmentsInHealthWindow,
+      partialFailuresInHealthWindow,
+      stalledAssessments,
     ] = await prisma.$transaction([
       prisma.clinic.count({ where: { deletedAt: null } }),
       prisma.clinic.count({ where: { deletedAt: null, status: "ACTIVE" } }),
@@ -135,8 +142,36 @@ export async function GET() {
           createdAt: { gte: startOfHealthWindow },
         },
       }),
+      // PARTIAL_FAILURE was scoring as success. The patient's record is
+      // incomplete and a human has to look at it, which is the only test an
+      // operational health signal should apply.
+      prisma.assessment.count({
+        where: {
+          deletedAt: null,
+          status: "PARTIAL_FAILURE",
+          createdAt: { gte: startOfHealthWindow },
+        },
+      }),
+      // Stalled mid-pipeline: in an actively-progressing status with no write
+      // for longer than the threshold. Counted across ALL time, not the health
+      // window — a job wedged nine days ago is still wedged today, and a
+      // window would let it quietly age out of the signal.
+      prisma.assessment.count({
+        where: {
+          deletedAt: null,
+          status: { in: [...IN_FLIGHT_STATUSES] },
+          updatedAt: {
+            lt: new Date(now.getTime() - STALE_AFTER_MINUTES * 60_000),
+          },
+        },
+      }),
     ]);
 
+    // Retained for existing consumers. Note the `: 100` branch: with no
+    // previous-period activity there is no percentage change, and 100 is an
+    // assertion the data cannot support. The console no longer reads this
+    // field — it reads the raw pair below and decides for itself whether a
+    // percentage is meaningful at this sample size (lib/admin/growth.ts).
     const growth =
       assessmentsLastMonth > 0
         ? Math.round(
@@ -148,17 +183,23 @@ export async function GET() {
           ? 100
           : 0;
 
-    // 7-day rolling failure rate. With no assessments in the window there is
-    // no evidence of failure, so health is 100 rather than 0 — a quiet week
-    // is not a degraded platform.
-    const failureRate =
-      assessmentsInHealthWindow > 0
-        ? Math.round((failuresInHealthWindow / assessmentsInHealthWindow) * 100)
-        : 0;
+    // Health now counts three things, not one: terminal failures, partial
+    // failures, and work stalled mid-pipeline. See lib/admin/jobHealth for the
+    // banding rules and why a single stalled job is enough to leave "healthy".
+    //
+    // `score` is null when the window is empty — the old code returned 100 for
+    // a quiet week, so a total intake outage displayed as maximum health.
+    const health = computePlatformHealth({
+      windowTotal: assessmentsInHealthWindow,
+      failed: failuresInHealthWindow,
+      partialFailure: partialFailuresInHealthWindow,
+      stalled: stalledAssessments,
+    });
 
-    // 100 minus the rolling failure rate, clamped to 0–100. UI labels
-    // >90 healthy, 70–90 watch, <70 degraded.
-    const platformHealth = Math.min(100, Math.max(0, 100 - failureRate));
+    // Retained for existing consumers of `metrics.platformHealth`, which is a
+    // number. Null (no evidence) is reported as 100 here to preserve the old
+    // shape; anything reading the honest value should read `health` instead.
+    const platformHealth = health.score ?? 100;
 
     return NextResponse.json({
       metrics: {
@@ -173,8 +214,18 @@ export async function GET() {
         // never measured.
         assessmentsCompletedToday,
         monthlyGrowth: growth,
+        // The two numbers behind that percentage. A comparison cannot be read
+        // honestly without its denominator: +450% is nine extra patients on a
+        // base of two, and only the raw pair makes that visible. Both counts
+        // are the ones already queried above — nothing is recomputed and no
+        // new query was added to expose them.
+        assessmentsThisMonth,
+        assessmentsLastMonth,
         platformHealth,
       },
+      // The honest health object: band, reasons, and the counts behind them.
+      // Additive — `metrics.platformHealth` is untouched for existing callers.
+      health,
       recent: {
         clinics: recentClinics.map((c) => ({
           ...c,

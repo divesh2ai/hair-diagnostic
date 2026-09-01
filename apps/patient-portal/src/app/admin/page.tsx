@@ -3,24 +3,21 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import {
-  Building2,
-  Stethoscope,
-  Users,
-  ClipboardCheck,
-  FileText,
-  TrendingUp,
-  Activity,
   Plus,
-  ListChecks,
-  ShieldCheck,
 } from "lucide-react";
 import { PageContainer } from "@/components/app-shell";
-import { MetricCard } from "@/components/ui/metric-card";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { StatusBadge, toneForAssessmentStatus } from "@/components/ui/status-badge";
 import { Avatar } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { LoadingState, ErrorState } from "@/components/ui/states";
+import {
+  NeedsAttention,
+  MiniStat,
+  ComparisonStat,
+  type HealthPayload,
+} from "@/components/admin/DashboardSections";
+import { conversionPercent } from "@/lib/admin/growth";
 
 type Payload = {
   metrics: {
@@ -31,8 +28,17 @@ type Payload = {
     assessmentsToday: number;
     assessmentsCompletedToday: number;
     monthlyGrowth: number;
+    // The raw comparison pair behind `monthlyGrowth`. Optional so an older
+    // cached payload degrades to "no comparison available" rather than
+    // rendering NaN. Month-to-date against the same elapsed slice of last
+    // month — the API cuts both windows at the same offset.
+    assessmentsThisMonth?: number;
+    assessmentsLastMonth?: number;
     platformHealth: number;
   };
+  // The honest health object. Optional so an older cached payload still
+  // renders rather than crashing the page.
+  health?: HealthPayload;
   recent: {
     clinics: Array<{
       id: string;
@@ -106,82 +112,117 @@ export default function AdminDashboardPage() {
   const m = data.metrics;
 
   return (
-    <PageContainer className="space-y-6">
+    <PageContainer className="space-y-7">
+      {/* ── Header ────────────────────────────────────────────────────────
+          Four equally-weighted buttons used to sit here: Needs attention,
+          Create clinic, View clinics, Audit. Three were redundant — Needs
+          Attention is now the first section of this page, and Audit and
+          Clinics are one click away in the sidebar. A header full of
+          same-weight buttons tells the operator nothing about what matters. */}
       <div className="flex items-end justify-between gap-4 flex-wrap">
         <div>
           <h1 className="text-2xl font-semibold tracking-tight">Platform overview</h1>
           <p className="text-sm text-muted-foreground">
-            Operational pulse across every clinic.
+            {m.clinicsActive} active {m.clinicsActive === 1 ? "clinic" : "clinics"} ·{" "}
+            {m.doctorsTotal} {m.doctorsTotal === 1 ? "doctor" : "doctors"} ·{" "}
+            {m.patientsTotal} {m.patientsTotal === 1 ? "patient" : "patients"}
           </p>
         </div>
-        <div className="flex items-center gap-2">
-          <Link href="/admin/clinics/new">
-            <Button>
-              <Plus />
-              Create clinic
-            </Button>
-          </Link>
-          <Link href="/admin/clinics">
-            <Button variant="outline">
-              <ListChecks />
-              View clinics
-            </Button>
-          </Link>
-          <Link href="/admin/audit">
-            <Button variant="outline">
-              <ShieldCheck />
-              Audit
-            </Button>
-          </Link>
-        </div>
+        <Link href="/admin/clinics/new">
+          <Button>
+            <Plus />
+            Create clinic
+          </Button>
+        </Link>
       </div>
 
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <MetricCard
-          icon={<Building2 className="size-4" />}
-          label="Total clinics"
-          value={m.clinicsTotal}
-          hint={`${m.clinicsActive} active`}
-        />
-        <MetricCard
-          icon={<Stethoscope className="size-4" />}
-          label="Doctors"
-          value={m.doctorsTotal}
-        />
-        <MetricCard
-          icon={<Users className="size-4" />}
-          label="Patients"
-          value={m.patientsTotal}
-        />
-        <MetricCard
-          icon={<ClipboardCheck className="size-4" />}
-          label="Assessments today"
-          value={m.assessmentsToday}
-        />
-        <MetricCard
-          icon={<FileText className="size-4" />}
-          label="Assessments completed today"
-          value={m.assessmentsCompletedToday}
-        />
-        <MetricCard
-          icon={<TrendingUp className="size-4" />}
-          label="Monthly growth"
-          value={`${m.monthlyGrowth > 0 ? "+" : ""}${m.monthlyGrowth}%`}
-          delta={{ value: m.monthlyGrowth, period: "vs last month" }}
-        />
-        <MetricCard
-          icon={<Activity className="size-4" />}
-          label="Platform health"
-          value={`${m.platformHealth}/100`}
-          hint={
-            m.platformHealth >= 90
-              ? "Healthy"
-              : m.platformHealth >= 70
-                ? "Watch"
-                : "Degraded"
-          }
-        />
-      </div>
+      {/* ── 1. NEEDS ATTENTION ────────────────────────────────────────────
+          The most important region of the page, and the reason Action Centre
+          no longer exists as a separate destination. An operator should never
+          have to navigate somewhere else to discover that something is broken. */}
+      <NeedsAttention health={data.health} />
+
+      {/* ── 2. TODAY ──────────────────────────────────────────────────────
+          Only metrics with definitions we can defend. */}
+      <section aria-labelledby="today-heading">
+        <h2 id="today-heading" className="mb-2 text-sm font-semibold tracking-tight">
+          Today
+        </h2>
+        {/* Only metrics that are genuinely about TODAY.
+            Doctor approvals and kit orders were shown here first, sourced from
+            the funnel — but those are all-time totals, and an all-time number
+            under a heading that says "Today" is misleading however it is
+            captioned. The admin dashboard API exposes no per-day approval or
+            order counts, and inventing them is not an option, so this section
+            says less and means it. The all-time view is the funnel below.
+
+            "Stalled now" was the third card here and has been removed for two
+            reasons. It is not a today number — jobHealth counts stalled work
+            across all time on purpose, so a job wedged last week sat under a
+            heading claiming to describe the day. And Needs Attention above
+            already reports it in both directions: as a row with somewhere to
+            go when there is stalled work, and as "no work is stalled" when
+            there is not. Two cards that are true beats three that are not. */}
+        {/* Same four-column grid as Network below, so the two honest cards sit on
+            the same column rhythm as the four beneath them rather than at
+            their own width. Two of four columns filled is a deliberate-looking
+            row; two cards at a different size is a misalignment. */}
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+          <MiniStat label="Assessments started" value={m.assessmentsToday} />
+          <MiniStat label="Completed" value={m.assessmentsCompletedToday} />
+        </div>
+      </section>
+
+      {/* ── 3. NETWORK OVERVIEW ───────────────────────────────────────────
+          Context, not urgency. Deliberately lighter than Needs Attention:
+          seven equally-sized KPI cards previously made a stalled pipeline and
+          a patient count look like the same class of information. */}
+      <section aria-labelledby="network-heading">
+        <div className="mb-2 flex flex-wrap items-baseline justify-between gap-2">
+          <h2 id="network-heading" className="text-sm font-semibold tracking-tight">
+            Network
+          </h2>
+          <Link
+            href="/admin/clinics"
+            className="rounded-sm text-xs text-muted-foreground underline-offset-2 hover:text-foreground hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
+          >
+            View clinics
+          </Link>
+        </div>
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+          <MiniStat
+            label="Active clinics"
+            value={m.clinicsActive}
+            hint={`${m.clinicsTotal} total`}
+          />
+          <MiniStat label="Doctors" value={m.doctorsTotal} />
+          <MiniStat label="Patients" value={m.patientsTotal} />
+          {/* ── Growth ───────────────────────────────────────────────────────
+              This card used to read "+450%", which was arithmetically correct
+              and operationally meaningless: eleven assessments against a base
+              of two. At this network's scale one extra patient moves the
+              percentage by tens of points, so the absolute change leads and
+              the percentage survives as context beside its denominator. The
+              rule, and why the threshold is what it is, live in
+              lib/admin/growth. Assessments arriving is the platform working,
+              so a decline is a real operational signal, not just a smaller
+              number — hence higherIsBetter rather than neutral. */}
+          {m.assessmentsThisMonth !== undefined &&
+          m.assessmentsLastMonth !== undefined ? (
+            <ComparisonStat
+              label="Assessments this month"
+              current={m.assessmentsThisMonth}
+              previous={m.assessmentsLastMonth}
+              unit="assessment"
+              direction="higherIsBetter"
+            />
+          ) : (
+            // An older cached payload has the percentage but not the counts
+            // behind it. Rather than show a figure we cannot qualify, say so.
+            <MiniStat label="Assessments this month" value="—" hint="comparison unavailable" />
+          )}
+        </div>
+      </section>
 
       {funnel && (
         <Card>
@@ -297,21 +338,43 @@ function FunnelStrip({
     { label: "Kit orders", count: funnel.orders, tone: "bg-amber-100 text-amber-900" },
     { label: "Active orders", count: funnel.ordersActive, tone: "bg-emerald-100 text-emerald-900" },
   ];
-  const top = Math.max(1, stages[0].count);
+  // Same low-base rule as the growth card, for the same reason. These are
+  // conversion ratios rather than period-over-period growth, but they break at
+  // small samples identically — and the old code divided by `Math.max(1, prev)`,
+  // which turns an empty preceding stage into a fabricated percentage of the
+  // numerator. Below the threshold the counts speak for themselves.
+  const top = stages[0].count;
   return (
     <div className="space-y-3">
       <div className="grid gap-2 sm:grid-cols-5">
         {stages.map((s, i) => {
           const prev = i === 0 ? null : stages[i - 1].count;
-          const pctFromTop = Math.round((s.count / top) * 100);
-          const pctFromPrev = prev ? Math.round((s.count / Math.max(1, prev)) * 100) : null;
+          // The first stage IS the denominator, so "100% of start" restated the
+          // card rather than adding to it.
+          const isStart = i === 0;
+          // For the second stage the previous stage IS the start, so both
+          // ratios are the same number and printing them twice says nothing
+          // the first one did not.
+          const prevIsTop = prev !== null && prev === top;
+          const pctFromTop =
+            isStart || prevIsTop ? null : conversionPercent(s.count, top);
+          const pctFromPrev = prev === null ? null : conversionPercent(s.count, prev);
+          const rates = [
+            pctFromPrev != null
+              ? `${pctFromPrev}% ${prevIsTop ? "of start" : "vs prev"}`
+              : null,
+            pctFromTop != null ? `${pctFromTop}% of start` : null,
+          ].filter(Boolean);
           return (
             <div key={s.label} className={`rounded-xl ${s.tone} px-3 py-2.5`}>
               <div className="text-[10px] uppercase tracking-wider opacity-80">{s.label}</div>
               <div className="font-serif text-2xl leading-tight tabular-nums">{s.count.toLocaleString()}</div>
               <div className="mt-1 text-[10px] opacity-80">
-                {pctFromPrev != null ? `${pctFromPrev}% vs prev · ` : ""}
-                {pctFromTop}% of start
+                {isStart
+                  ? "start of funnel"
+                  : rates.length > 0
+                    ? rates.join(" · ")
+                    : `of ${prev!.toLocaleString()} at the previous stage`}
               </div>
             </div>
           );
