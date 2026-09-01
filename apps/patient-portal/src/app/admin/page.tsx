@@ -18,6 +18,7 @@ import {
   type HealthPayload,
 } from "@/components/admin/DashboardSections";
 import { conversionPercent } from "@/lib/admin/growth";
+import { IndiaClinicNetwork } from "@/components/admin/IndiaClinicNetwork";
 
 type Payload = {
   metrics: {
@@ -173,7 +174,13 @@ export default function AdminDashboardPage() {
         </div>
       </section>
 
-      {/* ── 3. NETWORK OVERVIEW ───────────────────────────────────────────
+      {/* ── 3. INDIA CLINIC NETWORK ───────────────────────────────────────
+          Where the network is, above the numeric rollups rather than below
+          the funnel. "Which clinic, and where" is the question the counts
+          underneath are an abstraction of, so it comes first. */}
+      <IndiaClinicNetwork />
+
+      {/* ── 4. NETWORK OVERVIEW ───────────────────────────────────────────
           Context, not urgency. Deliberately lighter than Needs Attention:
           seven equally-sized KPI cards previously made a stalled pipeline and
           a patient count look like the same class of information. */}
