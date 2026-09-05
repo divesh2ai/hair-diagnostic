@@ -287,6 +287,7 @@ export const mrContent: AssessmentContentPack = {
         'Grade 3 — Ludwig I-1': 'लुडविग I-1 — वाढलेला विरळपणा',
         'Grade 4 — Ludwig II-1': 'लुडविग II-1 — बराच जास्त विरळपणा',
         'Grade 5 — Ludwig III-1': 'लुडविग III-1 — अतिशय गंभीर विरळपणा',
+        'None of these': 'यांपैकी काहीही नाही',
       },
     },
     extra: {

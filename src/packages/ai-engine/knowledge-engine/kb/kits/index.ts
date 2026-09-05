@@ -318,7 +318,10 @@ export const KITS_KB: KitKnowledgeRegistry = {
       'Hormonal balance via ashwagandha (phyto-estrogenic) and milk thistle (mild ER-β activity); ' +
       'androgen modulation via beta-sitosterol; antioxidant + oxidative balance via NAC; ' +
       'DPC support via colostrum and lactoferrin; sleep regulation via melatonin and magnesium.',
-    targetDiagnoses: ['PERI_MENOPAUSE', 'MENOPAUSE', 'POST_MENOPAUSE', 'METABOLIC', 'AGA_FEMALE_123', 'AGA_FEMALE_45'],
+    // 'METABOLIC' was listed here but is a RootCause, not a DiagnosisKey — it
+    // could never match in getKitKnowledge's targetDiagnoses.includes(key),
+    // so removing it changes no retrieval result.
+    targetDiagnoses: ['PERI_MENOPAUSE', 'MENOPAUSE', 'POST_MENOPAUSE', 'AGA_FEMALE_123', 'AGA_FEMALE_45'],
     targetTherapyNeeds: [
       'HORMONAL_REBALANCING',
       'METABOLIC_SUPPORT',

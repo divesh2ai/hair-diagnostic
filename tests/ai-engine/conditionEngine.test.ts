@@ -79,16 +79,25 @@ describe('Condition Engine — Viraf-style early AGA male, no comorbidities', ()
   const result = scoreKits(profileFor(flagsFor({})), EMPTY_THERAPY, ans, EMPTY_CLINIC);
   const kits = result.rankedKits.map((k) => k.kitId);
 
-  it('prescribes Phenotype Inflammation', () => {
-    expect(kits).toContain('PHENOTYPE INFLAMATION');
+  it('does NOT prescribe Phenotype Inflammation - normal scalp, no inflammatory signal', () => {
+    // PHENOTYPE INFLAMATION is signal-gated: it needs a real scalp-inflammation
+    // signal (dandruff / oiliness / redness / psoriasis). This patient reports
+    // 'Normal scalp', so its absence is the correct clinical outcome. The old
+    // expectation predates that gating.
+    expect(kits).not.toContain('PHENOTYPE INFLAMATION');
   });
 
   it('prescribes MPHL', () => {
     expect(kits).toContain('MPHL');
   });
 
-  it('Phenotype precedes MPHL (inflammation cleared before DHT correction)', () => {
-    expect(kits.indexOf('PHENOTYPE INFLAMATION')).toBeLessThan(kits.indexOf('MPHL'));
+  it('Phenotype precedes MPHL when both are present (inflammation cleared before DHT correction)', () => {
+    // Guarded: with PHENOTYPE absent, indexOf returns -1 and an unguarded
+    // comparison passes vacuously. The rule is asserted only when it applies.
+    const phenotype = kits.indexOf('PHENOTYPE INFLAMATION');
+    const mphl = kits.indexOf('MPHL');
+    expect(mphl).toBeGreaterThanOrEqual(0);
+    if (phenotype >= 0) expect(phenotype).toBeLessThan(mphl);
   });
 
   it('does NOT prescribe Meta B — no metabolic signal', () => {
@@ -96,8 +105,20 @@ describe('Condition Engine — Viraf-style early AGA male, no comorbidities', ()
     expect(kits).not.toContain('PRO FACT META B PCOS');
   });
 
-  it('does NOT prescribe Pro Immune — no immune signal', () => {
-    expect(kits.some((k) => k.includes('PRO IMMUNE'))).toBe(false);
+  it('prescribes MPHL, HBR, PRO IMMUNE — the 1-kit shaft-damage shape', () => {
+    // This patient declares chemical treatment on a protocol that resolves to
+    // MPHL alone. Per the CEO ruling of 2026-09-04, any one of chemical / heat
+    // / hard water on a single-kit protocol appends HBR, which takes the stack
+    // to two and lets PRO_IMMUNE_CONSOLIDATION_FILLER close it.
+    //
+    // PRO IMMUNE is therefore present as a CONSOLIDATION layer, not because an
+    // immune signal was detected — the old expectation here read the absence of
+    // an immune signal as implying the kit's absence, which the filler breaks.
+    expect(kits).toEqual([
+      'MPHL',
+      'HAIR FACT HAIR BREAKAGE REPAIR (HBR)',
+      'PRO IMMUNE GOLD',
+    ]);
   });
 
   it('does NOT prescribe TE GOLD — duration exceeds 3-month acute window', () => {
@@ -158,8 +179,9 @@ describe('Condition Engine — Pregnancy is exclusive', () => {
   const profile: ClinicalProfile = { ...profileFor(flags), primaryDiagnosis: 'PREGNANCY' };
   const kits = scoreKits(profile, EMPTY_THERAPY, ans, EMPTY_CLINIC).rankedKits.map((k) => k.kitId);
 
-  it('prescribes only HEALTHY - 9', () => {
-    expect(kits).toEqual(['HEALTHY - 9']);
+  it('prescribes only HEALTHY-9', () => {
+    // Canonical id from conditionKitRegistry; the spaced spelling was stale.
+    expect(kits).toEqual(['HEALTHY-9']);
   });
 });
 

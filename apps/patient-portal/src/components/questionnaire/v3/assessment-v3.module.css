@@ -329,6 +329,14 @@
   padding: 12%;
 }
 
+/* The grade picker's "None of these" escape option is the only image-grid card
+   with no illustration. Left to stretch, it would fill the height of the photo
+   tiles beside it and read as a tile whose image failed to load; pinning it to
+   the top of its row keeps it compact and legible as a deliberate opt-out. */
+.optionGridImage .optionCard:not(:has(.optionMedia)) {
+  align-self: start;
+}
+
 .optionBody {
   display: grid;
   min-width: 0;

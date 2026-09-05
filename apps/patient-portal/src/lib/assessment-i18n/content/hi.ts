@@ -287,6 +287,7 @@ export const hiContent: AssessmentContentPack = {
         'Grade 3 — Ludwig I-1': 'लुडविग I-1 — पतलापन बढ़ा हुआ',
         'Grade 4 — Ludwig II-1': 'लुडविग II-1 — काफ़ी ज़्यादा पतलापन',
         'Grade 5 — Ludwig III-1': 'लुडविग III-1 — बहुत गंभीर पतलापन',
+        'None of these': 'इनमें से कोई नहीं',
       },
     },
     extra: {

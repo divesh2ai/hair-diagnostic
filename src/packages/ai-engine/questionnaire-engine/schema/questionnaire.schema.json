@@ -1097,7 +1097,7 @@
               "triggers": [
                 "HAIR_BREAKAGE score +52",
                 "hasHBRHardWater=true",
-                "HBR kit injection",
+                "establishes the HBR treatment-damage indication on its own",
                 "direct cortex damage from mineral deposits"
               ],
               "clinicalTags": [
@@ -2657,7 +2657,7 @@
               "value": "Heat styling (straightener etc.)",
               "icon": "🔥",
               "triggers": [
-                "hasHBRTreatment=true; HBR injection requires hard-water corroboration — heat/chemical alone insufficient",
+                "hasHBRTreatment=true; establishes the HBR treatment-damage indication on its own — no hard-water corroboration required",
                 "shaft damage signal"
               ],
               "clinicalTags": [
@@ -2672,7 +2672,7 @@
               "value": "Chemical treatment (colour / keratin)",
               "icon": "🧪",
               "triggers": [
-                "hasHBRTreatment=true; HBR injection requires hard-water corroboration — chemical alone insufficient",
+                "hasHBRTreatment=true; establishes the HBR treatment-damage indication on its own — no hard-water corroboration required",
                 "shaft damage signal"
               ],
               "clinicalTags": [
@@ -2698,7 +2698,7 @@
           "scoringSignals": [
             {
               "signal": "HBR_TREATMENT_SIGNAL",
-              "rule": "treatment includes Heat/Chemical → hasHBRTreatment=true; HBR kit injection requires cause includes 'Hard water' as the corroborating shaft-damage signal — heat/chemical alone insufficient. Rule: realShaftDamage = hardWaterSignal. (Q3 'Broken/short' hairtype option retired; no longer a valid corroborating signal.)",
+              "rule": "HBR treatment-damage indication is established by ANY ONE of: chemical treatment, repeated/significant heat styling, or hard-water exposure. No hard-water corroboration is required when heat or chemical evidence is independently present. Rule: realShaftDamage = treatmentDamageSignal OR hardWaterSignal. Indication is separate from insertion — the recommendation engine adds the HBR kit only when the resolved protocol contains exactly 1 kit. (Q3 'Broken/short' hairtype option retired; no longer a valid corroborating signal.)",
               "sourceCodeReference": "getFunnelKits lines 4820-4830"
             },
             {
@@ -3206,6 +3206,14 @@
                 "operator": "notEquals",
                 "value": "Male"
               }
+            },
+            {
+              "label": "None of these",
+              "value": "None of these",
+              "icon": null,
+              "triggers": [],
+              "clinicalTags": [],
+              "followUpQuestions": []
             }
           ],
           "visibilityRules": [],

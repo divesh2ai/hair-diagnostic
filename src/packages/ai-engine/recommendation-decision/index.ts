@@ -9,6 +9,7 @@ export type {
   DiscrepancyCode,
   KitScoringDiagnostics,
   KitOrderingSource,
+  KitSafetyProvenance,
   ScoreModifier,
 } from './types';
 export type { RecommendationReasonCode } from './reasonCodes';

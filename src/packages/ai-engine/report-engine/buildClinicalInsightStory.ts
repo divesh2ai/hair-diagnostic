@@ -515,6 +515,11 @@ function composeYourHairStory(
   // Major questionnaire selections — grouped by clinical area.
   const clean = (xs: string[] | undefined): string[] =>
     (xs ?? []).filter((x) => x && !/^\s*(none|no\s|not\s|n\/a|na$)/i.test(x));
+  // Scalar equivalent of `clean`. The grade picker offers a "None of these"
+  // escape option for patients whose pattern matches no Norwood/Ludwig tile;
+  // echoing it back would read "in line with none of these."
+  const cleanScalar = (x: string | undefined): string | undefined =>
+    x && x.trim() && !/^\s*(none|no\s|not\s|n\/a|na$)/i.test(x) ? x : undefined;
   const join = (xs: string[], max = 3): string => joinList(xs.slice(0, max).map((s) => s.toLowerCase()));
 
   const scalp = clean(ans.scalp);
@@ -529,6 +534,7 @@ function composeYourHairStory(
   const diet = clean(ans.diet);
   const hairType = clean(ans.hairtype);
   const treatment = clean(ans.treatment);
+  const gradePhrase = cleanScalar(ans.grade);
 
   // Opening — what they've been experiencing + how long.
   const opening: string[] = [];
@@ -539,9 +545,9 @@ function composeYourHairStory(
   opening.push(`You have been noticing ${exp}${durationPhrase}${countPhrase}.`);
 
   if (hairType.length > 0) {
-    opening.push(`The pattern you described is ${join(hairType)}${ans.grade ? `, in line with ${ans.grade.toLowerCase()}` : ""}.`);
-  } else if (ans.grade?.trim()) {
-    opening.push(`The pattern you described aligns with ${ans.grade.toLowerCase()}.`);
+    opening.push(`The pattern you described is ${join(hairType)}${gradePhrase ? `, in line with ${gradePhrase.toLowerCase()}` : ""}.`);
+  } else if (gradePhrase) {
+    opening.push(`The pattern you described aligns with ${gradePhrase.toLowerCase()}.`);
   }
 
   // Scalp and trigger pieces.

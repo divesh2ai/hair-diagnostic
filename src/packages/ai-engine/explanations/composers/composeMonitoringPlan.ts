@@ -221,7 +221,10 @@ export function composeMonitoringPlan(
   }
 
   // ── 2. Aggregate from kits → ingredients ───────────────────────────────────
-  const kitIds = kitRecommendation?.kits?.map((k: { kitId: string }) => k.kitId) ?? [];
+  // `rankedKits`, not `kits` — KitRecommendation has never had a `kits` field,
+  // so this optional chain silently produced [] and the ingredient-derived
+  // monitoring items below were never aggregated for any patient.
+  const kitIds = kitRecommendation?.rankedKits?.map((k) => k.kitId) ?? [];
   const ingredientIds = new Set<string>();
   for (const kitId of kitIds) {
     const kit = KITS_KB[kitId];

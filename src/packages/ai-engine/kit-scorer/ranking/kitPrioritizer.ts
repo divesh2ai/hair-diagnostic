@@ -158,7 +158,7 @@ const PATTERN_KITS_LAST: KitId[] = [
   'MPHL PLUS',
 ];
 
-function isPatternKit(k: KitId): boolean {
+export function isPatternKit(k: KitId): boolean {
   return PATTERN_KITS_LAST.includes(k) || /^(MPHL|FPHL)(\s|$|\sPLUS|\sVEG)/.test(k);
 }
 

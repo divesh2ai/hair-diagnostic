@@ -70,9 +70,20 @@ describe('recommendation-decision trace + invariants', () => {
           expect(d).toBeDefined();
           expect(d!.status).toBe('recommended');
           expect(d!.safety.allowed).toBe(true);
-          expect(d!.conditionsMatched.length).toBeGreaterThan(0);
           expect(d!.reasonCodes.length).toBeGreaterThan(0);
           expect(d!.ordering.finalRank).not.toBeNull();
+          // A kit reaches the sequence one of two ways, and the trace must say
+          // which. Condition-derived kits carry the conditions they matched;
+          // filler-injected kits (PRO_IMMUNE_CONSOLIDATION_FILLER and the
+          // thin-stack rules) match no condition by definition and declare
+          // NO_ACTIVE_INDICATION instead. Asserting conditionsMatched > 0 for
+          // every kit contradicted that frozen behaviour; asserting the
+          // either/or pins BOTH paths rather than relaxing the invariant.
+          if (d!.reasonCodes.includes('NO_ACTIVE_INDICATION')) {
+            expect(d!.conditionsMatched).toHaveLength(0);
+          } else {
+            expect(d!.conditionsMatched.length).toBeGreaterThan(0);
+          }
         }
       });
 

@@ -1,5 +1,6 @@
 import type { PatientAnswers } from '../../../types';
 import { isTeGoldDurationAboveThreeMonths } from '../../kit-scorer/rules/teGoldGatingRule';
+import { hasHbrTreatmentDamageIndication } from '../../contracts/hbrIndication';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Types
@@ -148,13 +149,10 @@ function deriveHasPCOS(ans: PatientAnswers): boolean {
   return has(ans.hormonal ?? [], 'PCOS') || has(ans.hormonal ?? [], 'PCOD');
 }
 
-function deriveHasHBRHardWater(ans: PatientAnswers): boolean {
-  return has(ans.cause ?? [], 'Hard water');
-}
-
-function deriveHasHBRTreatment(ans: PatientAnswers): boolean {
-  return has(ans.treatment ?? [], 'Heat') || has(ans.treatment ?? [], 'Chemical');
-}
+// The HBR signal helpers that used to live here are now in
+// ai-engine/contracts/hbrIndication. They also gained a negative-answer guard:
+// `has()` is a bare substring match, so "No heat or chemical treatments" used
+// to satisfy deriveHasHBRTreatment and read as declared styling damage.
 
 function deriveOxidativeCount(ans: PatientAnswers): number {
   return (
@@ -276,29 +274,38 @@ function checkFphlUnder30(ans: PatientAnswers, dominantKey?: string): KitEligibi
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// SR_005 — HBR signal gate (heat/chemical alone insufficient)
-// Source: hiddenRules HR_007; getFunnelKits lines 4817-4830
+// SR_005 — HBR treatment-damage indication gate
+//
+// Source: hiddenRules HR_007; getFunnelKits lines 4817-4830, superseded by the
+// clinic launch freeze ruling of 2026-09-04.
+//
+// This rule previously required hard-water corroboration and BLOCKED HBR when
+// only heat or chemical treatment was declared. The sequence builder did not
+// agree — it dispensed HBR on styling damage alone — so the safety evaluator
+// and the dispensed protocol contradicted each other on real patients. The
+// contradiction was inert only because eligibility is not wired into the
+// dispensing path.
+//
+// The approved indication is OR semantics: any ONE of chemical treatment, heat
+// styling or hard-water exposure. Both this rule and buildKitSequence now read
+// `hasHbrTreatmentDamageIndication`, so they cannot drift again.
+//
+// What this rule does NOT do: decide whether HBR enters a protocol. That is a
+// sequencing decision (resolved kit count === 1) owned by buildKitSequence. An
+// eligible indication on a multi-kit protocol still yields no HBR.
 // ─────────────────────────────────────────────────────────────────────────────
 
 function checkHbrEligibility(ans: PatientAnswers): KitEligibility | null {
-  const hasHBRHardWater = deriveHasHBRHardWater(ans);
-  const hasHBRTreatment = deriveHasHBRTreatment(ans);
+  if (hasHbrTreatmentDamageIndication(ans)) return null; // eligible
 
-  if (hasHBRHardWater) return null; // eligible
-
-  if (hasHBRTreatment) {
-    return {
-      kitId: 'HAIR FACT HAIR BREAKAGE REPAIR (HBR)',
-      status: 'BLOCKED',
-      ruleId: 'SR_005',
-      reason:
-        'HBR kit blocked — heat/chemical treatment reported but no hard-water shaft-damage signal. ' +
-        'Heat/chemical treatment alone is insufficient for HBR prescription; ' +
-        'hard water (cortex damage) is the corroborating signal required.',
-    };
-  }
-
-  return null;
+  return {
+    kitId: 'HAIR FACT HAIR BREAKAGE REPAIR (HBR)',
+    status: 'BLOCKED',
+    ruleId: 'SR_005',
+    reason:
+      'HBR kit blocked — no treatment-damage indication. HBR requires at least one of ' +
+      'chemical treatment, heat styling, or hard-water exposure; none was reported.',
+  };
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
