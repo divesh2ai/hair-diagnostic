@@ -36,6 +36,21 @@ export type ReportAudience =
   | { kind: "clinic"; ctx: ClinicContext }
   | { kind: "conference_token" }
   /**
+   * The patient, holding a report share token the doctor deliberately sent
+   * them (see lib/reportShareToken + POST /api/consultation/[id]/share).
+   *
+   * Like `conference_token` this is patient-equivalent access with no clinic
+   * session, and it is subject to the same approval gate below — which is what
+   * gives the link a real revocation lever: if the doctor later moves the
+   * consultation to REVISION_REQUESTED, every outstanding patient link stops
+   * opening, without rotating a secret or tracking a token list.
+   *
+   * Unlike `conference_token` it is NOT behind a deployment flag. This is the
+   * ordinary production path by which a patient reads their own report, so it
+   * has to work in an ordinary clinic deployment.
+   */
+  | { kind: "patient_share_token" }
+  /**
    * A server-side caller that has already authenticated and tenant-checked the
    * request it is acting on — today only the approval path, writing the
    * snapshot of the sheet it is releasing.
@@ -70,9 +85,6 @@ async function getReportAuthContext(
             userId: "local-one-page-report-export",
             role: "SUPER_ADMIN",
             clinicId: null,
-            // Synthetic local-export identity — there is no signed-in person
-            // and therefore no address to report.
-            email: null,
           },
         };
       }
@@ -162,6 +174,46 @@ export async function composeOnePageReportViewModel(
 
   const consultationVersion = assessment.consultations[0]?.currentVersion;
 
+  // `clinical_report` above is a point-in-time snapshot frozen into the
+  // NARRATIVES artifact at submission time — it never changes after that.
+  // The doctor's actual kit decisions live in the ConsultationVersion row
+  // instead (KitLineupEditor PATCHes `treatmentPlan.kitPhases` there on every
+  // save; see orchestrator.revise()). Without this overlay, a doctor who
+  // removes, reorders, or swaps a kit would see the change everywhere
+  // (Consultation JSON, cart, KitOrderIntent) except on the one-pager and its
+  // permanent approval snapshot, which would keep showing the original
+  // AI-recommended lineup forever. Every other field of `clinical_report`
+  // (diagnosis, drivers, topicals, lifestyle) is never doctor-edited today, so
+  // only `treatmentStrategy` — the field `kitPhases` mirrors verbatim at
+  // composition time — needs to be overlaid.
+  const versionTreatmentPlan = jsonObject(jsonObject(consultationVersion?.content).treatmentPlan);
+  const doctorKitPhases = Array.isArray(versionTreatmentPlan.kitPhases)
+    ? versionTreatmentPlan.kitPhases
+    : null;
+  const effectiveClinicalReport = doctorKitPhases
+    ? { ...clinicalReport, treatmentStrategy: doctorKitPhases }
+    : clinicalReport;
+
+  // Fail-closed post-approval check. The overlay above is authoritative only
+  // when a ConsultationVersion exists — without one, the legacy
+  // `assessment.reviewDecision` path predates the kit editor and NARRATIVES is
+  // the only available lineup, so the fallback is correct for those rows.
+  //
+  // But if a ConsultationVersion IS present and its approvalStatus is APPROVED,
+  // then a doctor actively approved a prescription through the kit editor —
+  // `buildConsultation` always writes `kitPhases: report.treatmentStrategy` at
+  // creation, so the absence of a valid array is corrupted state. Silently
+  // serving the NARRATIVES artifact would present AI-generated kits as
+  // the doctor's final approved prescription, which is the exact failure mode
+  // this overlay exists to prevent. Fail with a 500 instead so the caller gets
+  // an explicit error rather than wrong data.
+  if (consultationVersion?.approvalStatus === "APPROVED" && !doctorKitPhases) {
+    throw new ReportAccessError(
+      500,
+      "Doctor-approved prescription is unavailable: consultation version exists but kit lineup data is missing or invalid.",
+    );
+  }
+
   // Doctor approval, resolved once and used for both the access decision and
   // the label. `ConsultationVersion.approvalStatus` is authoritative when a
   // consultation exists; `Assessment.reviewDecision` is the legacy fallback
@@ -178,7 +230,15 @@ export async function composeOnePageReportViewModel(
   // report only once a doctor has approved it. Clinic and Super Admin sessions
   // keep pre-approval access — reviewing an unapproved draft is their job —
   // but they see it labelled for what it is, below.
-  if (auth.kind === "conference_token" && !isDoctorApproved) {
+  //
+  // `patient_share_token` is held to exactly the same rule, and deliberately
+  // rechecked HERE rather than at the route: the approval state is read in
+  // this function, so a caller that forgot to check would be relying on the
+  // route it happens to be reached through. This is the gate.
+  if (
+    (auth.kind === "conference_token" || auth.kind === "patient_share_token") &&
+    !isDoctorApproved
+  ) {
     throw new ReportAccessError(403, "Consultation is not approved");
   }
 
@@ -201,7 +261,7 @@ export async function composeOnePageReportViewModel(
       : null;
 
 
-  return buildOnePageReportViewModel(clinicalReport as ClinicalReport, {
+  return buildOnePageReportViewModel(effectiveClinicalReport as ClinicalReport, {
     assessmentId,
     patient: {
       name: assessment.patient.name,
@@ -222,8 +282,8 @@ export async function composeOnePageReportViewModel(
         assessment.reviewerName ??
         (typeof consultationVersion?.approvedBy === "string" ? consultationVersion.approvedBy : null),
       // Never claim approval that has not happened. Only a clinic or Super
-      // Admin session can reach this branch unapproved (the conference-token
-      // path is refused above), and they must not be shown a draft dressed as
+      // Admin session can reach this branch unapproved (both patient-equivalent
+      // paths are refused above), and they must not be shown a draft dressed as
       // a signed plan either — the same document is what gets printed.
       title: isDoctorApproved ? "Doctor approved plan" : "Draft — pending doctor review",
       signatureUrl: isDoctorApproved
