@@ -1132,6 +1132,114 @@ const ENTRIES: Record<string, KitInfo> = {
     clinicalNote:
       "Postpartum telogen effluvium is physiologically normal, but nutritional depletion and lactation demands can increase severity and prolong recovery. Targeted nutritional support helps optimise recovery and regrowth.",
   },
+
+  // ═══════════════════════════════════════════════════════════════════════
+  // GOVERNED BUDGET ALTERNATIVES — approved 2026-09-08, source: "KIT
+  // ALTERNATE PRICE.xlsx" (clinic governance sheet, not the dermatology
+  // "All Kits Info.docx" this file otherwise transcribes).
+  //
+  // These are real, priced, sellable products, but they are NOT engine
+  // recommendations: they surface only inside the doctor's Edit / Change
+  // workflow, and only against their one approved canonical pair (see
+  // apps/patient-portal/src/lib/commerce/budgetSubstitution.ts, the single
+  // source of truth for which pairs are valid).
+  //
+  // Full dermatology-authored clinical content — mechanism-level
+  // therapeuticStrategy, ingredient-level formulationRationale, timed
+  // expectedResponse — has not been supplied for these SKUs, so those fields
+  // are left empty rather than invented. This is the same discipline
+  // KIT_ID_VARIANTS documents below: "nothing clinical is authored here that
+  // isn't true". diagnosisInsight / treatmentObjective state only what the
+  // governance sheet itself asserts — that the product is an approved,
+  // lower-cost alternative for the same diagnosis as its paired canonical
+  // kit(s) — without asserting a shared formulation or mechanism this file
+  // cannot verify.
+  // ═══════════════════════════════════════════════════════════════════════
+  PRO_IMMUNE_1: {
+    displayName: "PRO IMMUNE 1",
+    diagnosisInsight:
+      "Approved lower-cost alternative for the same diagnosis as Phenotype Inflammation (scalp/perifollicular inflammation) or Pro Immune 5 (illness / surgery / regrowth goal / immune-related hair loss) — offered only when a doctor selects it in Edit / Change for affordability.",
+    treatmentObjective:
+      "Same treatment objective as the canonical kit it replaces, at a reduced price point.",
+    therapeuticStrategy: [],
+    formulationRationale: [],
+    expectedResponse: [],
+  },
+  M4_PLUS: {
+    displayName: "M4+",
+    diagnosisInsight:
+      "Approved lower-cost alternative for the same diagnosis as MPHL Pro (male androgenetic pattern hair loss) — offered only when a doctor selects it in Edit / Change for affordability.",
+    treatmentObjective:
+      "Same treatment objective as MPHL Pro, at a reduced price point.",
+    therapeuticStrategy: [],
+    formulationRationale: [],
+    expectedResponse: [],
+  },
+  F4_PLUS: {
+    displayName: "F4+",
+    diagnosisInsight:
+      "Approved lower-cost alternative for the same diagnosis as FPHL Pro (female androgenetic pattern hair loss) — offered only when a doctor selects it in Edit / Change for affordability.",
+    treatmentObjective:
+      "Same treatment objective as FPHL Pro, at a reduced price point.",
+    therapeuticStrategy: [],
+    formulationRationale: [],
+    expectedResponse: [],
+  },
+  HYPOTHYROID_2: {
+    displayName: "HYPOTHYROID 2",
+    diagnosisInsight:
+      "Approved lower-cost alternative for the same diagnosis as PRO FACT META B - HYPOTHYROID 3 (declared hypothyroidism) — offered only when a doctor selects it in Edit / Change for affordability.",
+    treatmentObjective:
+      "Same treatment objective as PRO FACT META B - HYPOTHYROID 3, at a reduced price point.",
+    therapeuticStrategy: [],
+    formulationRationale: [],
+    expectedResponse: [],
+  },
+  SHED_CONTROL: {
+    displayName: "Dr. FACT SHED CONTROL",
+    diagnosisInsight:
+      "Approved lower-cost alternative for the same diagnosis as HAIR FACT TE GOLD (active shedding ≤ 3 months), PRO FACT RWL SHIELD (rapid weight loss / GLP-1 shedding), HAIR FACT NIGHT SHIFT (shift-work shedding), or HAIR FACT FREQUENT FLYERS (frequent-travel shedding) — offered only when a doctor selects it in Edit / Change for affordability.",
+    treatmentObjective:
+      "Same treatment objective as the canonical kit it replaces, at a reduced price point.",
+    therapeuticStrategy: [],
+    formulationRationale: [],
+    expectedResponse: [],
+  },
+  IRON_UP_1: {
+    displayName: "IRON UP 1",
+    diagnosisInsight:
+      "Approved lower-cost alternative for the same diagnosis as PRO FACT IRON UP (iron deficiency / heavy menstrual bleed) — offered only when a doctor selects it in Edit / Change for affordability.",
+    treatmentObjective:
+      "Same treatment objective as PRO FACT IRON UP, at a reduced price point.",
+    therapeuticStrategy: [],
+    formulationRationale: [],
+    expectedResponse: [],
+  },
+  GI_HEALTH_1: {
+    displayName: "GI HEALTH 1",
+    diagnosisInsight:
+      "Approved lower-cost alternative for the same diagnosis as PRO FACT GI HEALTH GOLD (GERD / IBS / acid reflux / Crohn, Phase 1 only) — offered only when a doctor selects it in Edit / Change for affordability.",
+    treatmentObjective:
+      "Same treatment objective as PRO FACT GI HEALTH GOLD, at a reduced price point.",
+    therapeuticStrategy: [],
+    formulationRationale: [],
+    expectedResponse: [],
+  },
+  // Added 2026-09-09: the 12th governed pair's alternative. Held back on
+  // 2026-09-08 because that pass read the governance sheet's price cell for
+  // this alternative as empty; a direct re-read of the same workbook found
+  // ₹1,457 present, so this entry follows the same minimal, non-fabricated
+  // pattern as the seven above it.
+  STRESS_BUST_3: {
+    displayName: "PRO FACT STRESS BUST 3",
+    diagnosisInsight:
+      "Approved lower-cost alternative for the same diagnosis as HAIR FACT TTM (OCD) (hair pulling / trichotillomania) — offered only when a doctor selects it in Edit / Change for affordability.",
+    treatmentObjective:
+      "Same treatment objective as HAIR FACT TTM (OCD), at a reduced price point.",
+    therapeuticStrategy: [],
+    formulationRationale: [],
+    expectedResponse: [],
+  },
 };
 
 /**
@@ -1217,6 +1325,16 @@ const KIT_ID_TO_ENTRY: Record<string, keyof typeof ENTRIES> = {
   // Lactihealth (postpartum recovery)
   "LACTIHEALTH": "LACTIHEALTH",
   "HAIR FACT LACTIHEALTH": "LACTIHEALTH",
+  // Governed budget alternatives — see the ENTRIES block above.
+  "PRO IMMUNE 1": "PRO_IMMUNE_1",
+  "M4+": "M4_PLUS",
+  "F4+": "F4_PLUS",
+  "HYPOTHYROID 2": "HYPOTHYROID_2",
+  "Dr. FACT SHED CONTROL": "SHED_CONTROL",
+  "DR FACT SHED CONTROL": "SHED_CONTROL",
+  "IRON UP 1": "IRON_UP_1",
+  "GI HEALTH 1": "GI_HEALTH_1",
+  "PRO FACT STRESS BUST 3": "STRESS_BUST_3",
 };
 
 /**

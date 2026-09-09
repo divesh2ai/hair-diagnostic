@@ -15,6 +15,27 @@ import {
 import type { Consultation, TreatmentPhase } from "@shared/types/consultation";
 import { loadKitCatalog, type KitCatalogItem } from "@/lib/doctor/kitCatalog";
 import { ProductImage } from "@/components/kits/ProductImage";
+import {
+  getApprovedAlternativeForKitId,
+  resolveSubstitutionPriceComparisonForKitId,
+} from "@/lib/commerce/budgetSubstitution";
+import { formatInrFromMinor } from "@/lib/commerce/kitPricing";
+import { getKitInfo } from "@hairos/packages/registries/kits/info";
+
+/** The provenance a substitution stamps on the phase it replaces. */
+interface SubstitutionMeta {
+  type: "BUDGET";
+  reason: "BUDGET_AFFORDABILITY";
+  originalKitId: string;
+  originalPhase: TreatmentPhase;
+  changedBy: string;
+  changedAt: string;
+  priceAtSubstitutionMinor: { canonical: number; alternative: number };
+}
+
+type EditedPhase = TreatmentPhase & {
+  meta?: { addedByDoctor?: boolean; substitution?: SubstitutionMeta };
+};
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Kit lineup editor — the doctor's clinical authority over the AI's suggestion.
@@ -71,6 +92,10 @@ export function KitLineupEditor({
   const [adding, setAdding] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // Which row's "Budget alternative" comparison panel is open, if any.
+  const [budgetPanelIndex, setBudgetPanelIndex] = useState<number | null>(null);
+  const [budgetBusy, setBudgetBusy] = useState(false);
+  const [budgetError, setBudgetError] = useState<string | null>(null);
 
   // Re-sync local state when a fresh version loads from the server (e.g. after
   // a successful save or an external reload).
@@ -180,6 +205,46 @@ export function KitLineupEditor({
     }
   };
 
+  // Budget substitution is its OWN save, immediate and independent of the
+  // staged reorder/add/remove state above — it talks to a dedicated,
+  // server-validated endpoint (see the route's own header comment for why),
+  // not the generic treatmentPlan PATCH. Disabled whenever there are unsaved
+  // staged edits, so this can never save over — or be silently overwritten
+  // by — a reorder the doctor has not committed yet.
+  const runSubstitutionAction = async (body: Record<string, unknown>) => {
+    setBudgetBusy(true);
+    setBudgetError(null);
+    try {
+      const res = await fetch(`/api/consultation/${assessmentId}/kit-substitution`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ...body, expectedContentVersion }),
+      });
+      if (res.status === 409) {
+        setBudgetError(
+          "This consultation changed while you were editing. Reloading the latest version.",
+        );
+        await onConflict();
+        return;
+      }
+      if (!res.ok) {
+        const j = await res.json().catch(() => ({}));
+        setBudgetError(j.message ?? "Could not save this change.");
+        return;
+      }
+      setBudgetPanelIndex(null);
+      await onSaved();
+    } finally {
+      setBudgetBusy(false);
+    }
+  };
+
+  const applyBudgetAlternative = (originalKitId: string, alternativeKitId: string) =>
+    runSubstitutionAction({ action: "SUBSTITUTE", originalKitId, alternativeKitId });
+
+  const restoreOriginalKit = (currentKitId: string) =>
+    runSubstitutionAction({ action: "RESTORE", currentKitId });
+
   const availableToAdd = useMemo(() => {
     if (!catalog) return [];
     const chosen = new Set(phases.map((p) => p.kitId));
@@ -210,14 +275,29 @@ export function KitLineupEditor({
         ) : (
           <ol className="space-y-2">
             {phases.map((p, i) => {
-              const addedByDoctor =
-                (p as { meta?: { addedByDoctor?: boolean } }).meta
-                  ?.addedByDoctor === true;
+              const editedPhase = p as EditedPhase;
+              const addedByDoctor = editedPhase.meta?.addedByDoctor === true;
+              const substitution = editedPhase.meta?.substitution;
+              // Only offer a budget swap on a kit that (a) has an approved
+              // alternative and (b) is not itself already the result of one
+              // — restoring first is how a doctor changes their mind, rather
+              // than substituting a substitution.
+              const approvedAlt = !substitution ? getApprovedAlternativeForKitId(p.kitId) : null;
+              const comparison = approvedAlt
+                ? resolveSubstitutionPriceComparisonForKitId(p.kitId, approvedAlt.alternativeKitId)
+                : null;
+              // Fail closed on display too: an approved pair with no
+              // approved price on either side shows no action at all, same
+              // as a kit with no mapping.
+              const canOfferAlternative = comparison?.bothPricesApproved === true;
+              const panelOpen = budgetPanelIndex === i;
+
               return (
                 <li
                   key={`${p.kitId}-${i}`}
-                  className="flex items-center gap-3 rounded-xl border border-stone-200 bg-stone-50/60 px-3 py-2.5"
+                  className="rounded-xl border border-stone-200 bg-stone-50/60 px-3 py-2.5"
                 >
+                <div className="flex items-center gap-3">
                   <span className="flex size-6 shrink-0 items-center justify-center rounded-full bg-slate-900 text-[11px] font-semibold text-white">
                     {i + 1}
                   </span>
@@ -235,6 +315,11 @@ export function KitLineupEditor({
                       <span className="text-[10px] font-medium uppercase tracking-wide text-teal-700">
                         Added by you
                       </span>
+                    )}
+                    {substitution && (
+                      <p className="text-[11px] text-stone-500">
+                        Changed from {substitution.originalPhase.displayName} for affordability.
+                      </p>
                     )}
                   </div>
                   <div className="flex shrink-0 items-center gap-1">
@@ -261,6 +346,93 @@ export function KitLineupEditor({
                       <Trash2 className="size-4" />
                     </IconBtn>
                   </div>
+                </div>
+
+                {/* Budget substitution — a subtle secondary action, never a
+                    dropdown of unrelated kits. Only ever shown when there is
+                    exactly one approved, priced alternative for THIS kit. */}
+                {canOfferAlternative && approvedAlt && !panelOpen && (
+                  <button
+                    type="button"
+                    onClick={() => setBudgetPanelIndex(i)}
+                    disabled={dirty || disabled || budgetBusy}
+                    className="mt-1.5 ml-9 text-[11px] font-medium text-teal-700 underline decoration-teal-300 decoration-dotted underline-offset-2 hover:text-teal-800 disabled:cursor-not-allowed disabled:text-stone-400 disabled:no-underline"
+                  >
+                    Budget alternative
+                  </button>
+                )}
+
+                {substitution && (
+                  <button
+                    type="button"
+                    onClick={() => void restoreOriginalKit(p.kitId)}
+                    disabled={dirty || disabled || budgetBusy}
+                    className="mt-1.5 ml-9 inline-flex items-center gap-1 text-[11px] font-medium text-stone-600 underline decoration-stone-300 decoration-dotted underline-offset-2 hover:text-slate-900 disabled:cursor-not-allowed disabled:text-stone-400 disabled:no-underline"
+                  >
+                    <Undo2 className="size-3" />
+                    Restore original
+                  </button>
+                )}
+
+                {panelOpen && approvedAlt && comparison?.bothPricesApproved && (
+                  <div className="mt-2 ml-9 rounded-lg border border-teal-200 bg-teal-50/60 p-3">
+                    <div className="grid grid-cols-2 gap-3 text-xs">
+                      <div>
+                        <p className="text-[10px] font-semibold uppercase tracking-wide text-stone-500">
+                          Current prescription
+                        </p>
+                        <p className="mt-0.5 font-medium text-slate-900">{p.displayName}</p>
+                        <p className="tabular-nums text-stone-600">
+                          {formatInrFromMinor(comparison.canonicalPriceMinor!)}
+                        </p>
+                      </div>
+                      <div>
+                        <p className="text-[10px] font-semibold uppercase tracking-wide text-teal-700">
+                          Approved budget alternative
+                        </p>
+                        <p className="mt-0.5 font-medium text-slate-900">
+                          {(getKitInfo(approvedAlt.alternativeKitId)?.displayName ?? approvedAlt.alternativeKitId)}
+                        </p>
+                        <p className="tabular-nums text-stone-600">
+                          {formatInrFromMinor(comparison.alternativePriceMinor!)}
+                        </p>
+                      </div>
+                    </div>
+                    <p className="mt-2 text-xs font-medium text-teal-800">
+                      Patient saving {formatInrFromMinor(comparison.savingMinor!)}
+                    </p>
+                    <p className="mt-1 text-[11px] text-stone-500">
+                      Reason recorded: patient budget / affordability.
+                    </p>
+                    {budgetError && (
+                      <p className="mt-2 rounded bg-rose-50 px-2 py-1 text-[11px] text-rose-700 ring-1 ring-rose-200">
+                        {budgetError}
+                      </p>
+                    )}
+                    <div className="mt-2.5 flex flex-wrap items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => void applyBudgetAlternative(p.kitId, approvedAlt.alternativeKitId)}
+                        disabled={budgetBusy}
+                        className="inline-flex items-center gap-1.5 rounded-lg bg-teal-700 px-3 py-1.5 text-xs font-medium text-white hover:bg-teal-800 disabled:opacity-50"
+                      >
+                        {budgetBusy && <Loader2 className="size-3.5 animate-spin" />}
+                        Use {(getKitInfo(approvedAlt.alternativeKitId)?.displayName ?? approvedAlt.alternativeKitId)}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setBudgetPanelIndex(null);
+                          setBudgetError(null);
+                        }}
+                        disabled={budgetBusy}
+                        className="rounded-lg border border-stone-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-600 hover:bg-stone-50 disabled:opacity-50"
+                      >
+                        Keep {p.displayName}
+                      </button>
+                    </div>
+                  </div>
+                )}
                 </li>
               );
             })}
