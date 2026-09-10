@@ -82,6 +82,14 @@ export function prismaAssessmentLoader(prisma: PrismaClient): AssessmentLoader {
           sex: a.patient.gender ?? String(answers.sex ?? "unknown"),
           phone: a.patient.phone ?? null,
           email: a.patient.email ?? null,
+          // WhatsApp consent is deliberately NOT read here. This loader's
+          // `include: { patient: true }` selects every scalar column of the
+          // typed Prisma model, so if a deployment has not yet applied
+          // 20260908_whatsapp_report_delivery, adding the new Patient columns
+          // to this query would throw "column does not exist" on EVERY
+          // consultation load — not just WhatsApp sends. Consent is read
+          // separately, over guarded raw SQL, only where it is actually
+          // needed: see lib/patient/whatsappConsent.ts.
         },
       };
     },

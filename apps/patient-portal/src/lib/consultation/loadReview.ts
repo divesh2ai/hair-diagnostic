@@ -47,6 +47,7 @@ export type ConsultationErrorCode =
   | "CROSS_CLINIC"
   | "ASSESSMENT_NOT_FOUND"
   | "CONSULTATION_NOT_COMPOSABLE"
+  | "CONSULTATION_NOT_APPLICABLE"
   | "CONSULTATION_LOAD_FAILED";
 
 /**
@@ -147,6 +148,8 @@ const MESSAGES: Record<ConsultationErrorCode, string> = {
   ASSESSMENT_NOT_FOUND: "This assessment is no longer available.",
   CONSULTATION_NOT_COMPOSABLE:
     "This historical record can't be opened for review — its original assessment responses were not stored.",
+  CONSULTATION_NOT_APPLICABLE:
+    "This is a Dr Skin FACT assessment. It has been submitted and stored, but the hair clinical review does not apply to it.",
   CONSULTATION_LOAD_FAILED: "We couldn't open this clinical review. Please retry.",
 };
 

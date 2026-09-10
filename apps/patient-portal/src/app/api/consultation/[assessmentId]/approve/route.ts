@@ -32,6 +32,7 @@ import {
 import { consultationMeta } from "@/lib/consultation/meta";
 import { logLifecycleEvent } from "@/lib/observability/lifecycle";
 import { writeAuditLog, type AuditAction } from "@/lib/audit/writeAuditLog";
+import { requestOnePagerRenderForAssessment } from "@/lib/reports/assets/jobService";
 
 export const dynamic = "force-dynamic";
 
@@ -50,7 +51,22 @@ const VALID_API_STATUSES: ReadonlySet<ApiStatus> = new Set<ApiStatus>([
   "REJECTED",
 ]);
 
-const API_TO_APPROVAL: Record<ApiStatus, ApprovalStatus> = {
+/**
+ * The approval states a DOCTOR DECISION can produce.
+ *
+ * `ApprovalStatus` also contains DRAFT and PENDING_REVIEW, which are lifecycle
+ * states a version passes through on its own — no decision endpoint can ask
+ * for them, and there is no legacy `ReviewDecision` that corresponds to
+ * either. Naming that subset is what lets `DECISION_MAP` below be a total
+ * function over its real domain instead of a `Record<ApprovalStatus, …>` with
+ * two entries missing.
+ */
+type DecidedApprovalStatus = Extract<
+  ApprovalStatus,
+  "APPROVED" | "REVISION_REQUESTED" | "REJECTED"
+>;
+
+const API_TO_APPROVAL: Record<ApiStatus, DecidedApprovalStatus> = {
   APPROVED: "APPROVED",
   NEEDS_REVISION: "REVISION_REQUESTED",
   REVISION_REQUESTED: "REVISION_REQUESTED",
@@ -59,8 +75,8 @@ const API_TO_APPROVAL: Record<ApiStatus, ApprovalStatus> = {
 
 const MAX_NOTES = 2000;
 
-// Canonical ApprovalStatus → legacy ReviewDecision workflow flag.
-const DECISION_MAP: Record<ApprovalStatus, ReviewDecision> = {
+// Canonical decision status → legacy ReviewDecision workflow flag.
+const DECISION_MAP: Record<DecidedApprovalStatus, ReviewDecision> = {
   APPROVED: ReviewDecision.APPROVED,
   REVISION_REQUESTED: ReviewDecision.EDITS_REQUESTED,
   REJECTED: ReviewDecision.REJECTED,
@@ -243,6 +259,14 @@ export async function POST(
       clinicId: doctor.clinicId,
       statusAfter: status,
     });
+
+    // Approving is what releases the patient's one-pager, so approving is what
+    // asks for it to be drawn. Nothing is rendered here: this writes a durable
+    // PENDING ReportAsset row and returns. Idempotent on the approved version,
+    // and total — an approval must never fail because a renderer is unwell.
+    if (apiStatus === "APPROVED") {
+      await requestOnePagerRenderForAssessment(assessmentId, authUserId);
+    }
 
     return NextResponse.json({
       consultation: stored.content,

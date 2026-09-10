@@ -3,6 +3,8 @@ import { evaluateClinicalReadinessForApproval } from "@shared/clinical-readiness
 import type { ReadinessDecision } from "@shared/clinical-readiness/evaluator";
 import { ArtifactType, AssessmentStatus } from "@prisma/client";
 import type { PrismaClient } from "@prisma/client";
+import { resolveApprovedOrder } from "./approvedOrder";
+import { signCartToken } from "@/lib/cartToken";
 import {
   sanitizeErrorClass,
   type ConsultationLoadStage,
@@ -66,8 +68,31 @@ export interface ConsultationOperationalState {
    * — or on nothing at all — offers a link to a page that cannot render.
    */
   onePagerState: "not_started" | "generating" | "ready" | "failed" | "unavailable";
+  /**
+   * The order belonging to the CURRENT approved consultation version, or null.
+   *
+   * Non-null here is the one condition under which a cart action may be
+   * rendered: it means resolveApprovedOrder found an APPROVED current version
+   * whose intent is READY_FOR_FULFILMENT, which is exactly what the cart API
+   * requires to return 200. A null therefore guarantees the cart would answer
+   * "no confirmed plan yet", so the UI must not offer a link.
+   */
   orderIntentId: string | null;
   orderIntentStatus: string | null;
+  /** Content version the order was cut from — lets the UI prove identity. */
+  orderContentVersion: number | null;
+  /**
+   * Signed, assessment-bound token that opens the patient cart.
+   *
+   * Minted here rather than in the browser because the signing secret is
+   * server-only. Non-null exactly when `orderIntentId` is non-null: a token
+   * for a cart that would answer "no confirmed plan yet" is a link the UI must
+   * not offer, and issuing one anyway would put a live credential into a
+   * payload for no reason.
+   *
+   * Carries no patient data — see lib/cartToken.
+   */
+  cartToken: string | null;
   /**
    * Which optional dependencies could not be read. Present so the UI can say
    * "Order status temporarily unavailable" on that one panel instead of the
@@ -135,12 +160,13 @@ export async function readOperationalState(
       "OPTIONAL_PDF_STATE",
     ),
     settle(
-      () =>
-        prisma.kitOrderIntent.findFirst({
-          where: { assessmentId },
-          orderBy: { createdAt: "desc" },
-          select: { id: true, status: true },
-        }),
+      // Was `findFirst({ assessmentId }, orderBy: createdAt desc)` — the newest
+      // intent of ANY status, including CANCELLED, and resolved by a different
+      // rule than the cart API used. That let the UI offer a cart action for a
+      // cancelled order and then land the doctor on a different (or missing)
+      // one. Both surfaces now share resolveApprovedOrder, which keys off the
+      // consultation's current version.
+      () => resolveApprovedOrder(prisma as PrismaClient, assessmentId),
       "order",
       "OPTIONAL_ORDER_STATE",
     ),
@@ -199,8 +225,10 @@ export async function readOperationalState(
   return {
     reportState,
     onePagerState,
-    orderIntentId: intentResult.value?.id ?? null,
+    orderIntentId: intentResult.value?.intentId ?? null,
     orderIntentStatus: intentResult.value?.status ?? null,
+    orderContentVersion: intentResult.value?.contentVersion ?? null,
+    cartToken: intentResult.value?.intentId ? signCartToken(assessmentId) : null,
     degraded,
   };
 }

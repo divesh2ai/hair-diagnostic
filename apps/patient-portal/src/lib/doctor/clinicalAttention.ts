@@ -136,12 +136,16 @@ export function buildAttentionItems(input: AttentionInput): AttentionItem[] {
   }
 
   if (confidence?.overall?.band === "low") {
+    // The title states the engine-computed confidence band — a status, not
+    // advice. The detail is the engine's EXACT rationale when it exists;
+    // otherwise it is omitted entirely. The UI never authors clinical guidance
+    // (the old fallback "…Clinical examination is advisable." was UI-invented
+    // medical advice and has been removed).
+    const rationale = confidence.overall.rationale?.trim();
     items.push({
       kind: "attention",
       title: "Limited supporting evidence",
-      detail:
-        confidence.overall.rationale ||
-        "The available inputs support this assessment only weakly. Clinical examination is advisable.",
+      detail: rationale && rationale.length > 0 ? rationale : "",
     });
   }
 

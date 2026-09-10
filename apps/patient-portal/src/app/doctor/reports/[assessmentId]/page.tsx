@@ -1,5 +1,6 @@
 import { signReviewToken } from "@/lib/reviewToken";
 import { fetchReviewPayload } from "@/lib/consultation/reviewPayload";
+import { getPatientWhatsappConsent } from "@/lib/patient/whatsappConsent";
 import { DoctorReviewClient } from "./DoctorReviewClient";
 
 // Doctor review workspace.
@@ -28,12 +29,30 @@ export default async function DoctorReportDetailPage({
   // presence flags).
   const shareToken = signReviewToken(assessmentId);
 
+  // WHATSAPP_AUTOMATION_ENABLED — the launch-mode switch. Resolved here
+  // (server-only env read) and passed down as a plain boolean prop rather
+  // than a NEXT_PUBLIC_ var: the client needs to know WHETHER automation is
+  // on, never anything about how it is configured.
+  const whatsappAutomationEnabled = process.env.WHATSAPP_AUTOMATION_ENABLED === "1";
+
+  // Consent is read only when there is a patient to read it for, and only
+  // over the guarded reader — see lib/patient/whatsappConsent.ts for why this
+  // cannot be folded into fetchReviewPayload's own query.
+  const patientId = initial.ok ? initial.body.consultation.patient.id : null;
+  const consent = patientId
+    ? await getPatientWhatsappConsent(patientId).catch(() => null)
+    : null;
+
   return (
     <DoctorReviewClient
       assessmentId={assessmentId}
       shareToken={shareToken}
       initialData={initial.ok ? initial.body : null}
       initialError={initial.ok ? null : initial.body}
+      whatsappAutomationEnabled={whatsappAutomationEnabled}
+      initialConsent={
+        consent ? { consent: consent.consent, provisioned: consent.provisioned } : null
+      }
     />
   );
 }

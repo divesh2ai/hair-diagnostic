@@ -10,6 +10,7 @@ import {
   withLocaleMetadata,
 } from './persistence';
 import { resolvePatientForIntake, toRelationship } from '@/lib/patient/identity';
+import { setPatientWhatsappConsent } from '@/lib/patient/whatsappConsent';
 import { resolveVisitType, toRelationshipState } from '@/lib/patient/visit';
 import { readIntakeSessionForLinking } from '@/lib/patient/intakeSession';
 
@@ -106,6 +107,15 @@ interface SubmitBody {
     name?: string;
     phone?: string;
     email?: string;
+    /**
+     * Explicit opt-in to WhatsApp delivery, from the intake gate's checkbox
+     * (HairFact) or the common profile step (SkinFact). Absent/false is
+     * "no" — never inferred from `phone` being present. Persisted via
+     * lib/patient/whatsappConsent.ts after the patient row resolves below;
+     * never written by the typed Prisma client (see that module's own
+     * comment on why the column is not declared on the Prisma schema yet).
+     */
+    whatsappConsent?: boolean;
   };
 }
 
@@ -431,6 +441,24 @@ export async function POST(req: Request) {
     }, { maxWait: 10_000, timeout: 20_000 });
 
     console.log('[SUBMIT] ASSESSMENT CREATED', assessment.id);
+
+    // ── Persist WhatsApp consent, outside the transaction ───────────────────
+    //
+    // setPatientWhatsappConsent goes over guarded raw SQL (see that module's
+    // own header) and is not transaction-aware, so it runs after commit —
+    // exactly like the identity/visit columns it sits beside conceptually.
+    // Only ever WRITES true when the box was actually checked; every other
+    // value (missing patientInfo, explicit false, an older client that never
+    // sends the field at all) writes false. A write failure here must not
+    // fail a submission the patient already completed — the assessment is
+    // real regardless of whether consent could be recorded, so this is
+    // fire-and-forget with its own error log, not part of the try/catch that
+    // reports submission failure to the patient.
+    void setPatientWhatsappConsent(
+      assessment.patientId,
+      body.patientInfo?.whatsappConsent === true,
+      'intake_form_v1',
+    ).catch((err) => console.error('[SUBMIT] whatsapp consent write failed', err));
 
     // ── STEP 5: Trigger orchestration via Vercel `after()` ──────────────────
     // Previously this was `void safeDispatchOrchestration(...)` — a detached

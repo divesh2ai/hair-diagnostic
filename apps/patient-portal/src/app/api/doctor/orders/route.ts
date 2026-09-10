@@ -1,14 +1,29 @@
 import { NextResponse } from "next/server";
-import { SystemRole } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
-import { requireRole } from "@/lib/auth";
-import { isSuperAdmin } from "@/lib/auth/roles";
+import { requireDoctorContext } from "@/lib/auth";
 import { getKitInfo } from "@hairos/packages/registries/kits/info";
 import { priceForKit, formatInr, totalRevenueInr } from "@/lib/pricing/kitPrices";
 
-// GET /api/doctor/orders — recent KitOrderIntent rows for the caller's
-// clinic. Super admin sees platform-wide. Feeds the /doctor/orders and
-// /clinic/orders tables.
+// GET /api/doctor/orders — recent KitOrderIntent rows for the caller's own
+// clinic. Feeds the /doctor/orders table.
+//
+// ── Why this is pinned to the Doctor row ────────────────────────────────────
+// It used to authorise with `requireRole(DOCTOR | CLINIC_ADMIN | SUPER_ADMIN |
+// STAFF)` and scope by the JWT's `clinic_id` claim, widening to EVERY clinic
+// for a super admin. The claim is JWKS-verified, so nothing here was forgeable
+// — but it made this the one /api/doctor route that did not follow the rule
+// the rest of the surface states explicitly (see lib/auth/doctorContext):
+// cross-clinic reads are not permitted on Doctor APIs even for admins, and
+// live on /api/admin/* under their own gate.
+//
+// It also produced a scope mismatch a doctor could see: the dashboard counts
+// "Awaiting fulfilment" for one clinic and links straight here, which for a
+// super admin then listed the whole platform. Same helper as every sibling
+// route now, so the count and its destination agree.
+//
+// The /doctor layout already redirects an admin with no Doctor row away from
+// this workspace, so nothing that could previously reach the PAGE loses access
+// to the API.
 //
 // ── Why line items are resolved HERE ────────────────────────────────────────
 // The table used to render `kitIds.length` and nothing else, so the one fact
@@ -29,17 +44,11 @@ import { priceForKit, formatInr, totalRevenueInr } from "@/lib/pricing/kitPrices
 const LIMIT = 100;
 
 export async function GET() {
-  const auth = await requireRole(
-    SystemRole.DOCTOR,
-    SystemRole.CLINIC_ADMIN,
-    SystemRole.SUPER_ADMIN,
-    SystemRole.STAFF,
-  );
-  if (auth instanceof NextResponse) return auth;
+  const authResult = await requireDoctorContext();
+  if (authResult instanceof NextResponse) return authResult;
+  const { doctor } = authResult;
 
-  const where = isSuperAdmin(auth.user_role)
-    ? {}
-    : { clinicId: auth.clinic_id ?? "__none__" };
+  const where = { clinicId: doctor.clinicId };
 
   const rows = await prisma.kitOrderIntent.findMany({
     where,

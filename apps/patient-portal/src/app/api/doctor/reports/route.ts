@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { requireDoctorContext } from "@/lib/auth";
+import { REVIEWABLE_SOURCE_SQL } from "@/lib/doctor/reviewQueue";
 
 // Pathways that mean "more than a routine read". Kept here rather than
 // inlined so the filter and the dashboard's priority count agree.
@@ -30,6 +31,10 @@ export async function GET(req: Request) {
   const doctorId = q.get("doctorId");
   const status = q.get("status");
   const includeSkinPigmentationPending = q.get("includeSkinPigmentationPending") === "1";
+  // The Needs-review tab asks for cases a doctor can actually act on. The
+  // PREDICATE is the server's (see lib/doctor/reviewQueue) — the client only
+  // says which tab it is on, exactly as it does for the skin carve-out above.
+  const openableOnly = q.get("openableOnly") === "1";
   const diagnosis = q.get("diagnosis");
   const severity = q.get("severity");
   const assignedTo = q.get("assignedTo");
@@ -69,6 +74,9 @@ export async function GET(req: Request) {
   if (includeSkinPigmentationPending) {
     where.push(Prisma.sql`(a.status::text <> 'PENDING' OR a."rawResponses"->'__meta'->>'concern' IN ('skin_acne', 'skin_pigmentation', 'skin_anti_ageing'))`);
   }
+  // Same rule the dashboard counts and the next-patient handoff use, so the
+  // queue page cannot list a case the other two have already withheld.
+  if (openableOnly) where.push(REVIEWABLE_SOURCE_SQL);
   if (assignedTo) where.push(Prisma.sql`a."reviewingDoctorId" = ${assignedTo}`);
   if (decision) where.push(Prisma.sql`a."reviewDecision"::text = ${decision}`);
   if (diagnosis) where.push(Prisma.sql`sev.content->>'primaryDiagnosis' = ${diagnosis}`);

@@ -33,6 +33,8 @@ const ROUTE_MESSAGES: Partial<Record<ConsultationErrorCode, string>> = {
   UNAUTHENTICATED: "Your session has expired. Please sign in again.",
   FORBIDDEN: "You don't have access to this assessment.",
   ASSESSMENT_NOT_FOUND: "This assessment is no longer available.",
+  CONSULTATION_NOT_APPLICABLE:
+    "This is a Dr Skin FACT assessment. It has been submitted and stored, but the hair clinical review does not apply to it.",
   CONSULTATION_LOAD_FAILED: "We couldn't open this clinical review. Please retry.",
 };
 
@@ -122,6 +124,7 @@ export async function GET(
       visitType: string | null;
       patientRelationship: string | null;
       reviewPathway: string | null;
+      concern: string | null;
     }>
   >`
     SELECT
@@ -130,7 +133,8 @@ export async function GET(
       "submittedAt",
       "visitType"::text             AS "visitType",
       "patientRelationship"::text   AS "patientRelationship",
-      "reviewPathway"::text         AS "reviewPathway"
+      "reviewPathway"::text         AS "reviewPathway",
+      "rawResponses"->'__meta'->>'concern' AS "concern"
     FROM "Assessment"
     WHERE "id" = ${assessmentId} AND "deletedAt" IS NULL
     LIMIT 1
@@ -157,6 +161,31 @@ export async function GET(
       errorCode: "CROSS_CLINIC",
     });
     return errorResponse(404, "ASSESSMENT_NOT_FOUND", requestId);
+  }
+
+  // This surface composes the HAIR consultation. /api/assessment/submit
+  // already refuses to orchestrate a Skin FACT submission for the same reason;
+  // the read path needs the same rule, because the engines compose live here
+  // rather than reading a stored report. Fed acne answers they do not recognise,
+  // they returned a confident hair diagnosis ("Telogen Effluvium") on a skin
+  // case — a fabricated finding in front of a reviewing doctor.
+  //
+  // Gated on an explicit skin concern only: hair rows and older rows with no
+  // `__meta.concern` are untouched.
+  if (target.concern?.startsWith("skin_")) {
+    logLifecycleEvent({
+      event: "consultation.load_failed",
+      requestId,
+      assessmentId,
+      clinicId: doctor.clinicId,
+      actingDoctorId: doctor.id,
+      authRole,
+      mode,
+      severity: "core",
+      failureStage: "CONSULTATION_LOOKUP",
+      errorCode: "CONSULTATION_NOT_APPLICABLE",
+    });
+    return errorResponse(422, "CONSULTATION_NOT_APPLICABLE", requestId);
   }
 
   // Fire-and-forget, deliberately off the critical path: an audit sink outage

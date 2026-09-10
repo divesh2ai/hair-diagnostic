@@ -11,6 +11,7 @@
 // The endpoint is deliberately thin — all invariants live in the command.
 
 import { NextResponse } from "next/server";
+import { ReviewDecision } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { requireDoctorContext, assertDoctorInClinic } from "@/lib/auth";
 import {
@@ -83,11 +84,39 @@ export async function POST(
           role: "DOCTOR",
           clinicId: doctor.clinicId,
         },
+        // Bind the kit order to the acting doctor when the case is still
+        // unassigned (clinic-QR submissions arrive with no reviewingDoctorId).
+        actingDoctorId: doctor.id,
         expectedContentVersion: body.expectedContentVersion,
         notes,
         readinessOverride,
       },
     );
+
+    // Mirror the decision onto the legacy Assessment workflow columns, exactly
+    // as POST /approve does. Without this an approval made through the kit-order
+    // button leaves Assessment.reviewDecision = PENDING, so the case never
+    // leaves the review queue or the dashboard's pending count even though the
+    // consultation is approved and the order exists. The consultation approval
+    // and the kit order are already durable; a legacy-flag write failure must
+    // not fail the request, so it is caught and swallowed like on /approve.
+    await prisma.assessment
+      .update({
+        where: { id: assessmentId },
+        data: {
+          reviewDecision: ReviewDecision.APPROVED,
+          // The deciding doctor becomes the reviewer of record for a
+          // clinic-QR case that arrived unassigned — the one moment it is a
+          // fact rather than a guess. Keeps per-doctor productivity correct.
+          reviewingDoctorId: doctor.id,
+          reviewerName: doctor.name,
+          reviewNotes: notes ?? undefined,
+          reviewedAt: new Date(),
+        },
+      })
+      .catch((mirrorErr) => {
+        console.error("[approve-and-order] legacy mirror failed:", mirrorErr);
+      });
 
     logLifecycleEvent({
       event: "consultation.approved_with_order",

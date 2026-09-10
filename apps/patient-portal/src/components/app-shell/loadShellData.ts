@@ -125,6 +125,14 @@ export async function loadSuperAdminShellData(): Promise<ShellData> {
 // membership is the sole authorisation source.
 export type DoctorShellData = ShellData & {
   doctorId: string;
+  /**
+   * The clinic of the DOCTOR ROW, not the JWT claim. They agree for an
+   * ordinary doctor session, but an admin operating in the doctor workspace
+   * can carry a null or platform-wide clinic claim while their Doctor row is
+   * bound to one clinic. Workspace chrome must follow the row, because the row
+   * is what every /api/doctor/* handler authorizes against.
+   */
+  doctorClinicId: string;
   viewMode: "self" | "admin_view";
 };
 
@@ -151,7 +159,7 @@ export async function loadDoctorShellData(): Promise<DoctorShellData> {
   }
   const viewMode: "self" | "admin_view" =
     data.role === "DOCTOR" ? "self" : "admin_view";
-  return { ...data, doctorId: doctor.id, viewMode };
+  return { ...data, doctorId: doctor.id, doctorClinicId: doctor.clinicId, viewMode };
 }
 
 // Best-effort first-name extraction for greetings: "Dr. Divesh Shah" → "Divesh".

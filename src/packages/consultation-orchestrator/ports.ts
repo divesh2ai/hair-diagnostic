@@ -5,6 +5,24 @@
 import type { Consultation } from "@shared/types/consultation";
 import type { ConsultationEvent } from "./events/types";
 
+/**
+ * Whether a stored assessment can have a consultation composed FROM it.
+ *
+ * `rawResponses` is `Json?`, and three things live in that column across this
+ * table's history: a real answers object, `null` on every row created before
+ * the 20260521 migration added it, and — rarely — a JSON value that is not an
+ * object. Only the first is composable. The other two are still real clinical
+ * records with a patient and often a persisted consultation, so they must be
+ * distinguishable from a deleted row rather than reported as missing.
+ */
+export type AssessmentComposability = "FULL" | "LEGACY_DEGRADED";
+
+/** Why an assessment is not composable. Empty when composability is FULL. */
+export type AssessmentDegradedReason =
+  | "RAW_RESPONSES_MISSING"
+  | "RAW_RESPONSES_MALFORMED"
+  | "RAW_RESPONSES_EMPTY";
+
 export interface AssessmentLoad {
   id: string;
   clinicId: string;
@@ -28,6 +46,16 @@ export interface AssessmentLoad {
    * that seed a fake loader.
    */
   status?: string;
+  /**
+   * Whether the orchestrator may COMPOSE a new consultation from this record.
+   *
+   * Optional for the same reason as `status`: test loaders that predate the
+   * legacy-degraded work seed neither field. Absent is read as composable,
+   * which matches those fixtures — every one of them supplies real answers.
+   */
+  composability?: AssessmentComposability;
+  /** Why composition is refused. Empty or absent when composable. */
+  degradedReasons?: AssessmentDegradedReason[];
 }
 
 export interface DoctorPreferences {

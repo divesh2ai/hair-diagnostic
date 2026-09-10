@@ -2,7 +2,15 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
-import { ArrowLeft, Check, Flag, MessageCircle, ShieldAlert } from "lucide-react";
+import {
+  ArrowLeft,
+  Check,
+  ExternalLink,
+  Flag,
+  MessageCircle,
+  ShieldAlert,
+  ShoppingCart,
+} from "lucide-react";
 import { toast } from "sonner";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { useHydrated } from "@/lib/format/useHydrated";
@@ -20,13 +28,20 @@ import type {
 import { ReportActions } from "@/components/ui/ReportActions";
 import { extractSafetyFlags } from "@/lib/doctor/clinicalAttention";
 import { summarizeProtocol } from "@/lib/doctor/protocolModel";
+import { cartHref, absoluteCartUrl } from "@/lib/doctor/cartHref";
+import { PatientJourney } from "@/components/doctor/PatientJourney";
 import { ReviewHeader } from "./sections/ReviewHeader";
 import { ClinicalAttentionSection } from "./sections/ClinicalAttentionSection";
 import { ProtocolSection } from "./sections/ProtocolSection";
 import { SecondaryDetail } from "./sections/SecondaryDetail";
 import { ClinicalSummarySection } from "./sections/ClinicalSummarySection";
 import { OnePagerBlock } from "./sections/OnePagerBlock";
-import { DecisionBar, type DecisionState } from "./sections/DecisionBar";
+import {
+  DecisionBar,
+  resolveWhatsappSendUiState,
+  type DecisionState,
+  type WhatsappSendUiState,
+} from "./sections/DecisionBar";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Doctor review workspace — PRESENTATION ONLY.
@@ -146,6 +161,7 @@ type ReviewErrorCode =
   | "CROSS_CLINIC"
   | "ASSESSMENT_NOT_FOUND"
   | "CONSULTATION_NOT_COMPOSABLE"
+  | "CONSULTATION_NOT_APPLICABLE"
   | "CONSULTATION_LOAD_FAILED";
 
 type ReviewLoadState = "loading" | "ready" | "core_error";
@@ -190,11 +206,27 @@ function isRetryable(code: ReviewErrorCode | undefined): boolean {
   return code === "CONSULTATION_LOAD_FAILED" || code === undefined;
 }
 
+/** Never shows a raw provider error or exception detail — see the /share route's own comment on why. */
+function messageForShareError(code: unknown): string {
+  switch (code) {
+    case "not_approved":
+      return "Approve the consultation before sending it to the patient.";
+    case "delivery_not_provisioned":
+      return "Sending is not switched on yet — the post-approval migration has not been applied.";
+    case "send_failed":
+      return "The message could not be sent. It has been recorded as failed.";
+    default:
+      return "Could not send this to the patient.";
+  }
+}
+
 export function DoctorReviewClient({
   assessmentId,
   shareToken,
   initialData = null,
   initialError = null,
+  whatsappAutomationEnabled = false,
+  initialConsent = null,
 }: {
   assessmentId: string;
   shareToken?: string;
@@ -206,6 +238,18 @@ export function DoctorReviewClient({
   initialData?: ReviewPayload | null;
   /** A server-side failure, so the error state also renders without a fetch. */
   initialError?: ReviewPayloadError | null;
+  /**
+   * Launch-mode switch (WHATSAPP_AUTOMATION_ENABLED), resolved server-side.
+   * false — the default, safe for initial clinic launch — keeps this page
+   * behaving exactly as it did before this feature: "Approve treatment"
+   * approves only, and WhatsApp is sent solely via the existing manual/
+   * recorded Share controls in PatientJourney below. true renames the primary
+   * button to "Approve & Send Report" and chains an automated send after a
+   * successful approval.
+   */
+  whatsappAutomationEnabled?: boolean;
+  /** The patient's WhatsApp consent, resolved server-side — see lib/patient/whatsappConsent.ts. Null only if it could not be read (patient row missing). */
+  initialConsent?: { consent: boolean; provisioned: boolean } | null;
 }) {
   // ── Review data (CORE) ────────────────────────────────────────────────────
   const [consultation, setConsultation] = useState<Consultation | null>(
@@ -250,6 +294,17 @@ export function DoctorReviewClient({
   /** The reason the readiness gate blocked, when it did. */
   const [readinessBlock, setReadinessBlock] =
     useState<ReadinessBlockDetail | null>(null);
+
+  // ── WhatsApp send, chained after approval ─────────────────────────────────
+  //
+  // Deliberately its own state, not folded into `decision`. Clinical approval
+  // and WhatsApp delivery are two different systems succeeding or failing
+  // independently — a messaging failure must never read as an approval
+  // failure, and the DecisionBar renders "Report Approved ✓" unconditionally
+  // once `decision === "approved"`, with THIS state describing what happened
+  // to the message underneath it.
+  const [waState, setWaState] = useState<WhatsappSendUiState>("idle");
+  const [waErrorReason, setWaErrorReason] = useState<string | null>(null);
 
   // ── Protocol editing ──────────────────────────────────────────────────────
   /** Staged, unsaved kit edits. Guards approval — see DecisionBar. */
@@ -375,6 +430,39 @@ export function DoctorReviewClient({
     void load();
   }, [load]);
 
+  // Bring the adjust panel into view once it actually exists.
+  //
+  // This used to be a pair of requestAnimationFrames fired from the Request
+  // changes handler. Measured on a real case, that scrolled the window to
+  // 328px while the panel sat at 1781px — the tab had switched and the editor
+  // had mounted, but it was ~1700px below the fold, so from the doctor's seat
+  // the button still looked dead. rAF guesses when the DOM will be ready; an
+  // effect keyed on the two pieces of state that decide whether the panel is
+  // rendered simply runs after React has committed it.
+  //
+  // `block: "center"` rather than "start": the decision bar is sticky at the
+  // bottom and would otherwise cover the editor's own controls.
+  //
+  // `behavior: "auto"`, and that is deliberate. Measured on this page, a
+  // smooth scroll simply does not run — from y=0 with the panel at 2103px,
+  // "smooth" left the window at 0 while "auto" landed it at 2098. Something in
+  // this tree (the sticky backdrop-filter bar and the companion are the
+  // suspects) aborts the animation, and an animation that silently no-ops is
+  // worse than no animation: it is the whole reason the button read as dead.
+  // An instant jump is also the honest treatment for a 2000px move — it is
+  // what an anchor link does, and it is what the reduced-motion path would
+  // pick anyway.
+  useEffect(() => {
+    if (!adjustOpen || reviewTab !== "plan") return;
+    const el = document.getElementById("adjust-protocol");
+    if (!el) return;
+    el.scrollIntoView({ behavior: "auto", block: "center" });
+    // Send the keyboard along with the eye. Without this, tabbing on from the
+    // Request changes button walks into the decision bar rather than into the
+    // editor that just opened.
+    el.focus({ preventScroll: true });
+  }, [adjustOpen, reviewTab]);
+
   const addNote = useCallback(async () => {
     if (!consultation || !meta) return;
     if (note.trim().length === 0) {
@@ -434,6 +522,76 @@ export function DoctorReviewClient({
    * WhatsApp are NOT part of this call — a messaging failure must never undo an
    * approved clinical decision.
    */
+  /**
+   * Send the approved report over the recorded (server-side) WhatsApp path.
+   * Used both to auto-chain after approval (when automation is on) and by
+   * the DecisionBar's "Retry WhatsApp" button — retrying is just calling this
+   * again, and the server's own idempotency check (see
+   * lib/delivery/sendPatientLink.ts) is what makes that safe rather than
+   * anything tracked here.
+   */
+  const sendReportViaWhatsapp = useCallback(async () => {
+    setWaState("sending");
+    setWaErrorReason(null);
+    try {
+      const res = await fetch(`/api/consultation/${assessmentId}/share`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ subject: "REPORT" }),
+      });
+      const j = await res.json().catch(() => ({}));
+
+      if (res.ok && j.ok) {
+        setWaState(resolveWhatsappSendUiState({ live: !!j.live, alreadySent: !!j.alreadySent }));
+        return;
+      }
+      if (j.error === "no_consent") {
+        setWaState("no_consent");
+        return;
+      }
+      if (j.error === "configuration_error") {
+        setWaState("configuration_error");
+        setWaErrorReason("WhatsApp is not configured for this clinic yet.");
+        return;
+      }
+      if (j.error === "no_phone") {
+        setWaState("no_phone");
+        return;
+      }
+      setWaState("failed");
+      setWaErrorReason(messageForShareError(j.error));
+    } catch {
+      setWaState("failed");
+      setWaErrorReason("Could not reach the server.");
+    }
+  }, [assessmentId]);
+
+  /**
+   * The manual `wa.me` fallback, driven from the SAME governed link/message
+   * the automated path uses (see buildReportWhatsAppMessage) — this route
+   * only composes and hands back a URL; nothing is recorded as delivered.
+   */
+  const shareReportManually = useCallback(async () => {
+    try {
+      const res = await fetch(`/api/consultation/${assessmentId}/share`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ subject: "REPORT", mode: "manual" }),
+      });
+      const j = await res.json().catch(() => ({}));
+      if (res.ok && j.ok && j.waUrl) {
+        window.open(j.waUrl, "_blank");
+        if (!j.hasPhone) {
+          toast.error("This patient has no WhatsApp number on file — add one before sending.");
+        }
+      } else {
+        toast.error("Could not prepare the WhatsApp message.");
+      }
+    } catch {
+      toast.error("Could not reach the server.");
+    }
+  }, [assessmentId]);
+
   const approveAndCreateOrder = useCallback(
     async (readinessOverrideReason?: string) => {
       if (!meta) return;
@@ -460,6 +618,13 @@ export function DoctorReviewClient({
           setNote("");
           setReadinessBlock(null);
           setDecision("approved");
+          // WhatsApp is chained, not coupled: awaited so the journey view
+          // reflects it on the very next load, but its own failure has
+          // already been handled entirely inside sendReportViaWhatsapp and
+          // cannot reach this catch block or undo the approval above.
+          if (whatsappAutomationEnabled) {
+            await sendReportViaWhatsapp();
+          }
           await load();
           void resolveNextPatient();
           return;
@@ -506,7 +671,15 @@ export function DoctorReviewClient({
         setDecision("error");
       }
     },
-    [assessmentId, meta, note, load, resolveNextPatient],
+    [
+      assessmentId,
+      meta,
+      note,
+      load,
+      resolveNextPatient,
+      whatsappAutomationEnabled,
+      sendReportViaWhatsapp,
+    ],
   );
 
   const submitNeedsRevision = useCallback(
@@ -603,6 +776,13 @@ export function DoctorReviewClient({
     () => (consultation ? extractSafetyFlags(consultation) : []),
     [consultation],
   );
+
+  /** Last 4 digits visible, the rest masked — shown before approval so a doctor can confirm this is the right patient's WhatsApp destination. */
+  const maskedPatientPhone = useMemo(() => {
+    const digits = consultation?.patient.phone?.replace(/\D/g, "") ?? "";
+    if (digits.length < 4) return null;
+    return `+91••••••${digits.slice(-4)}`;
+  }, [consultation]);
 
   const protocolSummary = useMemo(
     () =>
@@ -738,7 +918,10 @@ export function DoctorReviewClient({
           >
             {reviewTab === "case" && (
               <>
-                <ClinicalSummarySection consultation={consultation} />
+                <ClinicalSummarySection
+                  consultation={consultation}
+                  onViewPlan={() => setReviewTab("plan")}
+                />
                 {/* Attention is never hidden behind a tab switch — it renders
                     in whichever panel is open. */}
                 <ClinicalAttentionSection
@@ -773,10 +956,7 @@ export function DoctorReviewClient({
             {reviewTab === "record" && (
               <>
                 <OnePagerBlock assessmentId={assessmentId} />
-                <SecondaryDetail
-                  consultation={consultation}
-                  contentVersion={meta.contentVersion}
-                />
+                <SecondaryDetail consultation={consultation} />
               </>
             )}
           </div>
@@ -804,6 +984,15 @@ export function DoctorReviewClient({
               operational={operational}
             />
           )}
+
+          {/* 9 · WHAT HAPPENED AFTER I APPROVED? ────────────────────────────
+              The answer the doctor previously had to phone Ops for: whether
+              the patient has the plan, opened it, paid, and started. Loads on
+              its own and degrades on its own — a stage it cannot read renders
+              as "unavailable", never as "did not happen". */}
+          {isApproved && (
+            <PatientJourney assessmentId={assessmentId} canSend />
+          )}
         </div>
       </ErrorBoundary>
 
@@ -820,19 +1009,36 @@ export function DoctorReviewClient({
         onRequestChanges={() => {
           const opening = !adjustOpen;
           setAdjustOpen(opening);
-          // Opening a panel the doctor cannot see is the same as not opening
-          // it — the editor sits above a sticky decision bar.
-          if (opening) {
-            requestAnimationFrame(() => {
-              document
-                .getElementById("adjust-protocol")
-                ?.scrollIntoView({ behavior: "smooth", block: "center" });
-            });
-          }
+          // The adjust panel only renders inside the Plan tab, so opening it
+          // from any other tab (the default is "case") would toggle state
+          // against an element that isn't mounted — the button would appear
+          // dead. Switch to Plan so the editor is actually there to show.
+          //
+          // Scrolling to it is NOT done here: see the effect above, which
+          // waits for the element to exist rather than guessing when it will.
+          if (opening) setReviewTab("plan");
         }}
         nextResolved={nextResolved}
         nextPatient={nextPatient}
         nextLookupFailed={nextLookupFailed}
+        // Only once an order actually exists. Without the intent the cart API
+        // answers "no confirmed plan yet", and a link to that is worse than no
+        // link at all.
+        // `orderIntentId` is now resolveApprovedOrder's answer, so non-null
+        // here means the cart endpoint will return 200 for this assessment —
+        // the action is never offered against "no confirmed plan yet".
+        cartHref={
+          operational?.orderIntentId
+            ? cartHref(assessmentId, operational.cartToken)
+            : null
+        }
+        whatsappAutomationEnabled={whatsappAutomationEnabled}
+        consent={initialConsent}
+        patientPhoneMasked={maskedPatientPhone}
+        waState={waState}
+        waErrorReason={waErrorReason}
+        onRetryWhatsapp={sendReportViaWhatsapp}
+        onShareManually={shareReportManually}
       />
 
       {revisionOpen && (
@@ -984,8 +1190,14 @@ function DeliveryBlock({
   // ClinicQrPanel: a stale or unset env var would put a host that does not
   // serve this clinic into a message sent to a real patient.
   const hydrated = useHydrated();
+  // The token is REQUIRED here, not optional: this URL is sent to a patient
+  // who has no session, so without it they land on a cart that 404s.
   const cartUrl = hydrated
-    ? `${window.location.origin}/cart/${assessmentId}`
+    ? absoluteCartUrl(
+        window.location.origin,
+        assessmentId,
+        operational?.cartToken,
+      )
     : null;
 
   return (
@@ -1005,38 +1217,42 @@ function DeliveryBlock({
           patientWhatsapp={patient.phone ?? null}
           shareToken={shareToken}
           enabled
+          variant="utility"
         />
 
         {operational?.orderIntentId && (
           <div className="mt-3 space-y-2 border-t border-stone-100 pt-3">
-            <p className="text-[11px] text-stone-600">
-              Order intent {operational.orderIntentId.slice(-8)} ·{" "}
-              {operational.orderIntentStatus ?? "READY_FOR_FULFILMENT"}
-            </p>
-            <div className="flex flex-wrap gap-2">
-              {/* Rendered only once the origin is known. A send button that
-                  composes a broken link is worse than one briefly absent. */}
-              {patient.phone && cartUrl && (
-                <a
-                  href={`https://wa.me/${patient.phone.replace(/[^0-9]/g, "")}?text=${encodeURIComponent(
-                    `Hi ${patient.name?.split(" ")[0] ?? ""}, your Dr FACT plan is ready. Review and confirm your kit order here: ${cartUrl}`,
-                  )}`}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-600 px-3 py-2 text-xs font-medium text-white hover:bg-emerald-700"
-                >
-                  <MessageCircle className="h-3.5 w-3.5" aria-hidden />
-                  Send cart to patient (WhatsApp)
-                </a>
-              )}
+            {/* The raw order-intent id and its READY_FOR_FULFILMENT state used
+                to print here. Both are engineering facts: the id is a cuid the
+                doctor cannot act on, and the status names an internal
+                fulfilment stage, not anything about this patient's care. They
+                remain on the order record and in the audit trail; they are
+                simply not decisions a clinician makes on this screen. */}
+            {/* THE CART IS THE POINT OF THIS BLOCK.
+                It used to be a 12px bordered link sitting beside a filled
+                green WhatsApp button, so the loudest control on the block was
+                the one that MESSAGES A PATIENT and the quiet one was the safe
+                check a doctor should make first — exactly backwards. Seeing
+                what the patient will be charged for is the verification step;
+                sending it is the irreversible act.
+
+                So: the cart is the primary, and the send button is demoted to
+                a secondary. Dropping the green also puts this block back in
+                line with the surface rule that green marks a saved decision
+                and nothing else. */}
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
               <a
-                href={`/cart/${assessmentId}`}
+                href={cartHref(assessmentId, operational?.cartToken)}
                 target="_blank"
                 rel="noreferrer"
-                className="inline-flex items-center gap-1.5 rounded-lg border border-stone-200 bg-white px-3 py-2 text-xs font-medium text-slate-700 hover:bg-stone-50"
+                className="hd-btn hd-btn-primary justify-center sm:justify-start"
               >
+                <ShoppingCart className="size-4" aria-hidden />
                 Preview patient cart
+                <ExternalLink className="size-3.5 opacity-70" aria-hidden />
+                <span className="sr-only">(opens in a new tab)</span>
               </a>
+
             </div>
           </div>
         )}

@@ -32,19 +32,23 @@ export async function GET() {
       where: {
         clinicId,
         reviewedAt: { gte: monthStart },
-        reviewDecision: { in: ["APPROVED", "NEEDS_REVISION"] },
+        // EDITS_REQUESTED is the enum member. This read "NEEDS_REVISION" —
+        // the doctor-facing API word, which has never been a ReviewDecision —
+        // so the revision half of every doctor's productivity was counting a
+        // value the column cannot hold.
+        reviewDecision: { in: ["APPROVED", "EDITS_REQUESTED"] },
       },
-      _count: { _all: true },
+      _count: true,
     }),
     prisma.kitOrderIntent.groupBy({
       by: ["doctorId"],
       where: { clinicId, createdAt: { gte: monthStart } },
-      _count: { _all: true },
+      _count: true,
     }),
     prisma.kitOrderIntent.groupBy({
       by: ["doctorId"],
       where: { clinicId },
-      _count: { _all: true },
+      _count: true,
     }),
   ]);
 
@@ -53,10 +57,10 @@ export async function GET() {
   for (const row of decisionsMonth) {
     if (!row.reviewingDoctorId) continue;
     const target = row.reviewDecision === "APPROVED" ? approvedByDoctor : revisionByDoctor;
-    target.set(row.reviewingDoctorId, (target.get(row.reviewingDoctorId) ?? 0) + row._count._all);
+    target.set(row.reviewingDoctorId, (target.get(row.reviewingDoctorId) ?? 0) + row._count);
   }
-  const orderMonthByDoctor = new Map(ordersMonth.map((r) => [r.doctorId, r._count._all]));
-  const orderAllByDoctor = new Map(ordersAll.map((r) => [r.doctorId, r._count._all]));
+  const orderMonthByDoctor = new Map(ordersMonth.map((r) => [r.doctorId, r._count]));
+  const orderAllByDoctor = new Map(ordersAll.map((r) => [r.doctorId, r._count]));
 
   const items = doctors
     .map((d) => {

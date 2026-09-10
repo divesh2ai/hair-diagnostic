@@ -12,9 +12,33 @@ require("dotenv").config({ path: path.join(repoRoot, ".env") });
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   outputFileTracingRoot: repoRoot,
-  typescript: {
-    ignoreBuildErrors: true,
+
+  // ── Report rendering (see lib/reports/assets/browser.ts) ──────────────────
+  //
+  // Both packages must be left as real Node requires rather than bundled:
+  // playwright-core resolves its driver by path at runtime, and
+  // @sparticuz/chromium reads compressed binaries out of its own package
+  // directory. Bundling either produces a function that builds cleanly and
+  // cannot launch a browser.
+  serverExternalPackages: ["playwright-core", "@sparticuz/chromium"],
+
+  // Chromium itself. Tracing follows `require` graphs, and a 100 MB brotli
+  // archive that the package opens by filename at runtime is not in one — so
+  // the render function would ship without a browser and fail exactly where
+  // the previous implementation did, only later. Named explicitly.
+  outputFileTracingIncludes: {
+    "/api/internal/report-assets/render": [
+      "./node_modules/@sparticuz/chromium/bin/**",
+    ],
+    // The clinic's own download runs the same launcher.
+    "/api/reports/[assessmentId]/one-page/png": [
+      "./node_modules/@sparticuz/chromium/bin/**",
+    ],
+    "/api/reports/[assessmentId]/one-page/pdf": [
+      "./node_modules/@sparticuz/chromium/bin/**",
+    ],
   },
+
   experimental: {
     externalDir: true,
   },

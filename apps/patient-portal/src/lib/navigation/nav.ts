@@ -35,12 +35,14 @@ export type NavIcon =
   | "settings"
   | "branding"
   | "whatsapp"
-  | "profile";
+  | "profile"
+  | "help";
 
 export type NavBadgeChannel =
   | "pendingReviews"
   | "newPatients"
-  | "platformAlerts";
+  | "platformAlerts"
+  | "supportUnread";
 
 // Super Admin navigation — seven destinations, five groups.
 //
@@ -89,6 +91,12 @@ const NAV_SUPER_ADMIN: NavSection[] = [
         icon: "audit",
       },
       { href: "/admin/audit", labelKey: "nav.auditSecurity", icon: "audit" },
+      {
+        href: "/admin/support",
+        labelKey: "nav.support",
+        icon: "help",
+        badgeChannel: "supportUnread",
+      },
     ],
   },
   {
@@ -145,6 +153,12 @@ const NAV_DOCTOR: NavSection[] = [
       { href: "/doctor/orders", labelKey: "nav.orders", icon: "reports" },
       { href: "/doctor/profile", labelKey: "common.profile", icon: "profile" },
       { href: "/doctor/settings", labelKey: "common.settings", icon: "settings" },
+      {
+        href: "/doctor/support",
+        labelKey: "nav.support",
+        icon: "help",
+        badgeChannel: "supportUnread",
+      },
     ],
   },
 ];

@@ -9,6 +9,7 @@ import {
   type ApprovalStatus,
 } from "@hairos/packages/consultation-orchestrator";
 import { logLifecycleEvent } from "@/lib/observability/lifecycle";
+import { requestOnePagerRenderForAssessment } from "@/lib/reports/assets/jobService";
 import { toPatientSafeReadinessDecision } from "@shared/clinical-readiness/evaluator";
 
 // Signed-token review flow (WhatsApp / email "review this report" link).
@@ -194,6 +195,14 @@ export async function POST(
       clinicId: assessment.clinicId,
       statusAfter: approvalStatus,
     });
+
+    // Same rule as the dashboard: an approval, however it arrives, is what
+    // asks for the patient's one-pager. Writing the row here means a case
+    // approved from a WhatsApp link is not a case whose artefact is only
+    // produced if somebody later opens the dashboard.
+    if (approvalStatus === "APPROVED") {
+      await requestOnePagerRenderForAssessment(assessment.id, actorId);
+    }
   } catch (err) {
     if (err instanceof ReadinessBlockedError) {
       logLifecycleEvent({

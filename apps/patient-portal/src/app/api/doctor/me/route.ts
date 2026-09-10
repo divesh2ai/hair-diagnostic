@@ -14,7 +14,7 @@ export async function GET() {
   const [clinic, doctor] = await Promise.all([
     prisma.clinic.findUnique({
       where: { id: docCtx.clinicId },
-      select: { name: true, slug: true, logoUrl: true, tagline: true },
+      select: { name: true, slug: true, logoUrl: true, tagline: true, region: true },
     }),
     // Fetch the full render-only fields the profile card needs (photo,
     // specialization, badgeTheme). Trust source is docCtx.id — never a

@@ -9,6 +9,7 @@ import {
   buildProtocolItems,
   summarizeProtocol,
 } from "@/lib/doctor/protocolModel";
+import { CollapsibleText } from "./CollapsibleText";
 
 // WHAT ARE WE TREATING? — the protocol, and the reasoning that produced it.
 //
@@ -155,10 +156,18 @@ export function ProtocolSection({
                 )}
               </div>
 
+              {/* Long per-patient rationale collapses to a few lines with the
+                  exact engine string preserved in the DOM — same behaviour as
+                  the clinical explanations. The wording is `phase.whySelected`
+                  verbatim; the UI clamps how much is shown, never what it says. */}
               {item.rationale && (
-                <p className="mt-1.5 max-w-prose text-sm leading-relaxed text-slate-600">
-                  {item.rationale}
-                </p>
+                <div className="mt-1.5 max-w-prose">
+                  <CollapsibleText
+                    text={item.rationale}
+                    className="text-sm leading-relaxed text-slate-600"
+                    moreLabel="full rationale"
+                  />
+                </div>
               )}
 
               {/* Formulation depth is real reference material but not part of
@@ -224,10 +233,26 @@ export function ProtocolSection({
       ) : !adjustOpen ? null : (
         <div
           id="adjust-protocol"
-          className="hd-card space-y-3 border-[color:var(--hd-attention)]/30 bg-[color:var(--hd-attention-tint)] p-4 sm:p-5"
+          // Focusable only as a scroll/focus target — see the effect in
+          // DoctorReviewClient. -1 keeps it out of the tab order itself.
+          tabIndex={-1}
+          // Plum, not amber. This panel is the doctor exercising their own
+          // authority over the plan — it is not a caution, and dressing it as
+          // one made the routine act of editing a lineup look like a warning.
+          // Porcelain ground with a plum edge rather than a filled amber block,
+          // so an open editor reads as attention without becoming the largest
+          // patch of colour on the page.
+          // Border and rail are set inline, not as utilities: `.hd-card` is a
+          // scoped two-class selector and outranks a single Tailwind class, so
+          // a `border-[...]` utility here would be silently discarded.
+          className="hd-card space-y-3 bg-[color:var(--hd-surface)] p-4 sm:p-5"
+          style={{
+            borderColor: "var(--hd-primary-border)",
+            boxShadow: "inset 3px 0 0 0 var(--hd-primary)",
+          }}
         >
           <div className="flex flex-wrap items-center justify-between gap-2">
-            <h3 className="hd-eyebrow !text-[color:var(--hd-attention)]">
+            <h3 className="hd-eyebrow !text-[color:var(--hd-primary-dark)]">
               Adjust protocol — doctor authority
             </h3>
             {onCloseAdjust && (

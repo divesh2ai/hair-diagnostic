@@ -31,6 +31,7 @@
 // question text belongs.
 
 import type { Consultation } from "@shared/types/consultation";
+import { labelForDiagnosis } from "@/lib/labels/diagnosisLabels";
 
 // ── View model ──────────────────────────────────────────────────────────────
 
@@ -93,13 +94,16 @@ export interface ClinicalSummaryViewModel {
   confidence: { band: string; label: string; rationale: string | null } | null;
   evidence: EvidenceGroup[];
   /**
-   * What the LEADING driver does to the follicle.
+   * The LEADING driver — what is pushing this case, and what it does to the
+   * follicle.
    *
-   * Its label is the headline, so the label is not repeated — but this
-   * sentence is not a repeat, and without it a single-driver case renders a
-   * "Clinical interpretation" heading above nothing but an objective.
+   * This used to be the explanation sentence alone, because the driver's label
+   * WAS the headline. It no longer is: the headline is the engine's primary
+   * diagnosis, and a driver is a contributing mechanism, not a diagnosis. The
+   * label therefore has to be shown here or it is lost from the conclusion
+   * entirely.
    */
-  primaryDriverExplanation: string | null;
+  primaryDriver: SummaryDriver | null;
   drivers: SummaryDriver[];
   interpretations: SignalInterpretation[];
   clinicalObjective: string | null;
@@ -225,25 +229,42 @@ export function buildClinicalSummary(
     .filter((d) => d.label.length > 0);
 
   // ── Headline ──────────────────────────────────────────────────────────────
-  // Three candidates were rejected, and each rejection matters:
+  // The engine's primary diagnosis, and nothing else.
   //
-  //   `diagnosis.primary`   — an engine ROUTING label. This record carries
-  //                           primaryKey "DIABETES" rendered as "Metabolic —
-  //                           polygenic drivers". Not a clinical statement.
-  //   `story.yourHairStory` — the patient-voice opener, ~150 words addressed
-  //                           to "you". As a headline it filled the hero with
-  //                           a paragraph written for the wrong reader.
-  //   any composed sentence — inventing "Mild lifestyle-associated concern"
-  //                           here would be the UI authoring a conclusion.
+  // This used to be `allDrivers[0].label`. Drivers ARE ranked (tier, then
+  // weight), so that was not an array-position accident — but a driver is a
+  // contributing mechanism, not a diagnosis, and the two disagree routinely.
+  // An AGA_MALE_123 case on an MPHL protocol headlined "Stress-Related
+  // Shedding" while the queue card for the same patient read "Male pattern
+  // hair loss · early stage". A doctor must not meet two different answers to
+  // "what is this?" on two screens of the same product.
   //
-  // The leading driver label is authored, clinician-readable, one line, and is
-  // already the engine's own statement of what is driving the case.
-  const headline = allDrivers[0]?.label ?? null;
+  // We label `primaryKey` here rather than reading the stored `primary`
+  // string, and that choice does real work:
+  //
+  //   · `primaryKey` has ALWAYS been correct, including in the consultation
+  //     versions written before the composer was fixed. Labelling it means
+  //     every historical record renders the right condition immediately, with
+  //     no rewrite of a single stored ConsultationVersion — audit history is
+  //     evidence, not something to correct after the fact.
+  //   · `labelForDiagnosis` is the SAME function the Review Queue, the patient
+  //     deck and the day panel use on the SAME field, so the workspace and the
+  //     queue cannot disagree about a patient — they are one expression.
+  //
+  // `diagnosis.primary` is now the approved label for the same key on newly
+  // composed versions (see ai-engine/contracts/primaryDiagnosis), so the two
+  // name one condition; this path simply does not depend on when the record
+  // was written.
+  //
+  // Still rejected, for unchanged reasons: `story.yourHairStory` (patient-voice,
+  // ~150 words, wrong reader) and any sentence composed here (the UI must not
+  // author a clinical conclusion).
+  const primaryKey = clean(consultation.diagnosis?.primaryKey);
+  const headline = primaryKey ? labelForDiagnosis(primaryKey) : null;
 
-  // Its label is the headline, so the label is not repeated — but the
-  // explanation is not a repeat, and dropping the whole driver emptied this
-  // panel on every single-driver case.
-  const primaryDriverExplanation = allDrivers[0]?.explanation ?? null;
+  // The leading driver keeps its own row. Its label is no longer the headline,
+  // so the label is shown alongside the impact sentence rather than dropped.
+  const primaryDriver = allDrivers[0] ?? null;
   const drivers = allDrivers.slice(1);
 
   // Dermatologist-voice assessment; the patient-voice field is the fallback
@@ -290,7 +311,7 @@ export function buildClinicalSummary(
         }
       : null,
     evidence,
-    primaryDriverExplanation,
+    primaryDriver,
     drivers,
     interpretations,
     clinicalObjective,

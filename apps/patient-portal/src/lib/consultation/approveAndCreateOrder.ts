@@ -34,7 +34,10 @@ import {
   type StoredVersion,
 } from "@hairos/packages/consultation-orchestrator";
 import { writeAuditLog } from "@/lib/audit/writeAuditLog";
+import { setFulfilmentMode } from "@/lib/fulfilment/fulfilmentStore";
+import { resolveNewOrderFulfilmentMode } from "@/lib/fulfilment/newOrderMode";
 import { saveOnePagerSnapshot, type SnapshotResult } from "@/lib/reports/one-page/snapshot";
+import { requestOnePagerRender } from "@/lib/reports/assets/jobService";
 import { SystemRole } from "@prisma/client";
 
 export interface ApproveAndCreateOrderInput {
@@ -44,6 +47,15 @@ export interface ApproveAndCreateOrderInput {
     role: SystemRole;
     clinicId: string | null;
   };
+  /**
+   * The acting doctor's Doctor-row id. Used to bind KitOrderIntent.doctorId
+   * when the assessment has no reviewingDoctorId yet — which is the normal
+   * state for clinic-QR submissions, shared-queue cases arrive unassigned and
+   * the doctor who decides becomes the reviewer of record. Passed explicitly
+   * because `actor.userId` is an ambiguous "user id" and cannot be looked up as
+   * a Supabase user id here (the caller already holds the resolved Doctor row).
+   */
+  actingDoctorId?: string | null;
   /**
    * The version the doctor was reviewing. Required — the endpoint refuses to
    * approve if a concurrent revision has advanced past this number.
@@ -71,6 +83,13 @@ export interface ApproveAndCreateOrderResult {
    * entitled to see and act on.
    */
   snapshot: SnapshotResult;
+  /**
+   * The ReportAsset this approval asked to be rendered, or null when the
+   * request could not be recorded (unmigrated database, or an unavailable
+   * one). Null is not a failure of the approval — it means the doctor will be
+   * told, truthfully, that the one-pager is unavailable.
+   */
+  reportAssetId: string | null;
 }
 
 export class ApproveAndCreateOrderError extends Error {
@@ -181,14 +200,11 @@ export async function approveAndCreateOrder(
     );
   }
 
-  // The KitOrderIntent.doctorId FK requires a real Doctor row; if the
-  // approver is not a doctor and no reviewing doctor is set, refuse rather
-  // than fabricate.
-  const doctorId =
-    assessment.reviewingDoctorId ??
-    (input.actor.role === SystemRole.DOCTOR && input.actor.userId
-      ? await resolveDoctorId(prisma, input.actor.userId)
-      : null);
+  // The KitOrderIntent.doctorId FK requires a real Doctor row. Prefer the
+  // assessment's reviewing doctor; otherwise bind the acting doctor who is
+  // making this decision (clinic-QR cases arrive unassigned). Only refuse when
+  // neither is available rather than fabricate an owner.
+  const doctorId = assessment.reviewingDoctorId ?? input.actingDoctorId ?? null;
   if (!doctorId) {
     throw new ApproveAndCreateOrderError(
       "no_doctor_id",
@@ -227,14 +243,29 @@ export async function approveAndCreateOrder(
     );
   }
 
-  const result = await prisma.$transaction(async (tx) => {
-    // Idempotent create: use the unique index. If the intent already exists,
-    // we do NOT emit a duplicate audit row.
-    let intentCreated = false;
-    let intent: KitOrderIntent | null = null;
+  // Idempotent create coupled with its audit row.
+  //
+  // ── Why the P2002 recovery reads OUTSIDE the transaction ─────────────────
+  // On Postgres, the first statement to error inside a transaction aborts the
+  // WHOLE transaction: every subsequent command fails with 25P02 ("current
+  // transaction is aborted") until it rolls back. So a duplicate-key create
+  // followed by a re-read of the winning row IN THE SAME `tx` cannot work — the
+  // re-read hits 25P02 and surfaces as an opaque 500. That is exactly the error
+  // a doctor saw on a double-click, a retry, or re-approving a version that
+  // already has an order. The create + audit stay transactional; the recovery
+  // read runs afterwards on the base client, once the failed transaction has
+  // rolled back.
+  const uniqueWhere = {
+    consultationId_consultationVersionId: {
+      consultationId,
+      consultationVersionId: versionRow.id,
+    },
+  } as const;
 
-    try {
-      intent = await tx.kitOrderIntent.create({
+  let result: { intent: KitOrderIntent; intentCreated: boolean };
+  try {
+    const created = await prisma.$transaction(async (tx) => {
+      const intent = await tx.kitOrderIntent.create({
         data: {
           consultationId,
           consultationVersionId: versionRow.id,
@@ -247,7 +278,6 @@ export async function approveAndCreateOrder(
           // clinical authorisation.
         },
       });
-      intentCreated = true;
 
       await writeAuditLog({
         action: "KIT_ORDER_INTENT_CREATED",
@@ -272,30 +302,64 @@ export async function approveAndCreateOrder(
         },
         prismaClient: tx,
       });
-    } catch (err) {
-      // Unique-violation on the (consultationId, consultationVersionId) key
-      // means a concurrent click already committed. Return that row.
-      if (
-        err instanceof Prisma.PrismaClientKnownRequestError &&
-        err.code === "P2002"
-      ) {
-        intent = await tx.kitOrderIntent.findUnique({
-          where: {
-            consultationId_consultationVersionId: {
-              consultationId,
-              consultationVersionId: versionRow.id,
-            },
-          },
-        });
-        if (!intent) throw err;
-        intentCreated = false;
-      } else {
-        throw err;
-      }
-    }
 
-    return { intent: intent!, intentCreated };
-  });
+      return intent;
+    });
+    result = { intent: created, intentCreated: true };
+  } catch (err) {
+    // Unique-violation on the (consultationId, consultationVersionId) key means
+    // the intent already exists — a concurrent click, a retry, or a re-approval
+    // of the same version. The transaction has rolled back (no duplicate audit
+    // row), so read the winning row with the base client and return it.
+    if (
+      err instanceof Prisma.PrismaClientKnownRequestError &&
+      err.code === "P2002"
+    ) {
+      const existing = await prisma.kitOrderIntent.findUnique({
+        where: uniqueWhere,
+      });
+      if (!existing) throw err;
+      result = { intent: existing, intentCreated: false };
+    } else {
+      throw err;
+    }
+  }
+
+  // ── Step 2b: stamp where this order's kits are going ──────────────────────
+  //
+  // Every new order carries an explicit destination. The value comes from the
+  // clinic's own commercial setting rather than from a null column
+  // reinterpreted at read time — see lib/fulfilment/newOrderMode for why that
+  // distinction matters. The doctor can still override this one order before
+  // it enters fulfilment.
+  //
+  // ── Why this is OUTSIDE the transaction ───────────────────────────────────
+  // `fulfilmentMode` lives on 20260829_post_approval_workflow. On an
+  // environment where that migration has not been applied, the UPDATE fails
+  // with 42703 — and a failed statement poisons the WHOLE Postgres transaction
+  // (25P02), exactly the trap documented a few lines above. Running it inside
+  // `tx` would mean an unmigrated database could no longer approve a
+  // consultation at all: a brand-new operational column would have broken the
+  // clinical path.
+  //
+  // So it runs after the commit and cannot fail the approval. The cost is a
+  // brief window where the order exists without a stamped destination, which
+  // readers already handle — `resolveFulfilmentMode` treats an absent value as
+  // the documented legacy fallback and reports it as not explicit.
+  if (result.intentCreated) {
+    try {
+      const mode = await resolveNewOrderFulfilmentMode(prisma, assessment.clinicId);
+      await setFulfilmentMode({ kitOrderIntentId: result.intent.id, mode });
+    } catch (err) {
+      // Includes FulfilmentNotProvisionedError on an unmigrated database.
+      // Logged without identifiers; the order stands either way.
+      console.warn(
+        `[approve] could not stamp fulfilment mode: ${
+          err instanceof Error ? err.name : "unknown"
+        }`,
+      );
+    }
+  }
 
   // ── Step 3: preserve the sheet this approval released ─────────────────────
   //
@@ -323,21 +387,36 @@ export async function approveAndCreateOrder(
     );
   }
 
+  // ── Step 4: request the patient's one-pager ───────────────────────────────
+  //
+  // Approval is what releases the sheet, so approval is what asks for it to be
+  // drawn — NOT the moment a doctor presses Share. By the time anyone shares,
+  // the artefact should already exist.
+  //
+  // What happens here is a durable row, not a render: `requestOnePagerRender`
+  // writes a PENDING ReportAsset and rings a doorbell. It is idempotent on the
+  // approved version, so a double-click, a retried request and the sweeper's
+  // reconciliation all converge on one artefact.
+  //
+  // Total, like the snapshot step above and for the same reason: the approval
+  // and the kit order are already committed, and neither may be undone because
+  // a renderer is unavailable. A failure here costs the patient a picture, not
+  // their report.
+  const render = await requestOnePagerRender({
+    clinicId: assessment.clinicId,
+    patientId: assessment.patientId,
+    assessmentId: input.assessmentId,
+    consultationId,
+    consultationVersionId: versionRow.id,
+    contentVersion: approved.contentVersion,
+    actorId: input.actor.userId,
+  });
+
   return {
     approval: approved,
     intent: result.intent,
     intentCreated: result.intentCreated,
     snapshot,
+    reportAssetId: render.assetId,
   };
-}
-
-async function resolveDoctorId(
-  prisma: PrismaClient,
-  supabaseUserId: string,
-): Promise<string | null> {
-  const doctor = await prisma.doctor.findUnique({
-    where: { supabaseUserId },
-    select: { id: true },
-  });
-  return doctor?.id ?? null;
 }

@@ -16,6 +16,10 @@ const CART_ROUTE = path.join(
   process.cwd(),
   "apps/patient-portal/src/app/api/cart/[assessmentId]/route.ts",
 );
+const CHECKOUT_ROUTE = path.join(
+  process.cwd(),
+  "apps/patient-portal/src/app/api/cart/[assessmentId]/checkout/route.ts",
+);
 const CART_PAGE = path.join(
   process.cwd(),
   "apps/patient-portal/src/app/cart/[assessmentId]/page.tsx",
@@ -241,6 +245,13 @@ describe("no misleading total, no monetary progression", () => {
       expect(order.chargeable).toBe(false);
       expect(order.totalAmountMinor).toBeNull();
     }
+  });
+
+  it("the checkout endpoint gates on the same decision, not on the UI", () => {
+    const src = read(CHECKOUT_ROUTE);
+    expect(src).toMatch(/evaluateOrderForPatientCharge/);
+    expect(src).toMatch(/ORDER_NOT_CHARGEABLE/);
+    expect(src).toMatch(/if \(!commercial\.chargeable\)/);
   });
 
   it("the cart page gates its confirm button on the server flag", () => {

@@ -39,6 +39,7 @@ export type ConditionId =
   | 'EARLY_GREYING'
   | 'OXIDATIVE_STRESS'
   | 'ENDOMETRIOSIS'
+  | 'MISCARRIAGE'
   | 'PREGNANCY'
   | 'ALOPECIA_AREATA'
   | 'POSTPARTUM_LACTATION'
@@ -184,6 +185,13 @@ export const CONDITION_KIT_REGISTRY: Record<ConditionId, ConditionKitEntry> = {
     rationale:
       'Endometriosis declared — targets the hormonal-inflammatory-fibrotic balance specific to the condition.',
     therapyNeeds: ['HORMONAL_REBALANCING', 'INFLAMMATION_CONTROL', 'IMMUNE_MODULATION'],
+  },
+  MISCARRIAGE: {
+    kit: 'PHENOTYPE INFLAMATION',
+    label: 'Miscarriage (pregnancy loss)',
+    rationale:
+      'Pregnancy loss reported — the associated hormonal and inflammatory disruption is addressed with the inflammation-phenotype kit, and PRO IMMUNE GOLD is co-prescribed via the immune-depletion allow-list. Read as reproductive history: the option carries no recency qualifier, so it must not be described to the patient as an active post-loss state.',
+    therapyNeeds: ['INFLAMMATION_CONTROL'],
   },
   PREGNANCY: {
     kit: 'HEALTHY-9',

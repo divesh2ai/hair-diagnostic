@@ -6,12 +6,43 @@ import {
   Check,
   ClipboardCheck,
   Loader2,
+  MessageCircle,
   MessageSquareWarning,
+  RotateCcw,
+  ShoppingCart,
   SlidersHorizontal,
   TriangleAlert,
 } from "lucide-react";
 import { reviewHref } from "@/lib/doctor/reviewHref";
 import { decisionGate } from "@/lib/doctor/decisionGate";
+
+export type WhatsappSendUiState =
+  | "idle"
+  | "sending"
+  | "sent"
+  | "already_sent"
+  | "test_transport"
+  | "failed"
+  | "configuration_error"
+  | "no_consent"
+  | "no_phone";
+
+/**
+ * Map a successful `/share` response to the UI state that decides what the
+ * doctor sees. `live` gates FIRST, before `alreadySent`: a dev-transport
+ * duplicate must still read as "nothing was actually sent" — it is not a
+ * real delivery just because it repeats one. Only a genuinely live duplicate
+ * gets "already sent". This is the one place `dev_accepted` is turned into
+ * copy, so it is the one place that must never let a test send read as a
+ * real one — see WhatsappOutcomeLine below for the copy itself.
+ */
+export function resolveWhatsappSendUiState(result: {
+  live: boolean;
+  alreadySent: boolean;
+}): Extract<WhatsappSendUiState, "sent" | "already_sent" | "test_transport"> {
+  if (!result.live) return "test_transport";
+  return result.alreadySent ? "already_sent" : "sent";
+}
 
 // WHAT EXACTLY AM I APPROVING? — and, afterwards, did it save?
 //
@@ -81,6 +112,36 @@ export interface DecisionBarProps {
   nextPatient: DecisionBarNextPatient | null;
   /** True when the handoff lookup itself failed — never claim an empty queue. */
   nextLookupFailed: boolean;
+  /**
+   * The patient's cart, once an order exists for it.
+   *
+   * Null before approval — there is no order to look at — and null afterwards
+   * if no order intent was recorded, in which case no link is shown rather
+   * than one that lands on "no confirmed plan yet".
+   *
+   * It appears here because the block that owns it sits at 91% of the page
+   * height: measured, a doctor who has just approved has to scroll past the
+   * whole case to reach the one screen that shows what the patient will be
+   * charged for. This bar is already pinned in front of them.
+   */
+  cartHref?: string | null;
+
+  // ── Automated WhatsApp delivery (launch-mode switch) ───────────────────
+  //
+  // `false` (the default) reproduces this bar's pre-existing behaviour
+  // exactly: primary button reads "Approve treatment", no consent line, no
+  // WhatsApp outcome. `true` is the fully-verified production configuration
+  // — see WHATSAPP_AUTOMATION_ENABLED.
+  whatsappAutomationEnabled?: boolean;
+  /** Resolved server-side. Null only if it could not be read at all (shown as neither ✓ nor "not provided"). */
+  consent?: { consent: boolean; provisioned: boolean } | null;
+  /** Last 4 digits only — see DoctorReviewClient's maskedPatientPhone. */
+  patientPhoneMasked?: string | null;
+  waState?: WhatsappSendUiState;
+  /** Operator-facing reason for `failed` / `configuration_error` — never a raw provider error. */
+  waErrorReason?: string | null;
+  onRetryWhatsapp?: () => void;
+  onShareManually?: () => void;
 }
 
 export function DecisionBar({
@@ -94,8 +155,16 @@ export function DecisionBar({
   onRequestChanges,
   adjustOpen,
   nextResolved,
+  whatsappAutomationEnabled = false,
+  consent = null,
+  patientPhoneMasked = null,
+  waState = "idle",
+  waErrorReason = null,
+  onRetryWhatsapp,
+  onShareManually,
   nextPatient,
   nextLookupFailed,
+  cartHref = null,
 }: DecisionBarProps) {
   const terminal = state === "approved" || revisionRequested;
   // The single source of truth for "may this be committed now". See
@@ -115,7 +184,9 @@ export function DecisionBar({
       // Dropping the bleed also drops the padding that only existed to cancel
       // it, so the divider now aligns with the case content above it — which is
       // what the bar is a decision about.
-      className="sticky bottom-0 z-30 mt-2 border-t border-stone-200 bg-white/95 py-3 backdrop-blur supports-[backdrop-filter]:bg-white/80"
+      // `hd-decision-bar` carries the translucent porcelain ground — see the
+      // token layer for why this bar may not be pure white.
+      className="hd-decision-bar sticky bottom-0 z-30 mt-2 border-t border-stone-200 py-3 backdrop-blur"
       // Announced politely: the doctor is told the decision saved without
       // having their focus stolen mid-action.
       role="region"
@@ -143,25 +214,41 @@ export function DecisionBar({
         {/* LEFT — what this decision covers, or what it became. */}
         <div className="min-w-0">
           {terminal ? (
-            <p className="flex items-center gap-2 text-sm font-medium text-slate-900">
-              {state === "approved" ? (
-                <>
-                  <Check className="h-4 w-4 text-emerald-600" aria-hidden />
-                  Treatment approved
-                  <span className="font-normal text-stone-500">
-                    · Clinical decision saved
-                  </span>
-                </>
-              ) : (
-                <>
-                  <MessageSquareWarning
-                    className="h-4 w-4 text-amber-600"
-                    aria-hidden
-                  />
-                  Marked as needing revision
-                </>
+            <>
+              <p className="flex items-center gap-2 text-sm font-medium text-slate-900">
+                {state === "approved" ? (
+                  <>
+                    <Check className="h-4 w-4 text-emerald-600" aria-hidden />
+                    {/* "Report Approved" only under the WhatsApp-automated
+                        copy (spec's own mockups use it alongside the send
+                        outcome) — manual-launch mode keeps its original
+                        label unchanged, on purpose: nothing about that path
+                        should read or behave differently than it did before
+                        this feature existed. */}
+                    {whatsappAutomationEnabled ? "Report Approved" : "Treatment approved"}
+                    <span className="font-normal text-stone-500">
+                      · Clinical decision saved
+                    </span>
+                  </>
+                ) : (
+                  <>
+                    <MessageSquareWarning
+                      className="h-4 w-4 text-amber-600"
+                      aria-hidden
+                    />
+                    Marked as needing revision
+                  </>
+                )}
+              </p>
+              {state === "approved" && whatsappAutomationEnabled && (
+                <WhatsappOutcomeLine
+                  waState={waState}
+                  waErrorReason={waErrorReason}
+                  onRetryWhatsapp={onRetryWhatsapp}
+                  onShareManually={onShareManually}
+                />
               )}
-            </p>
+            </>
           ) : (
             <>
               <p className="text-sm font-medium text-slate-900">
@@ -183,6 +270,29 @@ export function DecisionBar({
                   {gate.blockedReason}
                 </p>
               )}
+              {/* Consent + destination, shown BEFORE the decision only when
+                  automation is on — this is what "Approve & Send Report" is
+                  about to act on, and a doctor should see it before pressing
+                  a button that names sending in its own label. */}
+              {whatsappAutomationEnabled && (
+                <p className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs text-stone-500">
+                  {consent?.consent ? (
+                    <span className="inline-flex items-center gap-1 font-medium text-emerald-700">
+                      <Check className="h-3 w-3" aria-hidden />
+                      WhatsApp consent
+                    </span>
+                  ) : (
+                    <span className="font-medium text-amber-800">
+                      WhatsApp consent: Not provided
+                    </span>
+                  )}
+                  {patientPhoneMasked && (
+                    <span>
+                      · Patient: <span className="tabular-nums">{patientPhoneMasked}</span>
+                    </span>
+                  )}
+                </p>
+              )}
             </>
           )}
         </div>
@@ -191,6 +301,33 @@ export function DecisionBar({
         <div className="flex flex-wrap items-center gap-2">
           {terminal ? (
             <>
+              {/* ORDER READY — a status, not a control.
+                  Renders only alongside a real persisted order, so it states
+                  a fact the server confirmed rather than an optimistic one.
+                  It takes the saved-status token the surface already uses for
+                  "done" (hd-pill-success), which is the one sanctioned green:
+                  a decision was saved. Kept as a pill so the row reads
+                  status → verify → move on, and no second badge or banner is
+                  introduced. */}
+              {cartHref && (
+                <span className="hd-pill hd-pill-success">Order ready</span>
+              )}
+              {/* Secondary, and deliberately to the LEFT of the handoff: it
+                  belongs to the case just decided, whereas Next patient
+                  leaves it. Checking the order should not have to beat "move
+                  on" for attention, but it must not outrank it either. */}
+              {cartHref && (
+                <a
+                  href={cartHref}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="hd-btn hd-btn-secondary"
+                >
+                  <ShoppingCart className="h-4 w-4" aria-hidden />
+                  Preview cart
+                  <span className="sr-only">(opens in a new tab)</span>
+                </a>
+              )}
               {nextResolved && nextPatient && (
                 <Link
                   href={reviewHref({
@@ -272,7 +409,7 @@ export function DecisionBar({
                 {state === "saving" ? (
                   <>
                     <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
-                    Saving decision…
+                    {whatsappAutomationEnabled ? "Approving report…" : "Saving decision…"}
                   </>
                 ) : state === "error" ? (
                   <>
@@ -282,7 +419,7 @@ export function DecisionBar({
                 ) : (
                   <>
                     <ClipboardCheck className="h-4 w-4" aria-hidden />
-                    Approve treatment
+                    {whatsappAutomationEnabled ? "Approve & Send Report" : "Approve treatment"}
                   </>
                 )}
               </button>
@@ -296,6 +433,100 @@ export function DecisionBar({
           {gate.blockedReason}
         </p>
       )}
+    </div>
+  );
+}
+
+/**
+ * What happened to the WhatsApp send, under "Report Approved ✓".
+ *
+ * Never shown when `waState === "idle"` — that covers both "still sending on
+ * the very first paint" (a flash of nothing beats a flash of a wrong state)
+ * and "this consultation was approved before automation existed", neither of
+ * which has an outcome to report yet.
+ */
+function WhatsappOutcomeLine({
+  waState,
+  waErrorReason,
+  onRetryWhatsapp,
+  onShareManually,
+}: {
+  waState: WhatsappSendUiState;
+  waErrorReason: string | null;
+  onRetryWhatsapp?: () => void;
+  onShareManually?: () => void;
+}) {
+  if (waState === "idle") return null;
+
+  if (waState === "sending") {
+    return (
+      <p className="mt-1 flex items-center gap-1.5 text-xs text-stone-500">
+        <Loader2 className="h-3 w-3 animate-spin" aria-hidden />
+        Sending report on WhatsApp…
+      </p>
+    );
+  }
+
+  if (waState === "sent" || waState === "already_sent") {
+    return (
+      <p className="mt-1 flex items-center gap-1.5 text-xs font-medium text-emerald-700">
+        <Check className="h-3 w-3" aria-hidden />
+        {waState === "already_sent" ? "WhatsApp already sent" : "WhatsApp Sent"}
+      </p>
+    );
+  }
+
+  if (waState === "test_transport") {
+    return (
+      <p className="mt-1 text-xs text-stone-500">
+        WhatsApp recorded — test transport, nothing was actually sent.
+      </p>
+    );
+  }
+
+  // failed / configuration_error / no_consent / no_phone — every remaining
+  // state means the patient did NOT receive a message, so every one of them
+  // offers Share Manually. Only genuinely retryable failures also offer
+  // Retry — see the header note on why CONFIGURATION_ERROR and
+  // BLOCKED_NO_CONSENT never do.
+  const label =
+    waState === "no_consent"
+      ? "WhatsApp not sent — patient has not provided WhatsApp consent."
+      : waState === "no_phone"
+        ? "WhatsApp not sent — no phone number on file."
+        : waState === "configuration_error"
+          ? (waErrorReason ?? "WhatsApp is not configured yet.")
+          : "WhatsApp delivery failed.";
+  const canRetry = waState === "failed";
+
+  return (
+    <div className="mt-1.5 space-y-1.5">
+      <p className="flex items-center gap-1.5 text-xs font-medium text-amber-800">
+        <TriangleAlert className="h-3 w-3 shrink-0" aria-hidden />
+        {label}
+      </p>
+      <div className="flex flex-wrap gap-2">
+        {canRetry && onRetryWhatsapp && (
+          <button
+            type="button"
+            onClick={onRetryWhatsapp}
+            className="inline-flex items-center gap-1.5 rounded-lg border border-stone-200 bg-white px-2.5 py-1 text-xs font-medium text-slate-700 hover:bg-stone-50"
+          >
+            <RotateCcw className="h-3 w-3" aria-hidden />
+            Retry WhatsApp
+          </button>
+        )}
+        {onShareManually && (
+          <button
+            type="button"
+            onClick={onShareManually}
+            className="inline-flex items-center gap-1.5 rounded-lg border border-stone-200 bg-white px-2.5 py-1 text-xs font-medium text-slate-700 hover:bg-stone-50"
+          >
+            <MessageCircle className="h-3 w-3" aria-hidden />
+            Share Manually
+          </button>
+        )}
+      </div>
     </div>
   );
 }

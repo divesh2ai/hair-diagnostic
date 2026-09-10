@@ -81,6 +81,14 @@ enum DeliveryStatus {
   SENT
   DELIVERED
   FAILED
+  /// Added 20260908_whatsapp_report_delivery. Credentials for the resolved
+  /// sender (central or clinic-specific) are missing/invalid — distinct from
+  /// FAILED so the doctor UI never offers "Retry WhatsApp" for a deployment
+  /// issue only an operator can fix.
+  CONFIGURATION_ERROR
+  /// Added 20260908_whatsapp_report_delivery. Written instead of calling the
+  /// provider when the patient has not given WhatsApp consent.
+  BLOCKED_NO_CONSENT
 }
 
 enum InvitationStatus {
@@ -228,6 +236,24 @@ enum ConsultationEventType {
 // Approval state captured on each ConsultationVersion. APPROVED versions are
 // the ones surfaced to patients; PENDING_REVIEW + REVISION_REQUESTED versions
 // are visible only to clinicians.
+// How far a Doctor row is from being a usable login. Distinct from isActive
+// (is this clinician practising?) and from supabaseUserId (is an auth account
+// linked?), because the fact that decides whether an invitation may be sent is
+// neither of those - it is whether a human has confirmed a PERSONAL contact.
+//
+//   CONTACT_REQUIRED  Profile and clinic relationship exist. No confirmed
+//                     personal email or mobile, so no invitation can be sent
+//                     and no login is possible. The honest default.
+//   READY_TO_INVITE   A confirmed personal contact is on file. Nothing sent.
+//   INVITED           An invitation has been sent and not yet accepted.
+//   ACTIVE            An auth account is linked; the doctor can sign in.
+enum DoctorProvisioningStatus {
+  CONTACT_REQUIRED
+  READY_TO_INVITE
+  INVITED
+  ACTIVE
+}
+
 enum ConsultationApprovalStatus {
   DRAFT
   PENDING_REVIEW
@@ -364,6 +390,9 @@ model Clinic {
   kitOrderIntents        KitOrderIntent[]
   recommendationFeedback RecommendationFeedback[]
   appointments           Appointment[]
+  kitOrderPayments       KitOrderPayment[]
+  kitFulfilments         ClinicKitFulfilment[]
+  supportTickets         SupportTicket[]
 
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
@@ -654,8 +683,22 @@ model Doctor {
   clinicId String
   clinic   Clinic @relation(fields: [clinicId], references: [id])
 
-  name           String
-  email          String  @unique
+  name String
+
+  // The doctor's PERSONAL login identity, and the address the OTP is sent to.
+  //
+  // Nullable since 20260901. A clinician can be onboarded - clinic, branches,
+  // role, profile - before anyone has confirmed a personal address for them,
+  // and the only alternative to null is a placeholder that reads as a real
+  // login. A publicly listed clinic reception address is NOT this field; that
+  // lives on Clinic.email, and copying it here would hand clinic-wide clinical
+  // access to whoever answers the front desk. The same rule governs `phone`:
+  // personal mobile only, never the branch line on ClinicLocation.phone.
+  //
+  // NULL means "no verified personal login contact yet", which is exactly what
+  // provisioningStatus = CONTACT_REQUIRED describes. Postgres treats NULLs as
+  // distinct under a unique index, so any number of rows may be un-contacted.
+  email          String? @unique
   // Mobile = WhatsApp number. Required per addendum Â§4.
   phone          String?
   specialization String?
@@ -686,6 +729,21 @@ model Doctor {
   registrationNumber String?
   biography          String?
 
+  // How far this clinician is along the path from "we know who they are" to
+  // "they can sign in". Deliberately NOT derived from supabaseUserId alone:
+  // the difference between an address nobody has confirmed and an address the
+  // doctor gave us is invisible in the other columns, yet it is the fact that
+  // decides whether it is safe to send an invitation. Two CHECK constraints
+  // (see the 20260901 migration) stop this column claiming a readiness the
+  // rest of the row contradicts.
+  provisioningStatus DoctorProvisioningStatus @default(CONTACT_REQUIRED)
+
+  // Audit-safe provenance: which onboarding run wrote this row, and when.
+  // Free text rather than an enum so a batch label ("launch-cohort-2026-09")
+  // traces back to the script and dataset that produced it.
+  provisioningSource String?
+  provisionedAt      DateTime?
+
   reviewedAssessments Assessment[] @relation("DoctorReviewer")
 
   patients Patient[]
@@ -693,6 +751,8 @@ model Doctor {
   kitOrderIntents        KitOrderIntent[]
   recommendationFeedback RecommendationFeedback[]
   appointments           Appointment[]
+  kitFulfilments         ClinicKitFulfilment[]
+  supportTickets         SupportTicket[]
 
   isActive Boolean @default(true)
 
@@ -701,6 +761,7 @@ model Doctor {
   deletedAt DateTime?
 
   @@index([clinicId])
+  @@index([provisioningStatus])
 }
 
 //////////////////////////////////////////////////////
@@ -748,6 +809,26 @@ model Patient {
   assessments   Assessment[]
   consultations Consultation[]
   appointments  Appointment[]
+
+  // ── WhatsApp consent (20260908_whatsapp_report_delivery) ──────────────────
+  // Deliberately NOT declared on this Prisma model, even though the migration
+  // adds the columns — see migration.sql's own note. Unlike WhatsappDelivery
+  // (accessed EXCLUSIVELY over raw SQL, so its unapplied-migration columns are
+  // safe to pre-declare here), Patient is read via the typed client in many
+  // places with a bare `include: { patient: true }` and no `select` — Prisma
+  // generates that as "every scalar column this schema knows about". Adding
+  // whatsappConsent/whatsappConsentAt/whatsappConsentSource here broke
+  // tests/post-approval/behavioural/report-sharing.test.ts the moment the
+  // client regenerated, in an environment where the migration had not run:
+  // every ordinary Patient read started asking Postgres for a column that did
+  // not exist yet, nowhere near this feature.
+  //
+  // lib/patient/whatsappConsent.ts reads and writes these three columns over
+  // guarded raw SQL instead, exactly like deliveryStore.ts already does for
+  // WhatsappDelivery's own late-arriving columns — it needs no declaration
+  // here to do that. Add these three lines back to this model ONLY together
+  // with actually applying 20260908_whatsapp_report_delivery in every
+  // environment `prisma generate` might run against.
 
   isActive Boolean @default(true)
 
@@ -890,11 +971,11 @@ model Assessment {
   reviewNotes    String?
   reviewedAt     DateTime?
 
-  reviewPathway           ReviewPathway?
-  reviewPathwayReasons    String[]        @default([])
-  reviewPathwayVersion    String?
+  reviewPathway            ReviewPathway?
+  reviewPathwayReasons     String[]       @default([])
+  reviewPathwayVersion     String?
   reviewPathwayEvaluatedAt DateTime?
-  reviewPathwaySource     Json?
+  reviewPathwaySource      Json?
 
   status AssessmentStatus @default(PENDING)
   source AssessmentSource @default(QR)
@@ -948,6 +1029,8 @@ model Assessment {
   consultations          Consultation[]
   kitOrderIntents        KitOrderIntent[]
   recommendationFeedback RecommendationFeedback[]
+  kitOrderPayments       KitOrderPayment[]
+  kitFulfilments         ClinicKitFulfilment[]
 
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
@@ -1092,39 +1175,183 @@ model WhatsappDelivery {
   lastError    String?
   deliveredAt  DateTime?
 
+  // ── Post-approval delivery columns (20260829_post_approval_workflow) ──────
+  // Added rather than split into a second delivery table: two tables recording
+  // "was this sent to the patient?" is how that question acquires two
+  // different answers. See lib/delivery/deliveryStore.ts, which reads these
+  // over raw SQL so the app runs before the migration is applied.
+
+  /// WHICH business object was sent — "REPORT" | "CART". Nullable, and never
+  /// silently read as REPORT: rows written before this column existed genuinely
+  /// did not record a subject.
+  subject String?
+
+  /// Tenant + sender attribution. Previously a delivery could only reach a
+  /// clinic by joining through Assessment, and recorded no sender at all — a
+  /// message to a patient with no attributable author.
+  clinicId       String?
+  sentByDoctorId String?
+
+  /// Distinct instants from `deliveredAt`, which existing code sets at
+  /// hand-off. Only statuses the provider actually reports are written.
+  sentAt DateTime?
+  readAt DateTime?
+
+  /// The provider's own status string, kept verbatim for support triage and
+  /// never parsed into business logic — `status` is what the app reasons about.
+  providerStatus String?
+
+  // ── Report-delivery provenance (20260907_report_asset_pipeline) ───────────
+  //
+  // A delivery record has to answer "what exactly did this patient receive?"
+  // years later, when the consultation has been revised twice and the renderer
+  // rewritten. Recording only the assessment id answers "which case", which is
+  // a different and much weaker question.
+  //
+  // Every column is nullable and none is backfilled: rows written before this
+  // existed genuinely did not record these facts, and inventing values for
+  // them would be worse than admitting the gap.
+
+  /// The patient, denormalised so a delivery is attributable without joining
+  /// through Assessment — whose link to the patient can change.
+  patientId String?
+
+  /// Transport. Redundant today (this table is WhatsApp), explicit because the
+  /// table is now the single record of "we sent a patient something" and a
+  /// second channel must not arrive as an unlabelled row.
+  channel String?
+
+  /// The EXACT approved version whose content was released. This is the column
+  /// that makes the record reconstructable.
+  consultationVersionId String?
+
+  /// The rendered artefact that travelled with the message, when one did.
+  reportAssetId String?
+
+  /// Whether the one-pager was actually attached. Distinct from
+  /// `reportAssetId != null`: an asset can exist and still not have been
+  /// attached (feature disabled, oversized, provider rejected the media).
+  onePagerAttached Boolean?
+
+  /// Integrity of the bytes as delivered, copied from the asset at send time.
+  /// Copied rather than joined so a later re-render cannot retroactively
+  /// change what this historical delivery record means.
+  assetSha256 String?
+
+  /// The one-pager design version the delivered artefact was produced from.
+  assetTemplateVersion String?
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   @@index([assessmentId])
   @@index([status])
+  @@index([assessmentId, subject])
+  @@index([clinicId, status])
+  @@index([consultationVersionId])
 }
 
 //////////////////////////////////////////////////////
 // AUDIT LOGGING
 //////////////////////////////////////////////////////
 
+// Audit Event V2 — EXPAND phase (SA-2A Phase 1).
+//
+// Every field below marked "V2" is additive and nullable. No existing column
+// changed, nothing was backfilled, and no writer populates the new fields yet:
+// that is the next phase. Until then every row is a V1 row and every V2 column
+// is NULL, which is the honest representation of "this event predates the
+// snapshot contract".
+//
+// ── Why snapshots at all ────────────────────────────────────────────────────
+// Audit evidence must outlive the operational record it describes.
+// `AuditLog_assessmentId_fkey` is ON DELETE SET NULL, so deleting an Assessment
+// silently erases the link on every audit row that referenced it — turning an
+// attributable event into an unattributable one with no trace that a link ever
+// existed. A read-time join can therefore never be the basis of audit identity.
+// The V2 columns copy what the event needs at write time.
+//
+// ── Why clinicId is NOT a relation ──────────────────────────────────────────
+// Deliberately a plain scalar with no `@relation`. A foreign key would inherit
+// exactly the deletion semantics above, and would additionally let audit
+// history block or be damaged by clinic lifecycle operations. The audit row
+// keeps the identifier even when the clinic record is gone; `clinicName` keeps
+// it readable.
 model AuditLog {
   id String @id @default(cuid())
+
+  // ── Event identity ────────────────────────────────────────────────────────
+  // V2. NULL on every historical row and left that way: NULL means "written
+  // before event versioning existed", which is a fact. A default of 1 would
+  // have been an assertion about rows nobody inspected.
+  eventVersion Int?
+  // V2. Timezone-aware successor to `createdAt`, which is `timestamp without
+  // time zone` and therefore ambiguous the moment anything runs in a second
+  // region. `createdAt` is deliberately left untouched — altering the type of
+  // a column on an audit table rewrites it, and rewriting history is the one
+  // thing this table must never do. Readers coalesce.
+  occurredAt   DateTime? @db.Timestamptz(3)
 
   // Who performed the action
   actorId   String?
   actorRole SystemRole?
   actorType String? // "doctor" | "admin" | "system" | "patient"
 
+  // ── Frozen actor snapshot (V2) ────────────────────────────────────────────
+  // `actorRole` above is NOT redefined. Its semantics were never contractual —
+  // it is populated by some writers and not others (null on ~10% of rows) — so
+  // rather than quietly reinterpret it as a historical snapshot, V2 records the
+  // claim in its own clearly named column. The two coexist; readers branch on
+  // eventVersion.
+  actorName         String?
+  actorEmail        String?
+  actorRoleSnapshot SystemRole?
+
+  // ── Frozen clinic snapshot (V2) ───────────────────────────────────────────
+  // Plain scalars. No relation, by design — see the header note.
+  clinicId   String?
+  clinicName String?
+
   // What was acted upon
   assessmentId String?
   assessment   Assessment? @relation(fields: [assessmentId], references: [id])
   entityType   String
   entityId     String
+  // V2. A short human-readable description frozen at write time so the event
+  // stays meaningful after its subject is deleted. A label, never a serialized
+  // record — full entity payloads do not belong in an audit table.
+  entityLabel  String?
 
   action   String
   metadata Json?
+
+  // ── Change evidence (V2) ──────────────────────────────────────────────────
+  // Named `beforeState` / `afterState` rather than `before` / `after`: this
+  // table is queried by hand during investigations, and `before` is a keyword
+  // in enough SQL contexts to make an unquoted ad-hoc query fail confusingly.
+  // Populated only for administrative and governance mutations, never for
+  // clinical content — that is versioned in ConsultationVersion already.
+  beforeState Json?
+  afterState  Json?
+
+  // ── Request context (V2) ──────────────────────────────────────────────────
+  // Only the two fields the design justified. `ipAddress`, `userAgent` and
+  // `correlationId` were evaluated and declined: the first is personal data
+  // needing a retention decision and lawful basis, the second is high
+  // cardinality with little investigative value, and the third has no tracing
+  // system to correlate with.
+  requestId String?
+  source    String? // "web" | "api" | "webhook" | "system" | "script"
 
   createdAt DateTime @default(now())
 
   @@index([entityType, entityId])
   @@index([actorId])
   @@index([assessmentId])
+  // V2 indexes. See the migration for the query each one serves.
+  @@index([createdAt(sort: Desc)])
+  @@index([clinicId, createdAt(sort: Desc)])
+  @@index([action, createdAt(sort: Desc)])
 }
 
 //////////////////////////////////////////////////////
@@ -1402,6 +1629,30 @@ model KitOrderIntent {
   // Doctor approval IS the clinical authorization; ops picks up from here.
   status KitOrderStatus @default(READY_FOR_FULFILMENT)
 
+  // ── Post-approval columns (20260829_post_approval_workflow) ──────────────
+  // Both are properties of THIS order — where its kits go, and when the
+  // patient actually began taking them — so they live on the order rather than
+  // in a side table that could disagree with it about a single row.
+
+  /// Destination for this order's kits. NULL = never captured, which is the
+  /// honest state for every intent created before the column existed. Readers
+  /// resolve NULL through one documented default in lib/fulfilment/fulfilmentMode.
+  fulfilmentMode KitFulfilmentMode?
+
+  /// THE follow-up anchor. Deliberately not derived from approval, payment or
+  /// delivery dates: for a clinic-supplied kit the patient starts days after
+  /// delivery, and inferring it would mis-date every Day-30/60/90 checkpoint
+  /// later built on it.
+  treatmentStartedAt   DateTime?
+  /// Doctor.id of whoever recorded the start; NULL when no start is recorded.
+  treatmentStartedBy   String?
+  /// How the start was established, e.g. "DOCTOR_RECORDED". Constrained by the
+  /// writer rather than by an enum, so a later source needs no migration.
+  treatmentStartSource String?
+
+  payment    KitOrderPayment?
+  fulfilment ClinicKitFulfilment?
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -1409,11 +1660,174 @@ model KitOrderIntent {
   @@index([clinicId, createdAt])
   @@index([doctorId])
   @@index([assessmentId])
+  @@index([clinicId, treatmentStartedAt])
 }
 
 enum KitOrderStatus {
   READY_FOR_FULFILMENT
   CANCELLED
+}
+
+//////////////////////////////////////////////////////
+// POST-APPROVAL OPERATIONS — payment + clinic kit fulfilment
+//
+// Migration: prisma/migrations/20260829_post_approval_workflow (NOT APPLIED —
+// 2026-08-20 baseline freeze). Every reader talks to these objects over raw
+// SQL (lib/payments/paymentStore.ts, lib/fulfilment/fulfilmentStore.ts) so the
+// application compiles and boots whether or not the tables exist; the surfaces
+// answer "not provisioned" until someone applies the migration.
+//////////////////////////////////////////////////////
+
+/// Where the approved kits physically go. Recorded per order rather than
+/// hard-coded, because direct-to-patient dispatch is a real Wave-1 shape.
+enum KitFulfilmentMode {
+  PATIENT
+  CLINIC
+}
+
+/// Ops-side lifecycle of one clinic kit supply request. The legal transitions
+/// are enforced in lib/fulfilment/stateMachine.ts, not by this type: an enum
+/// constrains the VALUE, not the PATH, and the path is the part that matters
+/// — a request must not jump straight to DELIVERED.
+enum KitFulfilmentStatus {
+  REQUESTED
+  CONFIRMED
+  PACKED
+  DISPATCHED
+  DELIVERED
+  ACKNOWLEDGED
+  CANCELLED
+}
+
+/// PENDING exists so "checkout was started" is distinguishable from "nobody
+/// has tried yet". A row only ever reaches PAID through an authoritative
+/// server-side confirmation — see KitOrderPaymentSource.
+enum KitOrderPaymentStatus {
+  PENDING
+  PAID
+  FAILED
+  REFUNDED
+}
+
+/// WHO said this was paid — the security boundary of the commerce path, so it
+/// is persisted rather than assumed.
+///
+/// There is deliberately no PATIENT_DECLARED or CLIENT_REDIRECT member: a
+/// browser cannot mark an order paid under any code path.
+enum KitOrderPaymentSource {
+  /// A payment provider's signed server-to-server callback, signature-verified
+  /// before it is trusted.
+  PROVIDER_WEBHOOK
+  /// An authenticated clinic user recorded a payment taken at the desk.
+  /// Genuinely authoritative for Wave 0, where clinics collect in person, and
+  /// attributable because the actor is on the row.
+  CLINIC_COUNTER
+}
+
+/// Commercial state of one approved kit order.
+///
+/// Separate from KitOrderIntent because that row is an immutable snapshot of a
+/// CLINICAL authorization — its own comment says it is "NOT billing … or
+/// fulfilment" — while this is a mutable commercial fact that can be retried,
+/// refunded and reconciled independently.
+model KitOrderPayment {
+  id String @id @default(cuid())
+
+  /// One payment per order. The unique constraint — not a handler's
+  /// if-statement — is what makes confirmation idempotent: a replayed webhook
+  /// cannot create a second row.
+  kitOrderIntentId String         @unique
+  kitOrderIntent   KitOrderIntent @relation(fields: [kitOrderIntentId], references: [id])
+
+  /// Denormalised so ops queries and tenant checks read a column on this row
+  /// instead of joining out to reach a clinicId.
+  clinicId String
+  clinic   Clinic @relation(fields: [clinicId], references: [id])
+
+  assessmentId String
+  assessment   Assessment @relation(fields: [assessmentId], references: [id])
+
+  status KitOrderPaymentStatus  @default(PENDING)
+  source KitOrderPaymentSource?
+
+  /// Minor units (paise). Integer on purpose — a float rupee amount is a
+  /// rounding error waiting to be reconciled against a bank statement.
+  amountMinor Int?
+  currency    String @default("INR")
+
+  /// Provider identity. The pair is unique so the same event replayed twice —
+  /// the normal behaviour of every gateway's retry policy — is rejected by the
+  /// database rather than by a race-prone read-then-write.
+  provider    String?
+  providerRef String?
+
+  /// Who recorded a CLINIC_COUNTER payment. NULL for webhook rows: no human
+  /// took that action, and naming one would be a false attribution.
+  recordedByDoctorId String?
+
+  checkoutStartedAt DateTime?
+  paidAt            DateTime?
+  failedAt          DateTime?
+  lastError         String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([provider, providerRef])
+  @@index([clinicId, status])
+  @@index([assessmentId])
+}
+
+/// Ops fulfilment of one clinic kit supply request.
+///
+/// Deliberately carries NO patient name, phone, clinical content or kit
+/// lineup. The lineup lives on KitOrderIntent and is read through the
+/// relationship: ops needs to know WHICH order to pack, not what the patient's
+/// scalp looks like.
+model ClinicKitFulfilment {
+  id String @id @default(cuid())
+
+  /// One fulfilment per order — the constraint that makes "create a request on
+  /// payment confirmation" idempotent under duplicate webhooks, with no
+  /// read-then-write window two concurrent callbacks could both pass.
+  kitOrderIntentId String         @unique
+  kitOrderIntent   KitOrderIntent @relation(fields: [kitOrderIntentId], references: [id])
+
+  clinicId String
+  clinic   Clinic @relation(fields: [clinicId], references: [id])
+
+  doctorId String
+  doctor   Doctor @relation(fields: [doctorId], references: [id])
+
+  assessmentId String
+  assessment   Assessment @relation(fields: [assessmentId], references: [id])
+
+  mode   KitFulfilmentMode   @default(CLINIC)
+  status KitFulfilmentStatus @default(REQUESTED)
+
+  /// One timestamp per business state rather than a single `statusChangedAt`:
+  /// SLA questions are asked about specific legs ("how long from CONFIRMED to
+  /// DISPATCHED"), which a single mutable column cannot answer after the fact.
+  requestedAt    DateTime  @default(now())
+  confirmedAt    DateTime?
+  packedAt       DateTime?
+  dispatchedAt   DateTime?
+  deliveredAt    DateTime?
+  acknowledgedAt DateTime?
+  cancelledAt    DateTime?
+
+  /// Who acknowledged receipt at the clinic, and free-text ops context
+  /// (courier, waybill). Never clinical content.
+  acknowledgedByDoctorId String?
+  notes                  String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([clinicId, status])
+  /// The Ops queue: everything unfinished, oldest first, across tenants.
+  @@index([status, requestedAt])
+  @@index([assessmentId])
 }
 
 // Structured doctor feedback on a specific consultation version. Never mutates
@@ -1580,19 +1994,19 @@ model ProductIngredient {
 }
 
 model Kit {
-  id             String   @id @default(cuid())
-  canonicalId    String   @unique
-  canonicalName  String
-  family         String?
-  clinicId       String?
-  status         String
-  currentVersion Int      @default(1)
-  medicalVersion Int      @default(1)
-  commercialVersion Int   @default(1)
-  sourceId       String?
-  approvalStatus String   @default("DRAFT")
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
+  id                String   @id @default(cuid())
+  canonicalId       String   @unique
+  canonicalName     String
+  family            String?
+  clinicId          String?
+  status            String
+  currentVersion    Int      @default(1)
+  medicalVersion    Int      @default(1)
+  commercialVersion Int      @default(1)
+  sourceId          String?
+  approvalStatus    String   @default("DRAFT")
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
 
   @@index([clinicId, status])
 }
@@ -1670,72 +2084,72 @@ model KitPrice {
 }
 
 model KitSchedule {
-  id             String   @id @default(cuid())
-  kitId          String
-  kitVersionId   String
-  productId      String
-  componentOrder Int
-  scheduleText   String
-  sourceRow      Int?
+  id               String   @id @default(cuid())
+  kitId            String
+  kitVersionId     String
+  productId        String
+  componentOrder   Int
+  scheduleText     String
+  sourceRow        Int?
   prescriptionDays Int?
-  provenance     Json?
-  conflictStatus String   @default("NONE")
-  status         String
-  createdAt      DateTime @default(now())
+  provenance       Json?
+  conflictStatus   String   @default("NONE")
+  status           String
+  createdAt        DateTime @default(now())
 
   @@unique([kitVersionId, componentOrder])
 }
 
 model KnowledgeDocument {
-  id             String   @id @default(cuid())
-  sourceId       String   @unique
+  id             String                     @id @default(cuid())
+  sourceId       String                     @unique
   clinicId       String?
   title          String
-  domain         String   @default("HAIR")
+  domain         String                     @default("HAIR")
   sourceType     String
-  sourceStatus   String   @default("ACTIVE")
+  sourceStatus   String                     @default("ACTIVE")
   authorityScore Int
   status         KnowledgePublicationStatus @default(DRAFT)
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
+  createdAt      DateTime                   @default(now())
+  updatedAt      DateTime                   @updatedAt
 }
 
 model KnowledgeDocumentVersion {
-  id             String    @id @default(cuid())
+  id             String                     @id @default(cuid())
   documentId     String
   version        Int
   checksum       String
   sourceFile     String
-  sourceStatus   String    @default("ACTIVE")
+  sourceStatus   String                     @default("ACTIVE")
   status         KnowledgePublicationStatus @default(DRAFT)
   effectiveFrom  DateTime?
   effectiveUntil DateTime?
-  createdAt      DateTime  @default(now())
+  createdAt      DateTime                   @default(now())
 
   @@unique([documentId, version])
   @@unique([documentId, checksum])
 }
 
 model KnowledgeChunk {
-  id                String                 @id
+  id                String                     @id
   documentVersionId String
   clinicId          String?
   entityType        String?
   entityId          String?
   domain            String
-  topic             String                 @default("GENERAL")
+  topic             String                     @default("GENERAL")
   knowledgeSystem   String
   audience          String
-  language          String                 @default("en")
+  language          String                     @default("en")
   sectionType       String
-  content           String                 @db.Text
+  content           String                     @db.Text
   approvalStatus    KnowledgePublicationStatus @default(DRAFT)
   authorityScore    Int
   effectiveFrom     DateTime?
   effectiveUntil    DateTime?
   embedding         Unsupported("vector")?
   metadata          Json
-  createdAt         DateTime               @default(now())
+  createdAt         DateTime                   @default(now())
 
   @@index([clinicId, approvalStatus, language, domain])
 }
@@ -1753,30 +2167,30 @@ model KnowledgeApproval {
 }
 
 model KnowledgeConflict {
-  id             String   @id
-  documentId     String?
-  clinicId       String?
-  entity         String
-  issue          String   @db.Text
-  conflictType   String   @default("UNSPECIFIED")
-  fieldOrClaim   String?
-  sourceA        Json?
-  sourceB        Json?
-  valueA         Json?
-  valueB         Json?
-  authorityA     Int?
-  authorityB     Int?
-  proposedCanonicalValue Json?
-  automaticResolutionAllowed Boolean @default(false)
-  reviewRequired Boolean @default(true)
-  publicationBlocked Boolean @default(true)
-  severity       String
-  owner          String?
-  requiredAction String   @db.Text
-  status         String
-  resolution     String?  @db.Text
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
+  id                         String   @id
+  documentId                 String?
+  clinicId                   String?
+  entity                     String
+  issue                      String   @db.Text
+  conflictType               String   @default("UNSPECIFIED")
+  fieldOrClaim               String?
+  sourceA                    Json?
+  sourceB                    Json?
+  valueA                     Json?
+  valueB                     Json?
+  authorityA                 Int?
+  authorityB                 Int?
+  proposedCanonicalValue     Json?
+  automaticResolutionAllowed Boolean  @default(false)
+  reviewRequired             Boolean  @default(true)
+  publicationBlocked         Boolean  @default(true)
+  severity                   String
+  owner                      String?
+  requiredAction             String   @db.Text
+  status                     String
+  resolution                 String?  @db.Text
+  createdAt                  DateTime @default(now())
+  updatedAt                  DateTime @updatedAt
 
   @@index([clinicId, status, severity])
 }
@@ -1799,69 +2213,69 @@ model IngestionRun {
 }
 
 model KnowledgeSourceFile {
-  id                  String   @id @default(cuid())
-  fingerprint         String   @unique
-  logicalDocumentKey  String
-  fileName            String
-  mimeType            String
-  documentType        String
-  domain              String
-  sourceType          String
-  sourceStatus        String   @default("ACTIVE")
-  version             Int
-  supersedesSourceId  String?
-  extractionMetadata  Json?
-  createdAt           DateTime @default(now())
-  updatedAt           DateTime @updatedAt
+  id                 String   @id @default(cuid())
+  fingerprint        String   @unique
+  logicalDocumentKey String
+  fileName           String
+  mimeType           String
+  documentType       String
+  domain             String
+  sourceType         String
+  sourceStatus       String   @default("ACTIVE")
+  version            Int
+  supersedesSourceId String?
+  extractionMetadata Json?
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
 
   @@unique([logicalDocumentKey, version])
   @@index([domain, sourceStatus, sourceType])
 }
 
 model KnowledgeIngestionStage {
-  id             String   @id @default(cuid())
-  sourceFileId   String
-  stage          String
-  inputHash      String
-  outputHash     String?
-  status         String
-  details        Json?
-  startedAt      DateTime?
-  completedAt    DateTime?
-  createdAt      DateTime @default(now())
+  id           String    @id @default(cuid())
+  sourceFileId String
+  stage        String
+  inputHash    String
+  outputHash   String?
+  status       String
+  details      Json?
+  startedAt    DateTime?
+  completedAt  DateTime?
+  createdAt    DateTime  @default(now())
 
   @@unique([sourceFileId, stage, inputHash])
   @@index([sourceFileId, status])
 }
 
 model KnowledgeClaim {
-  id                    String                     @id @default(cuid())
-  claimId               String                     @unique
-  chunkId               String
-  documentVersionId     String
-  domain                String
-  subject               String
-  subjectType           String
-  subjectId             String?
-  claimType             String
-  statement             String                     @db.Text
-  sourceType            String
-  sourceId              String
-  authorityScore        Int
-  evidenceStatus        String
-  approvalStatus        KnowledgePublicationStatus @default(DRAFT)
-  audience              String
-  patientVisible        Boolean                    @default(false)
-  medicalReviewStatus   String                     @default("PENDING_REVIEW")
-  commercialReviewStatus String                    @default("DRAFT")
-  sourceLocation        Json?
-  supersessionStatus    String                     @default("ACTIVE")
-  effectiveFrom         DateTime?
-  effectiveUntil        DateTime?
-  contradictionGroup    String?
-  supersededByClaimId   String?
-  createdAt             DateTime                   @default(now())
-  updatedAt             DateTime                   @updatedAt
+  id                     String                     @id @default(cuid())
+  claimId                String                     @unique
+  chunkId                String
+  documentVersionId      String
+  domain                 String
+  subject                String
+  subjectType            String
+  subjectId              String?
+  claimType              String
+  statement              String                     @db.Text
+  sourceType             String
+  sourceId               String
+  authorityScore         Int
+  evidenceStatus         String
+  approvalStatus         KnowledgePublicationStatus @default(DRAFT)
+  audience               String
+  patientVisible         Boolean                    @default(false)
+  medicalReviewStatus    String                     @default("PENDING_REVIEW")
+  commercialReviewStatus String                     @default("DRAFT")
+  sourceLocation         Json?
+  supersessionStatus     String                     @default("ACTIVE")
+  effectiveFrom          DateTime?
+  effectiveUntil         DateTime?
+  contradictionGroup     String?
+  supersededByClaimId    String?
+  createdAt              DateTime                   @default(now())
+  updatedAt              DateTime                   @updatedAt
 
   @@index([domain, approvalStatus, audience, effectiveFrom])
   @@index([subjectType, subjectId, claimType])
@@ -1885,10 +2299,10 @@ model ClaimEvidence {
 }
 
 model StructuredFactRecord {
-  id                String   @id
+  id                String    @id
   sourceFileId      String
   clinicId          String?
-  domain            String   @default("HAIR")
+  domain            String    @default("HAIR")
   entityType        String
   entityId          String
   field             String
@@ -1898,14 +2312,14 @@ model StructuredFactRecord {
   formula           String?
   formulaResult     Json?
   formulaError      String?
-  approvalStatus    String   @default("DRAFT")
-  conflictStatus    String   @default("NONE")
-  requiresReview    Boolean  @default(true)
-  publicationStatus String   @default("DRAFT")
+  approvalStatus    String    @default("DRAFT")
+  conflictStatus    String    @default("NONE")
+  requiresReview    Boolean   @default(true)
+  publicationStatus String    @default("DRAFT")
   effectiveFrom     DateTime?
   effectiveUntil    DateTime?
-  createdAt         DateTime @default(now())
-  updatedAt         DateTime @updatedAt
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
 
   @@index([entityType, entityId, field, approvalStatus])
   @@index([clinicId, publicationStatus])
@@ -2056,4 +2470,233 @@ model AdverseEvent {
   updatedAt    DateTime @updatedAt
 
   @@index([clinicId, status, createdAt])
+}
+
+//////////////////////////////////////////////////////
+// REPORT ASSETS — rendered clinical artefacts
+//////////////////////////////////////////////////////
+
+// What kind of artefact a ReportAsset row describes.
+//
+// ONE_PAGER_PNG is the only kind produced today. The others are declared now
+// because the pipeline around them is type-driven: adding a second artefact
+// later must be a renderer registration, not a second table, a second queue
+// and a second share path.
+enum ReportAssetType {
+  ONE_PAGER_PNG
+  ONE_PAGER_PDF
+  PATIENT_REPORT_PDF
+  DOCTOR_SUMMARY_PDF
+}
+
+// Lifecycle of one rendered artefact. Also the queue: a row that is PENDING
+// or QUEUED with `nextAttemptAt` in the past is work waiting to be done, and
+// the worker finds it by that fact alone.
+//
+//   PENDING    Created by the approval path. Nothing has claimed it.
+//   QUEUED     A dispatch has been requested. Behaves exactly like PENDING to
+//              the claimer — the distinction is for operators reading the
+//              table, not for the state machine.
+//   RENDERING  Claimed under a lease. `leaseExpiresAt` bounds the claim so a
+//              worker that dies mid-render does not strand the row.
+//   READY      Bytes exist in private storage, validated, hashed.
+//   FAILED     Terminally failed: either a permanent error classification or
+//              the retry budget is exhausted.
+enum ReportAssetStatus {
+  PENDING
+  QUEUED
+  RENDERING
+  READY
+  FAILED
+}
+
+// A durable record of one rendered clinical artefact, and the queue entry that
+// produces it.
+//
+// ── Why the row IS the queue ────────────────────────────────────────────────
+// The alternative is an outbox event that says "render this" alongside a row
+// that says "this is the render". Two records of one intention is how a system
+// acquires two disagreeing answers to "did we make the patient's one-pager?".
+// Creating this row in the approval transaction means the commit IS the
+// enqueue: a process that crashes immediately after committing has still
+// durably recorded the work, and the sweeper finds it. There is no window in
+// which the approval is durable and the render request is not.
+//
+// ── Why no @relation anywhere ───────────────────────────────────────────────
+// Same reasoning as AuditLog.clinicId, and for the same reason: this is
+// evidence about a clinical release, and it must outlive the operational rows
+// it describes. A foreign key with ON DELETE SET NULL would silently erase the
+// link between a delivered artefact and the version it was rendered from,
+// turning an auditable record into an orphan with no trace that a link existed.
+// The identifiers are kept as plain scalars and are never nulled.
+//
+// ── Immutability ────────────────────────────────────────────────────────────
+// A row is bound to ONE ConsultationVersion. A revised consultation approves
+// as a new version and therefore gets its OWN row and its own storage object.
+// Nothing here is ever rewritten to point at different bytes: `storagePath`
+// carries the asset id, so a re-render after a FAILED attempt writes beside
+// its predecessor rather than over it.
+model ReportAsset {
+  id String @id @default(cuid())
+
+  // Tenant + subject. Denormalised deliberately (see above) so an asset can be
+  // authorised and audited without joining through rows that may be gone.
+  clinicId     String
+  patientId    String?
+  assessmentId String
+
+  consultationId        String
+  consultationVersionId String
+  /// The approved version's monotonic number. Redundant with
+  /// consultationVersionId, and kept because the snapshot object is addressed
+  /// by it — `one-pagers/{assessmentId}/v{contentVersion}.json`.
+  contentVersion        Int
+
+  type   ReportAssetType
+  status ReportAssetStatus @default(PENDING)
+
+  /// The one-pager DESIGN this artefact was produced from, e.g.
+  /// "hair-one-pager-v1". A component change that alters what the sheet says
+  /// must bump this, which produces a NEW asset rather than silently mutating
+  /// the historical one.
+  templateVersion String
+  /// The rendering STACK — browser + pipeline. Bumped when the renderer itself
+  /// changes in a way that could alter output pixels.
+  rendererVersion String
+
+  // ── Stored bytes. Null until READY. ──────────────────────────────────────
+  storageBucket String?
+  storagePath   String?
+  mimeType      String?
+  byteSize      Int?
+  /// Integrity of the exact bytes delivered. A delivery row copies this, so a
+  /// later re-render cannot change what a historical delivery record means.
+  sha256        String?
+
+  // ── Queue + retry bookkeeping ────────────────────────────────────────────
+  attemptCount  Int       @default(0)
+  lastAttemptAt DateTime?
+  /// When this row next becomes claimable. Backoff is expressed here rather
+  /// than in a scheduler, so the retry policy survives a worker restart.
+  nextAttemptAt DateTime?
+  generatedAt   DateTime?
+
+  /// Lease held by the worker currently rendering. `leaseId` identifies the
+  /// claimer so a slow worker whose lease expired cannot write a result over a
+  /// successor's; `leaseExpiresAt` is what makes a dead worker's claim
+  /// reclaimable without human intervention.
+  leaseId        String?
+  leaseExpiresAt DateTime?
+
+  /// Classified failure (see lib/reports/assets/errors). Never a raw message.
+  errorCode String?
+  /// Redacted detail for support triage. Never secrets, never patient content.
+  lastError String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // ── Idempotency ──────────────────────────────────────────────────────────
+  // The render key. Two requests that mean the same artefact CANNOT produce
+  // two rows, enforced by the database rather than by an application-side
+  // findFirst() that loses every race it is asked to win.
+  @@unique([consultationVersionId, type, templateVersion, rendererVersion], name: "render_key")
+  @@index([status, nextAttemptAt])
+  @@index([clinicId, status])
+  @@index([assessmentId, type])
+  @@index([status, createdAt])
+}
+
+//////////////////////////////////////////////////////
+// SUPPORT INBOX
+//////////////////////////////////////////////////////
+
+// Seven governed categories a doctor selects when opening a ticket.
+// Free-text "Other" exists so nothing is unraisable.
+enum SupportTicketCategory {
+  PATIENT_ASSESSMENT
+  REPORT
+  KIT_PRESCRIPTION
+  WHATSAPP
+  LOGIN_ACCESS
+  TECHNICAL_ISSUE
+  OTHER
+}
+
+enum SupportTicketPriority {
+  NORMAL
+  HIGH
+  URGENT
+}
+
+enum SupportTicketStatus {
+  OPEN
+  IN_PROGRESS
+  RESOLVED
+  CLOSED
+}
+
+// One row per support request. Scoped to a doctor + clinic pair so
+// assertDoctorInClinic remains the isolation primitive.
+//
+// Clinical context (assessmentId, consultationId, reportVersionId) is stored
+// as plain scalars — no FK — so a deleted assessment does not cascade into the
+// support history. Super Admin may look up the linked case if still authorized.
+model SupportTicket {
+  id       String @id @default(cuid())
+
+  doctorId String
+  doctor   Doctor @relation(fields: [doctorId], references: [id])
+
+  clinicId String
+  clinic   Clinic @relation(fields: [clinicId], references: [id])
+
+  category SupportTicketCategory
+  priority SupportTicketPriority @default(NORMAL)
+  status   SupportTicketStatus   @default(OPEN)
+
+  subject String
+
+  // Optional clinical context auto-attached from the screen the doctor was on.
+  assessmentId    String?
+  consultationId  String?
+  reportVersionId String?
+  raisedFromRoute String?
+
+  messages SupportMessage[]
+
+  // Unread tracking: NULL means "never viewed". Unread count for each party
+  // is messages by the other party created after their lastSeenAt.
+  doctorLastSeenAt DateTime?
+  adminLastSeenAt  DateTime?
+
+  resolvedAt DateTime?
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+
+  @@index([doctorId])
+  @@index([clinicId])
+  @@index([status, createdAt])
+  @@index([createdAt])
+}
+
+// One reply in a support thread. Author identity is frozen at write time so
+// a renamed or deleted account does not corrupt the audit trail.
+model SupportMessage {
+  id       String @id @default(cuid())
+
+  ticketId String
+  ticket   SupportTicket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+
+  // supabaseUserId of the sender — never the Doctor row id.
+  authorId   String
+  authorName String
+  // DOCTOR | SUPER_ADMIN — stored as text so the value survives enum changes.
+  authorRole String
+
+  body String @db.Text
+
+  createdAt DateTime @default(now())
+
+  @@index([ticketId, createdAt])
 }

@@ -25,28 +25,38 @@
  * confirmed it. That is the whole provenance contract, and this script stays on
  * the honest side of it.
  *
- * ── Emails are not in this file ─────────────────────────────────────────────
- * Doctor.email is required, unique, and IS the login identity, so these rows
- * cannot be created without real addresses. They are read from a separate JSON
- * file that is not committed — twelve clinicians' personal email addresses do
- * not belong in version control.
+ * ── Login contacts are not in this file ─────────────────────────────────────
+ * Doctor.email IS the OTP login identity, so an address written here would be
+ * a credential written into source. Confirmed PERSONAL contacts are read from
+ * a separate JSON file that is not committed:
  *
- *   scripts/launch-doctors.emails.json
- *   { "Dr. Rav Sharan Singh": "someone@example.com", ... }
+ *   scripts/launch-doctors.contacts.json
+ *   { "Dr. Rav Sharan Singh": { "email": "...", "phone": "+9198..." }, ... }
+ *
+ * That file is OPTIONAL, and so is any doctor within it. A clinician nobody
+ * has reached yet is provisioned in full — profile, clinic, branches — with
+ * email and phone left NULL and provisioningStatus = CONTACT_REQUIRED. No
+ * placeholder address is ever invented, and no publicly listed clinic
+ * reception line is ever promoted to a personal login: the branch numbers in
+ * the dataset below are written to ClinicLocation.phone and nowhere else.
+ *
+ * This script sends nothing. Provisioning and inviting are separate acts.
  *
  * ── Usage ───────────────────────────────────────────────────────────────────
  *   npx tsx scripts/onboard-launch-clinics.ts             # dry run, the default
  *   npx tsx scripts/onboard-launch-clinics.ts --apply     # write
  *   npx tsx scripts/onboard-launch-clinics.ts --verify    # read back and report
  *
- * Idempotent. Clinics match on slug, doctors on email, branches on
- * (clinicId, branchName), so a second run converges instead of duplicating. It
- * never clears a coordinate that a human has since pinned.
+ * Idempotent. Clinics match on slug, doctors on (clinic, exact name) with a
+ * confirmed email as a fallback, branches on (clinicId, branchName), so a
+ * second run converges instead of duplicating. It never clears a coordinate a
+ * human has pinned, never blanks a login already in use, never demotes a live
+ * account, and refuses outright to move an existing doctor between clinics.
  */
 
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import { PrismaClient } from "@prisma/client";
+import { PrismaClient, type Prisma, type DoctorProvisioningStatus } from "@prisma/client";
 import { createLocationSchema } from "../apps/patient-portal/src/lib/clinic/location";
 
 const prisma = new PrismaClient();
@@ -291,38 +301,87 @@ const LAUNCH: LaunchClinic[] = [
   },
 ];
 
-const EMAILS_FILE = join(__dirname, "launch-doctors.emails.json");
+/**
+ * Batch label written to every row this script touches, so a Doctor row can be
+ * traced back to the dataset above and the run that created it.
+ */
+const PROVISIONING_SOURCE = "launch-cohort-2026-09";
 
-function loadEmails(): Map<string, string> {
+const CONTACTS_FILE = join(__dirname, "launch-doctors.contacts.json");
+
+type Contact = { email?: string; phone?: string };
+
+/**
+ * Confirmed PERSONAL login contacts, keyed by the doctor name exactly as it
+ * appears in LAUNCH above.
+ *
+ *   scripts/launch-doctors.contacts.json   (never committed)
+ *   { "Dr. Aseem Sharma": { "email": "...", "phone": "+9198...." }, ... }
+ *
+ * ── Absent is a valid answer ────────────────────────────────────────────────
+ * The file is optional, and so is any doctor within it. A clinician with no
+ * entry is provisioned with a real profile, a real clinic and real branches,
+ * and NO login identity — provisioningStatus stays CONTACT_REQUIRED and
+ * Doctor.email stays null. That is the honest record of what we know.
+ *
+ * The alternative — a placeholder address — is not a smaller version of the
+ * same thing. Doctor.email IS the OTP identity, so a fabricated one is a
+ * fabricated credential sitting in the credential field, and every screen that
+ * reads it will report a clinician who is ready to sign in.
+ *
+ * ── What must never go in this file ─────────────────────────────────────────
+ * A clinic's public reception number or its listed enquiry address. Those
+ * belong to the premises, are answered by whoever is on the desk, and are
+ * already recorded where they belong (ClinicLocation.phone, Clinic.email).
+ * Copying one here would hand a stranger clinic-wide access to patient
+ * records. The addresses in this file are the ones the clinician personally
+ * confirmed, and nothing else.
+ */
+function loadContacts(): Map<string, Contact> {
+  const map = new Map<string, Contact>();
   let raw: string;
   try {
-    raw = readFileSync(EMAILS_FILE, "utf8");
+    raw = readFileSync(CONTACTS_FILE, "utf8");
   } catch {
-    throw new Error(
-      `Missing ${EMAILS_FILE}.\n` +
-        `Doctor.email is required and unique, and it is the OTP login identity, so\n` +
-        `these rows cannot be created without real addresses. Create that file as\n` +
-        `{ "<doctor name exactly as in this script>": "<email>", ... } for all 12.\n` +
-        `Do not commit it.`,
+    console.log(
+      `No ${CONTACTS_FILE} — every doctor will be provisioned CONTACT_REQUIRED.`,
     );
+    return map;
   }
-  const parsed = JSON.parse(raw) as Record<string, string>;
-  const map = new Map<string, string>();
-  const missing: string[] = [];
-  for (const c of LAUNCH) {
-    const email = parsed[c.doctor]?.trim();
-    if (!email) missing.push(c.doctor);
-    else map.set(c.doctor, email.toLowerCase());
+
+  const parsed = JSON.parse(raw) as Record<string, Contact | string>;
+  const known = new Set(LAUNCH.map((c) => c.doctor));
+  for (const [name, value] of Object.entries(parsed)) {
+    if (!known.has(name)) {
+      throw new Error(
+        `${CONTACTS_FILE} names "${name}", who is not in the launch cohort. ` +
+          `A near-miss on a name is how one clinician's login lands on another ` +
+          `clinician's record, so this is fatal rather than skipped.`,
+      );
+    }
+    // A bare string is read as an email, which is the common shape.
+    const contact: Contact =
+      typeof value === "string" ? { email: value } : { ...value };
+    const email = contact.email?.trim().toLowerCase();
+    const phone = contact.phone?.trim();
+    if (!email && !phone) continue;
+    map.set(name, { email: email || undefined, phone: phone || undefined });
   }
-  if (missing.length > 0) {
-    throw new Error(`No email supplied for: ${missing.join(", ")}`);
-  }
-  // A shared address would silently merge two clinicians into one login.
-  const seen = new Map<string, string>();
-  for (const [doctor, email] of map) {
-    const owner = seen.get(email);
-    if (owner) throw new Error(`${doctor} and ${owner} share the email ${email}`);
-    seen.set(email, doctor);
+
+  // A shared address silently merges two clinicians into one login.
+  const seenEmail = new Map<string, string>();
+  const seenPhone = new Map<string, string>();
+  for (const [doctor, c] of map) {
+    if (c.email) {
+      const owner = seenEmail.get(c.email);
+      if (owner) throw new Error(`${doctor} and ${owner} share the email ${c.email}`);
+      seenEmail.set(c.email, doctor);
+    }
+    if (c.phone) {
+      const owner = seenPhone.get(c.phone);
+      if (owner) throw new Error(`${doctor} and ${owner} share the mobile ${c.phone}`);
+      seenPhone.set(c.phone, doctor);
+    }
   }
   return map;
 }
@@ -356,6 +415,37 @@ function validateBranch(b: Branch, isPrimary: boolean) {
   return parsed.data;
 }
 
+/**
+ * Find the Doctor row this launch entry refers to, or null.
+ *
+ * ── Why the clinic is the key, not the name ─────────────────────────────────
+ * Email used to be the key and can no longer be: it is null for every
+ * un-contacted clinician, and NULL = NULL is never true. Name alone is worse —
+ * this cohort contains Dr. Dhanraj Vishwasrao GITTE while an unrelated
+ * Dr. Dhanraj CHAVAN exists in the wider directory, and Dr. Gitanjali NANDINI
+ * while Dr. Geetanjali SHETTY does not belong to this launch at all. A fuzzy
+ * or partial name match is precisely how one of those becomes the other.
+ *
+ * So the lookup is anchored on the clinic, which has a unique slug carrying
+ * the surname, and the name must then match EXACTLY. Each launch clinic has
+ * exactly one clinician, so this cannot be ambiguous.
+ */
+async function findExistingDoctor(
+  tx: Prisma.TransactionClient,
+  clinicId: string,
+  name: string,
+  email?: string,
+) {
+  const byClinic = await tx.doctor.findFirst({
+    where: { clinicId, name, deletedAt: null },
+  });
+  if (byClinic) return byClinic;
+  if (!email) return null;
+  // A confirmed address already on file identifies the person even if the row
+  // predates this cohort under a differently-spelled name.
+  return tx.doctor.findFirst({ where: { email, deletedAt: null } });
+}
+
 async function main() {
   const apply = process.argv.includes("--apply");
   const verifyOnly = process.argv.includes("--verify");
@@ -372,14 +462,21 @@ async function main() {
       // are all non-primary until someone decides which one is.
       for (const b of c.branches) validateBranch(b, c.branches.length === 1);
     }
-    console.log("All 15 branch payloads pass the admin API's own schema.");
+    console.log(
+      `All ${expectedLocations} branch payloads pass the admin API's own schema.`,
+    );
 
-    const emails = loadEmails();
+    const contacts = loadContacts();
 
     if (!apply) {
       console.log("\nDRY RUN — nothing written. Re-run with --apply.\n");
       for (const c of LAUNCH) {
-        console.log(`  ${c.doctor}  <${emails.get(c.doctor)}>`);
+        const contact = contacts.get(c.doctor);
+        const state = contact ? "READY_TO_INVITE" : "CONTACT_REQUIRED";
+        console.log(`  ${c.doctor}  [${state}]`);
+        console.log(
+          `    login: ${contact?.email ?? "(none)"}  mobile: ${contact?.phone ?? "(none)"}`,
+        );
         console.log(`    ${c.clinicName} (${c.slug})`);
         for (const b of c.branches) {
           console.log(
@@ -401,18 +498,71 @@ async function main() {
             },
           });
 
-          await tx.doctor.upsert({
-            where: { email: emails.get(c.doctor)! },
-            update: { name: c.doctor, clinicId: clinic.id },
-            create: {
-              name: c.doctor,
-              email: emails.get(c.doctor)!,
-              clinicId: clinic.id,
-            },
-          });
+          const contact = contacts.get(c.doctor);
+          const existing = await findExistingDoctor(
+            tx,
+            clinic.id,
+            c.doctor,
+            contact?.email,
+          );
+
+          if (existing && existing.clinicId !== clinic.id) {
+            // Reassigning a doctor between clinics moves every patient,
+            // assessment and order they can reach. That is a clinical decision
+            // and never a side effect of an onboarding re-run.
+            throw new Error(
+              `${c.doctor} already exists as ${existing.id} in clinic ${existing.clinicId}, ` +
+                `not ${clinic.id}. Refusing to move an existing doctor between clinics.`,
+            );
+          }
+
+          // Only ever ADD a confirmed contact. A row that already carries an
+          // address keeps it: the file is a source of new confirmations, not
+          // an authority that can blank a login somebody is already using.
+          const contactData = {
+            ...(contact?.email ? { email: contact.email } : {}),
+            ...(contact?.phone ? { phone: contact.phone } : {}),
+          };
+
+          // A doctor who can already sign in stays ACTIVE — re-running this
+          // script must never demote a live login to CONTACT_REQUIRED.
+          const nextStatus = (
+            existing?.supabaseUserId
+              ? "ACTIVE"
+              : existing?.email || existing?.phone || contact
+                ? "READY_TO_INVITE"
+                : "CONTACT_REQUIRED"
+          ) as DoctorProvisioningStatus;
+
+          if (existing) {
+            await tx.doctor.update({
+              where: { id: existing.id },
+              data: {
+                name: c.doctor,
+                ...contactData,
+                provisioningStatus: nextStatus,
+                provisioningSource: existing.provisioningSource ?? PROVISIONING_SOURCE,
+                provisionedAt: existing.provisionedAt ?? new Date(),
+              },
+            });
+          } else {
+            await tx.doctor.create({
+              data: {
+                name: c.doctor,
+                clinicId: clinic.id,
+                // Null unless a confirmed personal address exists. See
+                // loadContacts for why a placeholder is not an option.
+                email: contact?.email ?? null,
+                phone: contact?.phone ?? null,
+                provisioningStatus: nextStatus,
+                provisioningSource: PROVISIONING_SOURCE,
+                provisionedAt: new Date(),
+              },
+            });
+          }
 
           for (const b of c.branches) {
-            const existing = await tx.clinicLocation.findFirst({
+            const existingBranch = await tx.clinicLocation.findFirst({
               where: { clinicId: clinic.id, branchName: b.branchName, deletedAt: null },
             });
             const data = {
@@ -420,6 +570,7 @@ async function main() {
               city: b.city,
               state: b.state,
               pincode: b.pincode ?? null,
+              // Branch reception line. Never copied onto the Doctor row.
               phone: b.phone ?? null,
               country: "IN",
               // Exactly one primary for a single-branch clinic. Tender Skin's
@@ -427,9 +578,9 @@ async function main() {
               // zero, and picking one arbitrarily would invent a business fact.
               isPrimary: c.branches.length === 1,
             };
-            if (existing) {
+            if (existingBranch) {
               // Never clears a coordinate a human has since pinned.
-              await tx.clinicLocation.update({ where: { id: existing.id }, data });
+              await tx.clinicLocation.update({ where: { id: existingBranch.id }, data });
             } else {
               await tx.clinicLocation.create({
                 data: { ...data, clinicId: clinic.id, branchName: b.branchName },
@@ -443,7 +594,9 @@ async function main() {
   }
 
   // Read back from the database and report what is actually stored.
-  console.log("\nDoctor | Clinic | Branch | City | State | Lat | Lng | GeoStatus | Mappable");
+  console.log(
+    "\nDoctor | Clinic | Branch | City | State | Lat | Lng | GeoStatus | Mappable",
+  );
   let mappable = 0;
   let rows = 0;
   for (const c of LAUNCH) {
@@ -467,7 +620,9 @@ async function main() {
       );
     }
   }
-  console.log(`\nRows: ${rows}/${expectedLocations}   Map-eligible: ${mappable}/${expectedLocations}`);
+  console.log(
+    `\nRows: ${rows}/${expectedLocations}   Map-eligible: ${mappable}/${expectedLocations}`,
+  );
 
   const sonia = await prisma.doctor.findMany({
     where: { name: { contains: "Tekchandani", mode: "insensitive" }, deletedAt: null },
@@ -475,6 +630,9 @@ async function main() {
   });
   console.log(
     `Sonia Tekchandani doctor rows: ${sonia.length} (expected 1); Tender Skin locations linked: ${sonia[0]?.clinic.locations.length ?? 0} (expected 4)`,
+  );
+  console.log(
+    "\nFull provisioning + authorization report: npx tsx scripts/verify-launch-cohort.ts",
   );
 }
 

@@ -64,7 +64,24 @@ const { loadOnePageReportData, ReportAccessError } = await import(
 
 const ASSESSMENT_ID = "asm-1";
 
-function assessmentRow(approvalStatus: string | null, reviewDecision = "PENDING") {
+// Verified against real staging data: every APPROVED ConsultationVersion row
+// carries a populated treatmentPlan.kitPhases — buildConsultation's
+// buildTreatmentPlan() always writes it at composition time, and
+// orchestrator.revise() always bases a new version on the previous persisted
+// content rather than a bare recompose, so a real approved row can never lack
+// it (see loadReport.ts's fail-closed check, and
+// docs/../ tests/post-approval/behavioural/fixture.ts's matching fix). This
+// default keeps every "APPROVED" row in this file realistic; the one test
+// that needs the genuinely-malformed shape passes `content` explicitly.
+const REALISTIC_KIT_PHASES = [
+  { phase: 1, kitId: "TEST_KIT", displayName: "Test Kit", whySelected: "fixture", supportingConditions: [], keyIngredients: [], mechanismOfAction: [], formulationGroups: [] },
+];
+
+function assessmentRow(
+  approvalStatus: string | null,
+  reviewDecision = "PENDING",
+  content?: Record<string, unknown>,
+) {
   return {
     id: ASSESSMENT_ID,
     clinicId: "clinic-1",
@@ -81,7 +98,12 @@ function assessmentRow(approvalStatus: string | null, reviewDecision = "PENDING"
         currentVersion:
           approvalStatus === null
             ? null
-            : { approvalStatus, approvedAt: null, approvedBy: "Dr A", content: {} },
+            : {
+                approvalStatus,
+                approvedAt: null,
+                approvedBy: "Dr A",
+                content: content ?? { treatmentPlan: { kitPhases: REALISTIC_KIT_PHASES } },
+              },
       },
     ],
   };
@@ -196,5 +218,69 @@ describe("one-page report — labelling for internal callers", () => {
     });
     findUniqueAssessment.mockResolvedValue(assessmentRow("APPROVED"));
     await expect(loadOnePageReportData(ASSESSMENT_ID)).rejects.toMatchObject({ status: 403 });
+  });
+});
+
+// P0-1 regression: distinguishing a valid approved report (kitPhases present,
+// however it got there) from a truly malformed one (approved, but no
+// kitPhases at all) — pinned with real evidence, not assumption.
+//
+// Queried directly against staging (2026-09-08): every one of 15 real
+// APPROVED ConsultationVersion rows has a populated treatmentPlan.kitPhases —
+// zero exceptions. buildConsultation's buildTreatmentPlan() always writes it
+// at composition time (verbatim from the engine's treatmentStrategy), and
+// orchestrator.revise() always bases a new version on the PREVIOUS persisted
+// content rather than a bare recompose (see orchestrator.ts: `const base =
+// existing.content`), so a real approved row can never lose it once it has
+// it. The only way to reach "APPROVED + no kitPhases" is a row that never
+// went through the real pipeline — i.e. genuinely corrupted or synthetic
+// data — which is exactly the state the fail-closed check exists to catch.
+describe("one-page report — the fail-closed invariant is correct, not overzealous", () => {
+  beforeEach(() => {
+    getClinicContext.mockResolvedValue({
+      userId: "u",
+      role: "DOCTOR",
+      clinicId: "clinic-1",
+      email: null,
+    });
+  });
+
+  it("a valid approved report — kitPhases present, non-empty — renders normally", async () => {
+    findUniqueAssessment.mockResolvedValue(assessmentRow("APPROVED"));
+    const data = await loadOnePageReportData(ASSESSMENT_ID);
+    expect(data).toBeTruthy();
+  });
+
+  it("a valid approved report with a genuinely empty kit lineup (doctor removed every kit) is NOT treated as corrupted", async () => {
+    // [] is a valid array — Array.isArray([]) is true — distinct from kitPhases
+    // being absent or the wrong type. A doctor emptying the lineup on purpose
+    // must not be indistinguishable from data corruption.
+    findUniqueAssessment.mockResolvedValue(
+      assessmentRow("APPROVED", "PENDING", { treatmentPlan: { kitPhases: [] } }),
+    );
+    const data = await loadOnePageReportData(ASSESSMENT_ID);
+    expect(data).toBeTruthy();
+  });
+
+  it("an approved version with treatmentPlan present but kitPhases the wrong type still fails closed", async () => {
+    findUniqueAssessment.mockResolvedValue(
+      assessmentRow("APPROVED", "PENDING", { treatmentPlan: { kitPhases: "not-an-array" } }),
+    );
+    await expect(loadOnePageReportData(ASSESSMENT_ID)).rejects.toMatchObject({ status: 500 });
+  });
+
+  it("a genuinely malformed approved version (no treatmentPlan at all) still fails closed", async () => {
+    findUniqueAssessment.mockResolvedValue(assessmentRow("APPROVED", "PENDING", {}));
+    await expect(loadOnePageReportData(ASSESSMENT_ID)).rejects.toMatchObject({ status: 500 });
+    await expect(loadOnePageReportData(ASSESSMENT_ID)).rejects.toThrow(/kit lineup data is missing or invalid/);
+  });
+
+  it("a PENDING_REVIEW version with no kitPhases does NOT fail closed — the gate is approval-specific", async () => {
+    // Only an APPROVED version is held to this invariant. A draft in progress
+    // has every right to be incomplete.
+    getClinicContext.mockResolvedValue({ userId: "u", role: "DOCTOR", clinicId: "clinic-1", email: null });
+    findUniqueAssessment.mockResolvedValue(assessmentRow("PENDING_REVIEW", "PENDING", {}));
+    const data = await loadOnePageReportData(ASSESSMENT_ID);
+    expect(data).toBeTruthy();
   });
 });

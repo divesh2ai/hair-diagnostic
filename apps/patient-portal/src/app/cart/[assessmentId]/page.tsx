@@ -15,6 +15,7 @@ import {
 } from "lucide-react";
 import CartCheckoutAnimation from "./CartCheckoutAnimation";
 import { ProductImage } from "@/components/kits/ProductImage";
+import { formatInr } from "@/lib/pricing/kitPrices";
 
 // Patient-facing cart. Renders the doctor-approved kit lineup with prices
 // so the patient can review, ask questions, or confirm. Deep-linkable —
@@ -73,7 +74,17 @@ export default function PatientCartPage({
   const [animating, setAnimating] = useState(false);
 
   useEffect(() => {
-    fetch(`/api/cart/${assessmentId}`)
+    // The cart token travels in the page URL and is forwarded verbatim to the
+    // API, which binds it to this assessment id. Absent here means the caller
+    // is relying on a doctor session; the API decides, not this component.
+    const token =
+      typeof window !== "undefined"
+        ? new URLSearchParams(window.location.search).get("t")
+        : null;
+    const url = token
+      ? `/api/cart/${assessmentId}?t=${encodeURIComponent(token)}`
+      : `/api/cart/${assessmentId}`;
+    fetch(url)
       .then((r) => (r.ok ? r.json() : Promise.reject(r)))
       .then(setCart)
       .catch(async (r) => {
@@ -88,8 +99,39 @@ export default function PatientCartPage({
 
   const confirm = async () => {
     setConfirming(true);
-    // Payment integration lands with Instamojo in the next sprint. For the
-    // demo, "Confirm" plays the checkout animation and flips the state.
+
+    // Tell the server the patient has begun checking out.
+    //
+    // ── What this does and does not claim ─────────────────────────────────
+    // It records intent, never payment. The endpoint it calls can only write
+    // PENDING — a browser cannot mark an order paid under any code path, and
+    // the confirmed state below is a local UI state, not a commercial fact.
+    // Money is recorded only by a signature-verified gateway callback or an
+    // authenticated clinic user at the counter.
+    //
+    // ── Why a failure here is swallowed ───────────────────────────────────
+    // Being unable to RECORD that a checkout started must not stop the patient
+    // from checking out. The write is best-effort; the consequence of losing
+    // it is one missing timestamp on an ops follow-up list, which is a far
+    // smaller harm than a patient blocked at the last step by a telemetry
+    // error. It is awaited rather than fired-and-forgotten so the record
+    // exists before the confirmation animation implies the step is done.
+    const token =
+      typeof window !== "undefined"
+        ? new URLSearchParams(window.location.search).get("t")
+        : null;
+    if (token) {
+      await fetch(
+        `/api/cart/${assessmentId}/checkout?t=${encodeURIComponent(token)}`,
+        { method: "POST" },
+      ).catch(() => {
+        /* best effort — see above */
+      });
+    }
+
+    // Payment integration lands with Instamojo in the next sprint. Until it
+    // does, "Confirm" plays the checkout animation and the clinic collects at
+    // the counter, which is the Wave-0 commercial model.
     await new Promise((r) => setTimeout(r, 400));
     setConfirming(false);
     setAnimating(true);
@@ -125,11 +167,31 @@ export default function PatientCartPage({
 
   const clinicPhone = cart.patient?.phone ?? "";
 
+  // Quantity is the doctor's, and it is READ-ONLY here.
+  //
+  // The page briefly carried a +/- stepper whose changes were never persisted
+  // — the cart API is read-only — so it told the patient in one breath that
+  // their order was confirmed and in the next that their quantities were not
+  // saved. A control that cannot keep its promise is worse than no control,
+  // and this is a prescribed quantity: changing it is a clinical decision, so
+  // it belongs with the doctor, not behind a stepper on the patient's phone.
+  const qtyOf = (li: { quantity: number }) => li.quantity;
+
   // A product name exists only for a line whose commercial identity has been
   // approved. Everything else shows the identifier the doctor actually
   // prescribed, rather than a similar-looking product's name.
   const labelOf = (li: Cart["lineItems"][number]) =>
     li.displayName ?? li.sourceIdentifierSnapshot;
+
+  // No local arithmetic over prices. The server hands back a chargeable flag
+  // and per-line amounts that are null unless approved, so an incomplete cart
+  // has no subtotal — and none is invented here to fill the gap.
+  const subtotalMinor = cart.chargeable
+    ? cart.lineItems.reduce(
+        (sum, li) => sum + (li.unitPriceMinor ?? 0) * qtyOf(li),
+        0,
+      )
+    : null;
 
   const waMsg = encodeURIComponent(
     `Hi, I have questions about my Dr FACT recommendation (order ${cart.order.id.slice(0, 8)}).`,
@@ -230,13 +292,23 @@ export default function PatientCartPage({
                 {/* A number appears only on a CHARGEABLE line. Every other
                     state says what is missing, in words. The alternative —
                     showing a figure while the price or the product is still
-                    unconfirmed — is what this page used to do, and with an
-                    unknown kit that figure was an invented ₹5,500. */}
+                    unconfirmed — is what this page used to do. */}
                 <div className="shrink-0 text-right">
                   {li.commercialState === "CHARGEABLE" ? (
-                    <p className="text-base font-medium tabular-nums text-slate-900">
-                      {li.unitPriceLabel}
-                    </p>
+                    <>
+                      <p className="text-base font-medium tabular-nums text-slate-900">
+                        {qtyOf(li) === 1
+                          ? li.unitPriceLabel
+                          : formatInr(
+                              ((li.unitPriceMinor ?? 0) * qtyOf(li)) / 100,
+                            )}
+                      </p>
+                      {qtyOf(li) > 1 && (
+                        <p className="text-[11px] tabular-nums text-stone-500">
+                          {li.unitPriceLabel} each
+                        </p>
+                      )}
+                    </>
                   ) : (
                     <p
                       className={`max-w-[9rem] text-[11px] font-medium leading-snug ${
@@ -259,10 +331,8 @@ export default function PatientCartPage({
                 <span className="text-[11px] font-semibold uppercase tracking-wider text-teal-700">
                   1-month protocol
                 </span>
-                {/* Quantity is shown, never edited.
-                    This lineup was authorised by a doctor and the order is cut
-                    from exactly this list, so a stepper here would let a
-                    patient alter a prescription after approval. */}
+                {/* Quantity is shown, never edited — this is a prescribed
+                    amount from an approved consultation. */}
                 <span className="text-[11px] text-stone-500">
                   &middot; Qty {li.quantity}
                 </span>
@@ -281,28 +351,31 @@ export default function PatientCartPage({
       {/* ── TOTAL + CTA ────────────────────────────────────────── */}
       <section className="mt-4 rounded-2xl border border-stone-200 bg-white p-4 space-y-3">
         <div className="flex items-baseline justify-between">
-          <span className="text-base text-stone-700">
-            Subtotal · {cart.lineItems.length}-month plan
-          </span>
-          {cart.subtotalMinor === null ? (
+          {/* Deliberately NOT "N-month plan".
+              Protocol duration is a clinical property of the approved
+              treatment plan; box count is a supply fact. Multiplying kits by
+              quantity produced claims like "6-month plan" from three products
+              taken twice, which no doctor prescribed. This endpoint receives
+              only the approved kitIds — no protocol duration — so the honest
+              move is to state no duration rather than derive a wrong one. */}
+          <span className="text-base text-stone-700">Subtotal</span>
+          {subtotalMinor === null ? (
             <span className="text-sm font-medium text-amber-700">
               Awaiting confirmation
             </span>
           ) : (
             <span className="font-serif text-3xl text-slate-900 tabular-nums">
-              {cart.subtotalLabel}
+              {formatInr(subtotalMinor / 100)}
             </span>
           )}
         </div>
         <p className="text-xs text-stone-500 leading-relaxed">
-          Each kit is a 1-month supply of your doctor-approved protocol (
-          {cart.lineItems.length}{" "}
-          {cart.lineItems.length === 1 ? "kit" : "kits"} ={" "}
-          {cart.lineItems.length}{" "}
-          {cart.lineItems.length === 1 ? "month" : "months"}).{" "}
-          {cart.subtotalMinor === null
+          These are the kits your doctor approved, in the quantities they
+          prescribed. Your treatment duration is the one discussed with your
+          doctor.{" "}
+          {subtotalMinor === null
             ? "Your clinic is confirming the details above and will share the final cost with you directly."
-            : "Prices indicative — final invoice arrives from the clinic. Shipping is included."}
+            : "Final invoice arrives from the clinic. Shipping is included."}
         </p>
         {confirmed ? (
           <div className="flex items-center gap-2 rounded-xl bg-teal-50 px-3 py-2.5 text-sm text-teal-900 ring-1 ring-teal-200">
@@ -310,10 +383,10 @@ export default function PatientCartPage({
             Order confirmed. The clinic will reach out on WhatsApp.
           </div>
         ) : !cart.chargeable ? (
-          /* Monetary progression stops while any line is unconfirmed. Hiding
-             a button is presentation, not a control — the server refuses to
-             quote a total for the same order independently, and this is the
-             honest surface of that decision rather than the decision itself. */
+          /* Monetary progression stops while any line is unconfirmed. The
+             checkout endpoint refuses the same order independently, so this
+             is the honest surface of that rule rather than the rule itself —
+             hiding a button is presentation, not a control. */
           <div className="rounded-xl bg-amber-50 px-3 py-2.5 text-sm leading-relaxed text-amber-900 ring-1 ring-amber-200">
             Your clinic is confirming some details on this plan, so it can’t be
             ordered online just yet. Message them below and they’ll take it from

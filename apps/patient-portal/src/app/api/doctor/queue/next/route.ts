@@ -1,8 +1,7 @@
 import { NextResponse } from "next/server";
-import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { requireDoctorContext } from "@/lib/auth";
-import { REVIEW_QUEUE_STATUSES } from "@/lib/doctor/reviewQueue";
+import { reviewQueueSql } from "@/lib/doctor/reviewQueue";
 
 export const dynamic = "force-dynamic";
 
@@ -17,7 +16,8 @@ export const dynamic = "force-dynamic";
 // would be the most expensive possible way to ask the cheapest possible
 // question. This runs once per approval, selects three columns, and reads the
 // same FIFO order and membership rule from lib/doctor/reviewQueue — so it can
-// never disagree with the count the doctor just saw.
+// never disagree with the count the doctor just saw, and it can never hand the
+// doctor a case that refuses to open (see REVIEWABLE_SOURCE_SQL).
 //
 // It returns an id and a name, and nothing clinical. The review page itself is
 // where the case is loaded.
@@ -48,10 +48,7 @@ export async function GET(req: Request) {
         a."rawResponses"->'__meta'->>'concern'  AS "concern"
       FROM "Assessment" a
       JOIN "Patient" p ON p.id = a."patientId"
-      WHERE a."deletedAt" IS NULL
-        AND a."clinicId" = ${doctor.clinicId}
-        AND a."reviewDecision"::text = 'PENDING'
-        AND a.status::text IN (${Prisma.join(REVIEW_QUEUE_STATUSES.map(String))})
+      WHERE ${reviewQueueSql(doctor.clinicId)}
         AND (${exclude}::text IS NULL OR a.id <> ${exclude})
       -- FIFO. The same rule as every other queue surface: longest wait first.
       ORDER BY a."submittedAt" ASC NULLS LAST

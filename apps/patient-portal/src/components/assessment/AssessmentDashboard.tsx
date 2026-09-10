@@ -97,6 +97,11 @@ export function AssessmentDashboard({ initialData }: { initialData: AssessmentVi
           artifactByType: Object.fromEntries(previousArtifacts.map((artifact) => [artifact.type, artifact])),
           artifactPresence: {},
           narratives: null,
+          // Same default the adapter applies. `mergeStatusIntoReport` spreads
+          // the freshly normalized response over this object, so the value is
+          // always replaced — it is here to satisfy the payload contract, not
+          // to assert anything about the video.
+          video: { state: "PENDING", url: null, thumbnailUrl: null, durationSec: null },
           processing: {
             status: data.status as AssessmentReportPayload["processing"]["status"],
             progressPercent: data.progressPercent,

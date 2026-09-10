@@ -28,6 +28,7 @@ export function UserMenu({
   const { mode, setMode } = useTheme();
 
   const name = displayName ?? b.doctorName ?? email ?? roleLabel;
+  const specialty = b.doctorSpecialization;
 
   return (
     <MenuPrimitive.Root>
@@ -37,9 +38,30 @@ export function UserMenu({
         method="post"
         className="hidden"
       />
-      <MenuPrimitive.Trigger className="inline-flex items-center gap-2 rounded-full pl-1 pr-2 h-9 hover:bg-muted text-sm">
-        <Avatar name={name} src={b.doctorAvatarUrl} size="sm" />
-        <span className="hidden sm:inline truncate max-w-[10rem]">{name}</span>
+      {/* h-10 with a size-8 avatar, NOT h-11/size-10. The neighbouring
+          language chip and notification bell are both 32px; at 44px this
+          control was 12px taller than everything beside it and read as the
+          heaviest object in the bar. Worse, a 40px avatar plus its 2px ring
+          came to exactly 44px inside a 44px control — the ring sat flush on
+          the hover pill with zero clearance. 32px matches its neighbours and
+          leaves the ring room to read as a cutout. */}
+      <MenuPrimitive.Trigger className="inline-flex items-center gap-2.5 rounded-full pl-1 pr-2.5 h-10 hover:bg-muted transition-colors outline-none focus-visible:ring-2 focus-visible:ring-ring">
+        <Avatar
+          name={name}
+          src={b.doctorAvatarUrl}
+          size="sm"
+          className="ring-2 ring-background shadow-sm"
+        />
+        <span className="hidden sm:flex flex-col items-start leading-tight text-left">
+          <span className="text-sm font-semibold text-foreground truncate max-w-[11rem]">
+            {name}
+          </span>
+          {specialty && (
+            <span className="text-[11px] text-muted-foreground truncate max-w-[11rem]">
+              {specialty}
+            </span>
+          )}
+        </span>
       </MenuPrimitive.Trigger>
       <MenuPrimitive.Portal>
         {/* `collisionPadding` keeps the menu clear of the window edge. Without

@@ -12,6 +12,7 @@ import {
   Palette,
   MessageCircle,
   User,
+  HelpCircle,
 } from "lucide-react";
 import type { ComponentType } from "react";
 import type { NavIcon } from "./nav";
@@ -32,4 +33,5 @@ export const NAV_ICONS: Record<NavIcon, ComponentType<{ className?: string }>> =
   branding: Palette,
   whatsapp: MessageCircle,
   profile: User,
+  help: HelpCircle,
 };

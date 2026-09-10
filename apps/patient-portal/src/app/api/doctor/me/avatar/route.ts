@@ -44,11 +44,28 @@ export async function POST(req: Request) {
 
   if (uploadErr) {
     console.error("[doctor avatar] upload failed:", uploadErr);
-    return NextResponse.json({ error: "Upload failed" }, { status: 500 });
+    // The `doctor-avatars` bucket is provisioned per environment (see
+    // docs/staging-environment-plan.md). A missing bucket surfaces as a
+    // "Bucket not found" storage error — call it out explicitly so the
+    // failure is actionable instead of a blanket "Upload failed".
+    const isMissingBucket = /bucket not found/i.test(uploadErr.message);
+    return NextResponse.json(
+      {
+        error: isMissingBucket
+          ? "Photo storage is not set up for this environment yet. Please contact an administrator."
+          : "Upload failed",
+      },
+      { status: isMissingBucket ? 503 : 500 },
+    );
   }
 
-  const { data: pub } = supabase.storage.from("doctor-avatars").getPublicUrl(path);
-  const avatarUrl = pub.publicUrl;
+  // `doctor-avatars` is a PRIVATE bucket, so `getPublicUrl` would hand back a
+  // link that 403s. Persist a STABLE APP URL instead and let that route mint a
+  // short-lived signed URL per request.
+  //
+  // Persisting a signed URL directly is the trap to avoid: it expires, so the
+  // Doctor row would silently start pointing at a dead image days later.
+  const avatarUrl = `/api/avatar/${encodeURIComponent(path)}`;
 
   await prisma.doctor.update({
     where: { id: doctor.id },

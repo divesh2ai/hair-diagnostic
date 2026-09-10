@@ -1,5 +1,7 @@
 import { notFound } from "next/navigation";
 import { OnePageHairReport } from "@/components/reports/one-page/OnePageHairReport";
+import { OnePagerReadyMarker } from "@/components/reports/one-page/OnePagerReadyMarker";
+import { ONE_PAGER_READY_ATTRIBUTE } from "@/lib/reports/assets/contract";
 import { ruchiFixture } from "@/lib/reports/one-page/fixtures/ruchi";
 import { ruchiRuntimeFixture } from "@/lib/reports/one-page/fixtures/ruchi-runtime";
 import { raviFixture } from "@/lib/reports/one-page/fixtures/ravi";
@@ -44,5 +46,14 @@ export default async function ReportFixturePage({
   const { caseId } = await params;
   const data = FIXTURES[caseId];
   if (!data) notFound();
-  return <OnePageHairReport data={data} />;
+  // The same readiness contract the production render target uses, so a
+  // fixture render exercises the real wait condition rather than a lookalike.
+  // Without this, the only way to test the renderer end to end would be
+  // against a live database.
+  return (
+    <>
+      <OnePageHairReport data={data} />
+      <OnePagerReadyMarker attribute={ONE_PAGER_READY_ATTRIBUTE} />
+    </>
+  );
 }

@@ -18,12 +18,13 @@ import { StatusBadge } from "@/components/ui/status-badge";
 import { composeWorkflowLabel } from "@/lib/labels/statusLabels";
 import { labelForDiagnosis } from "@/lib/labels/diagnosisLabels";
 import { absoluteTimestamp, elapsedLabel } from "@/lib/format/waitingTime";
+import { useVisibilityPolling } from "@/lib/doctor/useLiveDashboard";
 import {
   clinicalAttention,
   demographicLabel,
   type ClinicalAttention,
 } from "@/lib/doctor/reviewPriority";
-import { reviewHref } from "@/lib/doctor/reviewHref";
+import { reviewHref, isReviewUnavailable } from "@/lib/doctor/reviewHref";
 import { useMinuteTick } from "@/lib/doctor/useLiveDashboard";
 
 // Review Queue.
@@ -248,6 +249,13 @@ function ReviewQueue({
       p.set("status", "CLINICAL_READY,REPORT_GENERATING,COMPLETED,PENDING");
       p.set("includeSkinPigmentationPending", "1");
       p.set("decision", "PENDING");
+      // Withhold cases that cannot actually be opened — no stored
+      // questionnaire and no persisted consultation. The rule itself lives on
+      // the server (lib/doctor/reviewQueue); this only says which tab we are
+      // on, so the queue page, the dashboard counts and the next-patient
+      // handoff all withhold the same rows. Such records stay visible on the
+      // All tab, where they are not labelled "Ready for review".
+      p.set("openableOnly", "1");
       // FIFO, ordered in Postgres. It has to happen server-side: this page
       // fetches a capped window out of a backlog several hundred deep, so
       // re-sorting that window in the browser would show the newest 200 and
@@ -277,24 +285,47 @@ function ReviewQueue({
     return ids.size > 1;
   }, [visibleRows]);
 
-  const load = useCallback(async () => {
-    setLoading(true);
-    setLoadError(false);
-    try {
-      const res = await fetch(`/api/doctor/reports?${effectiveQuery}`);
-      if (!res.ok) throw new Error(String(res.status));
-      const data = await res.json();
-      if (data.error) throw new Error(data.error);
-      setRows(data.rows ?? []);
-      setTotal(data.total ?? 0);
-    } catch {
-      setRows([]);
-      setTotal(0);
-      setLoadError(true);
-    } finally {
-      setLoading(false);
-    }
-  }, [effectiveQuery]);
+  // `background` distinguishes the 15-second poll from a real load.
+  //
+  // A background refresh must not touch `loading` — flipping it would replay
+  // the skeleton over a queue the doctor is mid-way through reading, every
+  // fifteen seconds. It must not clear the rows on failure either: a single
+  // dropped poll in a clinic with patchy wifi would empty the waiting list and
+  // read as "no patients", which is worse than showing data a few seconds old.
+  // Same contract the dashboard's loadStats already uses.
+  const load = useCallback(
+    async (background = false) => {
+      if (!background) {
+        setLoading(true);
+        setLoadError(false);
+      }
+      try {
+        const res = await fetch(`/api/doctor/reports?${effectiveQuery}`);
+        if (!res.ok) throw new Error(String(res.status));
+        const data = await res.json();
+        if (data.error) throw new Error(data.error);
+        setRows(data.rows ?? []);
+        setTotal(data.total ?? 0);
+        setLoadError(false);
+      } catch {
+        if (!background) {
+          setRows([]);
+          setTotal(0);
+          setLoadError(true);
+        }
+      } finally {
+        if (!background) setLoading(false);
+      }
+    },
+    [effectiveQuery],
+  );
+
+  // Keep the Review Queue current while the doctor is looking at it.
+  //
+  // `effectiveQuery` is a dependency of `load`, so the poll always re-runs the
+  // CURRENT filter — changing a filter does not need to restart polling, and
+  // polling never reverts a filter the doctor just set.
+  useVisibilityPolling(() => load(true));
 
   useEffect(() => {
     fetch("/api/doctor/reports/facets")
@@ -641,9 +672,20 @@ function ReportCard({
   const demographic = demographicLabel(row.patientAge, row.patientGender);
   const isDedicatedSkinReview =
     row.concern === "skin_pigmentation" || row.concern === "skin_anti_ageing";
-  const diagnosis = isDedicatedSkinReview
-    ? null
-    : labelForDiagnosis(row.primaryDiagnosis);
+  // No doctor review surface exists for this concern yet — see lib/doctor/reviewHref.
+  const reviewUnavailable = isReviewUnavailable(row.concern);
+  // Only when the engine actually established one.
+  //
+  // `labelForDiagnosis(null)` returns the string "Assessment in progress",
+  // which is a sensible default in a report header and a flat contradiction
+  // here: every row in this list also carries "Ready for review · waiting
+  // 1 day". A doctor cannot act on a line that says the patient is both still
+  // filling in the questionnaire and waiting for a decision. When there is no
+  // diagnosis yet the row says nothing, exactly as the dashboard deck does.
+  const diagnosis =
+    isDedicatedSkinReview || !row.primaryDiagnosis
+      ? null
+      : labelForDiagnosis(row.primaryDiagnosis);
 
   return (
     <li className="group relative transition-colors hover:bg-stone-50/70 focus-within:bg-stone-50">
@@ -664,7 +706,12 @@ function ReportCard({
                 <span className="font-normal text-stone-400"> · {demographic}</span>
               )}
             </p>
-            {row.concern === "skin_acne" && <ConcernTag tone="rose">Acne</ConcernTag>}
+            {row.concern === "skin_acne" && (
+              <>
+                <ConcernTag tone="rose">Acne</ConcernTag>
+                <IntakeChip>Doctor review not available yet</IntakeChip>
+              </>
+            )}
             {row.concern === "skin_pigmentation" && (
               <>
                 <ConcernTag tone="amber">Dr Skin FACT</ConcernTag>
@@ -686,18 +733,33 @@ function ReportCard({
 
           {diagnosis && <p className="truncate text-sm text-stone-600">{diagnosis}</p>}
 
+          {/* Pigmentation intake facts.
+              Previously one amber run-on — "Images: 0 uploaded · Video
+              consultation required · Medication declared · Medical history
+              declared" — in which every clause looked equally alarming and the
+              zero read as a warning. They are now neutral chips that each say
+              what they are, with the absent-image case stated in words rather
+              than as a bare count. Same facts, same source fields; nothing is
+              added and nothing is hidden. */}
           {row.concern === "skin_pigmentation" && (
-            <div className="flex flex-wrap gap-x-2 gap-y-1 text-[11px] text-amber-900">
-              <span>Images: {row.imageCount} uploaded</span>
-              <span>·</span>
-              <span>
-                Video consultation{" "}
+            <div className="flex flex-wrap gap-1.5 pt-0.5">
+              <IntakeChip>
+                {row.imageCount > 0
+                  ? `${row.imageCount} image${row.imageCount === 1 ? "" : "s"}`
+                  : "No images"}
+              </IntakeChip>
+              <IntakeChip>
+                Video consult{" "}
                 {(row.consultationStatus ?? "REQUIRED").toLowerCase().replaceAll("_", " ")}
-              </span>
-              {row.previousPrescriptionUploaded && <span>· Prescription uploaded</span>}
-              {row.medicationDeclared && <span>· Medication declared</span>}
-              {row.medicalHistoryDeclared && <span>· Medical history declared</span>}
-              {row.bodyPigmentationSelected && <span>· Body pigmentation</span>}
+              </IntakeChip>
+              {row.previousPrescriptionUploaded && (
+                <IntakeChip>Previous prescription</IntakeChip>
+              )}
+              {row.medicationDeclared && <IntakeChip>Medication declared</IntakeChip>}
+              {row.medicalHistoryDeclared && (
+                <IntakeChip>Medical history declared</IntakeChip>
+              )}
+              {row.bodyPigmentationSelected && <IntakeChip>Body pigmentation</IntakeChip>}
             </div>
           )}
 
@@ -729,14 +791,23 @@ function ReportCard({
               {workflow.label}
             </StatusBadge>
           )}
+          {/* The action names what the destination can actually do. An acne
+              case has no review surface in this release, so promising
+              "Review" would have the doctor believe a clinical read is
+              waiting for them. The case is still one click away and still
+              preserved — see the acne holding page. */}
           <Link
             href={reviewHref(row)}
-            aria-label={`Review ${row.patientName}`}
+            aria-label={
+              reviewUnavailable
+                ? `View ${row.patientName} — acne review not available yet`
+                : `Review ${row.patientName}`
+            }
             // Stretched link: the whole row is clickable, but the row still
             // has exactly one tab stop and one accessible name.
             className="inline-flex items-center gap-1.5 rounded-full border border-stone-300 bg-white px-4 py-2 text-sm font-medium text-slate-800 transition-colors hover:border-slate-900 hover:bg-slate-900 hover:text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-slate-900/25 after:absolute after:inset-0 after:content-['']"
           >
-            Review
+            {reviewUnavailable ? "View case" : "Review"}
             <ArrowRight className="h-3.5 w-3.5" aria-hidden />
           </Link>
         </div>
@@ -810,6 +881,22 @@ function ConcernTag({
     <span
       className={`inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide ring-1 ${styles}`}
     >
+      {children}
+    </span>
+  );
+}
+
+/**
+ * A neutral intake fact on a queue row.
+ *
+ * Deliberately NOT a ConcernTag: those are amber/violet track badges that mean
+ * "this is a Dr Skin FACT pigmentation case". An intake fact is not a concern
+ * and not a severity, so it is not allowed to borrow either colour — it is a
+ * quiet grey statement of what the record contains.
+ */
+function IntakeChip({ children }: { children: React.ReactNode }) {
+  return (
+    <span className="inline-flex items-center rounded-md bg-stone-100 px-2 py-0.5 text-[11px] text-stone-600">
       {children}
     </span>
   );

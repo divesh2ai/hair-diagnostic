@@ -9,6 +9,7 @@ import { SearchBox } from "@/components/ui/search-box";
 import { FilterBar } from "@/components/ui/filter-bar";
 import { Button } from "@/components/ui/button";
 import { ErrorState, LoadingState } from "@/components/ui/states";
+import { CliniciansPanel } from "./CliniciansPanel";
 
 // People & Access — who can reach this platform, and with what authority.
 //
@@ -407,6 +408,13 @@ export default function PeoplePage() {
         emptyTitle="No accounts match these filters"
         emptyDescription="Clear the filters to see the full directory."
       />
+
+      {/* Clinicians get their own table because the one above cannot see them
+          all: it is keyed on the auth account, and a doctor provisioned ahead
+          of their invitation does not have one yet. */}
+      <div className="border-t border-border pt-6">
+        <CliniciansPanel />
+      </div>
     </PageContainer>
   );
 }

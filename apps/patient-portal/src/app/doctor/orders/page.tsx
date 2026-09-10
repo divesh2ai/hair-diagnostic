@@ -13,6 +13,7 @@ import {
 import { PageContainer } from "@/components/app-shell";
 import { ProductImage } from "@/components/kits/ProductImage";
 import { useHydrated } from "@/lib/format/useHydrated";
+import { OrderTabs } from "./OrderTabs";
 import "@/styles/doctor-tokens.css";
 
 // KIT ORDERS — what has been authorised, and what ops has to ship.
@@ -108,6 +109,8 @@ export default function DoctorOrdersPage() {
             below is exactly what the patient was shown.
           </p>
         </div>
+
+        <OrderTabs />
 
         {/* Two numbers that mean something. "Cancelled: 0" was one of the two
             headline figures before, and it is 0 on every clinic that has never

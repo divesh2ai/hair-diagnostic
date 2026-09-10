@@ -129,6 +129,19 @@ export function detectConditions(
     present.add('ENDOMETRIOSIS');
   }
 
+  // ── MISCARRIAGE ─────────────────────────────────────────────────────────────
+  // Reported pregnancy loss carries PHENOTYPE INFLAMATION. The second half of
+  // the prescription — PRO IMMUNE GOLD — comes from the IMMUNE_DEPLETION
+  // allow-list below rather than being duplicated here, because the registry
+  // maps one condition to one kit and the protocol is their union.
+  //
+  // History, not a current state: the option has no recency qualifier, so it
+  // never conflicts with "Currently pregnant" or "Post-delivery or
+  // breastfeeding" — a patient may have had a loss and be pregnant now.
+  if (s.hormonal('Miscarriage')) {
+    present.add('MISCARRIAGE');
+  }
+
   // ── IRON DEFICIENCY ─────────────────────────────────────────────────────────
   // Heavy menstrual bleeding is a confirmed chronic iron-loss driver and must
   // route into IRON_DEFICIENCY even when the patient did not separately declare
@@ -210,7 +223,8 @@ export function detectConditions(
   //        control does not fully address on its own).
   //   2. Allow-listed primary condition
   //        IBS (gut condition), Hyperthyroid, Alopecia Areata, Endometriosis,
-  //        Iron deficiency (declared or via heavy bleeding), Metabolic / diabetic
+  //        Miscarriage, Iron deficiency (declared or via heavy bleeding),
+  //        Metabolic / diabetic
   const hasImmunityDisease =
     s.immunity('Frequent') || s.immunity('Allergies') || s.immunity('Asthma') ||
     s.immunity('Skin rash') || s.immunity('Eczema') ||
@@ -231,6 +245,9 @@ export function detectConditions(
     s.immunity('Alopecia Areata') || s.hairtype('Patchy') || s.cause('Autoimmune') ||
     // Endometriosis
     s.hormonal('Endometriosis') ||
+    // Miscarriage — pregnancy loss depletes immunity alongside the
+    // inflammatory load already covered by the MISCARRIAGE condition.
+    s.hormonal('Miscarriage') ||
     // Iron deficiency — declared or chronic (heavy bleeding)
     s.deficiency('Iron') || s.deficiency('Anaemia') || s.hormonal('Heavy bleeding') ||
     // Metabolic / diabetic

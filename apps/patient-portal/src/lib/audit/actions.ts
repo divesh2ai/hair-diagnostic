@@ -64,6 +64,16 @@ export const AUDIT_ACTION_GROUPS = {
     "PATIENT_DELIVERY_FAILED",
     "PATIENT_REPORT_OPENED",
     "PATIENT_CART_OPENED",
+    "MANUAL_SHARE_OPENED",
+  ],
+  // Rendered clinical artefacts. Separate from "Patient delivery" because
+  // producing an artefact and giving it to a patient are different events with
+  // different consequences: a render that failed harms nobody, a delivery that
+  // went to the wrong person does.
+  "Report assets": [
+    "REPORT_ASSET_REQUESTED",
+    "REPORT_ASSET_RENDERED",
+    "REPORT_ASSET_FAILED",
   ],
   "Clinic administration": [
     "CLINIC_CREATED",
@@ -86,6 +96,18 @@ export const AUDIT_ACTION_GROUPS = {
     "ADMIN_ORDER_EXPORT",
     "DOCTOR_ORDER_SUMMARY_EXPORT",
     "AUDIT_LOG_EXPORTED",
+  ],
+  "Support": [
+    "SUPPORT_TICKET_CREATED",
+    "SUPPORT_TICKET_UPDATED",
+    "SUPPORT_MESSAGE_SENT",
+    "DOCTOR_ACTIVATED",
+    "DOCTOR_DEACTIVATED",
+  ],
+  "Doctor authentication": [
+    "DOCTOR_PHONE_LOGIN_LINKED",
+    "DOCTOR_PHONE_LOGIN_DENIED_UNREGISTERED",
+    "DOCTOR_PHONE_LOGIN_DENIED_CONFLICT",
   ],
 } as const;
 

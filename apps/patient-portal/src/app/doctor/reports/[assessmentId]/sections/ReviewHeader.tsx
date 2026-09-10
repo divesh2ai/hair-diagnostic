@@ -93,57 +93,44 @@ export function ReviewHeader({
   const submitted = visit?.submittedAt ? new Date(visit.submittedAt) : null;
 
   return (
-    <section className="rounded-2xl border border-stone-200 bg-white p-6 shadow-sm">
-      <div className="flex flex-wrap items-start justify-between gap-4">
+    // Compact case strip. One card, two rows of dense context, so the doctor
+    // reaches the clinical conclusion immediately instead of scrolling past a
+    // tall banner. Every field is real payload — nothing is invented for a
+    // missing value; an absent field simply does not render.
+    <section className="rounded-xl border border-stone-200 bg-white px-5 py-3.5 shadow-sm">
+      <div className="flex flex-wrap items-start justify-between gap-x-6 gap-y-2">
         <div className="min-w-0">
-          <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-teal-700">
-            Consultation review
-          </p>
-
-          <h1 className="mt-1 flex items-center gap-2 font-serif text-2xl text-slate-900">
-            <User className="h-5 w-5 text-slate-400" aria-hidden />
-            {patient.name || "(unnamed patient)"}
-          </h1>
-
-          {/* Visit context. Relationship and intent answer "why are they here",
-              which is the question the header was silent on before. */}
-          <div className="mt-2 flex flex-wrap items-center gap-2">
+          {/* Identity + why they are here, on one line. */}
+          <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1">
+            <h1 className="flex items-center gap-2 font-serif text-lg text-slate-900">
+              <User className="h-4 w-4 text-slate-400" aria-hidden />
+              {patient.name || "(unnamed patient)"}
+            </h1>
             {relationship && <RelationshipChip relationship={relationship} />}
             {intentLabel && (
-              <span className="rounded-full bg-stone-100 px-2.5 py-0.5 text-[11px] font-medium text-slate-700">
+              <span className="rounded-full bg-stone-100 px-2 py-0.5 text-[11px] font-medium text-slate-700">
                 {intentLabel}
               </span>
             )}
-            {/* Operational only. Visually quiet, and deliberately not in the
-                same family as anything clinical. */}
+            {/* Operational only — visually quiet, not in any clinical family. */}
             {pathwayLabel && (
-              <span className="rounded-full border border-stone-300 px-2.5 py-0.5 text-[11px] font-medium text-stone-600">
+              <span className="rounded-full border border-stone-300 px-2 py-0.5 text-[11px] font-medium text-stone-600">
                 {pathwayLabel}
               </span>
             )}
           </div>
 
-          <div className="mt-3 flex flex-wrap gap-x-5 gap-y-1 text-sm text-slate-600">
+          {/* Age · sex · clinic · submitted · waiting · contact — one dense
+              row. Middot separators come from the flex gap + leading dots. */}
+          <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-slate-600">
             {patient.age != null && <span>{patient.age} yrs</span>}
             {patient.sex && <span className="capitalize">{patient.sex}</span>}
-            {patient.phone && (
-              <span className="inline-flex items-center gap-1.5">
-                <Phone className="h-3.5 w-3.5" aria-hidden /> {patient.phone}
-              </span>
-            )}
-            {patient.email && (
-              <span className="inline-flex items-center gap-1.5">
-                <Mail className="h-3.5 w-3.5" aria-hidden /> {patient.email}
-              </span>
-            )}
             {clinicName && (
-              <span className="inline-flex items-center gap-1.5">
-                <Building2 className="h-3.5 w-3.5" aria-hidden /> {clinicName}
+              <span className="inline-flex items-center gap-1">
+                <Building2 className="h-3.5 w-3.5 text-slate-400" aria-hidden />
+                {clinicName}
               </span>
             )}
-          </div>
-
-          <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-stone-500">
             {submitted && hydrated && (
               <span>
                 Submitted{" "}
@@ -161,20 +148,39 @@ export function ReviewHeader({
               <span className="font-medium text-slate-700">Waiting {waiting}</span>
             )}
             {patient.phone && (
+              <span className="inline-flex items-center gap-1">
+                <Phone className="h-3.5 w-3.5 text-slate-400" aria-hidden />
+                {patient.phone}
+              </span>
+            )}
+            {patient.email && (
+              <span className="inline-flex items-center gap-1">
+                <Mail className="h-3.5 w-3.5 text-slate-400" aria-hidden />
+                {patient.email}
+              </span>
+            )}
+            {patient.phone && (
               <a
                 href={whatsappHref(patient.phone, patient.name)}
                 target="_blank"
                 rel="noreferrer"
-                className="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-2.5 py-0.5 font-medium text-emerald-800 ring-1 ring-emerald-200 hover:bg-emerald-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-600"
+                // Deliberately NOT green. Green on this surface means a
+                // decision was made and saved; spending it on a contact
+                // affordance is what makes the approval green stop reading as
+                // approval. Plum is the brand accent and carries the action
+                // just as well.
+                className="inline-flex items-center gap-1 rounded-full bg-[color:var(--hd-primary-tint)] px-2 py-0.5 font-medium text-[color:var(--hd-primary-dark)] ring-1 ring-[color:var(--hd-primary-border)] hover:bg-[color:var(--hd-primary-border)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--hd-primary-dark)]"
               >
                 <MessageCircle className="h-3 w-3" aria-hidden />
-                Message on WhatsApp
+                WhatsApp
               </a>
             )}
           </div>
         </div>
 
-        <div className="flex flex-col items-end gap-2">
+        {/* Review status stays top-right, always visible — not only at the
+            bottom decision bar. */}
+        <div className="flex shrink-0 flex-col items-end gap-1.5">
           {statusSlot}
           <span className="text-[11px] text-stone-500">Version {contentVersion}</span>
         </div>

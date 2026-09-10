@@ -33,6 +33,12 @@ export interface ReportActionsProps {
   patientWhatsapp?: string | null;
   /** When true the Approve/etc. workflow has finalized — actions enabled. */
   enabled?: boolean;
+  /**
+   * "utility" renders only Print and Download PDF. Use it on surfaces that
+   * already own a recorded send, so the manual share controls do not compete
+   * with it. Defaults to the full set.
+   */
+  variant?: "full" | "utility";
 }
 
 export function ReportActions({
@@ -43,6 +49,7 @@ export function ReportActions({
   shareToken,
   patientWhatsapp,
   enabled = true,
+  variant = "full",
 }: ReportActionsProps) {
   const [copied, setCopied] = useState(false);
 
@@ -84,6 +91,26 @@ export function ReportActions({
 
   const btn =
     "inline-flex items-center gap-2 rounded-lg border border-stone-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed";
+
+  // "utility" drops the two manual sharing controls.
+  //
+  // On the post-approval review screen they sat beside a RECORDED send, so a
+  // doctor chose between three buttons that all appear to deliver a plan while
+  // only one leaves a delivery record. Print and Download PDF are the genuine
+  // utilities and are all that surface belongs. The full set stays available
+  // to callers that have no recorded-send path of their own.
+  if (variant === "utility") {
+    return (
+      <div className="flex flex-wrap items-center gap-2">
+        <button type="button" onClick={onPrint} disabled={!enabled} className={btn}>
+          <Printer className="h-4 w-4" /> Print
+        </button>
+        <button type="button" onClick={onDownload} disabled={!enabled} className={btn}>
+          <Download className="h-4 w-4" /> Download PDF
+        </button>
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-wrap items-center gap-2">

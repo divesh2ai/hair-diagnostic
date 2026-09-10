@@ -1,5 +1,8 @@
 import { NextResponse } from "next/server";
+import type { Browser, Page } from "playwright-core";
 import { loadOnePageReportData, ReportAccessError } from "@/lib/reports/one-page/loadReport";
+import { createRendererBrowser } from "@/lib/reports/assets/browser";
+import { RenderError } from "@/lib/reports/assets/contract";
 
 type RenderKind = "pdf" | "png";
 
@@ -8,38 +11,6 @@ type RenderKind = "pdf" | "png";
 // renderer if/when needed.
 const A4_VIEWPORT = { width: 1123, height: 794 };
 
-type BrowserPage = {
-  evaluate<T>(fn: () => T | Promise<T>): Promise<T>;
-};
-
-type ChromiumLauncher = {
-  launch(options: { headless: boolean }): Promise<{
-    newContext(options: {
-      viewport: typeof A4_VIEWPORT;
-      deviceScaleFactor: number;
-      extraHTTPHeaders: Record<string, string>;
-    }): Promise<{
-      newPage(): Promise<BrowserRuntimePage>;
-    }>;
-    close(): Promise<void>;
-  }>;
-};
-
-type BrowserRuntimePage = BrowserPage & {
-  emulateMedia(options: { media: "print" }): Promise<void>;
-  goto(url: string, options: { waitUntil: "load" | "networkidle"; timeout: number }): Promise<void>;
-  waitForSelector(selector: string, options: { timeout: number }): Promise<void>;
-  pdf(options: {
-    format: "A4";
-    landscape?: boolean;
-    printBackground: boolean;
-    margin: { top: string; right: string; bottom: string; left: string };
-    preferCSSPageSize: boolean;
-    pageRanges?: string;
-  }): Promise<BodyInit>;
-  locator(selector: string): { screenshot(options: { type: "png" }): Promise<BodyInit> };
-};
-
 function originFromRequest(req: Request): string {
   const url = new URL(req.url);
   const proto = req.headers.get("x-forwarded-proto") ?? url.protocol.replace(":", "") ?? "http";
@@ -47,7 +18,7 @@ function originFromRequest(req: Request): string {
   return `${proto}://${host}`;
 }
 
-async function assertRenderablePage(page: BrowserPage) {
+async function assertRenderablePage(page: Page) {
   const result = await page.evaluate(() => {
     const pageEl = document.querySelector("[data-one-page-report]") as HTMLElement | null;
     if (!pageEl) return { ok: false, errors: ["Report root was not rendered."] };
@@ -112,18 +83,36 @@ export async function renderOnePageReport(
     );
   }
 
-  let chromium: ChromiumLauncher;
+  // ── The browser ──────────────────────────────────────────────────────────
+  //
+  // This route is the CLINIC'S download — "print the sheet as it stands" — and
+  // is separate from the patient-delivery pipeline, which renders the approved
+  // snapshot in the background and never touches this code path.
+  //
+  // What it no longer does is build its import out of
+  // `new Function("specifier", "return import(specifier)")`. That construct is
+  // invisible to Next's bundle tracing, so the deployed function was never
+  // told it needed a browser and answered 501 forever. The launcher below is a
+  // static import and works in both environments.
+  let browser: Browser;
   try {
-    const loadPlaywright = new Function("specifier", "return import(specifier)") as (specifier: string) => Promise<{ chromium: ChromiumLauncher }>;
-    ({ chromium } = await loadPlaywright("playwright"));
-  } catch {
+    ({ browser } = await createRendererBrowser());
+  } catch (err) {
+    // Still a 501 rather than a 500: "this environment cannot render" is a
+    // capability statement the caller can act on, and the doctor UI already
+    // reads it as one.
     return NextResponse.json(
-      { error: "playwright_missing", message: "Install playwright and browser binaries to enable PDF/PNG rendering." },
+      {
+        error: "renderer_unavailable",
+        message:
+          err instanceof RenderError
+            ? err.message
+            : "No Chromium is available in this environment.",
+      },
       { status: 501 },
     );
   }
 
-  const browser = await chromium.launch({ headless: true });
   try {
     const context = await browser.newContext({
       viewport: A4_VIEWPORT,
@@ -270,7 +259,7 @@ export async function renderOnePageReport(
         preferCSSPageSize: true,
         pageRanges: "1",
       });
-      return new Response(pdf, {
+      return new Response(new Uint8Array(pdf), {
         headers: {
           "Content-Type": "application/pdf",
           "Cache-Control": "no-store",
@@ -281,7 +270,7 @@ export async function renderOnePageReport(
 
     const root = page.locator("[data-one-page-report]");
     const png = await root.screenshot({ type: "png" });
-    return new Response(png, {
+    return new Response(new Uint8Array(png), {
       headers: {
         "Content-Type": "image/png",
         "Cache-Control": "no-store",
@@ -289,7 +278,9 @@ export async function renderOnePageReport(
       },
     });
   } finally {
-    await browser.close();
+    // Always. A browser process that outlives its request is a leaked
+    // container, and on a serverless instance that is one per invocation.
+    await browser.close().catch(() => undefined);
   }
 }
 

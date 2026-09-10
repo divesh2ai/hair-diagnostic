@@ -19,6 +19,10 @@ import { DEFAULT_CLINIC_DISPENSING } from "../../ai-engine/kit-scorer/dispensing
 import type { PatientAnswers } from "../../types";
 import type { BudgetProfile } from "../../ai-engine/kit-scorer/types";
 import type { ClinicalProfile } from "../../ai-engine/clinical-engine/types";
+import {
+  resolvePrimaryDiagnosis,
+  labelForSecondaryDiagnosis,
+} from "../../ai-engine/contracts/primaryDiagnosis";
 import { buildClinicalFacts, validateEvidenceGrounding } from "../../ai-engine/clinical-facts";
 import { validateReasoningCompleteness } from "../../ai-engine/clinical-context";
 import { buildClinicalContext } from "../../ai-engine/clinical-context";
@@ -122,7 +126,7 @@ export function buildConsultation(input: BuildConsultationInput): Consultation {
   });
 
   // ── Diagnosis surface ────────────────────────────────────────────────────
-  const diagnosis = buildDiagnosis(clinical, report);
+  const diagnosis = buildDiagnosis(clinical);
 
   // ── Confidence ───────────────────────────────────────────────────────────
   const confidence = computeConfidence(clinical, consultationEvidence);
@@ -311,27 +315,32 @@ function buildEvidenceCatalogue(args: {
   return { questionnaire, items };
 }
 
-function buildDiagnosis(
-  clinical: ClinicalProfile,
-  report: ReturnType<typeof buildClinicalReport>,
-): Diagnosis {
-  // Primary label comes from the dermatologist condition the engine puts at
-  // the top of the clinical interpretation list, falling back to the diagnosis
-  // key when no condition mapping exists.
-  const primaryLabel =
-    report.patientSummary.clinicalInterpretation[0]?.condition ??
-    humanizeKey(clinical.primaryDiagnosis as string);
+function buildDiagnosis(clinical: ClinicalProfile): Diagnosis {
+  // The primary diagnosis is the engine's, resolved through the one approved
+  // label map. See ai-engine/contracts/primaryDiagnosis.
+  //
+  // This used to read `report.patientSummary.clinicalInterpretation[0].condition`
+  // under the comment "the dermatologist condition the engine puts at the top".
+  // That array is ordered by QUESTIONNAIRE flow — suspected-cause answers are
+  // mapped first — not by diagnostic weight, so position 0 was simply the
+  // patient's first cause checkbox. It produced headlines that contradicted
+  // `primaryKey` on 20 of 21 stored staging consultations.
+  //
+  // `clinicalInterpretation` is still rendered in full, as findings, by
+  // `clinicalFindings` above — which is what it has always actually been.
+  const primary = resolvePrimaryDiagnosis(clinical.primaryDiagnosis);
 
   const differentials: DifferentialDiagnosis[] = clinical.secondaryDiagnoses.map((s) => ({
     key: s.key as string,
-    label: humanizeKey(s.key as string),
+    label: labelForSecondaryDiagnosis(s.key),
     score: s.score,
     supportingSignals: [],
   }));
 
   return {
-    primary: primaryLabel,
-    primaryKey: clinical.primaryDiagnosis as string,
+    // Label and key are now two renderings of ONE fact, so they cannot drift.
+    primary: primary.label,
+    primaryKey: primary.key,
     differentials,
     severity: clinical.severity as CSeverity,
     severitySource: "engine",
@@ -487,14 +496,6 @@ function bandFor(score: number): ConfidenceBand {
 
 function clamp(n: number, lo: number, hi: number) {
   return Math.max(lo, Math.min(hi, n));
-}
-
-function humanizeKey(key: string) {
-  return key
-    .toLowerCase()
-    .split("_")
-    .map((s) => s.charAt(0).toUpperCase() + s.slice(1))
-    .join(" ");
 }
 
 function slug(s: string) {

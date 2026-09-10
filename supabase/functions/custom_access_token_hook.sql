@@ -2,6 +2,8 @@
 --
 -- Registered in Supabase: Auth → Hooks → custom_access_token.
 -- Captured from production: 2026-08-10 (project gwkgopbscdftpitppgwe).
+-- Phone fallback for Doctor added: 2026-09-09 (see
+-- prisma/migrations/20260909_doctor_phone_otp_claims/migration.sql).
 -- See supabase/README.md for the sync workflow.
 --
 -- ┌─────────────────────────────────────────────────────────────────────────┐
@@ -20,11 +22,23 @@
 -- │                                                                         │
 -- │   4. Patient             → PATIENT                                      │
 -- │                                                                         │
--- │ Identity match: (supabaseUserId = uid) OR                               │
--- │                 (supabaseUserId IS NULL AND email = auth.users.email).  │
--- │ The email fallback lets pre-provisioned rows work before their          │
--- │ supabaseUserId is backfilled — this is the mechanism used by the        │
--- │ invitation ACCEPT flow to link identity.                                │
+-- │ Identity match:                                                        │
+-- │   OrganizationMember / ClinicMember / Patient:                         │
+-- │     (supabaseUserId = uid) OR                                          │
+-- │     (supabaseUserId IS NULL AND email = auth.users.email).             │
+-- │   Doctor (widened 2026-09-09 for mobile-only launch doctors):          │
+-- │     (supabaseUserId = uid) OR                                          │
+-- │     (supabaseUserId IS NULL AND email = auth.users.email) OR           │
+-- │     (supabaseUserId IS NULL AND phone digits match auth.users.phone    │
+-- │      digits — both sides compared with non-digits stripped, since      │
+-- │      Doctor.phone is stored as "+91XXXXXXXXXX" and Supabase stores     │
+-- │      auth.users.phone as "91XXXXXXXXXX", no leading '+').              │
+-- │ The pre-link fallback lets pre-provisioned rows work before their      │
+-- │ supabaseUserId is backfilled — this is the mechanism the invitation    │
+-- │ ACCEPT flow (email) and the phone-OTP first-login flow (phone) both    │
+-- │ rely on to link identity, and it is what makes the FIRST token minted  │
+-- │ right after OTP verification already carry role=DOCTOR, before any     │
+-- │ application code has had a chance to write supabaseUserId back.        │
 -- │                                                                         │
 -- │ Emitted claims (top-level):                                             │
 -- │   user_role, clinic_id, organization_id                                 │
@@ -51,13 +65,14 @@ DECLARE
   uid           text  := event->>'user_id';
   claims        jsonb := COALESCE(event->'claims', '{}'::jsonb);
   user_email    text;
+  user_phone    text;
   v_role        text;
   v_clinic_id   text;
   v_org_id      text;
   v_doctor_clinic text;
   v_clinic_admin_clinic text;
 BEGIN
-  SELECT u.email INTO user_email FROM auth.users u WHERE u.id::text = uid;
+  SELECT u.email, u.phone INTO user_email, user_phone FROM auth.users u WHERE u.id::text = uid;
 
   -- 1. Organization-level admin
   SELECT om.role::text, om."organizationId" INTO v_role, v_org_id
@@ -72,7 +87,16 @@ BEGIN
     SELECT d."clinicId", c."organizationId" INTO v_doctor_clinic, v_org_id
     FROM public."Doctor" d
     JOIN public."Clinic" c ON c.id = d."clinicId"
-    WHERE (d."supabaseUserId" = uid OR (d."supabaseUserId" IS NULL AND d.email = user_email))
+    WHERE (
+        d."supabaseUserId" = uid
+        OR (d."supabaseUserId" IS NULL AND d.email = user_email)
+        OR (
+          d."supabaseUserId" IS NULL
+          AND user_phone IS NOT NULL
+          AND d.phone IS NOT NULL
+          AND regexp_replace(d.phone, '\D', '', 'g') = regexp_replace(user_phone, '\D', '', 'g')
+        )
+      )
       AND d."isActive" = true AND d."deletedAt" IS NULL
     LIMIT 1;
 

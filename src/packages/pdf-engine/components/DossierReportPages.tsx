@@ -575,7 +575,7 @@ export function DossierReportPages({ report }: { report: ClinicalReport }) {
             />
             <View style={S.story}>
               {insightSections.map((s, i) => (
-                <View key={s.eyebrow} style={[S.storyItem, i === insightSections.length - 1 ? { marginBottom: 0 } : null]} wrap={false}>
+                <View key={s.eyebrow} style={[S.storyItem, i === insightSections.length - 1 ? { marginBottom: 0 } : {}]} wrap={false}>
                   <Text style={S.storyEyebrow}>{s.eyebrow.toUpperCase()}</Text>
                   <Text style={S.storyTitle}>{s.title}</Text>
                   <Text style={S.storyBody}>{s.body}</Text>

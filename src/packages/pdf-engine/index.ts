@@ -103,9 +103,14 @@ export async function generateAndStoreReports(payload: ReportInputPayload) {
 
   console.log(`[PDF Engine] Generating reports for Assessment ${payload.assessmentId}...`);
 
-  // Derive a patient-specific filename, e.g. "rohini-report.pdf"
-  const patientSlug = toFilenameSlug(payload.patient.name) || 'patient';
-  const patientFilename = `${patientSlug}-report.pdf`;
+  // The object path must not carry patient identity.
+  //
+  // This was `${toFilenameSlug(payload.patient.name)}-report.pdf`, which put a
+  // real person's name into a storage key — visible in bucket listings, in
+  // signed URLs, and in any log line that records the path. The assessment id
+  // in the parent segment already makes the object unique, and the patient is
+  // resolvable from it by anyone actually authorised to do so.
+  const patientFilename = 'patient-report.pdf';
 
   try {
     // 1. Render Patient Report to a Stream

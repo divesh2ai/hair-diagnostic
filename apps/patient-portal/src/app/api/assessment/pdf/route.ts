@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { ArtifactType } from '@prisma/client';
 import { generateAndStoreReports } from '@hairos/packages/pdf-engine';
+import { signReportUrl } from '@hairos/packages/pdf-engine/storage';
 import { getClinicContext, handleAuthError, isSuperAdmin } from '@/lib/auth';
 import { verifyReviewToken } from '@/lib/reviewToken';
 import { logLifecycleEvent } from '@/lib/observability/lifecycle';
@@ -280,7 +281,23 @@ export async function GET(req: Request) {
     return NextResponse.json({ error: 'PDF not ready yet' }, { status: 202 });
   }
 
-  const response = await fetch(patientPdfUrl);
+  // `clinical-reports` is a PRIVATE bucket, so the stored value is a
+  // bucket-relative object path, not a fetchable URL — see pdf-engine/storage.
+  // Sign it here, on a request that has already passed the release gate above.
+  //
+  // ── Rows written before the bucket was private ──────────────────────────────
+  // Those hold a full `.../storage/v1/object/public/clinical-reports/<path>`
+  // URL. Passing one through unchanged only works while the bucket is public —
+  // the moment it is locked down, every historical report 400s. So recover the
+  // object path out of the legacy URL and sign that instead. Anything else
+  // absolute (an external host) is passed through as before.
+  const fetchUrl = await resolveReportUrl(patientPdfUrl);
+
+  if (!fetchUrl) {
+    return NextResponse.json({ error: 'Failed to fetch PDF' }, { status: 502 });
+  }
+
+  const response = await fetch(fetchUrl);
   if (!response.ok || !response.body) {
     return NextResponse.json({ error: 'Failed to fetch PDF' }, { status: 502 });
   }
@@ -302,3 +319,34 @@ export async function GET(req: Request) {
   });
 }
 
+
+/**
+ * Turn whatever is stored in the REPORT artifact into a URL this server can
+ * actually fetch, whichever era the row was written in.
+ *
+ *   • bucket-relative path            -> sign it (current writer)
+ *   • legacy public storage URL       -> recover the path, sign that
+ *   • any other absolute URL          -> pass through untouched
+ *
+ * The legacy branch is what lets `clinical-reports` be flipped from public to
+ * private without orphaning every report generated before the change.
+ */
+async function resolveReportUrl(stored: string): Promise<string | null> {
+  if (!/^https?:\/\//i.test(stored)) {
+    return signReportUrl(stored, 300);
+  }
+
+  // `.../storage/v1/object/public/clinical-reports/<objectPath>`
+  const legacy = stored.match(
+    /\/storage\/v1\/object\/(?:public\/)?clinical-reports\/(.+)$/i,
+  );
+  if (legacy?.[1]) {
+    const objectPath = decodeURIComponent(legacy[1]);
+    const signed = await signReportUrl(objectPath, 300);
+    // If signing fails the bucket may still be public — fall back to the
+    // stored URL rather than denying a doctor a report we can plainly reach.
+    return signed ?? stored;
+  }
+
+  return stored;
+}

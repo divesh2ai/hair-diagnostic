@@ -42,21 +42,63 @@ export class DeliveryNotProvisionedError extends Error {
 }
 
 /**
+ * Thrown by `createDelivery` when a concurrent request already opened (or
+ * completed) a delivery for the exact same (assessmentId, subject,
+ * consultationVersionId) — see
+ * prisma/migrations/20260908_whatsapp_delivery_idempotency_index. The
+ * application-level idempotency check (`findExistingSuccessfulDelivery`) is a
+ * SELECT-then-branch and cannot by itself stop two simultaneous requests from
+ * both passing it before either has written a row; this is the database
+ * closing that window. `existingDeliveryId` is provided so the loser can look
+ * up what the winner actually did, rather than guessing.
+ */
+export class DeliveryRaceLostError extends Error {
+  constructor(readonly existingDeliveryId: string) {
+    super("A concurrent request already claimed this delivery.");
+    this.name = "DeliveryRaceLostError";
+  }
+}
+
+/**
  * Did this fail because the migration has not been applied?
  *
  * 42P01 is undefined_table, 42703 is undefined_column — the latter is the one
  * that actually fires here, since `WhatsappDelivery` itself has existed since
  * the platform's first migration and only its new columns are missing. 42704
  * (undefined_object) covers a cast to a type the database does not have yet.
+ *
+ * 22P02 (invalid_text_representation) is the ADDITIONAL case
+ * 20260908_whatsapp_report_delivery introduces: writing `status =
+ * 'CONFIGURATION_ERROR'` or `'BLOCKED_NO_CONSENT'` to a database whose
+ * "DeliveryStatus" enum has not yet had those values added fails this way,
+ * not with a missing-column error — Postgres has the column, it just does not
+ * recognise the value being put in it. Without this, that specific write
+ * would surface as an opaque 500 instead of the same clean "not provisioned
+ * here yet" signal every other unprovisioned write already gives.
  */
 function isMissing(err: unknown): boolean {
   if (isSchemaDriftError(err)) return true;
   if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === "P2010") {
     const meta = (err.meta ?? {}) as { code?: string; message?: string };
-    if (meta.code === "42P01" || meta.code === "42703" || meta.code === "42704") {
+    if (
+      meta.code === "42P01" ||
+      meta.code === "42703" ||
+      meta.code === "42704" ||
+      meta.code === "22P02"
+    ) {
       return true;
     }
-    return /does not exist/i.test(meta.message ?? err.message);
+    return /does not exist/i.test(meta.message ?? err.message) ||
+      /invalid input value for enum/i.test(meta.message ?? err.message);
+  }
+  return false;
+}
+
+/** 23505 unique_violation — the WhatsappDelivery_idempotency_key partial index. */
+function isUniqueViolation(err: unknown): boolean {
+  if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === "P2010") {
+    const meta = (err.meta ?? {}) as { code?: string; message?: string };
+    return meta.code === "23505" || /duplicate key value/i.test(meta.message ?? err.message);
   }
   return false;
 }
@@ -101,7 +143,14 @@ export type DeliverySubject = "REPORT" | "CART";
  * true, rather than a status that asserts something about a message nobody has
  * heard back about.
  */
-export type DeliveryStatusValue = "PENDING" | "SENT" | "DELIVERED" | "FAILED";
+export type DeliveryStatusValue =
+  | "PENDING"
+  | "SENT"
+  | "DELIVERED"
+  | "FAILED"
+  /** Added 20260908_whatsapp_report_delivery — see deliveryStore's guard for what happens if this column set is not yet provisioned. */
+  | "CONFIGURATION_ERROR"
+  | "BLOCKED_NO_CONSENT";
 
 export interface DeliveryRecord {
   id: string;
@@ -171,6 +220,14 @@ export interface CreateDeliveryInput {
   patientPhone: string;
   templateId: string | null;
   sentByDoctorId: string;
+  /**
+   * The approved version this send is for — written on the INSERT itself
+   * (not only in the later provenance update) so the idempotency partial
+   * index has something to key on from the very first moment a row exists.
+   * Null for CART, which is intentionally outside this idempotency check —
+   * see the migration's own comment.
+   */
+  consultationVersionId?: string | null;
 }
 
 /**
@@ -178,25 +235,62 @@ export interface CreateDeliveryInput {
  * purpose: if the process dies mid-send, the durable record is "we attempted
  * this", which is recoverable, rather than nothing at all, which looks
  * identical to never having tried.
+ *
+ * Throws `DeliveryRaceLostError` when a concurrent caller already opened (or
+ * completed) a delivery for the same (assessmentId, subject,
+ * consultationVersionId) — see WhatsappDelivery_idempotency_key. The caller
+ * (sendPatientLink) is expected to read back the winner's row rather than
+ * treat this as a genuine failure.
  */
 export async function createDelivery(
   input: CreateDeliveryInput,
 ): Promise<DeliveryRecord> {
   const id = newId();
   return guarded(async () => {
+    try {
+      const rows = await prisma.$queryRaw<RawRow[]>(Prisma.sql`
+        INSERT INTO "WhatsappDelivery" (
+          "id", "assessmentId", "clinicId", "subject", "patientPhone",
+          "templateId", "status", "attempts", "sentByDoctorId",
+          "consultationVersionId", "createdAt", "updatedAt"
+        ) VALUES (
+          ${id}, ${input.assessmentId}, ${input.clinicId}, ${input.subject},
+          ${input.patientPhone}, ${input.templateId}, 'PENDING'::"DeliveryStatus", 0,
+          ${input.sentByDoctorId}, ${input.consultationVersionId ?? null}, NOW(), NOW()
+        )
+        RETURNING ${SELECT_COLUMNS}
+      `);
+      return toRecord(rows[0]);
+    } catch (err) {
+      if (isUniqueViolation(err) && input.consultationVersionId) {
+        const existing = await prisma.$queryRaw<RawRow[]>(Prisma.sql`
+          SELECT ${SELECT_COLUMNS} FROM "WhatsappDelivery"
+           WHERE "assessmentId" = ${input.assessmentId}
+             AND "subject" = ${input.subject}
+             AND "consultationVersionId" = ${input.consultationVersionId}
+             AND "status" IN ('PENDING'::"DeliveryStatus", 'SENT'::"DeliveryStatus", 'DELIVERED'::"DeliveryStatus")
+           ORDER BY "createdAt" ASC
+           LIMIT 1
+        `);
+        if (existing[0]) throw new DeliveryRaceLostError(existing[0].id);
+      }
+      throw err;
+    }
+  });
+}
+
+/**
+ * Read one delivery row by id. Used to resolve `DeliveryRaceLostError`: the
+ * losing side of a concurrent send needs to know what the winner's row
+ * currently says, which may still be PENDING (winner mid-flight) or already
+ * terminal (SENT/FAILED/…).
+ */
+export async function getDeliveryById(id: string): Promise<DeliveryRecord | null> {
+  return guarded(async () => {
     const rows = await prisma.$queryRaw<RawRow[]>(Prisma.sql`
-      INSERT INTO "WhatsappDelivery" (
-        "id", "assessmentId", "clinicId", "subject", "patientPhone",
-        "templateId", "status", "attempts", "sentByDoctorId",
-        "createdAt", "updatedAt"
-      ) VALUES (
-        ${id}, ${input.assessmentId}, ${input.clinicId}, ${input.subject},
-        ${input.patientPhone}, ${input.templateId}, 'PENDING'::"DeliveryStatus", 0,
-        ${input.sentByDoctorId}, NOW(), NOW()
-      )
-      RETURNING ${SELECT_COLUMNS}
+      SELECT ${SELECT_COLUMNS} FROM "WhatsappDelivery" WHERE "id" = ${id} LIMIT 1
     `);
-    return toRecord(rows[0]);
+    return rows[0] ? toRecord(rows[0]) : null;
   });
 }
 
@@ -241,24 +335,34 @@ export interface MarkFailedInput {
   providerStatus: string | null;
   /** Match on `messageId` rather than `id`. Used by the provider webhook. */
   byMessageId?: boolean;
+  /**
+   * The terminal status to write. Defaults to FAILED. CONFIGURATION_ERROR and
+   * BLOCKED_NO_CONSENT are the other two non-success terminal states this
+   * function writes — kept as ONE writer rather than three near-identical
+   * ones, since all three are "this delivery did not go out, here is why" and
+   * differ only in the reason code and whether a retry can ever succeed.
+   */
+  status?: "FAILED" | "CONFIGURATION_ERROR" | "BLOCKED_NO_CONSENT";
 }
 
 export async function markDeliveryFailed(
   input: MarkFailedInput,
 ): Promise<DeliveryRecord | null> {
+  const status = input.status ?? "FAILED";
   return guarded(async () => {
     const match = input.byMessageId
       ? Prisma.sql`"messageId" = ${input.deliveryId}`
       : Prisma.sql`"id" = ${input.deliveryId}`;
     const rows = await prisma.$queryRaw<RawRow[]>(Prisma.sql`
       UPDATE "WhatsappDelivery"
-         SET "status"         = 'FAILED'::"DeliveryStatus",
+         SET "status"         = ${status}::"DeliveryStatus",
              "lastError"      = ${input.error},
              "providerStatus" = ${input.providerStatus},
              -- Attempts counts SEND attempts we made. A provider reporting a
              -- late failure is not another attempt by us, so the counter is
-             -- only advanced on our own send path.
-             "attempts"       = "attempts" + ${input.byMessageId ? 0 : 1},
+             -- only advanced on our own send path. BLOCKED_NO_CONSENT and
+             -- CONFIGURATION_ERROR never reached a provider either.
+             "attempts"       = "attempts" + ${input.byMessageId || status !== "FAILED" ? 0 : 1},
              "updatedAt"      = NOW()
        WHERE ${match}
       RETURNING ${SELECT_COLUMNS}
@@ -336,6 +440,55 @@ export async function readLatestDeliveries(
   });
 }
 
+/**
+ * Has THIS EXACT release already been delivered? — the idempotency check.
+ *
+ * ── What "duplicate" means here, precisely ──────────────────────────────────
+ * A doctor re-sending a report after a genuine failure, or after re-approving
+ * a revised consultation, is legitimate and must keep working — see
+ * `readLatestDeliveries`'s own note that re-sending is an expected action.
+ * What must NOT happen is two successful provider sends for the SAME
+ * approved consultation version, from one user action (a double-click, a
+ * network retry replaying the request). So this asks a narrower question
+ * than "was anything ever sent" — it asks "was THIS version's report already
+ * accepted by the provider" — and only a match on BOTH the subject and the
+ * exact `consultationVersionId` counts.
+ *
+ * ── Never blocks a send it cannot verify ────────────────────────────────────
+ * `consultationVersionId` is a 20260907_report_asset_pipeline column, one
+ * migration later than the columns `guarded()` already tolerates missing. If
+ * this specific check cannot run — column not provisioned, or any other
+ * error — it returns null (no known duplicate) rather than raising, so a
+ * missing idempotency optimisation degrades to "no worse than before this
+ * existed", never to "sends are blocked".
+ */
+export async function findExistingSuccessfulDelivery(input: {
+  assessmentId: string;
+  subject: DeliverySubject;
+  consultationVersionId: string;
+}): Promise<DeliveryRecord | null> {
+  try {
+    const rows = await prisma.$queryRaw<RawRow[]>(Prisma.sql`
+      SELECT ${SELECT_COLUMNS}
+        FROM "WhatsappDelivery"
+       WHERE "assessmentId" = ${input.assessmentId}
+         AND "subject" = ${input.subject}
+         AND "consultationVersionId" = ${input.consultationVersionId}
+         AND "status" IN ('SENT'::"DeliveryStatus", 'DELIVERED'::"DeliveryStatus")
+       ORDER BY "createdAt" DESC
+       LIMIT 1
+    `);
+    return rows[0] ? toRecord(rows[0]) : null;
+  } catch (err) {
+    if (isMissing(err)) return null;
+    console.warn(
+      "[delivery] idempotency check failed, proceeding without it:",
+      err instanceof Error ? err.name : "unknown",
+    );
+    return null;
+  }
+}
+
 export interface FailedDeliveryRow extends DeliveryRecord {
   clinicId: string | null;
   clinicName: string | null;
@@ -378,4 +531,66 @@ export async function readFailedDeliveries(
       clinicName: r.clinicName,
     }));
   });
+}
+
+export interface DeliveryReportProvenance {
+  deliveryId: string;
+  patientId: string | null;
+  channel: string | null;
+  consultationVersionId: string | null;
+  reportAssetId: string | null;
+  onePagerAttached: boolean | null;
+  assetSha256: string | null;
+  assetTemplateVersion: string | null;
+}
+
+/**
+ * Record WHAT a delivery carried, beside the record that it happened.
+ *
+ * ── Why this is a separate statement, and why it cannot fail a send ─────────
+ * These columns arrive with 20260907_report_asset_pipeline, which is a later
+ * migration than the one the INSERT in `createDelivery` depends on. A
+ * deployment that has applied one and not the other must still be able to send
+ * a patient their report: losing the provenance is a gap in the record, losing
+ * the send is a gap in the care, and those are not the same size of problem.
+ *
+ * So this is its own UPDATE, and it swallows the unprovisioned case rather
+ * than propagating it. Every other error is logged and swallowed too, for the
+ * same reason — by the time this runs, a message is already on its way to a
+ * patient's phone and there is nothing left to roll back.
+ *
+ * ── Why the hash is copied ─────────────────────────────────────────────────
+ * `assetSha256` and `assetTemplateVersion` are duplicated from the asset row
+ * rather than joined to it at read time. A re-render tomorrow produces
+ * different bytes; if this row pointed at "whatever the asset says now", the
+ * historical record of what a patient received would change underneath it.
+ */
+export async function recordDeliveryReportProvenance(
+  input: DeliveryReportProvenance,
+): Promise<void> {
+  try {
+    await prisma.$executeRaw(Prisma.sql`
+      UPDATE "WhatsappDelivery"
+         SET "patientId"             = COALESCE(${input.patientId}, "patientId"),
+             "channel"               = COALESCE(${input.channel}, "channel"),
+             "consultationVersionId" = COALESCE(${input.consultationVersionId}, "consultationVersionId"),
+             "reportAssetId"         = COALESCE(${input.reportAssetId}, "reportAssetId"),
+             "onePagerAttached"      = COALESCE(${input.onePagerAttached}, "onePagerAttached"),
+             "assetSha256"           = COALESCE(${input.assetSha256}, "assetSha256"),
+             "assetTemplateVersion"  = COALESCE(${input.assetTemplateVersion}, "assetTemplateVersion"),
+             "updatedAt"             = NOW()
+       WHERE "id" = ${input.deliveryId}
+    `);
+  } catch (err) {
+    if (isMissing(err)) {
+      // The migration has not been applied here. The delivery itself is
+      // recorded; only its provenance is not, which is the honest state of a
+      // deployment that has not switched this on.
+      return;
+    }
+    console.warn(
+      "[delivery] could not record report provenance:",
+      err instanceof Error ? err.name : "unknown",
+    );
+  }
 }

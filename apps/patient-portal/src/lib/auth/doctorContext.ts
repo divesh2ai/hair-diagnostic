@@ -37,7 +37,12 @@ export type DoctorContext = {
     id: string;
     clinicId: string;
     name: string;
-    email: string;
+    // Null for a doctor provisioned ahead of their login. Such a row cannot
+    // reach this context today — no email means no auth account means no
+    // `supabaseUserId` to match on — but the type follows the column rather
+    // than that reasoning, so the day an account is linked by mobile alone
+    // this is a compile error somewhere honest instead of a runtime surprise.
+    email: string | null;
     isActive: boolean;
   };
   mode: "doctor" | "admin_view";
