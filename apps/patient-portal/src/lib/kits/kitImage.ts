@@ -38,6 +38,7 @@ import {
   TOPICAL_ASSET_REGISTRY,
   type ProductAsset,
 } from "@/lib/reports/one-page/productAssets";
+import { APPROVED_SUBSTITUTIONS } from "@/lib/commerce/budgetSubstitution";
 
 export type ProductCategory = "kit" | "topical";
 
@@ -211,14 +212,33 @@ function fromRegistry(
  * key itself. Returns null when nothing matches — callers render a labelled
  * frame rather than a wrong carton.
  */
+/**
+ * Governed budget alternatives (lib/commerce/budgetSubstitution) are their
+ * own products and must never fall through to the fuzzy alias table below.
+ *
+ * "HYPOTHYROID_2" contains "THYROID", so without this guard a substituted
+ * kit with no photography yet fell through to `/THYROID CARE|THYROID/` and
+ * rendered PRO_FACT_THYROID_CARE's carton — a different product, at a
+ * different price, beside whatever the doctor actually prescribed. The same
+ * risk exists for any future alternative approved before its asset lands.
+ * A governed id with no exact registry hit returns null (labelled
+ * placeholder) in preference to resolving to something wrong.
+ */
+const GOVERNED_ALTERNATIVE_KIT_IDS: ReadonlySet<string> = new Set(
+  APPROVED_SUBSTITUTIONS.map((entry) => entry.alternativeKitId as string),
+);
+
 export function resolveKitImage(kitId: string | null | undefined): ResolvedProductImage | null {
   if (!kitId) return null;
   const text = clean(kitId);
+  const normalized = normalizeCode(text);
 
   // Exact registry key first. An id that already IS a key must not be routed
   // through the alias table, where a broad pattern could re-point it.
-  const direct = fromRegistry(KIT_ASSET_REGISTRY, normalizeCode(text), "kit");
+  const direct = fromRegistry(KIT_ASSET_REGISTRY, normalized, "kit");
   if (direct) return direct;
+
+  if (GOVERNED_ALTERNATIVE_KIT_IDS.has(normalized)) return null;
 
   for (const [pattern, code] of KIT_ALIASES) {
     if (pattern.test(text)) {

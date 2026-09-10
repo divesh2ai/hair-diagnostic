@@ -89,6 +89,26 @@ const kits = {
   PRO_FACT_META_B_HYPOTHYROID_VEG: { key: "PRO_FACT_META_B_HYPOTHYROID_VEG", src: `${KIT_ASSET_BASE}/post_m_hypothyroid.png`, alt: "Pro Fact Meta B Hypothyroid Veg kit" },
   LACTIHEALTH: { key: "LACTIHEALTH", src: `${KIT_ASSET_BASE}/lactihealth.jpeg`, alt: "Lactihealth kit" },
   LACTIHEALTH_VEG: { key: "LACTIHEALTH_VEG", src: `${KIT_ASSET_BASE}/lactihealth_veg.jpeg`, alt: "Lactihealth Veg kit" },
+
+  // ── Governed budget alternatives ─────────────────────────────────────────
+  // Own products, own cartons — never derived from the canonical kit they
+  // replace. Source: clinic-supplied photography, reconciled 2026-09-10
+  // against APPROVED_SUBSTITUTIONS (lib/commerce/budgetSubstitution.ts).
+  // Keyed by the exact canonical alternative id, which is also the literal
+  // `kitId` a substituted TreatmentPhase carries — so this is an EXACT
+  // registry hit, never routed through kitImage.ts's fuzzy alias table (see
+  // that file's own guard for why that distinction matters here).
+  PRO_IMMUNE_1: { key: "PRO_IMMUNE_1", src: `${KIT_ASSET_BASE}/pro_immune_1.png`, alt: "Pro Immune 1 kit" },
+  M4_PLUS: { key: "M4_PLUS", src: `${KIT_ASSET_BASE}/m4_plus.png`, alt: "M4+ kit" },
+  F4_PLUS: { key: "F4_PLUS", src: `${KIT_ASSET_BASE}/f4_plus.png`, alt: "F4+ kit" },
+  SHED_CONTROL: { key: "SHED_CONTROL", src: `${KIT_ASSET_BASE}/shed_control.png`, alt: "Dr. FACT Shed Control kit" },
+  IRON_UP_1: { key: "IRON_UP_1", src: `${KIT_ASSET_BASE}/iron_up_1.png`, alt: "Pro Fact Iron Up 1 kit" },
+  GI_HEALTH_1: { key: "GI_HEALTH_1", src: `${KIT_ASSET_BASE}/gi_health_1.png`, alt: "Pro Fact GI Health 1 kit" },
+  STRESS_BUST_3: { key: "STRESS_BUST_3", src: `${KIT_ASSET_BASE}/stress_bust_3.png`, alt: "Pro Fact Stress Bust 3 kit" },
+  // Confirmed by the clinic 2026-09-10: HYPOTHYROID_2 is inherently the veg
+  // formulation — "Hypothyroid-2V.png" is not a variant needing a non-veg
+  // counterpart, it is the product's only carton.
+  HYPOTHYROID_2: { key: "HYPOTHYROID_2", src: `${KIT_ASSET_BASE}/hypothyroid_2.png`, alt: "Pro Fact Hypothyroid 2 kit" },
 } satisfies Record<string, ProductAsset>;
 
 const topicals = {

@@ -1363,6 +1363,18 @@ function benefitBullets(phase: TreatmentPhase): string[] {
 }
 
 function mapKitNameForDisplay(rawName: string, code: string): string {
+  // Governed alternatives are their own products and must never be renamed
+  // to the canonical kit they replace. "PRO_IMMUNE_1" contains "PRO IMMUNE"
+  // and "IRON_UP_1" contains "IRON UP" — both matched fuzzy rules below meant
+  // for PRO_IMMUNE_GOLD / IRON_UP_GOLD, so a doctor's own substitution printed
+  // "Pro Immune 5" / "Iron Up Gold" on a row that was dispensing a cheaper,
+  // different product at a different price. Same discipline as
+  // GOVERNED_ALTERNATIVE_KIT_IDS elsewhere in this file: exact id, no fuzzy
+  // fallthrough, and the registry's own display name wins outright.
+  const normalizedCode = cleanText(code).toUpperCase().replace(/[\s-]+/g, "_");
+  if (GOVERNED_ALTERNATIVE_KIT_IDS.has(normalizedCode)) {
+    return shortText(rawName || code, code, LIMITS.kitName);
+  }
   const text = cleanText(`${code} ${rawName}`).toUpperCase().replace(/_/g, " ");
   if (/PHENOTYPE.*INFLAM/.test(text)) return "Phenotype Inflammation";
   // Patient-facing: expand internal MPHL/FPHL abbreviations. Internal asset

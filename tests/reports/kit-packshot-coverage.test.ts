@@ -25,16 +25,11 @@ import type { ClinicalReport, TreatmentPhase } from "../../src/packages/ai-engin
  * without an asset fails this suite immediately rather than joining an
  * invisible backlog.
  */
-const AWAITING_PRODUCT_PHOTOGRAPHY = [
-  "F4_PLUS",
-  "GI_HEALTH_1",
-  "HYPOTHYROID_2",
-  "IRON_UP_1",
-  "M4_PLUS",
-  "PRO_IMMUNE_1",
-  "SHED_CONTROL",
-  "STRESS_BUST_3",
-];
+// 2026-09-10: clinic-supplied photography reconciled and wired for all 8
+// alternatives. HYPOTHYROID_2 was briefly withheld pending confirmation that
+// "Hypothyroid-2V.png" (VEG-labelled) is the product's only carton, not one
+// of two variants — confirmed by the clinic; see productAssets.ts.
+const AWAITING_PRODUCT_PHOTOGRAPHY: string[] = [];
 
 const context: OnePageReportContext = {
   assessmentId: "packshot-coverage",
