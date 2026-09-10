@@ -36,14 +36,28 @@ type Cart = {
   } | null;
   lineItems: {
     kitId: string;
-    displayName: string;
+    /** The identifier the clinical system supplied, preserved verbatim. */
+    sourceIdentifierSnapshot: string;
+    /** Null until the line's commercial identity is approved. */
+    displayName: string | null;
     description: string | null;
     quantity: number;
-    unitPriceInr: number;
-    unitPriceLabel: string;
+    commercialState:
+      | "CHARGEABLE"
+      | "IDENTITY_REVIEW"
+      | "UNAVAILABLE"
+      | "PRICE_PENDING";
+    blockingReasons: string[];
+    /** Integer paise, and null unless the line is genuinely chargeable. */
+    unitPriceMinor: number | null;
+    unitPriceLabel: string | null;
+    lineTotalMinor: number | null;
   }[];
-  subtotalInr: number;
-  subtotalLabel: string;
+  /** False when any line is unresolved, unavailable, or priced-but-unapproved. */
+  chargeable: boolean;
+  blockingReasons: string[];
+  subtotalMinor: number | null;
+  subtotalLabel: string | null;
 };
 
 export default function PatientCartPage({
@@ -110,6 +124,13 @@ export default function PatientCartPage({
   }
 
   const clinicPhone = cart.patient?.phone ?? "";
+
+  // A product name exists only for a line whose commercial identity has been
+  // approved. Everything else shows the identifier the doctor actually
+  // prescribed, rather than a similar-looking product's name.
+  const labelOf = (li: Cart["lineItems"][number]) =>
+    li.displayName ?? li.sourceIdentifierSnapshot;
+
   const waMsg = encodeURIComponent(
     `Hi, I have questions about my Dr FACT recommendation (order ${cart.order.id.slice(0, 8)}).`,
   );
@@ -119,7 +140,7 @@ export default function PatientCartPage({
       <AnimatePresence>
         {animating && (
           <CartCheckoutAnimation
-            itemNames={cart.lineItems.map((li) => li.displayName)}
+            itemNames={cart.lineItems.map(labelOf)}
             onComplete={finishAnimation}
           />
         )}
@@ -204,11 +225,34 @@ export default function PatientCartPage({
             <div className="min-w-0 flex-1">
               <div className="flex items-start justify-between gap-3">
                 <p className="font-serif text-lg leading-tight text-slate-900">
-                  {li.displayName}
+                  {labelOf(li)}
                 </p>
-                <p className="shrink-0 text-base font-medium tabular-nums text-slate-900">
-                  {li.unitPriceLabel}
-                </p>
+                {/* A number appears only on a CHARGEABLE line. Every other
+                    state says what is missing, in words. The alternative —
+                    showing a figure while the price or the product is still
+                    unconfirmed — is what this page used to do, and with an
+                    unknown kit that figure was an invented ₹5,500. */}
+                <div className="shrink-0 text-right">
+                  {li.commercialState === "CHARGEABLE" ? (
+                    <p className="text-base font-medium tabular-nums text-slate-900">
+                      {li.unitPriceLabel}
+                    </p>
+                  ) : (
+                    <p
+                      className={`max-w-[9rem] text-[11px] font-medium leading-snug ${
+                        li.commercialState === "PRICE_PENDING"
+                          ? "text-amber-700"
+                          : "text-stone-500"
+                      }`}
+                    >
+                      {li.commercialState === "PRICE_PENDING"
+                        ? "Price confirmation pending"
+                        : li.commercialState === "IDENTITY_REVIEW"
+                          ? "Kit identity requires review"
+                          : "Not available to order"}
+                    </p>
+                  )}
+                </div>
               </div>
 
               <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1">
@@ -240,22 +284,40 @@ export default function PatientCartPage({
           <span className="text-base text-stone-700">
             Subtotal · {cart.lineItems.length}-month plan
           </span>
-          <span className="font-serif text-3xl text-slate-900 tabular-nums">
-            {cart.subtotalLabel}
-          </span>
+          {cart.subtotalMinor === null ? (
+            <span className="text-sm font-medium text-amber-700">
+              Awaiting confirmation
+            </span>
+          ) : (
+            <span className="font-serif text-3xl text-slate-900 tabular-nums">
+              {cart.subtotalLabel}
+            </span>
+          )}
         </div>
         <p className="text-xs text-stone-500 leading-relaxed">
           Each kit is a 1-month supply of your doctor-approved protocol (
           {cart.lineItems.length}{" "}
           {cart.lineItems.length === 1 ? "kit" : "kits"} ={" "}
           {cart.lineItems.length}{" "}
-          {cart.lineItems.length === 1 ? "month" : "months"}). Prices indicative
-          — final invoice arrives from the clinic. Shipping is included.
+          {cart.lineItems.length === 1 ? "month" : "months"}).{" "}
+          {cart.subtotalMinor === null
+            ? "Your clinic is confirming the details above and will share the final cost with you directly."
+            : "Prices indicative — final invoice arrives from the clinic. Shipping is included."}
         </p>
         {confirmed ? (
           <div className="flex items-center gap-2 rounded-xl bg-teal-50 px-3 py-2.5 text-sm text-teal-900 ring-1 ring-teal-200">
             <CheckCircle2 className="size-4" />
             Order confirmed. The clinic will reach out on WhatsApp.
+          </div>
+        ) : !cart.chargeable ? (
+          /* Monetary progression stops while any line is unconfirmed. Hiding
+             a button is presentation, not a control — the server refuses to
+             quote a total for the same order independently, and this is the
+             honest surface of that decision rather than the decision itself. */
+          <div className="rounded-xl bg-amber-50 px-3 py-2.5 text-sm leading-relaxed text-amber-900 ring-1 ring-amber-200">
+            Your clinic is confirming some details on this plan, so it can’t be
+            ordered online just yet. Message them below and they’ll take it from
+            there.
           </div>
         ) : (
           <button

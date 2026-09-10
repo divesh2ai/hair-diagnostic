@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { priceForKit, totalRevenueInr, formatInr } from "@/lib/pricing/kitPrices";
+import { formatInrFromMinor } from "@/lib/commerce/kitPricing";
+import { evaluateOrderForPatientCharge } from "@/lib/commerce/sellability";
 import { getKitInfo } from "@hairos/packages/registries/kits/info";
 
 // GET /api/cart/[assessmentId] — public.
@@ -12,6 +13,27 @@ import { getKitInfo } from "@hairos/packages/registries/kits/info";
 //
 // Security note: assessment IDs are cuids and treated as bearer tokens for
 // the demo. Production should sign these URLs (JWT or clinic-scoped token).
+//
+// ══ WHY PRICING HERE IS NOT `priceForKit` ═══════════════════════════════════
+//
+// This route used to quote `priceForKit(kitId)`, which is
+// `KIT_PRICE_INR[kitId] ?? 5500`. Two things were wrong with that at the
+// PATIENT boundary specifically:
+//
+//   - The fallback. An identifier the map did not know was quoted at Rs 5,500,
+//     a figure that corresponds to no product and no price sheet. The governed
+//     budget alternatives (M4+, F4+, PRO IMMUNE 1, STRESS BUST 3 …) are exactly
+//     such identifiers — none of them is in KIT_PRICE_INR — so a doctor could
+//     substitute a kit down to Rs 1,655 and the patient would be shown
+//     Rs 5,500 for it.
+//   - The name. `getKitInfo` normalises its argument, so an unconfirmed
+//     identifier could render a similar-looking product's name beside that
+//     invented price.
+//
+// Both are now decided by the same governance layer the doctor's substitution
+// UI uses — `lib/commerce/sellability`, over `kitIdentity` + `kitPricing` — so
+// there is ONE authoritative price outcome, and the doctor and the patient
+// cannot be looking at different numbers for the same kit.
 
 export const dynamic = "force-dynamic";
 
@@ -51,18 +73,48 @@ export async function GET(
     );
   }
 
-  const lineItems = intent.kitIds.map((kitId) => {
-    const info = getKitInfo(kitId);
+  const commercial = evaluateOrderForPatientCharge(intent.kitIds);
+
+  const lineItems = intent.kitIds.map((kitId, i) => {
+    const decision = commercial.lines[i]!;
+
+    // A product name is shown only once its commercial identity is approved.
+    // An unresolved line keeps the raw prescribed identifier, so the patient
+    // and the clinic are looking at the same string when they talk about it.
+    const info = decision.canonicalKitId ? getKitInfo(decision.canonicalKitId) : null;
+
+    const commercialState = decision.sellable
+      ? ("CHARGEABLE" as const)
+      : decision.reasons.includes("KIT_IDENTITY_REQUIRES_REVIEW")
+        ? ("IDENTITY_REVIEW" as const)
+        : decision.reasons.includes("KIT_NOT_IN_CATALOGUE")
+          ? ("UNAVAILABLE" as const)
+          : ("PRICE_PENDING" as const);
+
+    // Null unless the line is genuinely chargeable. There is no fallback, no
+    // default, and no PRICE_PRESENT figure dressed up as a price.
+    const unitPriceMinor = decision.chargeableAmountMinor;
+
     return {
       kitId,
-      displayName: info?.displayName ?? kitId,
+      sourceIdentifierSnapshot: decision.sourceIdentifierSnapshot,
+      displayName: info?.displayName ?? null,
       description: info?.treatmentObjective ?? null,
       quantity: 1,
-      unitPriceInr: priceForKit(kitId),
-      unitPriceLabel: formatInr(priceForKit(kitId)),
+      commercialState,
+      blockingReasons: decision.reasons,
+      unitPriceMinor,
+      unitPriceLabel: unitPriceMinor === null ? null : formatInrFromMinor(unitPriceMinor),
+      lineTotalMinor: unitPriceMinor,
     };
   });
-  const subtotal = totalRevenueInr(intent.kitIds);
+
+  // A part-priced cart is not a cart. A patient shown a subtotal reads it as
+  // the price of everything in front of them, so if any line is not chargeable
+  // there is no honest total to display — and therefore no total.
+  const subtotalMinor = commercial.chargeable
+    ? lineItems.reduce((sum, li) => sum + (li.lineTotalMinor ?? 0), 0)
+    : null;
 
   return NextResponse.json({
     order: {
@@ -89,7 +141,11 @@ export async function GET(
         }
       : null,
     lineItems,
-    subtotalInr: subtotal,
-    subtotalLabel: formatInr(subtotal),
+    // The single flag the patient UI gates monetary progression on. False
+    // whenever any line is unresolved, unavailable, or priced but unapproved.
+    chargeable: commercial.chargeable,
+    blockingReasons: commercial.blockingReasons,
+    subtotalMinor,
+    subtotalLabel: subtotalMinor === null ? null : formatInrFromMinor(subtotalMinor),
   });
 }
