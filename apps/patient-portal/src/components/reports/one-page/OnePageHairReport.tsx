@@ -7,6 +7,7 @@ import type {
   PrintTopical,
   PrintTimelineStage,
 } from "@/lib/reports/one-page/viewModel";
+import { clinicalIdentityOf } from "@/lib/reports/one-page/viewModel";
 import { clinicalOptionCodeForLabel, resolveClinicalOptionAsset } from "@/lib/reports/one-page/clinicalOptionAssets";
 import { clinicalMeaningForKit, supportBenefitsForKit } from "@/lib/reports/one-page/clinicalCopy";
 import { ClinicalOptionIcon } from "./ClinicalOptionIcon";
@@ -340,7 +341,15 @@ function MappingRow({ kit, index }: { kit: PrintTreatmentKit; index: number }) {
                 data-asset-role="product"
               />
             ) : (
-              <span className="support-shot-fallback">{kit.name}</span>
+              /* Deliberate, and never another product's carton. Repeating the
+                 kit name here just duplicated the label beside it and read as
+                 a broken image; saying the photograph is missing is honest
+                 and is the only claim this frame can make. */
+              <span className="support-shot-fallback" data-asset-role="unavailable">
+                Product image
+                <br />
+                unavailable
+              </span>
             )}
           </div>
           <div className="support-name serif">{kit.name}</div>
@@ -372,7 +381,10 @@ function MappingRow({ kit, index }: { kit: PrintTreatmentKit; index: number }) {
  * from the approved kit definition.
  */
 function benefitLinesForKit(kit: PrintTreatmentKit): string[] {
-  const canonical = canonicalBenefitsForKit(kit.name, kit.kitCode);
+  // Purpose belongs to the clinical role, not the dispensed product — same
+  // reason as conciseClinicalMeaning below.
+  const canonicalIdentity = clinicalIdentityOf(kit);
+  const canonical = canonicalBenefitsForKit(canonicalIdentity.name, canonicalIdentity.code);
   const fromModel = (kit.benefits ?? [])
     .map((line) => line.trim())
     .filter(Boolean)
@@ -427,9 +439,15 @@ function conciseClinicalMeaning(kit: PrintTreatmentKit, displayedTriggers?: read
   const triggers =
     displayedTriggers && displayedTriggers.length > 0 ? displayedTriggers : kit.linkedDrivers;
 
+  // Clinical copy is resolved from the kit that earned the row, not the one
+  // being dispensed: a governed substitution swaps the product only, and
+  // resolveKitCopyFamily has no family for a substitute like "F4+", so keying
+  // this on the display name would drop the row to the fallback below and
+  // print an interpretation belonging to some other indication.
+  const clinicalIdentity = clinicalIdentityOf(kit);
   const approved = clinicalMeaningForKit({
-    kitCode: kit.kitCode,
-    name: kit.name,
+    kitCode: clinicalIdentity.code,
+    name: clinicalIdentity.name,
     triggers,
     patientInterpretation: kit.mappedInterpretation,
   });

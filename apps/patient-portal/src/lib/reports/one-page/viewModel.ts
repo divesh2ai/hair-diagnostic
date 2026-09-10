@@ -9,6 +9,7 @@ import type { PatientImageResolution, ProductAsset } from "./productAssets";
 import { conditionCodeForText, getConditionAsset, getProductAsset, getRecoveryStageIllustration, getTopicalAsset, resolvePatientImageAsset } from "./productAssets";
 import type { ClinicalOptionAssetStatus } from "./clinicalOptionAssets";
 import { isClinicalOptionExcluded, resolveClinicalOptionAsset } from "./clinicalOptionAssets";
+import { APPROVED_SUBSTITUTIONS } from "@/lib/commerce/budgetSubstitution";
 
 export type PrintClinicalSnapshotItem = {
   optionCode: string;
@@ -173,6 +174,32 @@ export type PrintTreatmentKit = {
   priority: DriverPriority;
   name: string;
   kitCode: string;
+  /**
+   * The identity every CLINICAL lookup for this row is resolved from, which
+   * is NOT necessarily the product being supplied.
+   *
+   * A governed budget substitution (lib/commerce/budgetSubstitution) replaces
+   * the product and nothing else — the indication that earned the row, its
+   * Ludwig/pattern grade, its interpretation and its treatment role all
+   * belong to the kit the doctor originally prescribed. Every clinical
+   * mapping in this file keys off kit NAME TEXT (kitTagPattern, roleForKit,
+   * interpretationLookupForKit, tagRelevantToKit), so resolving them from the
+   * substitute silently re-diagnoses the patient: "F4+" matches none of the
+   * FPHL vocabulary, and interpretationLookupForKit answers an unmatched
+   * pattern with the FIRST interpretation in the list.
+   *
+   * So: clinicalKitCode/clinicalKitName drive meaning; name/kitCode/asset
+   * drive what is displayed and dispensed.
+   *
+   * Optional only so the static display fixtures need not restate them; every
+   * row built from real assessment data sets them explicitly. Read them
+   * through clinicalIdentityOf(), which falls back to the display identity —
+   * correct for an unsubstituted row, and the only case a fixture has.
+   */
+  clinicalKitCode?: string;
+  clinicalKitName?: string;
+  /** Present only when this row's product was substituted. Display-layer only. */
+  substitution?: { fromKitId: string; fromDisplayName: string; toKitId: string } | null;
   selectedBecause: string;
   mappedDriverId: string;
   mappedCondition: string;
@@ -187,6 +214,20 @@ export type PrintTreatmentKit = {
    */
   clinicianAdded?: boolean;
 };
+
+/**
+ * The identity a row's clinical column must be resolved from.
+ *
+ * Always use this instead of reading `kit.name` / `kit.kitCode` for anything
+ * clinical: after a governed substitution those name the product being
+ * supplied, not the indication that earned the row.
+ */
+export function clinicalIdentityOf(kit: PrintTreatmentKit): { code: string; name: string } {
+  return {
+    code: kit.clinicalKitCode ?? kit.kitCode,
+    name: kit.clinicalKitName ?? kit.name,
+  };
+}
 
 export type PrintTopical = {
   name: string;
@@ -483,8 +524,29 @@ function illustrationFor(text: string): IllustrationKey {
   return "follicle";
 }
 
+/**
+ * Governed budget alternatives are their OWN products and must never inherit
+ * another kit's carton.
+ *
+ * The rules below match on loose substrings, which is safe for the canonical
+ * catalogue but not for these: "HYPOTHYROID_2" contains "THYROID", so it fell
+ * through to PRO_FACT_THYROID_CARE and rendered Thyroid Care's packshot beside
+ * a different SKU's price. Returning the id unchanged makes an alternative
+ * with no photography resolve NOTHING, which the report already handles, in
+ * preference to resolving something wrong.
+ *
+ * Derived from the approved-substitution table rather than listed here, so a
+ * future alternative is covered the day it is approved.
+ */
+const GOVERNED_ALTERNATIVE_KIT_IDS: ReadonlySet<string> = new Set(
+  APPROVED_SUBSTITUTIONS.map((entry) => entry.alternativeKitId as string),
+);
+
 function kitAssetCode(raw: string): string {
   const text = cleanText(raw).toUpperCase();
+  if (GOVERNED_ALTERNATIVE_KIT_IDS.has(text.replace(/\s+/g, "_"))) {
+    return text.replace(/\s+/g, "_");
+  }
   if (/IRON UP.*VEG/.test(text)) return "IRON_UP_GOLD_VEG";
   if (/IRON UP/.test(text)) return "IRON_UP_GOLD";
   if (/TE GOLD.*VEG/.test(text)) return "HAIR_FACT_TE_GOLD_VEG";
@@ -1430,7 +1492,12 @@ function kitTagPattern(kitText: string): RegExp | null {
   // 2026-08-05) alongside the classical immune / autoimmune / infection
   // vocabulary. Without these tokens the trigger chip fell back to
   // "Clinician-added support" even after the gate fired.
-  if (/pro immune/.test(text)) return /immune|autoimmune|allerg|infection|frequent|asthma|areata|regrowth|oxidative-immune|follic|skin rash|eczema|mouth ulcer|tongue ulcer|ulcer/i;
+  // Dietary pattern belongs to the Pro Immune role (clinician-confirmed
+  // 2026-09-10): the kit's nutritional support is what a diet answer informs.
+  // Deliberately narrow — only dietary-PATTERN vocabulary. "crash diet" /
+  // "extreme diet" stay with RWL Shield, and no generic "nutrition"/"diet"
+  // token is matched, so a weight-loss answer cannot drift onto this row.
+  if (/pro immune/.test(text)) return /immune|autoimmune|allerg|infection|frequent|asthma|areata|regrowth|oxidative-immune|follic|skin rash|eczema|mouth ulcer|tongue ulcer|ulcer|non.?veg|vegetarian|vegan|eggetarian|pescatarian/i;
   if (/\bfphl\b|female pattern/.test(text)) return /female|androgen|ludwig|pattern|bodybuild|heavy gym|gym/i;
   if (/\bmphl\b|male pattern/.test(text)) return /male|androgen|norwood|pattern|dht|receding|crown|vertex|temple|bodybuild|heavy gym|gym/i;
   if (/early greying/.test(text)) return /grey|gray|greying|melanin|melanocyte|oxidative|smok|vaping|alcohol|stress|anxiet|depress|sleep|shift|pigment/i;
@@ -1450,9 +1517,18 @@ function kitTagPattern(kitText: string): RegExp | null {
   return null;
 }
 
+/**
+ * Fail-closed: a kit with no governed tag pattern gets NO trigger chips.
+ *
+ * This used to read `!pattern || pattern.test(tag)`, so an unmapped kit
+ * accepted EVERY patient answer — which is how a pattern-hair-loss row ended
+ * up displaying "Hair pulling habit" and "Non-vegetarian". A row that cannot
+ * prove a trigger belongs to it degrades to the clinician-added support
+ * label, which is honest; claiming an unrelated trigger is not.
+ */
 function tagRelevantToKit(kitText: string, tag: string): boolean {
   const pattern = kitTagPattern(kitText);
-  return !pattern || pattern.test(tag);
+  return pattern !== null && pattern.test(tag);
 }
 
 function collectEvidenceStrings(value: unknown): string[] {
@@ -1462,18 +1538,52 @@ function collectEvidenceStrings(value: unknown): string[] {
   return [];
 }
 
-function kitFromPhase(phase: TreatmentPhase): Omit<PrintTreatmentKit, "id" | "sequence" | "role" | "priority" | "selectedBecause" | "mappedDriverId"> & { code: string } {
+/**
+ * The pre-substitution phase, when this row's product was swapped.
+ *
+ * The substitution route preserves the complete original phase so a Restore
+ * needs no lookup and fabricates nothing (see the kit-substitution route);
+ * the report reads the same snapshot to keep the clinical column anchored to
+ * the kit that actually earned the row.
+ */
+function originalPhaseOf(phase: TreatmentPhase): TreatmentPhase | null {
+  const meta = (phase as { meta?: { substitution?: { originalPhase?: unknown } } }).meta;
+  const original = meta?.substitution?.originalPhase;
+  return original && typeof original === "object" ? (original as TreatmentPhase) : null;
+}
+
+function kitFromPhase(phase: TreatmentPhase): Omit<PrintTreatmentKit, "id" | "sequence" | "role" | "priority" | "selectedBecause" | "mappedDriverId" | "clinicalKitCode" | "clinicalKitName"> & { code: string; clinicalText: string; clinicalKitCode: string; clinicalKitName: string } {
   const code = cleanText(phase.kitId || phase.displayName).toUpperCase();
   const rawName = cleanText(phase.displayName, code);
   const kitCode = kitAssetCode(code || rawName);
-  const kitText = `${code} ${rawName}`;
-  const sourceLinkedDrivers = toArray<string>(phase.supportingConditions).map((condition) => shortText(condition, "", 46)).filter((tag) => tagRelevantToKit(kitText, tag)).slice(0, 4);
-  const canonicalCondition = canonicalConditionForKit(rawName, code);
+
+  // Clinical identity: the original kit when this row was substituted, the
+  // kit itself otherwise. See PrintTreatmentKit.clinicalKitCode for why the
+  // two must not be collapsed.
+  const original = originalPhaseOf(phase);
+  const clinicalCode = original
+    ? cleanText(original.kitId || original.displayName).toUpperCase()
+    : code;
+  const clinicalName = original ? cleanText(original.displayName, clinicalCode) : rawName;
+  const clinicalText = `${clinicalCode} ${clinicalName}`;
+
+  const sourceLinkedDrivers = toArray<string>(phase.supportingConditions).map((condition) => shortText(condition, "", 46)).filter((tag) => tagRelevantToKit(clinicalText, tag)).slice(0, 4);
+  const canonicalCondition = canonicalConditionForKit(clinicalName, clinicalCode);
   const linkedDrivers = uniq([canonicalCondition ?? "", ...sourceLinkedDrivers]).filter(Boolean);
   return {
     code,
+    clinicalText,
     name: mapKitNameForDisplay(rawName, code),
     kitCode,
+    clinicalKitCode: kitAssetCode(clinicalCode || clinicalName),
+    clinicalKitName: mapKitNameForDisplay(clinicalName, clinicalCode),
+    substitution: original
+      ? {
+          fromKitId: clinicalCode,
+          fromDisplayName: mapKitNameForDisplay(clinicalName, clinicalCode),
+          toKitId: code,
+        }
+      : null,
     mappedCondition: canonicalCondition ?? "Assessment-linked hair concern",
     mappedInterpretation: null,
     linkedDrivers,
@@ -1564,11 +1674,16 @@ function interpretationLookupForKit(kitText: string, report: ClinicalReport): { 
   const interpretations = toArray<{ condition?: unknown; signal?: unknown; interpretation?: unknown }>(report.patientSummary.clinicalInterpretation);
   if (interpretations.length === 0) return { condition: null, interpretation: null };
   const pattern = kitTagPattern(kitText);
+  // Fail safe, never borrow. The previous `if (!pattern) return true` handed
+  // an unmatched kit the FIRST interpretation in the list — which is exactly
+  // how a substituted pattern-hair-loss row printed trichotillomania's
+  // clinical meaning to a patient. A row with no governed match shows no
+  // clinical meaning rather than another indication's.
+  if (!pattern) return { condition: null, interpretation: null };
   const match = interpretations.find((entry) => {
     const condition = cleanText(entry.condition);
     const signal = cleanText(entry.signal);
     if (!condition) return false;
-    if (!pattern) return true;
     return pattern.test(condition) || pattern.test(signal);
   });
   return {
@@ -1602,14 +1717,53 @@ function buildTreatmentPlan(
   // Doctor-approval is authoritative: every approved phase produces a row in
   // the treatment plan. No upstream slice — the renderer chooses density from
   // the row count, but never silently drops an approved kit.
+  // ── Deterministic driver assignment ──────────────────────────────────────
+  //
+  // Previously each kit independently sorted the whole driver pool and took
+  // ranked[0], so nothing stopped two kits claiming the SAME driver: a
+  // hair-pulling driver could head both the TTM row and an unrelated one, and
+  // the duplicate was invisible because each row looked locally correct.
+  //
+  // A driver is now claimed by exactly one row. Every (kit, driver) pair is
+  // scored once, the pairs are ranked globally, and the strongest match wins
+  // the driver; a kit whose drivers are all taken falls back to the
+  // positional driver rather than stealing one. Ties break on kit order, so
+  // the same input always produces the same assignment.
+  const sources = phases.map((phase) => kitFromPhase(phase));
+  const claimed = new Map<number, number>(); // kit index -> driver index
+  const takenDrivers = new Set<number>();
+  const candidates = sources
+    .flatMap((source, kitIndex) =>
+      driverPool.map((driver, driverIndex) => ({
+        kitIndex,
+        driverIndex,
+        score: scoreKitForDriver({ ...source, name: source.clinicalKitName }, driver),
+      })),
+    )
+    .sort((a, b) => b.score - a.score || a.kitIndex - b.kitIndex || a.driverIndex - b.driverIndex);
+  for (const candidate of candidates) {
+    if (claimed.has(candidate.kitIndex) || takenDrivers.has(candidate.driverIndex)) continue;
+    if (candidate.score <= 0) continue;
+    claimed.set(candidate.kitIndex, candidate.driverIndex);
+    takenDrivers.add(candidate.driverIndex);
+  }
+
   const built = phases.map<{ kit: PrintTreatmentKit; phase: TreatmentPhase }>((phase, index) => {
-    const source = kitFromPhase(phase);
-    const ranked = [...driverPool].sort((a, b) => scoreKitForDriver(source, b) - scoreKitForDriver(source, a));
-    const driver = ranked[0] ?? driverPool[index % driverPool.length];
-    const isIronKit = /iron|ferritin|blood/i.test(`${source.code} ${source.name}`);
-    const linkedDrivers = patientLinkedTags(source, report);
-    const role = roleForKit(`${source.code} ${source.name} ${linkedDrivers.join(" ")}`, index);
-    const interpretation = interpretationLookupForKit(`${source.code} ${source.name}`, report);
+    const source = sources[index]!;
+    const claimedDriver = claimed.get(index);
+    const driver =
+      claimedDriver !== undefined
+        ? driverPool[claimedDriver]!
+        : driverPool[index % driverPool.length]!;
+    const isIronKit = /iron|ferritin|blood/i.test(source.clinicalText);
+    // Every clinical lookup below reads the CLINICAL identity, never the
+    // substituted product — see PrintTreatmentKit.clinicalKitCode.
+    const linkedDrivers = patientLinkedTags(
+      { name: source.clinicalKitName, code: source.clinicalKitCode },
+      report,
+    );
+    const role = roleForKit(`${source.clinicalText} ${linkedDrivers.join(" ")}`, index);
+    const interpretation = interpretationLookupForKit(source.clinicalText, report);
     return {
       phase,
       kit: {
@@ -1619,6 +1773,9 @@ function buildTreatmentPlan(
         priority: isIronKit ? "Supporting Contributor" : driver.priority,
         name: source.name,
         kitCode: source.kitCode,
+        clinicalKitCode: source.clinicalKitCode,
+        clinicalKitName: source.clinicalKitName,
+        substitution: source.substitution,
         selectedBecause: shortSentence(linkedDrivers.join(", ") || driver.trigger, "This kit matches the doctor-reviewed driver pattern.", LIMITS.selectedBecause),
         mappedDriverId: driver.id,
         mappedCondition: interpretation.condition ?? source.mappedCondition,
