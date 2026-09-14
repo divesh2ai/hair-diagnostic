@@ -7,6 +7,10 @@ export interface SkinCommonAnswers {
   gender: string;
   skinType: string;
   sensitiveSkin: string;
+  /** As typed. Normalised server-side, same as HairFact's intake. Optional so an older persisted blob (pre-consent) still parses. */
+  phone: string;
+  /** Explicit opt-in to WhatsApp delivery at `phone`. Never inferred from phone being present. See lib/patient/whatsappConsent.ts. */
+  whatsappConsent: boolean;
 }
 
 export interface SkinCommonProfile {
@@ -42,6 +46,8 @@ export const emptySkinCommonAnswers = (): SkinCommonAnswers => ({
   gender: '',
   skinType: '',
   sensitiveSkin: '',
+  phone: '',
+  whatsappConsent: false,
 });
 
 export function sanitizeSkinCommonAnswers(value: unknown): SkinCommonAnswers {
@@ -52,6 +58,10 @@ export function sanitizeSkinCommonAnswers(value: unknown): SkinCommonAnswers {
     gender: String(source.gender ?? ''),
     skinType: String(source.skinType ?? ''),
     sensitiveSkin: String(source.sensitiveSkin ?? ''),
+    phone: String(source.phone ?? ''),
+    // Defaults false on anything unrecognised — a corrupted/older persisted
+    // blob must never be read as consent that was never actually given.
+    whatsappConsent: source.whatsappConsent === true,
   };
 }
 

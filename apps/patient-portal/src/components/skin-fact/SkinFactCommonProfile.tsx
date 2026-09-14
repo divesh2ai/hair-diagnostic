@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import { ArrowLeft, ArrowRight, Check, ShieldCheck, Sparkles } from 'lucide-react';
 import {
@@ -10,6 +10,7 @@ import {
   type SkinCommonAnswers,
   type SkinCommonProfile,
 } from '@/lib/skin-fact/skinJourney';
+import { normaliseMobile } from '@/lib/patient/phone';
 import styles from './pigmentation.module.css';
 
 const SCREENS = [
@@ -33,10 +34,25 @@ export function SkinFactCommonProfile() {
     answers: emptySkinCommonAnswers(),
   });
 
+  // `?start=1` means "a new patient is starting here" — only the Skin FACT
+  // landing CTAs set it. Every other arrival (the Edit-profile link, and the
+  // guard redirects that seven skin screens fire when a profile is missing)
+  // rehydrates instead.
+  //
+  // The distinction matters because `intake?next=concerns` is also the target
+  // of browser Back from the concern picker. Resetting on every mount wiped a
+  // completed profile and minted a fresh sessionId, which additionally orphaned
+  // the skin intake keyed to the old session. The flag is consumed immediately
+  // so the history entry Back returns to no longer carries it.
+  // Runs once per clinic. `query` is a fresh object on every render, so an
+  // unguarded effect re-seeds state — including `setStep(0)` — whenever the URL
+  // object changes, which the `start` cleanup below deliberately does.
+  const initialisedFor = useRef<string | null>(null);
   useEffect(() => {
-    const saved = query.get('edit') === '1'
-      ? loadSkinCommonProfile(localStorage, clinicSlug)
-      : null;
+    if (initialisedFor.current === clinicSlug) return;
+    initialisedFor.current = clinicSlug;
+    const fresh = query.get('start') === '1';
+    const saved = fresh ? null : loadSkinCommonProfile(localStorage, clinicSlug);
     setProfile(saved ?? {
       productType: 'SKIN_FACT',
       intakeType: 'COMMON',
@@ -47,7 +63,13 @@ export function SkinFactCommonProfile() {
     });
     setStep(0);
     setLoaded(true);
-  }, [clinicSlug, query]);
+    if (fresh) {
+      const rest = new URLSearchParams(query);
+      rest.delete('start');
+      const suffix = rest.toString();
+      router.replace(`/q/${clinicSlug}/skin/intake${suffix ? `?${suffix}` : ''}`);
+    }
+  }, [clinicSlug, query, router]);
 
   useEffect(() => {
     if (loaded && profile.sessionId) {
@@ -60,6 +82,13 @@ export function SkinFactCommonProfile() {
       ...current,
       completedAt: undefined,
       answers: { ...current.answers, [key]: value },
+    }));
+
+  const setWhatsappConsent = (value: boolean) =>
+    setProfile((current) => ({
+      ...current,
+      completedAt: undefined,
+      answers: { ...current.answers, whatsappConsent: value },
     }));
 
   function nextRoute() {
@@ -76,6 +105,8 @@ export function SkinFactCommonProfile() {
       const age = Number(profile.answers.age);
       if (!Number.isInteger(age) || age < 10 || age > 150) next.age = 'Enter an age between 10 and 150.';
       if (!profile.answers.gender) next.gender = 'Choose a gender option.';
+      const phoneResult = normaliseMobile(profile.answers.phone);
+      if (!phoneResult.ok) next.phone = 'Enter a valid 10-digit mobile number.';
     } else {
       if (!profile.answers.skinType) next.skinType = 'Choose a skin type.';
       if (!profile.answers.sensitiveSkin) next.sensitiveSkin = 'Choose a sensitivity option.';
@@ -109,6 +140,11 @@ export function SkinFactCommonProfile() {
           <Field label="What is your name?" error={errors.name}><input value={profile.answers.name} onChange={(event) => answer('name', event.target.value)} autoComplete="name" /></Field>
           <Field label="What is your age?" error={errors.age}><input type="number" min="10" max="150" value={profile.answers.age} onChange={(event) => answer('age', event.target.value)} inputMode="numeric" /></Field>
           <Choice label="How do you describe your gender?" value={profile.answers.gender} options={['Female', 'Male', 'Another identity', 'Prefer not to say']} onChange={(value) => answer('gender', value)} error={errors.gender} />
+          <Field label="Mobile number" error={errors.phone}><input type="tel" inputMode="numeric" value={profile.answers.phone} onChange={(event) => answer('phone', event.target.value)} autoComplete="tel-national" placeholder="98765 43210" /></Field>
+          <label className={styles.consentRow}>
+            <input type="checkbox" checked={profile.answers.whatsappConsent} onChange={(event) => setWhatsappConsent(event.target.checked)} />
+            <span>I agree to receive my Dr FACT assessment report and related care information on WhatsApp at the mobile number provided.</span>
+          </label>
         </> : <>
           <Choice label="How would you describe your skin type?" value={profile.answers.skinType} options={['Dry', 'Oily', 'Combination', 'Normal', 'Not sure']} onChange={(value) => answer('skinType', value)} error={errors.skinType} />
           <Choice label="Do you have sensitive skin?" value={profile.answers.sensitiveSkin} options={['Yes', 'No', 'Not sure']} onChange={(value) => answer('sensitiveSkin', value)} error={errors.sensitiveSkin} />

@@ -87,6 +87,8 @@ export type AssessmentDictionary = {
     /** Why we ask. Reassurance, not a legal notice. */
     mobileHint: string;
     privacyNote: string;
+    /** Checkbox label — opt-in only, never pre-checked, never implied by entering a phone number. */
+    whatsappConsentLabel: string;
     continueLabel: string;
     checking: string;
     nameRequired: string;

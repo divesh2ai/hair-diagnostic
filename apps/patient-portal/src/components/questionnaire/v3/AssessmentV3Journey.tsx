@@ -100,7 +100,14 @@ export interface AssessmentV3JourneyProps {
    * phone here, while the skin intake — which collects the full set up front —
    * keeps passing everything.
    */
-  patientInfoOverride?: { name?: string; phone?: string; email?: string; gender?: string };
+  patientInfoOverride?: {
+    name?: string;
+    phone?: string;
+    email?: string;
+    gender?: string;
+    /** Explicit opt-in to WhatsApp delivery, from the intake gate's checkbox. */
+    whatsappConsent?: boolean;
+  };
   /**
    * Why the patient is here today, from the pre-assessment intake gate.
    * Advisory: the server re-resolves identity at submission and refuses an

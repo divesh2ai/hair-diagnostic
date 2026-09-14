@@ -58,6 +58,7 @@ export const pa: Dictionary = {
     sectionOperations: "ਕਾਰਵਾਈਆਂ",
     sectionGovernance: "ਪ੍ਰਸ਼ਾਸਨ",
     sectionSystem: "ਸਿਸਟਮ",
+    support: "Help & Support",
   },
   shell: {
     searchPlaceholder: "ਮਰੀਜ਼, ਰਿਪੋਰਟਾਂ, ਕਲੀਨਿਕਸ ਖੋਜੋ…",

@@ -169,7 +169,12 @@ function validate(plan: ResponsePlan, raw: PresentableResponse, directAnswer: st
     if (card.type === "ComparisonCard") return [...card.shared, ...card.leftOnly, ...card.rightOnly];
     if (card.type === "ClinicalRelevanceCard") return [card.interpretation];
     if (card.type === "EvidenceCard") return [card.summary];
-    if ("items" in card) return [...card.items, ...(card.interpretation ? [card.interpretation] : [])];
+    if ("items" in card) {
+      // `interpretation` is present on KitSummaryCard but not on every card
+      // that has `items`; test for it rather than assuming the union.
+      const interpretation = "interpretation" in card ? card.interpretation : undefined;
+      return [...card.items, ...(interpretation ? [interpretation] : [])];
+    }
     return [];
   }).join(" ");
   if (plan.depth !== "DEEP_DIVE" && words(visibleText).length > plan.wordRange.max) issues.push("VISIBLE_RESPONSE_TOO_LONG");

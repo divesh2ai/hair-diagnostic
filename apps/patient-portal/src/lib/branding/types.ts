@@ -17,6 +17,7 @@ export type ClinicBranding = {
   // Current doctor's avatar — header chrome / report attribution.
   doctorAvatarUrl: string | null;
   doctorName: string | null;
+  doctorSpecialization: string | null;
   doctorSignatureUrl: string | null;
 
   // PDF/Report branding payloads — shape opaque to UI; consumed by the
@@ -38,6 +39,7 @@ export const PLATFORM_BRANDING: ClinicBranding = {
   tagline: null,
   doctorAvatarUrl: null,
   doctorName: null,
+  doctorSpecialization: null,
   doctorSignatureUrl: null,
   pdfBranding: null,
   reportBranding: null,

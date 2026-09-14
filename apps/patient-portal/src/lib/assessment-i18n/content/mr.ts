@@ -210,6 +210,7 @@ export const mrContent: AssessmentContentPack = {
         'Heavy bleeding periods': 'पाळीत जास्त रक्तस्राव',
         'Currently pregnant': 'सध्या गर्भवती आहे',
         'Post-delivery or breastfeeding': 'बाळंतपणानंतर किंवा स्तनपान सुरू आहे',
+        Miscarriage: 'गर्भपात',
         'Peri-menopause': 'मेनोपॉजची सुरुवात (पेरी-मेनोपॉज)',
         'Post-menopause': 'मेनोपॉजनंतर',
         'Hormone Replacement Therapy (HRT)': 'हार्मोन रिप्लेसमेंट थेरपी (HRT)',

@@ -253,6 +253,259 @@ exports[`snapshot — AGA spectrum > male_aga_oily_01 (Male AGA Grade 2 full sta
 }
 `;
 
+exports[`snapshot — AGA spectrum female_aga_stress_01 (Female AGA Grade 2 full stack) 1`] = `
+{
+  "clinicalProfile": {
+    "primaryDiagnosis": "AGA_FEMALE_123",
+    "primaryScore": 70,
+    "rootCauses": [
+      "STRESS",
+      "GENETICS",
+    ],
+    "scalpStates": [
+      "OILY_SCALP",
+      "DANDRUFF",
+    ],
+    "secondaryDiagnoses": [
+      {
+        "key": "TE_STRESS",
+        "score": 55,
+      },
+      {
+        "key": "SCALP_INFLAM",
+        "score": 42,
+      },
+    ],
+    "severity": "MILD",
+  },
+  "recommendation": {
+    "appliedRules": [],
+    "protocolLabel": "Recovery protocol for 3 condition(s): Female pattern hair loss · Scalp / perifollicular inflammation · Metabolic dysfunction.",
+    "rankedKits": [
+      {
+        "kitId": "PHENOTYPE INFLAMATION",
+        "matchedNeeds": [
+          "INFLAMMATION_CONTROL",
+        ],
+        "phase": 1,
+        "score": 100,
+      },
+      {
+        "kitId": "PRO FACT META B",
+        "matchedNeeds": [
+          "METABOLIC_SUPPORT",
+        ],
+        "phase": 2,
+        "score": 92,
+      },
+      {
+        "kitId": "FPHL",
+        "matchedNeeds": [
+          "DHT_SUPPRESSION",
+          "FOLLICLE_STIMULATION",
+        ],
+        "phase": 3,
+        "score": 84,
+      },
+    ],
+  },
+  "therapyNeeds": [
+    "SHEDDING_ARREST",
+    "INFLAMMATION_CONTROL",
+    "DHT_SUPPRESSION",
+    "METABOLIC_SUPPORT",
+    "FOLLICLE_STIMULATION",
+  ],
+}
+`;
+
+exports[`snapshot — AGA spectrum female_aga_under30_01 (AGA_FEMALE_UNDER30 special protocol) 1`] = `
+{
+  "clinicalProfile": {
+    "primaryDiagnosis": "AGA_FEMALE_123",
+    "primaryScore": 65,
+    "rootCauses": [
+      "GENETICS",
+    ],
+    "scalpStates": [
+      "OILY_SCALP",
+      "DANDRUFF",
+    ],
+    "secondaryDiagnoses": [
+      {
+        "key": "SCALP_INFLAM",
+        "score": 62,
+      },
+    ],
+    "severity": "MILD",
+  },
+  "recommendation": {
+    "appliedRules": [
+      "PRO_IMMUNE_CONSOLIDATION_FILLER: stack had only 2 kits — PRO IMMUNE added as consolidation layer.",
+    ],
+    "protocolLabel": "Recovery protocol for 2 condition(s): Female pattern hair loss · Scalp / perifollicular inflammation.",
+    "rankedKits": [
+      {
+        "kitId": "PHENOTYPE INFLAMATION",
+        "matchedNeeds": [
+          "INFLAMMATION_CONTROL",
+        ],
+        "phase": 1,
+        "score": 100,
+      },
+      {
+        "kitId": "FPHL",
+        "matchedNeeds": [
+          "DHT_SUPPRESSION",
+          "FOLLICLE_STIMULATION",
+        ],
+        "phase": 2,
+        "score": 92,
+      },
+      {
+        "kitId": "PRO IMMUNE GOLD",
+        "matchedNeeds": [],
+        "phase": 3,
+        "score": 84,
+      },
+    ],
+  },
+  "therapyNeeds": [
+    "SHEDDING_ARREST",
+    "INFLAMMATION_CONTROL",
+    "DHT_SUPPRESSION",
+    "METABOLIC_SUPPORT",
+    "FOLLICLE_STIMULATION",
+  ],
+}
+`;
+
+exports[`snapshot — AGA spectrum male_aga_grade45_01 (Male AGA Grade 4 — MPHL leads, PRO IMMUNE last) 1`] = `
+{
+  "clinicalProfile": {
+    "primaryDiagnosis": "AGA_MALE_45",
+    "primaryScore": 95,
+    "rootCauses": [
+      "GENETICS",
+    ],
+    "scalpStates": [
+      "OILY_SCALP",
+    ],
+    "secondaryDiagnoses": [],
+    "severity": "SEVERE",
+  },
+  "recommendation": {
+    "appliedRules": [
+      "PRO_IMMUNE_CONSOLIDATION_FILLER: stack had only 2 kits — PRO IMMUNE added as consolidation layer.",
+    ],
+    "protocolLabel": "Recovery protocol for 2 condition(s): Male pattern hair loss · Scalp / perifollicular inflammation.",
+    "rankedKits": [
+      {
+        "kitId": "PHENOTYPE INFLAMATION",
+        "matchedNeeds": [
+          "INFLAMMATION_CONTROL",
+        ],
+        "phase": 1,
+        "score": 100,
+      },
+      {
+        "kitId": "MPHL",
+        "matchedNeeds": [
+          "DHT_SUPPRESSION",
+        ],
+        "phase": 2,
+        "score": 92,
+      },
+      {
+        "kitId": "PRO IMMUNE GOLD",
+        "matchedNeeds": [],
+        "phase": 3,
+        "score": 84,
+      },
+    ],
+  },
+  "therapyNeeds": [
+    "IMMUNE_MODULATION",
+    "DHT_SUPPRESSION",
+    "INFLAMMATION_CONTROL",
+  ],
+}
+`;
+
+exports[`snapshot — AGA spectrum male_aga_oily_01 (Male AGA Grade 2 full stack) 1`] = `
+{
+  "clinicalProfile": {
+    "primaryDiagnosis": "AGA_MALE_123",
+    "primaryScore": 70,
+    "rootCauses": [
+      "STRESS",
+      "GENETICS",
+      "METABOLIC",
+    ],
+    "scalpStates": [
+      "OILY_SCALP",
+      "DANDRUFF",
+    ],
+    "secondaryDiagnoses": [
+      {
+        "key": "TE_STRESS",
+        "score": 55,
+      },
+      {
+        "key": "SCALP_INFLAM",
+        "score": 42,
+      },
+    ],
+    "severity": "MILD",
+  },
+  "recommendation": {
+    "appliedRules": [],
+    "protocolLabel": "Recovery protocol for 4 condition(s): Male pattern hair loss · Scalp / perifollicular inflammation · Metabolic dysfunction · Immune depletion / regrowth support.",
+    "rankedKits": [
+      {
+        "kitId": "PHENOTYPE INFLAMATION",
+        "matchedNeeds": [
+          "INFLAMMATION_CONTROL",
+        ],
+        "phase": 1,
+        "score": 100,
+      },
+      {
+        "kitId": "PRO FACT META B",
+        "matchedNeeds": [
+          "METABOLIC_SUPPORT",
+        ],
+        "phase": 2,
+        "score": 92,
+      },
+      {
+        "kitId": "PRO IMMUNE GOLD",
+        "matchedNeeds": [
+          "FOLLICLE_STIMULATION",
+        ],
+        "phase": 3,
+        "score": 84,
+      },
+      {
+        "kitId": "MPHL",
+        "matchedNeeds": [
+          "DHT_SUPPRESSION",
+        ],
+        "phase": 4,
+        "score": 76,
+      },
+    ],
+  },
+  "therapyNeeds": [
+    "SHEDDING_ARREST",
+    "INFLAMMATION_CONTROL",
+    "DHT_SUPPRESSION",
+    "METABOLIC_SUPPORT",
+    "FOLLICLE_STIMULATION",
+  ],
+}
+`;
+
 exports[`snapshot — PCOS stack logic > pcos_diabetes_upgrade_01 (PCOS_DIABETES_UPGRADE) 1`] = `
 {
   "clinicalProfile": {
@@ -635,6 +888,388 @@ exports[`snapshot — PCOS stack logic > pcos_only_metabolic_injection_01 (PCOS_
 }
 `;
 
+exports[`snapshot — PCOS stack logic pcos_diabetes_upgrade_01 (PCOS_DIABETES_UPGRADE) 1`] = `
+{
+  "clinicalProfile": {
+    "primaryDiagnosis": "PCOS_ONLY",
+    "primaryScore": 92,
+    "rootCauses": [
+      "PCOS",
+      "METABOLIC",
+    ],
+    "scalpStates": [
+      "NORMAL_SCALP",
+    ],
+    "secondaryDiagnoses": [
+      {
+        "key": "DIABETES",
+        "score": 90,
+      },
+      {
+        "key": "AGA_FEMALE_123",
+        "score": 50,
+      },
+    ],
+    "severity": "MILD",
+  },
+  "recommendation": {
+    "appliedRules": [
+      "PCOS_METABOLIC: PRO FACT META B PCOS already covers the metabolic axis.",
+    ],
+    "protocolLabel": "Recovery protocol for 3 condition(s): Female pattern hair loss · PCOS / PCOD · Immune depletion / regrowth support.",
+    "rankedKits": [
+      {
+        "kitId": "PRO FACT META B PCOS",
+        "matchedNeeds": [
+          "METABOLIC_SUPPORT",
+          "ANDROGENIC_CORRECTION",
+        ],
+        "phase": 1,
+        "score": 100,
+      },
+      {
+        "kitId": "PRO IMMUNE GOLD",
+        "matchedNeeds": [],
+        "phase": 2,
+        "score": 92,
+      },
+      {
+        "kitId": "FPHL",
+        "matchedNeeds": [],
+        "phase": 3,
+        "score": 84,
+      },
+    ],
+  },
+  "therapyNeeds": [
+    "ANDROGENIC_CORRECTION",
+    "INFLAMMATION_CONTROL",
+    "SHEDDING_ARREST",
+    "METABOLIC_SUPPORT",
+  ],
+}
+`;
+
+exports[`snapshot — PCOS stack logic pcos_obesity_01 (PRO FACT META B PCOS — no F-PCOS-1) 1`] = `
+{
+  "clinicalProfile": {
+    "primaryDiagnosis": "PCOS_OBESITY",
+    "primaryScore": 92,
+    "rootCauses": [
+      "PCOS",
+      "METABOLIC",
+    ],
+    "scalpStates": [
+      "NORMAL_SCALP",
+    ],
+    "secondaryDiagnoses": [
+      {
+        "key": "AGA_FEMALE_123",
+        "score": 50,
+      },
+    ],
+    "severity": "MILD",
+  },
+  "recommendation": {
+    "appliedRules": [
+      "PCOS_METABOLIC: PRO FACT META B PCOS already covers the metabolic axis.",
+    ],
+    "protocolLabel": "Recovery protocol for 3 condition(s): Female pattern hair loss · PCOS / PCOD · Immune depletion / regrowth support.",
+    "rankedKits": [
+      {
+        "kitId": "PRO FACT META B PCOS",
+        "matchedNeeds": [
+          "METABOLIC_SUPPORT",
+          "ANDROGENIC_CORRECTION",
+        ],
+        "phase": 1,
+        "score": 100,
+      },
+      {
+        "kitId": "PRO IMMUNE GOLD",
+        "matchedNeeds": [],
+        "phase": 2,
+        "score": 92,
+      },
+      {
+        "kitId": "FPHL",
+        "matchedNeeds": [],
+        "phase": 3,
+        "score": 84,
+      },
+    ],
+  },
+  "therapyNeeds": [
+    "METABOLIC_SUPPORT",
+    "ANDROGENIC_CORRECTION",
+    "INFLAMMATION_CONTROL",
+  ],
+}
+`;
+
+exports[`snapshot — PCOS stack logic pcos_obesity_hypothyroid_01 (triple-axis single META B) 1`] = `
+{
+  "clinicalProfile": {
+    "primaryDiagnosis": "PCOS_OBESITY",
+    "primaryScore": 101,
+    "rootCauses": [
+      "HYPOTHYROID",
+      "PCOS",
+      "METABOLIC",
+    ],
+    "scalpStates": [
+      "NORMAL_SCALP",
+    ],
+    "secondaryDiagnoses": [
+      {
+        "key": "THYROID_HYPO",
+        "score": 100,
+      },
+      {
+        "key": "AGA_FEMALE_123",
+        "score": 50,
+      },
+    ],
+    "severity": "MILD",
+  },
+  "recommendation": {
+    "appliedRules": [
+      "PCOS_HYPO_UNIFY: PCOS + Hypothyroid → single plain PRO FACT META B (3-axis kit).",
+      "PCOS_HYPO_UNIFY: PCOS META B variant collapsed to plain PRO FACT META B.",
+      "PCOS_METABOLIC: PRO FACT META B PCOS already covers the metabolic axis.",
+    ],
+    "protocolLabel": "Recovery protocol for 3 condition(s): Female pattern hair loss · PCOS / PCOD · Immune depletion / regrowth support.",
+    "rankedKits": [
+      {
+        "kitId": "PRO FACT META B",
+        "matchedNeeds": [
+          "METABOLIC_SUPPORT",
+          "ANDROGENIC_CORRECTION",
+        ],
+        "phase": 1,
+        "score": 100,
+      },
+      {
+        "kitId": "PRO IMMUNE GOLD",
+        "matchedNeeds": [],
+        "phase": 2,
+        "score": 92,
+      },
+      {
+        "kitId": "FPHL",
+        "matchedNeeds": [],
+        "phase": 3,
+        "score": 84,
+      },
+    ],
+  },
+  "therapyNeeds": [
+    "METABOLIC_SUPPORT",
+    "ANDROGENIC_CORRECTION",
+    "INFLAMMATION_CONTROL",
+    "THYROID_SUPPORT",
+  ],
+}
+`;
+
+exports[`snapshot — PCOS stack logic pcos_only_dandruff_01 (F-PCOS-1 base) 1`] = `
+{
+  "clinicalProfile": {
+    "primaryDiagnosis": "PCOS_ONLY",
+    "primaryScore": 92,
+    "rootCauses": [
+      "PCOS",
+    ],
+    "scalpStates": [
+      "OILY_SCALP",
+      "DANDRUFF",
+    ],
+    "secondaryDiagnoses": [
+      {
+        "key": "AGA_FEMALE_123",
+        "score": 65,
+      },
+      {
+        "key": "SCALP_INFLAM",
+        "score": 62,
+      },
+    ],
+    "severity": "MILD",
+  },
+  "recommendation": {
+    "appliedRules": [],
+    "protocolLabel": "Recovery protocol for 3 condition(s): Female pattern hair loss · Scalp / perifollicular inflammation · PCOS / PCOD.",
+    "rankedKits": [
+      {
+        "kitId": "PHENOTYPE INFLAMATION",
+        "matchedNeeds": [
+          "INFLAMMATION_CONTROL",
+        ],
+        "phase": 1,
+        "score": 100,
+      },
+      {
+        "kitId": "PRO FACT META B PCOS",
+        "matchedNeeds": [
+          "ANDROGENIC_CORRECTION",
+        ],
+        "phase": 2,
+        "score": 92,
+      },
+      {
+        "kitId": "FPHL",
+        "matchedNeeds": [],
+        "phase": 3,
+        "score": 84,
+      },
+    ],
+  },
+  "therapyNeeds": [
+    "ANDROGENIC_CORRECTION",
+    "INFLAMMATION_CONTROL",
+    "SHEDDING_ARREST",
+  ],
+}
+`;
+
+exports[`snapshot — PCOS stack logic pcos_only_iron_fphl_01 (PCOS + iron + FPHL stack) 1`] = `
+{
+  "clinicalProfile": {
+    "primaryDiagnosis": "PCOS_ONLY",
+    "primaryScore": 92,
+    "rootCauses": [
+      "GENETICS",
+      "IRON_DEFICIENCY",
+      "PCOS",
+    ],
+    "scalpStates": [
+      "NORMAL_SCALP",
+    ],
+    "secondaryDiagnoses": [
+      {
+        "key": "IRON_DEFICIENCY",
+        "score": 80,
+      },
+      {
+        "key": "AGA_FEMALE_123",
+        "score": 70,
+      },
+    ],
+    "severity": "MILD",
+  },
+  "recommendation": {
+    "appliedRules": [
+      "PCOS_METABOLIC: PRO FACT META B PCOS already covers the metabolic axis.",
+    ],
+    "protocolLabel": "Recovery protocol for 4 condition(s): Female pattern hair loss · PCOS / PCOD · Iron deficiency / anaemia · Immune depletion / regrowth support.",
+    "rankedKits": [
+      {
+        "kitId": "IRON UP GOLD",
+        "matchedNeeds": [
+          "IRON_REPLETION",
+        ],
+        "phase": 1,
+        "score": 100,
+      },
+      {
+        "kitId": "PRO FACT META B PCOS",
+        "matchedNeeds": [
+          "ANDROGENIC_CORRECTION",
+        ],
+        "phase": 2,
+        "score": 92,
+      },
+      {
+        "kitId": "PRO IMMUNE GOLD",
+        "matchedNeeds": [],
+        "phase": 3,
+        "score": 84,
+      },
+      {
+        "kitId": "FPHL",
+        "matchedNeeds": [],
+        "phase": 4,
+        "score": 76,
+      },
+    ],
+  },
+  "therapyNeeds": [
+    "ANDROGENIC_CORRECTION",
+    "INFLAMMATION_CONTROL",
+    "SHEDDING_ARREST",
+    "IRON_REPLETION",
+  ],
+}
+`;
+
+exports[`snapshot — PCOS stack logic pcos_only_metabolic_injection_01 (PCOS_META_B_INJECTION) 1`] = `
+{
+  "clinicalProfile": {
+    "primaryDiagnosis": "PCOS_ONLY",
+    "primaryScore": 92,
+    "rootCauses": [
+      "PCOS",
+      "POOR_NUTRITION",
+    ],
+    "scalpStates": [
+      "DANDRUFF",
+    ],
+    "secondaryDiagnoses": [
+      {
+        "key": "AGA_FEMALE_123",
+        "score": 65,
+      },
+      {
+        "key": "SCALP_INFLAM",
+        "score": 62,
+      },
+    ],
+    "severity": "MILD",
+  },
+  "recommendation": {
+    "appliedRules": [
+      "PCOS_METABOLIC: PRO FACT META B PCOS already covers the metabolic axis.",
+    ],
+    "protocolLabel": "Recovery protocol for 4 condition(s): Female pattern hair loss · Scalp / perifollicular inflammation · PCOS / PCOD · Immune depletion / regrowth support.",
+    "rankedKits": [
+      {
+        "kitId": "PHENOTYPE INFLAMATION",
+        "matchedNeeds": [
+          "INFLAMMATION_CONTROL",
+        ],
+        "phase": 1,
+        "score": 100,
+      },
+      {
+        "kitId": "PRO FACT META B PCOS",
+        "matchedNeeds": [
+          "ANDROGENIC_CORRECTION",
+        ],
+        "phase": 2,
+        "score": 92,
+      },
+      {
+        "kitId": "PRO IMMUNE GOLD",
+        "matchedNeeds": [],
+        "phase": 3,
+        "score": 84,
+      },
+      {
+        "kitId": "FPHL",
+        "matchedNeeds": [],
+        "phase": 4,
+        "score": 76,
+      },
+    ],
+  },
+  "therapyNeeds": [
+    "ANDROGENIC_CORRECTION",
+    "INFLAMMATION_CONTROL",
+    "SHEDDING_ARREST",
+  ],
+}
+`;
+
 exports[`snapshot — RULE 1: PRO FACT META B substitution > hypothyroid_clean_01 (RULE 1 negative) 1`] = `
 {
   "clinicalProfile": {
@@ -757,6 +1392,184 @@ exports[`snapshot — RULE 1: PRO FACT META B substitution > hypothyroid_crash_d
 `;
 
 exports[`snapshot — RULE 1: PRO FACT META B substitution > hypothyroid_obesity_rule1_01 (RULE 1 positive) 1`] = `
+{
+  "clinicalProfile": {
+    "primaryDiagnosis": "THYROID_HYPO",
+    "primaryScore": 100,
+    "rootCauses": [
+      "HYPOTHYROID",
+      "METABOLIC",
+    ],
+    "scalpStates": [
+      "NORMAL_SCALP",
+    ],
+    "secondaryDiagnoses": [
+      {
+        "key": "AGA_FEMALE_123",
+        "score": 50,
+      },
+    ],
+    "severity": "MILD",
+  },
+  "recommendation": {
+    "appliedRules": [
+      "HYPO_METABOLIC: Hypothyroid + metabolic → plain PRO FACT META B (METABOLIC kit covers both).",
+    ],
+    "protocolLabel": "Recovery protocol for 3 condition(s): Female pattern hair loss · Metabolic dysfunction · Immune depletion / regrowth support.",
+    "rankedKits": [
+      {
+        "kitId": "PRO FACT META B",
+        "matchedNeeds": [
+          "METABOLIC_SUPPORT",
+        ],
+        "phase": 1,
+        "score": 100,
+      },
+      {
+        "kitId": "PRO IMMUNE GOLD",
+        "matchedNeeds": [],
+        "phase": 2,
+        "score": 92,
+      },
+      {
+        "kitId": "FPHL",
+        "matchedNeeds": [],
+        "phase": 3,
+        "score": 84,
+      },
+    ],
+  },
+  "therapyNeeds": [
+    "THYROID_SUPPORT",
+    "INFLAMMATION_CONTROL",
+    "SHEDDING_ARREST",
+    "METABOLIC_SUPPORT",
+  ],
+}
+`;
+
+exports[`snapshot — RULE 1: PRO FACT META B substitution hypothyroid_clean_01 (RULE 1 negative) 1`] = `
+{
+  "clinicalProfile": {
+    "primaryDiagnosis": "THYROID_HYPO",
+    "primaryScore": 100,
+    "rootCauses": [
+      "HYPOTHYROID",
+    ],
+    "scalpStates": [
+      "NORMAL_SCALP",
+    ],
+    "secondaryDiagnoses": [
+      {
+        "key": "AGA_FEMALE_123",
+        "score": 50,
+      },
+    ],
+    "severity": "MILD",
+  },
+  "recommendation": {
+    "appliedRules": [
+      "PRO_IMMUNE_CONSOLIDATION_FILLER: stack had only 2 kits — PRO IMMUNE added as consolidation layer.",
+    ],
+    "protocolLabel": "Recovery protocol for 2 condition(s): Female pattern hair loss · Hypothyroidism.",
+    "rankedKits": [
+      {
+        "kitId": "PRO FACT META B HYPOTHYROID",
+        "matchedNeeds": [
+          "THYROID_SUPPORT",
+        ],
+        "phase": 1,
+        "score": 100,
+      },
+      {
+        "kitId": "FPHL",
+        "matchedNeeds": [],
+        "phase": 2,
+        "score": 92,
+      },
+      {
+        "kitId": "PRO IMMUNE GOLD",
+        "matchedNeeds": [],
+        "phase": 3,
+        "score": 84,
+      },
+    ],
+  },
+  "therapyNeeds": [
+    "THYROID_SUPPORT",
+    "INFLAMMATION_CONTROL",
+    "SHEDDING_ARREST",
+  ],
+}
+`;
+
+exports[`snapshot — RULE 1: PRO FACT META B substitution hypothyroid_crash_diet_01 (RULE 1 + crash diet) 1`] = `
+{
+  "clinicalProfile": {
+    "primaryDiagnosis": "THYROID_HYPO",
+    "primaryScore": 100,
+    "rootCauses": [
+      "HYPOTHYROID",
+      "RAPID_WEIGHT_LOSS",
+    ],
+    "scalpStates": [
+      "NORMAL_SCALP",
+    ],
+    "secondaryDiagnoses": [
+      {
+        "key": "WEIGHT_LOSS",
+        "score": 90,
+      },
+      {
+        "key": "AGA_FEMALE_123",
+        "score": 50,
+      },
+    ],
+    "severity": "MILD",
+  },
+  "recommendation": {
+    "appliedRules": [
+      "HYPO_METABOLIC: Hypothyroid + metabolic → plain PRO FACT META B (METABOLIC kit covers both).",
+    ],
+    "protocolLabel": "Recovery protocol for 4 condition(s): Female pattern hair loss · Metabolic dysfunction · Rapid weight loss / GLP-1 · Immune depletion / regrowth support.",
+    "rankedKits": [
+      {
+        "kitId": "RAPID WEIGHT LOSS SHIELD",
+        "matchedNeeds": [
+          "SHEDDING_ARREST",
+        ],
+        "phase": 1,
+        "score": 100,
+      },
+      {
+        "kitId": "PRO FACT META B",
+        "matchedNeeds": [],
+        "phase": 2,
+        "score": 92,
+      },
+      {
+        "kitId": "PRO IMMUNE GOLD",
+        "matchedNeeds": [],
+        "phase": 3,
+        "score": 84,
+      },
+      {
+        "kitId": "FPHL",
+        "matchedNeeds": [],
+        "phase": 4,
+        "score": 76,
+      },
+    ],
+  },
+  "therapyNeeds": [
+    "THYROID_SUPPORT",
+    "INFLAMMATION_CONTROL",
+    "SHEDDING_ARREST",
+  ],
+}
+`;
+
+exports[`snapshot — RULE 1: PRO FACT META B substitution hypothyroid_obesity_rule1_01 (RULE 1 positive) 1`] = `
 {
   "clinicalProfile": {
     "primaryDiagnosis": "THYROID_HYPO",
@@ -1068,6 +1881,261 @@ exports[`snapshot — RULE 2: RAPID WEIGHT LOSS SHIELD precedence > glp1_late_sh
 }
 `;
 
+exports[`snapshot — RULE 2: RAPID WEIGHT LOSS SHIELD precedence crash_diet_rapid_loss_01 (no GLP-1 flag — SHIELD in base protocol only) 1`] = `
+{
+  "clinicalProfile": {
+    "primaryDiagnosis": "WEIGHT_LOSS",
+    "primaryScore": 90,
+    "rootCauses": [
+      "RAPID_WEIGHT_LOSS",
+    ],
+    "scalpStates": [
+      "NORMAL_SCALP",
+    ],
+    "secondaryDiagnoses": [],
+    "severity": "MILD",
+  },
+  "recommendation": {
+    "appliedRules": [],
+    "protocolLabel": "Recovery protocol for 5 condition(s): Female pattern hair loss · Metabolic dysfunction · Rapid weight loss / GLP-1 · Immune depletion / regrowth support · Acute telogen shedding.",
+    "rankedKits": [
+      {
+        "kitId": "RAPID WEIGHT LOSS SHIELD",
+        "matchedNeeds": [
+          "WEIGHT_LOSS_RECOVERY",
+          "SHEDDING_ARREST",
+        ],
+        "phase": 1,
+        "score": 100,
+      },
+      {
+        "kitId": "HAIR FACT TE GOLD",
+        "matchedNeeds": [
+          "SHEDDING_ARREST",
+        ],
+        "phase": 2,
+        "score": 92,
+      },
+      {
+        "kitId": "PRO FACT META B",
+        "matchedNeeds": [],
+        "phase": 3,
+        "score": 84,
+      },
+      {
+        "kitId": "PRO IMMUNE GOLD",
+        "matchedNeeds": [
+          "IMMUNE_MODULATION",
+        ],
+        "phase": 4,
+        "score": 76,
+      },
+      {
+        "kitId": "FPHL",
+        "matchedNeeds": [],
+        "phase": 5,
+        "score": 68,
+      },
+    ],
+  },
+  "therapyNeeds": [
+    "WEIGHT_LOSS_RECOVERY",
+    "SHEDDING_ARREST",
+    "IMMUNE_MODULATION",
+  ],
+}
+`;
+
+exports[`snapshot — RULE 2: RAPID WEIGHT LOSS SHIELD precedence glp1_early_shield_01 (GLP1 Early — SHIELD Phase 1) 1`] = `
+{
+  "clinicalProfile": {
+    "primaryDiagnosis": "WEIGHT_LOSS",
+    "primaryScore": 90,
+    "rootCauses": [
+      "RAPID_WEIGHT_LOSS",
+    ],
+    "scalpStates": [
+      "NORMAL_SCALP",
+    ],
+    "secondaryDiagnoses": [
+      {
+        "key": "AGA_FEMALE_123",
+        "score": 50,
+      },
+    ],
+    "severity": "MILD",
+  },
+  "recommendation": {
+    "appliedRules": [],
+    "protocolLabel": "Recovery protocol for 3 condition(s): Female pattern hair loss · Rapid weight loss / GLP-1 · Acute telogen shedding.",
+    "rankedKits": [
+      {
+        "kitId": "RAPID WEIGHT LOSS SHIELD",
+        "matchedNeeds": [
+          "WEIGHT_LOSS_RECOVERY",
+          "SHEDDING_ARREST",
+        ],
+        "phase": 1,
+        "score": 100,
+      },
+      {
+        "kitId": "HAIR FACT TE GOLD",
+        "matchedNeeds": [
+          "SHEDDING_ARREST",
+        ],
+        "phase": 2,
+        "score": 92,
+      },
+      {
+        "kitId": "FPHL",
+        "matchedNeeds": [],
+        "phase": 3,
+        "score": 84,
+      },
+    ],
+  },
+  "therapyNeeds": [
+    "WEIGHT_LOSS_RECOVERY",
+    "SHEDDING_ARREST",
+    "IMMUNE_MODULATION",
+  ],
+}
+`;
+
+exports[`snapshot — RULE 2: RAPID WEIGHT LOSS SHIELD precedence glp1_late_iron_deficiency_01 (GLP1 Late + iron — SHIELD survives priority lifting) 1`] = `
+{
+  "clinicalProfile": {
+    "primaryDiagnosis": "WEIGHT_LOSS",
+    "primaryScore": 90,
+    "rootCauses": [
+      "IRON_DEFICIENCY",
+      "RAPID_WEIGHT_LOSS",
+    ],
+    "scalpStates": [
+      "NORMAL_SCALP",
+    ],
+    "secondaryDiagnoses": [
+      {
+        "key": "IRON_DEFICIENCY",
+        "score": 80,
+      },
+      {
+        "key": "TE_STRESS",
+        "score": 50,
+      },
+      {
+        "key": "AGA_FEMALE_123",
+        "score": 50,
+      },
+    ],
+    "severity": "MILD",
+  },
+  "recommendation": {
+    "appliedRules": [],
+    "protocolLabel": "Recovery protocol for 4 condition(s): Female pattern hair loss · Iron deficiency / anaemia · Rapid weight loss / GLP-1 · Immune depletion / regrowth support.",
+    "rankedKits": [
+      {
+        "kitId": "RAPID WEIGHT LOSS SHIELD",
+        "matchedNeeds": [
+          "WEIGHT_LOSS_RECOVERY",
+          "SHEDDING_ARREST",
+        ],
+        "phase": 1,
+        "score": 100,
+      },
+      {
+        "kitId": "IRON UP GOLD",
+        "matchedNeeds": [
+          "IRON_REPLETION",
+        ],
+        "phase": 2,
+        "score": 92,
+      },
+      {
+        "kitId": "PRO IMMUNE GOLD",
+        "matchedNeeds": [
+          "IMMUNE_MODULATION",
+        ],
+        "phase": 3,
+        "score": 84,
+      },
+      {
+        "kitId": "FPHL",
+        "matchedNeeds": [],
+        "phase": 4,
+        "score": 76,
+      },
+    ],
+  },
+  "therapyNeeds": [
+    "WEIGHT_LOSS_RECOVERY",
+    "SHEDDING_ARREST",
+    "IMMUNE_MODULATION",
+    "IRON_REPLETION",
+  ],
+}
+`;
+
+exports[`snapshot — RULE 2: RAPID WEIGHT LOSS SHIELD precedence glp1_late_shield_01 (GLP1 Late — SHIELD Phase 2) 1`] = `
+{
+  "clinicalProfile": {
+    "primaryDiagnosis": "WEIGHT_LOSS",
+    "primaryScore": 90,
+    "rootCauses": [
+      "RAPID_WEIGHT_LOSS",
+    ],
+    "scalpStates": [
+      "NORMAL_SCALP",
+    ],
+    "secondaryDiagnoses": [
+      {
+        "key": "TE_STRESS",
+        "score": 50,
+      },
+      {
+        "key": "AGA_FEMALE_123",
+        "score": 50,
+      },
+    ],
+    "severity": "MILD",
+  },
+  "recommendation": {
+    "appliedRules": [
+      "PRO_IMMUNE_CONSOLIDATION_FILLER: stack had only 2 kits — PRO IMMUNE added as consolidation layer.",
+    ],
+    "protocolLabel": "Recovery protocol for 2 condition(s): Female pattern hair loss · Rapid weight loss / GLP-1.",
+    "rankedKits": [
+      {
+        "kitId": "RAPID WEIGHT LOSS SHIELD",
+        "matchedNeeds": [
+          "WEIGHT_LOSS_RECOVERY",
+          "SHEDDING_ARREST",
+        ],
+        "phase": 1,
+        "score": 100,
+      },
+      {
+        "kitId": "FPHL",
+        "matchedNeeds": [],
+        "phase": 2,
+        "score": 92,
+      },
+      {
+        "kitId": "PRO IMMUNE GOLD",
+        "matchedNeeds": [],
+        "phase": 3,
+        "score": 84,
+      },
+    ],
+  },
+  "therapyNeeds": [
+    "WEIGHT_LOSS_RECOVERY",
+    "SHEDDING_ARREST",
+    "IMMUNE_MODULATION",
+  ],
+}
+`;
+
 exports[`snapshot — active shedding precedence > medication_illness_te_01 (PRO IMMUNE repositioned last) 1`] = `
 {
   "clinicalProfile": {
@@ -1223,7 +2291,196 @@ exports[`snapshot — active shedding precedence > postpartum_delivery_01 (TE GO
 }
 `;
 
+exports[`snapshot — active shedding precedence medication_illness_te_01 (PRO IMMUNE repositioned last) 1`] = `
+{
+  "clinicalProfile": {
+    "primaryDiagnosis": "TE_ILLNESS",
+    "primaryScore": 72,
+    "rootCauses": [
+      "MEDICATION",
+      "ILLNESS",
+    ],
+    "scalpStates": [
+      "NORMAL_SCALP",
+    ],
+    "secondaryDiagnoses": [
+      {
+        "key": "AGA_FEMALE_123",
+        "score": 50,
+      },
+    ],
+    "severity": "MILD",
+  },
+  "recommendation": {
+    "appliedRules": [],
+    "protocolLabel": "Recovery protocol for 3 condition(s): Female pattern hair loss · Immune depletion / regrowth support · Acute telogen shedding.",
+    "rankedKits": [
+      {
+        "kitId": "HAIR FACT TE GOLD",
+        "matchedNeeds": [
+          "SHEDDING_ARREST",
+        ],
+        "phase": 1,
+        "score": 100,
+      },
+      {
+        "kitId": "PRO IMMUNE GOLD",
+        "matchedNeeds": [
+          "IMMUNE_MODULATION",
+        ],
+        "phase": 2,
+        "score": 92,
+      },
+      {
+        "kitId": "FPHL",
+        "matchedNeeds": [],
+        "phase": 3,
+        "score": 84,
+      },
+    ],
+  },
+  "therapyNeeds": [
+    "IMMUNE_MODULATION",
+    "SHEDDING_ARREST",
+    "INFLAMMATION_CONTROL",
+  ],
+}
+`;
+
+exports[`snapshot — active shedding precedence postpartum_breastfeeding_01 (TE GOLD promoted over LACTIHEALTH) 1`] = `
+{
+  "clinicalProfile": {
+    "primaryDiagnosis": "TE_POSTPREG",
+    "primaryScore": 92,
+    "rootCauses": [
+      "POST_PARTUM",
+    ],
+    "scalpStates": [
+      "NORMAL_SCALP",
+    ],
+    "secondaryDiagnoses": [],
+    "severity": "MILD",
+  },
+  "recommendation": {
+    "appliedRules": [
+      "PRO_IMMUNE_CONSOLIDATION_FILLER: stack had only 2 kits — PRO IMMUNE added as consolidation layer.",
+    ],
+    "protocolLabel": "Recovery protocol for 2 condition(s): Female pattern hair loss · Post-partum / breastfeeding.",
+    "rankedKits": [
+      {
+        "kitId": "LACTIHEALTH",
+        "matchedNeeds": [
+          "LACTATION_SUPPORT",
+        ],
+        "phase": 1,
+        "score": 100,
+      },
+      {
+        "kitId": "FPHL",
+        "matchedNeeds": [],
+        "phase": 2,
+        "score": 92,
+      },
+      {
+        "kitId": "PRO IMMUNE GOLD",
+        "matchedNeeds": [],
+        "phase": 3,
+        "score": 84,
+      },
+    ],
+  },
+  "therapyNeeds": [
+    "LACTATION_SUPPORT",
+    "SHEDDING_ARREST",
+    "IMMUNE_MODULATION",
+  ],
+}
+`;
+
+exports[`snapshot — active shedding precedence postpartum_delivery_01 (TE GOLD Phase 1, no LACTIHEALTH) 1`] = `
+{
+  "clinicalProfile": {
+    "primaryDiagnosis": "TE_DELIVERY",
+    "primaryScore": 90,
+    "rootCauses": [
+      "POST_PARTUM",
+    ],
+    "scalpStates": [
+      "NORMAL_SCALP",
+    ],
+    "secondaryDiagnoses": [],
+    "severity": "MILD",
+  },
+  "recommendation": {
+    "appliedRules": [
+      "PRO_IMMUNE_CONSOLIDATION_FILLER: stack had only 2 kits — PRO IMMUNE added as consolidation layer.",
+    ],
+    "protocolLabel": "Recovery protocol for 2 condition(s): Female pattern hair loss · Acute telogen shedding.",
+    "rankedKits": [
+      {
+        "kitId": "HAIR FACT TE GOLD",
+        "matchedNeeds": [
+          "SHEDDING_ARREST",
+        ],
+        "phase": 1,
+        "score": 100,
+      },
+      {
+        "kitId": "FPHL",
+        "matchedNeeds": [],
+        "phase": 2,
+        "score": 92,
+      },
+      {
+        "kitId": "PRO IMMUNE GOLD",
+        "matchedNeeds": [],
+        "phase": 3,
+        "score": 84,
+      },
+    ],
+  },
+  "therapyNeeds": [
+    "SHEDDING_ARREST",
+    "IMMUNE_MODULATION",
+  ],
+}
+`;
+
 exports[`snapshot — contraindications > pregnancy_lock_01 (HEALTHY-9 only) 1`] = `
+{
+  "clinicalProfile": {
+    "primaryDiagnosis": "PREGNANCY",
+    "primaryScore": 100,
+    "rootCauses": [],
+    "scalpStates": [
+      "NORMAL_SCALP",
+    ],
+    "secondaryDiagnoses": [],
+    "severity": "MILD",
+  },
+  "recommendation": {
+    "appliedRules": [
+      "PREGNANCY_LOCK: pregnancy is exclusive — all other kits suppressed.",
+    ],
+    "protocolLabel": "Recovery protocol for Pregnancy.",
+    "rankedKits": [
+      {
+        "kitId": "HEALTHY-9",
+        "matchedNeeds": [
+          "PREGNANCY_SUPPORT",
+        ],
+        "phase": 1,
+        "score": 100,
+      },
+    ],
+  },
+  "therapyNeeds": [
+    "PREGNANCY_SUPPORT",
+  ],
+}
+`;
+
+exports[`snapshot — contraindications pregnancy_lock_01 (HEALTHY-9 only) 1`] = `
 {
   "clinicalProfile": {
     "primaryDiagnosis": "PREGNANCY",
@@ -1292,6 +2549,95 @@ exports[`snapshot — grey goal prioritisation > greying_sole_concern_01 (EARLY_
 `;
 
 exports[`snapshot — grey goal prioritisation > greying_with_hairloss_01 (grey appended last) 1`] = `
+{
+  "clinicalProfile": {
+    "primaryDiagnosis": "TE_STRESS",
+    "primaryScore": 55,
+    "rootCauses": [
+      "STRESS",
+    ],
+    "scalpStates": [
+      "NORMAL_SCALP",
+    ],
+    "secondaryDiagnoses": [
+      {
+        "key": "AGA_FEMALE_123",
+        "score": 50,
+      },
+    ],
+    "severity": "MILD",
+  },
+  "recommendation": {
+    "appliedRules": [
+      "PRO_IMMUNE_CONSOLIDATION_FILLER: stack had only 2 kits — PRO IMMUNE added as consolidation layer.",
+    ],
+    "protocolLabel": "Recovery protocol for 2 condition(s): Female pattern hair loss · Early / premature greying.",
+    "rankedKits": [
+      {
+        "kitId": "EARLY GREYING CARE GOLD",
+        "matchedNeeds": [
+          "MELANOCYTE_PROTECTION",
+        ],
+        "phase": 1,
+        "score": 100,
+      },
+      {
+        "kitId": "FPHL",
+        "matchedNeeds": [],
+        "phase": 2,
+        "score": 92,
+      },
+      {
+        "kitId": "PRO IMMUNE GOLD",
+        "matchedNeeds": [],
+        "phase": 3,
+        "score": 84,
+      },
+    ],
+  },
+  "therapyNeeds": [
+    "SHEDDING_ARREST",
+    "INFLAMMATION_CONTROL",
+    "MELANOCYTE_PROTECTION",
+  ],
+}
+`;
+
+exports[`snapshot — grey goal prioritisation greying_sole_concern_01 (EARLY_GREY lock) 1`] = `
+{
+  "clinicalProfile": {
+    "primaryDiagnosis": "EARLY_GREY",
+    "primaryScore": 100,
+    "rootCauses": [],
+    "scalpStates": [
+      "NORMAL_SCALP",
+    ],
+    "secondaryDiagnoses": [],
+    "severity": "MODERATE",
+  },
+  "recommendation": {
+    "appliedRules": [],
+    "protocolLabel": "Recovery protocol for Early / premature greying.",
+    "rankedKits": [
+      {
+        "kitId": "EARLY GREYING CARE GOLD",
+        "matchedNeeds": [
+          "MELANOCYTE_PROTECTION",
+        ],
+        "phase": 1,
+        "score": 100,
+      },
+    ],
+  },
+  "therapyNeeds": [
+    "MELANOCYTE_PROTECTION",
+    "ANTIOXIDANT_SUPPORT",
+    "IMMUNE_MODULATION",
+  ],
+}
+`;
+
+exports[`snapshot — grey goal prioritisation greying_with_hairloss_01 (grey appended last) 1`] = `
 {
   "clinicalProfile": {
     "primaryDiagnosis": "TE_STRESS",
@@ -1593,6 +2939,253 @@ exports[`snapshot — hormonal spectrum > post_menopause_diffuse_01 (POST_MENOPA
 }
 `;
 
+exports[`snapshot — hormonal spectrum hypothyroid_peri_menopause_01 (THYROID_HYPO beats PERI_MENOPAUSE) 1`] = `
+{
+  "clinicalProfile": {
+    "primaryDiagnosis": "THYROID_HYPO",
+    "primaryScore": 100,
+    "rootCauses": [
+      "HYPOTHYROID",
+      "HORMONAL_SHIFT",
+    ],
+    "scalpStates": [
+      "NORMAL_SCALP",
+    ],
+    "secondaryDiagnoses": [
+      {
+        "key": "PERI_MENOPAUSE",
+        "score": 98,
+      },
+      {
+        "key": "AGA_FEMALE_123",
+        "score": 50,
+      },
+    ],
+    "severity": "MILD",
+  },
+  "recommendation": {
+    "appliedRules": [],
+    "protocolLabel": "Recovery protocol for 3 condition(s): Female pattern hair loss · Hypothyroidism · Peri-menopause.",
+    "rankedKits": [
+      {
+        "kitId": "HAIR FACT PERI MENOPAUSE",
+        "matchedNeeds": [],
+        "phase": 1,
+        "score": 100,
+      },
+      {
+        "kitId": "PRO FACT META B HYPOTHYROID",
+        "matchedNeeds": [
+          "THYROID_SUPPORT",
+        ],
+        "phase": 2,
+        "score": 92,
+      },
+      {
+        "kitId": "FPHL",
+        "matchedNeeds": [],
+        "phase": 3,
+        "score": 84,
+      },
+    ],
+  },
+  "therapyNeeds": [
+    "THYROID_SUPPORT",
+    "INFLAMMATION_CONTROL",
+    "SHEDDING_ARREST",
+  ],
+}
+`;
+
+exports[`snapshot — hormonal spectrum peri_menopause_metabolic_01 (PERI_MENO_METABOLIC injection) 1`] = `
+{
+  "clinicalProfile": {
+    "primaryDiagnosis": "PERI_MENOPAUSE",
+    "primaryScore": 98,
+    "rootCauses": [
+      "METABOLIC",
+      "HORMONAL_SHIFT",
+    ],
+    "scalpStates": [
+      "NORMAL_SCALP",
+    ],
+    "secondaryDiagnoses": [
+      {
+        "key": "AGA_FEMALE_123",
+        "score": 50,
+      },
+    ],
+    "severity": "MILD",
+  },
+  "recommendation": {
+    "appliedRules": [],
+    "protocolLabel": "Recovery protocol for 4 condition(s): Female pattern hair loss · Metabolic dysfunction · Peri-menopause · Immune depletion / regrowth support.",
+    "rankedKits": [
+      {
+        "kitId": "HAIR FACT PERI MENOPAUSE",
+        "matchedNeeds": [
+          "HORMONAL_REBALANCING",
+        ],
+        "phase": 1,
+        "score": 100,
+      },
+      {
+        "kitId": "PRO FACT META B",
+        "matchedNeeds": [
+          "METABOLIC_SUPPORT",
+        ],
+        "phase": 2,
+        "score": 92,
+      },
+      {
+        "kitId": "PRO IMMUNE GOLD",
+        "matchedNeeds": [
+          "IMMUNE_MODULATION",
+        ],
+        "phase": 3,
+        "score": 84,
+      },
+      {
+        "kitId": "FPHL",
+        "matchedNeeds": [
+          "DHT_SUPPRESSION",
+        ],
+        "phase": 4,
+        "score": 76,
+      },
+    ],
+  },
+  "therapyNeeds": [
+    "HORMONAL_REBALANCING",
+    "DHT_SUPPRESSION",
+    "SHEDDING_ARREST",
+    "IMMUNE_MODULATION",
+    "METABOLIC_SUPPORT",
+  ],
+}
+`;
+
+exports[`snapshot — hormonal spectrum peri_menopause_stress_01 (PERI_MENOPAUSE dominant) 1`] = `
+{
+  "clinicalProfile": {
+    "primaryDiagnosis": "PERI_MENOPAUSE",
+    "primaryScore": 98,
+    "rootCauses": [
+      "STRESS",
+      "HORMONAL_SHIFT",
+    ],
+    "scalpStates": [
+      "NORMAL_SCALP",
+    ],
+    "secondaryDiagnoses": [
+      {
+        "key": "TE_STRESS",
+        "score": 55,
+      },
+      {
+        "key": "AGA_FEMALE_123",
+        "score": 50,
+      },
+    ],
+    "severity": "MILD",
+  },
+  "recommendation": {
+    "appliedRules": [
+      "PRO_IMMUNE_CONSOLIDATION_FILLER: stack had only 2 kits — PRO IMMUNE added as consolidation layer.",
+    ],
+    "protocolLabel": "Recovery protocol for 2 condition(s): Female pattern hair loss · Peri-menopause.",
+    "rankedKits": [
+      {
+        "kitId": "HAIR FACT PERI MENOPAUSE",
+        "matchedNeeds": [
+          "HORMONAL_REBALANCING",
+        ],
+        "phase": 1,
+        "score": 100,
+      },
+      {
+        "kitId": "FPHL",
+        "matchedNeeds": [
+          "DHT_SUPPRESSION",
+        ],
+        "phase": 2,
+        "score": 92,
+      },
+      {
+        "kitId": "PRO IMMUNE GOLD",
+        "matchedNeeds": [],
+        "phase": 3,
+        "score": 84,
+      },
+    ],
+  },
+  "therapyNeeds": [
+    "HORMONAL_REBALANCING",
+    "DHT_SUPPRESSION",
+    "SHEDDING_ARREST",
+    "IMMUNE_MODULATION",
+  ],
+}
+`;
+
+exports[`snapshot — hormonal spectrum post_menopause_diffuse_01 (POST_MENOPAUSE protocol) 1`] = `
+{
+  "clinicalProfile": {
+    "primaryDiagnosis": "POST_MENOPAUSE",
+    "primaryScore": 98,
+    "rootCauses": [
+      "HORMONAL_SHIFT",
+    ],
+    "scalpStates": [
+      "NORMAL_SCALP",
+    ],
+    "secondaryDiagnoses": [
+      {
+        "key": "AGA_FEMALE_123",
+        "score": 50,
+      },
+    ],
+    "severity": "MILD",
+  },
+  "recommendation": {
+    "appliedRules": [
+      "PRO_IMMUNE_CONSOLIDATION_FILLER: stack had only 2 kits — PRO IMMUNE added as consolidation layer.",
+    ],
+    "protocolLabel": "Recovery protocol for 2 condition(s): Female pattern hair loss · Post-menopause.",
+    "rankedKits": [
+      {
+        "kitId": "PRO FACT META B POSTMENOPAUSE",
+        "matchedNeeds": [
+          "HORMONAL_REBALANCING",
+        ],
+        "phase": 1,
+        "score": 100,
+      },
+      {
+        "kitId": "FPHL",
+        "matchedNeeds": [
+          "DHT_SUPPRESSION",
+        ],
+        "phase": 2,
+        "score": 92,
+      },
+      {
+        "kitId": "PRO IMMUNE GOLD",
+        "matchedNeeds": [],
+        "phase": 3,
+        "score": 84,
+      },
+    ],
+  },
+  "therapyNeeds": [
+    "HORMONAL_REBALANCING",
+    "DHT_SUPPRESSION",
+    "SHEDDING_ARREST",
+    "IMMUNE_MODULATION",
+  ],
+}
+`;
+
 exports[`snapshot — injection gating > crown_thinning_no_visible_fall_01 (NO_VISIBLE_FALL strips TE GOLD) 1`] = `
 {
   "clinicalProfile": {
@@ -1708,6 +3301,158 @@ exports[`snapshot — injection gating > female_aga_regrow_fphl_01 (REGROW_GOAL_
 `;
 
 exports[`snapshot — injection gating > regrow_only_male_aga_01 (REGROW_GOAL_AGA — TE GOLD never prescribed) 1`] = `
+{
+  "clinicalProfile": {
+    "primaryDiagnosis": "AGA_MALE_123",
+    "primaryScore": 92,
+    "rootCauses": [
+      "GENETICS",
+    ],
+    "scalpStates": [
+      "NORMAL_SCALP",
+    ],
+    "secondaryDiagnoses": [],
+    "severity": "MODERATE",
+  },
+  "recommendation": {
+    "appliedRules": [],
+    "protocolLabel": "Recovery protocol for Male pattern hair loss.",
+    "rankedKits": [
+      {
+        "kitId": "MPHL",
+        "matchedNeeds": [
+          "DHT_SUPPRESSION",
+        ],
+        "phase": 1,
+        "score": 100,
+      },
+    ],
+  },
+  "therapyNeeds": [
+    "SHEDDING_ARREST",
+    "INFLAMMATION_CONTROL",
+    "DHT_SUPPRESSION",
+    "METABOLIC_SUPPORT",
+    "FOLLICLE_STIMULATION",
+  ],
+}
+`;
+
+exports[`snapshot — injection gating crown_thinning_no_visible_fall_01 (NO_VISIBLE_FALL strips TE GOLD) 1`] = `
+{
+  "clinicalProfile": {
+    "primaryDiagnosis": "AGA_MALE_123",
+    "primaryScore": 70,
+    "rootCauses": [
+      "GENETICS",
+    ],
+    "scalpStates": [
+      "OILY_SCALP",
+    ],
+    "secondaryDiagnoses": [
+      {
+        "key": "SCALP_INFLAM",
+        "score": 42,
+      },
+    ],
+    "severity": "MODERATE",
+  },
+  "recommendation": {
+    "appliedRules": [
+      "PRO_IMMUNE_CONSOLIDATION_FILLER: stack had only 2 kits — PRO IMMUNE added as consolidation layer.",
+    ],
+    "protocolLabel": "Recovery protocol for 2 condition(s): Male pattern hair loss · Scalp / perifollicular inflammation.",
+    "rankedKits": [
+      {
+        "kitId": "PHENOTYPE INFLAMATION",
+        "matchedNeeds": [
+          "INFLAMMATION_CONTROL",
+        ],
+        "phase": 1,
+        "score": 100,
+      },
+      {
+        "kitId": "MPHL",
+        "matchedNeeds": [
+          "DHT_SUPPRESSION",
+        ],
+        "phase": 2,
+        "score": 92,
+      },
+      {
+        "kitId": "PRO IMMUNE GOLD",
+        "matchedNeeds": [],
+        "phase": 3,
+        "score": 84,
+      },
+    ],
+  },
+  "therapyNeeds": [
+    "SHEDDING_ARREST",
+    "INFLAMMATION_CONTROL",
+    "DHT_SUPPRESSION",
+    "METABOLIC_SUPPORT",
+    "FOLLICLE_STIMULATION",
+  ],
+}
+`;
+
+exports[`snapshot — injection gating female_aga_regrow_fphl_01 (REGROW_GOAL_AGA female — FPHL not MPHL) 1`] = `
+{
+  "clinicalProfile": {
+    "primaryDiagnosis": "AGA_FEMALE_123",
+    "primaryScore": 92,
+    "rootCauses": [
+      "GENETICS",
+    ],
+    "scalpStates": [
+      "NORMAL_SCALP",
+    ],
+    "secondaryDiagnoses": [],
+    "severity": "MODERATE",
+  },
+  "recommendation": {
+    "appliedRules": [
+      "PRO_IMMUNE_CONSOLIDATION_FILLER: stack had only 2 kits — PRO IMMUNE added as consolidation layer.",
+    ],
+    "protocolLabel": "Recovery protocol for 2 condition(s): Female pattern hair loss · Metabolic dysfunction.",
+    "rankedKits": [
+      {
+        "kitId": "PRO FACT META B",
+        "matchedNeeds": [
+          "METABOLIC_SUPPORT",
+        ],
+        "phase": 1,
+        "score": 100,
+      },
+      {
+        "kitId": "FPHL",
+        "matchedNeeds": [
+          "DHT_SUPPRESSION",
+          "FOLLICLE_STIMULATION",
+        ],
+        "phase": 2,
+        "score": 92,
+      },
+      {
+        "kitId": "PRO IMMUNE GOLD",
+        "matchedNeeds": [],
+        "phase": 3,
+        "score": 84,
+      },
+    ],
+  },
+  "therapyNeeds": [
+    "SHEDDING_ARREST",
+    "INFLAMMATION_CONTROL",
+    "DHT_SUPPRESSION",
+    "METABOLIC_SUPPORT",
+    "FOLLICLE_STIMULATION",
+  ],
+}
+`;
+
+exports[`snapshot — injection gating regrow_only_male_aga_01 (REGROW_GOAL_AGA — TE GOLD never prescribed) 1`] = `
 {
   "clinicalProfile": {
     "primaryDiagnosis": "AGA_MALE_123",
@@ -1915,6 +3660,229 @@ exports[`snapshot — veg / lifestyle / gut > nutritional_te_vegetarian_01 (veg 
 `;
 
 exports[`snapshot — veg / lifestyle / gut > sedentary_stress_te_01 (METABOLIC_GENERIC injection) 1`] = `
+{
+  "clinicalProfile": {
+    "primaryDiagnosis": "TE_STRESS",
+    "primaryScore": 55,
+    "rootCauses": [
+      "STRESS",
+      "METABOLIC",
+    ],
+    "scalpStates": [
+      "NORMAL_SCALP",
+    ],
+    "secondaryDiagnoses": [
+      {
+        "key": "AGA_FEMALE_123",
+        "score": 50,
+      },
+    ],
+    "severity": "MILD",
+  },
+  "recommendation": {
+    "appliedRules": [],
+    "protocolLabel": "Recovery protocol for 3 condition(s): Female pattern hair loss · Metabolic dysfunction · Immune depletion / regrowth support.",
+    "rankedKits": [
+      {
+        "kitId": "PRO FACT META B",
+        "matchedNeeds": [
+          "METABOLIC_SUPPORT",
+        ],
+        "phase": 1,
+        "score": 100,
+      },
+      {
+        "kitId": "PRO IMMUNE GOLD",
+        "matchedNeeds": [],
+        "phase": 2,
+        "score": 92,
+      },
+      {
+        "kitId": "FPHL",
+        "matchedNeeds": [],
+        "phase": 3,
+        "score": 84,
+      },
+    ],
+  },
+  "therapyNeeds": [
+    "SHEDDING_ARREST",
+    "INFLAMMATION_CONTROL",
+    "METABOLIC_SUPPORT",
+  ],
+}
+`;
+
+exports[`snapshot — veg / lifestyle / gut gut_stress_shedding_01 (GUT_ISSUES protocol) 1`] = `
+{
+  "clinicalProfile": {
+    "primaryDiagnosis": "GUT_ISSUES",
+    "primaryScore": 62,
+    "rootCauses": [
+      "STRESS",
+      "GUT_MALABSORPTION",
+    ],
+    "scalpStates": [
+      "NORMAL_SCALP",
+    ],
+    "secondaryDiagnoses": [
+      {
+        "key": "TE_STRESS",
+        "score": 55,
+      },
+    ],
+    "severity": "MILD",
+  },
+  "recommendation": {
+    "appliedRules": [],
+    "protocolLabel": "Recovery protocol for 3 condition(s): Female pattern hair loss · Gut dysfunction (GERD / IBS / Acid / Crohn) · Immune depletion / regrowth support.",
+    "rankedKits": [
+      {
+        "kitId": "PRO FACT GI GOLD",
+        "matchedNeeds": [
+          "GUT_RESTORATION",
+        ],
+        "phase": 1,
+        "score": 100,
+      },
+      {
+        "kitId": "PRO IMMUNE GOLD",
+        "matchedNeeds": [
+          "IMMUNE_MODULATION",
+        ],
+        "phase": 2,
+        "score": 92,
+      },
+      {
+        "kitId": "FPHL",
+        "matchedNeeds": [],
+        "phase": 3,
+        "score": 84,
+      },
+    ],
+  },
+  "therapyNeeds": [
+    "GUT_RESTORATION",
+    "INFLAMMATION_CONTROL",
+    "IMMUNE_MODULATION",
+    "SHEDDING_ARREST",
+  ],
+}
+`;
+
+exports[`snapshot — veg / lifestyle / gut night_shift_oxidative_01 (NIGHT_SHIFT + oxidative) 1`] = `
+{
+  "clinicalProfile": {
+    "primaryDiagnosis": "NIGHT_SHIFT",
+    "primaryScore": 62,
+    "rootCauses": [
+      "STRESS",
+      "OXIDATIVE_STRESS",
+      "CIRCADIAN_DISRUPTION",
+    ],
+    "scalpStates": [
+      "NORMAL_SCALP",
+    ],
+    "secondaryDiagnoses": [
+      {
+        "key": "OXIDATIVE",
+        "score": 58,
+      },
+      {
+        "key": "TE_STRESS",
+        "score": 55,
+      },
+      {
+        "key": "AGA_MALE_123",
+        "score": 50,
+      },
+    ],
+    "severity": "MILD",
+  },
+  "recommendation": {
+    "appliedRules": [],
+    "protocolLabel": "Recovery protocol for 3 condition(s): Male pattern hair loss · Scalp / perifollicular inflammation · Night shift / circadian disruption.",
+    "rankedKits": [
+      {
+        "kitId": "PHENOTYPE INFLAMATION",
+        "matchedNeeds": [
+          "INFLAMMATION_CONTROL",
+        ],
+        "phase": 1,
+        "score": 100,
+      },
+      {
+        "kitId": "HAIR FACT NIGHT SHIFT",
+        "matchedNeeds": [
+          "CIRCADIAN_RESET",
+        ],
+        "phase": 2,
+        "score": 92,
+      },
+      {
+        "kitId": "MPHL",
+        "matchedNeeds": [],
+        "phase": 3,
+        "score": 84,
+      },
+    ],
+  },
+  "therapyNeeds": [
+    "CIRCADIAN_RESET",
+    "SHEDDING_ARREST",
+    "INFLAMMATION_CONTROL",
+    "ANTIOXIDANT_SUPPORT",
+  ],
+}
+`;
+
+exports[`snapshot — veg / lifestyle / gut nutritional_te_vegetarian_01 (veg kit aliases) 1`] = `
+{
+  "clinicalProfile": {
+    "primaryDiagnosis": "TE_NUTRITION",
+    "primaryScore": 58,
+    "rootCauses": [
+      "POOR_NUTRITION",
+      "POOR_NUTRITION",
+    ],
+    "scalpStates": [
+      "NORMAL_SCALP",
+    ],
+    "secondaryDiagnoses": [],
+    "severity": "MILD",
+  },
+  "recommendation": {
+    "appliedRules": [],
+    "protocolLabel": "Recovery protocol for 3 condition(s): Female pattern hair loss · Metabolic dysfunction · Immune depletion / regrowth support.",
+    "rankedKits": [
+      {
+        "kitId": "PRO FACT META B",
+        "matchedNeeds": [],
+        "phase": 1,
+        "score": 100,
+      },
+      {
+        "kitId": "PRO IMMUNE VEG",
+        "matchedNeeds": [],
+        "phase": 2,
+        "score": 92,
+      },
+      {
+        "kitId": "FPHL",
+        "matchedNeeds": [],
+        "phase": 3,
+        "score": 84,
+      },
+    ],
+  },
+  "therapyNeeds": [
+    "SHEDDING_ARREST",
+    "INFLAMMATION_CONTROL",
+  ],
+}
+`;
+
+exports[`snapshot — veg / lifestyle / gut sedentary_stress_te_01 (METABOLIC_GENERIC injection) 1`] = `
 {
   "clinicalProfile": {
     "primaryDiagnosis": "TE_STRESS",

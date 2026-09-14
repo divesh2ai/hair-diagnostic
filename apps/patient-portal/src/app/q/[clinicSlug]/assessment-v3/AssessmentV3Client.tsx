@@ -111,6 +111,7 @@ export function AssessmentV3Client({ clinic, clinicSlug }: AssessmentV3ClientPro
         relationship: result.relationship,
         visitType: result.visitType,
         intakeToken: result.intakeToken,
+        whatsappConsent: result.whatsappConsent,
       });
       // Seed question one instead of answering it. The patient still sees the
       // name question, prefilled, and can extend "Priya" to "Priya Sharma" —
@@ -140,9 +141,9 @@ export function AssessmentV3Client({ clinic, clinicSlug }: AssessmentV3ClientPro
   return (
     <AssessmentV3Journey
       visualMode="bridge"
-      // Phone only — see `handleIntakeComplete` on why the name travels as a
-      // seeded answer instead.
-      patientInfoOverride={{ phone: intake.phone }}
+      // Phone (+ consent) only — see `handleIntakeComplete` on why the name
+      // travels as a seeded answer instead.
+      patientInfoOverride={{ phone: intake.phone, whatsappConsent: intake.whatsappConsent }}
       visitType={intake.visitType}
       // Closes the In Clinic entry opened at intake, in the same server
       // workflow that creates the Assessment.

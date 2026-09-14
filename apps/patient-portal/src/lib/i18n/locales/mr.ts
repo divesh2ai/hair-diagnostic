@@ -58,6 +58,7 @@ export const mr: Dictionary = {
     sectionOperations: "कामकाज",
     sectionGovernance: "प्रशासन",
     sectionSystem: "सिस्टम",
+    support: "Help & Support",
   },
   shell: {
     searchPlaceholder: "रुग्ण, अहवाल, क्लिनिक्स शोधा…",

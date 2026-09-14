@@ -89,9 +89,21 @@ export function toggleExclusiveSelection(
   return [...current.filter((item) => item !== exclusiveValue), value];
 }
 
+/**
+ * Does a multi-select answer contain this option id?
+ *
+ * `Array.isArray` narrows AntiAgeingAnswer to `string[] | AntiAgeingStorageReference[]`,
+ * and `.includes()` on that union demands a `string & AntiAgeingStorageReference`
+ * — a type nothing can satisfy. Comparing elements instead keeps the check
+ * honest: an upload reference is simply never equal to an option id.
+ */
+export function includesAntiAgeingOption(answer: AntiAgeingAnswer, option: string): boolean {
+  return Array.isArray(answer) && answer.some((value) => value === option);
+}
+
 export function visibleAntiAgeingStepIds(answers: AntiAgeingAnswers) {
   const ids = ['AA_01'];
-  if (Array.isArray(answers.AA_01) && answers.AA_01.includes('other')) ids.push('AA_01A');
+  if (includesAntiAgeingOption(answers.AA_01, 'other')) ids.push('AA_01A');
   ids.push('AA_02', 'AA_03', 'AA_04');
   if (hasSelection(answers.AA_04)) ids.push('AA_05');
   ids.push('AA_06');
@@ -99,7 +111,7 @@ export function visibleAntiAgeingStepIds(answers: AntiAgeingAnswers) {
   ids.push('AA_07');
   if (answers.AA_07 === 'yes') {
     ids.push('AA_08');
-    if (Array.isArray(answers.AA_08) && answers.AA_08.includes('other')) ids.push('AA_08A');
+    if (includesAntiAgeingOption(answers.AA_08, 'other')) ids.push('AA_08A');
   }
   ids.push('AA_09', 'AA_10', 'AA_11');
   if (hasSelection(answers.AA_11)) ids.push('AA_12');
@@ -111,13 +123,13 @@ export const requiredAntiAgeingImageViews = ['FRONT', 'LEFT', 'RIGHT'] as const;
 
 export function pruneHiddenAntiAgeingAnswers(input: AntiAgeingAnswers) {
   const next = { ...input };
-  if (!Array.isArray(next.AA_01) || !next.AA_01.includes('other')) delete next.AA_01A;
+  if (!includesAntiAgeingOption(next.AA_01, 'other')) delete next.AA_01A;
   if (!hasSelection(next.AA_04)) delete next.AA_05;
   if (next.AA_06 !== 'yes') delete next.AA_06A;
   if (next.AA_07 !== 'yes') {
     delete next.AA_08;
     delete next.AA_08A;
-  } else if (!Array.isArray(next.AA_08) || !next.AA_08.includes('other')) {
+  } else if (!includesAntiAgeingOption(next.AA_08, 'other')) {
     delete next.AA_08A;
   }
   if (!hasSelection(next.AA_11)) delete next.AA_12;

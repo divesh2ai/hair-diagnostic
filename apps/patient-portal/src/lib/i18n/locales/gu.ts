@@ -58,6 +58,7 @@ export const gu: Dictionary = {
     sectionOperations: "કામગીરી",
     sectionGovernance: "શાસન",
     sectionSystem: "સિસ્ટમ",
+    support: "Help & Support",
   },
   shell: {
     searchPlaceholder: "દર્દીઓ, અહેવાલો, ક્લિનિક્સ શોધો…",

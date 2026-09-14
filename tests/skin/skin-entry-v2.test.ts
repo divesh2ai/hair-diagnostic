@@ -15,23 +15,23 @@ const memory = (entries: Record<string, string>) => ({
 });
 
 describe('versioned Skin FACT common entry and concern selection', () => {
-  it('stores only the five approved common-profile values', () => {
-    expect(Object.keys(emptySkinCommonAnswers())).toEqual(['name', 'age', 'gender', 'skinType', 'sensitiveSkin']);
+  it('stores the approved common-profile values, including phone and WhatsApp consent', () => {
+    expect(Object.keys(emptySkinCommonAnswers())).toEqual(['name', 'age', 'gender', 'skinType', 'sensitiveSkin', 'phone', 'whatsappConsent']);
   });
 
-  it.each(['phone', 'email', 'country', 'city', 'address', 'primaryConcern'])('discards legacy %s', (field) => {
+  it.each(['email', 'country', 'city', 'address', 'primaryConcern'])('discards legacy %s', (field) => {
     const answers = sanitizeSkinCommonAnswers({ name: 'Asha', age: '28', gender: 'Female', skinType: 'Normal', sensitiveSkin: 'No', [field]: 'private' });
     expect(answers).not.toHaveProperty(field);
   });
 
-  it('migrates legacy state without removed contact, location, or primary-concern values', () => {
+  it('migrates legacy state, keeping phone but dropping location and primary-concern values, with consent unset', () => {
     const entries: Record<string, string> = {};
     entries['drfact:skin-fact:common-intake:v1:clinic'] = JSON.stringify({
       productType: 'SKIN_FACT', clinicSlug: 'clinic', sessionId: 's', completedAt: 'x',
       answers: { name: 'Asha', age: '28', gender: 'Female', skinType: 'Normal', sensitiveSkin: 'No', phone: 'x', city: 'x', primaryConcern: 'PIGMENTATION' },
     });
     const profile = loadSkinCommonProfile(memory(entries) as Storage, 'clinic');
-    expect(profile?.answers).toEqual({ name: 'Asha', age: '28', gender: 'Female', skinType: 'Normal', sensitiveSkin: 'No' });
+    expect(profile?.answers).toEqual({ name: 'Asha', age: '28', gender: 'Female', skinType: 'Normal', sensitiveSkin: 'No', phone: 'x', whatsappConsent: false });
     expect(entries[skinCommonStorageKey('clinic')]).toBeTruthy();
   });
 

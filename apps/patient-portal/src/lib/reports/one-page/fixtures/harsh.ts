@@ -240,6 +240,22 @@ export const harshFixture: OnePageReportViewModel = {
   },
   disclaimer:
     "Based on your submitted assessment and clinical review. This report supports, but does not replace, medical advice.",
+  // Mirrors this fixture's own conclusion: earliest-stage AGA, pattern itself
+  // is the driver, so primaryActiveDriver is null by the documented rule.
+  narrative: {
+    underlyingPattern: "Male Pattern Hair Loss at Norwood II",
+    activityLine:
+      "mild temple recession with limited shedding over the past 6-12 months",
+    primaryActiveDriver: null,
+    secondaryDrivers: [
+      "family history of pattern loss",
+      "lifestyle-linked oxidative stress",
+    ],
+    treatmentStrategy: [
+      { kitCode: "MPHL", phrase: "protecting pattern-sensitive follicles" },
+      { kitCode: "PRO_FACT_META_B", phrase: "steadying metabolic support" },
+    ],
+  },
   validation: {
     ok: true,
     errors: [],

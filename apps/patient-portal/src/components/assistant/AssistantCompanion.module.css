@@ -113,6 +113,11 @@
 .companion:hover .controls,
 .companion:focus-within .controls { opacity: 1; transform: translateY(0); }
 
+/* While the companion is roaming it can move under the pointer at any moment,
+   so the control that stops it must never be something you have to chase. The
+   rail stays visible for as long as roaming is on. */
+.companion[data-pinned="false"] .controls { opacity: 1; transform: translateY(0); }
+
 .controls button {
   display: grid;
   width: 30px;
