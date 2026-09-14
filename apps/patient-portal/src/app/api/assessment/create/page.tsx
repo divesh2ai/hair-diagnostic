@@ -76,10 +76,10 @@ export default function ReportPage() {
         </pre>
       </div>
 
-      {/* PDF DOWNLOAD */}
-      <div className="pt-4">
-        <DownloadButton assessmentId={id as string} />
-      </div>
+      {/* PDF download intentionally omitted: this scratch page predates the
+          real report surfaces and the `DownloadButton` it referenced has
+          never existed in this codebase. Nothing routes here — the live
+          flow uses /api/assessment/submit, /orchestrate, /status and /pdf. */}
     </div>
   );
 }
