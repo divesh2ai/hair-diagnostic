@@ -212,6 +212,29 @@ export const rahulFixture: OnePageReportViewModel = {
   },
   disclaimer:
     "Based on your submitted assessment and clinical review. This report supports, but does not replace, medical advice.",
+  // Mirrors this fixture's own conclusion: early AGA where scalp inflammation
+  // is the leading ACTIVE driver ahead of the pattern itself.
+  narrative: {
+    underlyingPattern: "Male Pattern Hair Loss at Norwood II",
+    activityLine:
+      "early thinning with mild temple recession over the past 6-12 months",
+    primaryActiveDriver: {
+      kitCode: "PHENOTYPE_INFLAMMATION",
+      label: "scalp inflammation",
+      effect: "weaken the follicle environment and accelerate miniaturisation",
+      sentence:
+        "Scalp inflammation appears to be the most active driver, weakening the follicle environment and accelerating androgen-sensitive miniaturisation.",
+      doctorAdded: false,
+    },
+    secondaryDrivers: [
+      "lifestyle-linked oxidative stress",
+      "reduced immune resilience",
+    ],
+    treatmentStrategy: [
+      { kitCode: "PHENOTYPE_INFLAMMATION", phrase: "calming scalp inflammation" },
+      { kitCode: "PRO_IMMUNE_GOLD", phrase: "supporting immune recovery" },
+    ],
+  },
   validation: {
     ok: true,
     errors: [],

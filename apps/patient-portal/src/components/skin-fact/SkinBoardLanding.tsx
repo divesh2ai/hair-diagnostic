@@ -19,18 +19,18 @@ export function SkinBoardLanding({ clinicSlug }: { clinicSlug: string }) {
         />
         <nav className={styles.boardHotspots} aria-label="Dr Skin FACT landing navigation">
           <a className={styles.hotHow} href="#how-it-works"><span className={styles.srOnly}>How it works</span></a>
-          <Link className={styles.hotConcerns} href={`/q/${clinicSlug}/skin/intake?next=concerns`}><span className={styles.srOnly}>Skin concerns</span></Link>
+          <Link className={styles.hotConcerns} href={`/q/${clinicSlug}/skin/intake?next=concerns&start=1`}><span className={styles.srOnly}>Skin concerns</span></Link>
           <a className={styles.hotAbout} href="#about"><span className={styles.srOnly}>About us</span></a>
           <a className={styles.hotClinics} href="#clinics"><span className={styles.srOnly}>For clinics</span></a>
-          <Link className={styles.hotGetStarted} href={`/q/${clinicSlug}/skin/intake?next=concerns`}><span className={styles.srOnly}>Get started</span></Link>
-          <Link className={styles.hotAssessment} href={`/q/${clinicSlug}/skin/intake?next=concerns`}><span>Start Your Skin Assessment</span><ArrowRight size={16} /></Link>
+          <Link className={styles.hotGetStarted} href={`/q/${clinicSlug}/skin/intake?next=concerns&start=1`}><span className={styles.srOnly}>Get started</span></Link>
+          <Link className={styles.hotAssessment} href={`/q/${clinicSlug}/skin/intake?next=concerns&start=1`}><span>Start Your Skin Assessment</span><ArrowRight size={16} /></Link>
         </nav>
       </main>
       <section className={styles.mobileLandingCopy} aria-label="Start Dr Skin FACT">
         <p className={styles.eyebrow}>AI + dermatologist expertise</p>
         <h1 className={styles.serif}>Understand your skin. Heal it from within. <em>Glow that lasts.</em></h1>
         <p>Advanced analysis organizes your unique skin history for focused dermatologist review and a concern-specific plan.</p>
-        <Link className={`${styles.button} ${styles.landingMobileCta}`} href={`/q/${clinicSlug}/skin/intake?next=concerns`}>
+        <Link className={`${styles.button} ${styles.landingMobileCta}`} href={`/q/${clinicSlug}/skin/intake?next=concerns&start=1`}>
           Start assessment <ArrowRight size={16} />
         </Link>
         <span><ShieldCheck size={16} /> Skin FACT data stays separate from HairOS.</span>

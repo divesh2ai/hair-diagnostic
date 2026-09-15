@@ -47,6 +47,8 @@ export const mr: AssessmentDictionary = {
     mobilePlaceholder: '98765 43210',
     mobileHint: 'यामुळे तुमच्या प्रत्येक भेटी एकमेकांशी जोडलेल्या राहतात.',
     privacyNote: 'खाजगी आणि सुरक्षित. फक्त तुमच्या क्लिनिकसोबत शेअर केले जाते.',
+    whatsappConsentLabel:
+      'दिलेल्या मोबाइल नंबरवर WhatsApp द्वारे माझा Dr FACT मूल्यांकन अहवाल आणि संबंधित काळजी माहिती मिळविण्यास मी सहमत आहे.',
     continueLabel: 'पुढे जा',
     checking: 'क्षणभर थांबा…',
     nameRequired: 'कृपया तुमचे नाव लिहा.',

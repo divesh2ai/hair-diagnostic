@@ -57,6 +57,7 @@ export const hi: Dictionary = {
     sectionOperations: "संचालन",
     sectionGovernance: "अभिशासन",
     sectionSystem: "सिस्टम",
+    support: "Help & Support",
   },
   shell: {
     searchPlaceholder: "रोगी, रिपोर्ट, क्लीनिक खोजें…",

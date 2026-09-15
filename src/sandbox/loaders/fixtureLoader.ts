@@ -35,16 +35,25 @@ const BASELINES_DIR = resolveBaselinesDir();
 /**
  * Load a single fixture by its patient ID (filename without .json).
  */
+/**
+ * Does this parsed JSON carry the two fields that distinguish a current
+ * fixture from a legacy one? A predicate rather than a cast: the branch below
+ * already tested exactly this, and saying so in the type system lets
+ * `validateFixtureShape` receive a genuinely narrowed value.
+ */
+function isClinicalPatientFixture(raw: Record<string, unknown>): raw is Record<string, unknown> & ClinicalPatientFixture {
+  return Boolean(raw.patient) && Boolean(raw.questionnaireAnswers);
+}
+
 export function loadClinicalFixture(fixtureId: string): ClinicalPatientFixture {
   const filePath = path.join(FIXTURES_DIR, `${fixtureId}.json`);
   if (!fs.existsSync(filePath)) {
     throw new Error(`[FixtureLoader] Fixture not found: ${filePath}`);
   }
   const raw = JSON.parse(fs.readFileSync(filePath, "utf-8")) as Record<string, unknown>;
-  if (raw.patient && raw.questionnaireAnswers) {
-    const fixture = raw as ClinicalPatientFixture;
-    validateFixtureShape(fixture, fixtureId);
-    return fixture;
+  if (isClinicalPatientFixture(raw)) {
+    validateFixtureShape(raw, fixtureId);
+    return raw;
   }
   const { adaptLegacyFixture } = require("./fixtureAdapter") as typeof import("./fixtureAdapter");
   return adaptLegacyFixture(fixtureId);

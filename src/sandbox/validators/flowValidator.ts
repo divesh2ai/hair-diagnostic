@@ -67,9 +67,14 @@ export function traceQuestionFlow(answers: PatientAnswers): QuestionFlowTrace {
   const questionsSkipped: string[] = [];
   const branchingPath: BranchingPath[] = [];
 
+  // PatientAnswers is a declared interface with no index signature, so it
+  // cannot be asserted into Record<string, unknown>. Spreading produces the
+  // same lookup surface without claiming the interface has one.
+  const answerMap: Record<string, unknown> = { ...answers };
+
   for (const q of QUESTION_RULES) {
     const shouldShow = q.showIf ? q.showIf(answers) : true;
-    const answeredWith = (answers as Record<string, unknown>)[q.id];
+    const answeredWith = answerMap[q.id];
 
     if (shouldShow) {
       questionsPresented.push(q.id);

@@ -290,6 +290,31 @@ export const ruchiFixture: OnePageReportViewModel = {
   },
   disclaimer:
     "Based on your submitted assessment and clinical review. This report supports, but does not replace, medical advice.",
+  // Mirrors this fixture's own conclusion: female pattern loss, hormonal +
+  // thyroid inflammation leading, kits in doctor-approved order.
+  narrative: {
+    underlyingPattern: "Female Pattern Hair Loss at Ludwig II",
+    activityLine:
+      "noticeable shedding of approximately 50-100 strands over the past 3-6 months",
+    primaryActiveDriver: {
+      kitCode: "FH_WELL_3",
+      label: "hormonal inflammation",
+      effect: "keep the follicle environment inflamed and shorten the growth phase",
+      sentence:
+        "Hormonal inflammation appears to be the most active driver, keeping the follicle environment inflamed and shortening the growth phase.",
+      doctorAdded: false,
+    },
+    secondaryDrivers: [
+      "thyroid-related metabolic slowing",
+      "scalp irritation",
+      "smoking-related oxidative stress",
+    ],
+    treatmentStrategy: [
+      { kitCode: "FH_WELL_3", phrase: "restoring hormonal balance" },
+      { kitCode: "PHENOTYPE_INFLAMMATION", phrase: "calming inflammatory load" },
+      { kitCode: "META_B_HYPOTHYROID", phrase: "supporting thyroid-linked metabolism" },
+    ],
+  },
   validation: {
     ok: true,
     errors: [],

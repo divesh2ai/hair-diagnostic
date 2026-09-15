@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { ArrowLeft, ArrowRight, Check, FileText, ImagePlus, LoaderCircle, RotateCcw, ShieldCheck, Sparkles, Trash2 } from 'lucide-react';
 import { isQuestionVisible } from '@/runtime/visibilityEngine';
+import { normaliseMobile } from '@/lib/patient/phone';
 import type { Question, QuestionOption } from '@/types/questionnaire';
 import { useSkinAssessmentStore, type SkinAnswer, type SkinAnswers, type SkinUploadReference } from '@/stores/useSkinAssessmentStore';
 import {
@@ -259,9 +260,17 @@ export function SkinAcneQuestionnaire() {
           skinConcernCount: intake!.selectedConcerns.length, assessmentSessionId: current.uploadSessionId,
         },
       };
+      const phoneResult = normaliseMobile(profile!.answers.phone);
       const response = await fetch('/api/assessment/submit', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ clinicSlug, concern: 'skin_acne', answers, patientInfo: { name: profile!.answers.name, gender: profile!.answers.gender } }),
+        body: JSON.stringify({
+          clinicSlug, concern: 'skin_acne', answers,
+          patientInfo: {
+            name: profile!.answers.name, gender: profile!.answers.gender,
+            phone: phoneResult.ok ? phoneResult.e164 : undefined,
+            whatsappConsent: profile!.answers.whatsappConsent,
+          },
+        }),
       });
       const data = await response.json();
       if (!response.ok) throw new Error(data.error ?? 'Submission failed');

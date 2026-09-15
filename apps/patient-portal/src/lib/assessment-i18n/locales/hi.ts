@@ -37,6 +37,8 @@ export const hi: AssessmentDictionary = {
     mobilePlaceholder: '98765 43210',
     mobileHint: 'इससे आपकी हर विज़िट आपस में जुड़ी रहती है।',
     privacyNote: 'निजी और सुरक्षित। सिर्फ़ आपके क्लीनिक के साथ साझा।',
+    whatsappConsentLabel:
+      'मैं दिए गए मोबाइल नंबर पर WhatsApp के ज़रिए अपनी Dr FACT असेसमेंट रिपोर्ट और संबंधित देखभाल जानकारी प्राप्त करने के लिए सहमत हूं।',
     continueLabel: 'आगे बढ़ें',
     checking: 'एक क्षण…',
     nameRequired: 'कृपया अपना नाम भरें।',

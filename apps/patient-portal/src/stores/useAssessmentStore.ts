@@ -71,6 +71,9 @@ function resolvePersistedIntake(value: unknown): PatientIntakeState | null {
       typeof candidate.intakeToken === 'string' && candidate.intakeToken !== ''
         ? candidate.intakeToken
         : null,
+    // Defaults false on anything unrecognised — a corrupted/older persisted
+    // blob must never be read as consent that was never actually given.
+    whatsappConsent: candidate.whatsappConsent === true,
   };
 }
 

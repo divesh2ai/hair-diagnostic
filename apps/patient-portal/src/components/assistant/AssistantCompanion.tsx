@@ -3,7 +3,7 @@
 import { createContext, type ReactNode, useCallback, useContext, useEffect, useMemo, useReducer, useRef, useState } from "react";
 import { usePathname } from "next/navigation";
 import { useReducedMotion } from "framer-motion";
-import { Activity, Coffee, Minus, Move, NotebookPen, PersonStanding, RotateCcw } from "lucide-react";
+import { Activity, Coffee, Minus, Move, NotebookPen, PersonStanding, Pin, PinOff, RotateCcw } from "lucide-react";
 import { AssistantPet, type AssistantPetState } from "./AssistantPet";
 import styles from "./AssistantCompanion.module.css";
 
@@ -33,6 +33,17 @@ interface CompanionSnapshot {
   anchorId: CompanionAnchorId;
   minimized: boolean;
   motionReduced: boolean;
+  /**
+   * Parked. The companion holds the spot it is on: it stops flying to clicks,
+   * keeps a position the doctor dragged it to across state changes, and does
+   * not wander off on its own into an idle coffee break.
+   *
+   * Default OFF — flying to the pointer is the behaviour the doctor expects,
+   * and parking is the exception they reach for when they want it still. The
+   * choice is persisted, so a doctor who parks it once never has to park it
+   * again.
+   */
+  pinned: boolean;
 }
 
 type CompanionEvent =
@@ -41,7 +52,9 @@ type CompanionEvent =
   | { type: "MINIMIZE" }
   | { type: "RESTORE" }
   | { type: "TOGGLE_MOTION" }
-  | { type: "SET_MOTION"; reduced: boolean };
+  | { type: "SET_MOTION"; reduced: boolean }
+  | { type: "TOGGLE_PIN" }
+  | { type: "SET_PIN"; pinned: boolean };
 
 const initialSnapshot: CompanionSnapshot = {
   state: "idle-perched",
@@ -49,6 +62,7 @@ const initialSnapshot: CompanionSnapshot = {
   anchorId: "bottom-right",
   minimized: false,
   motionReduced: false,
+  pinned: false,
 };
 
 export const AssistantCompanionStateMachine = {
@@ -67,6 +81,10 @@ export const AssistantCompanionStateMachine = {
         return { ...snapshot, motionReduced: !snapshot.motionReduced };
       case "SET_MOTION":
         return { ...snapshot, motionReduced: event.reduced };
+      case "TOGGLE_PIN":
+        return { ...snapshot, pinned: !snapshot.pinned };
+      case "SET_PIN":
+        return { ...snapshot, pinned: event.pinned };
       default:
         return snapshot;
     }
@@ -88,6 +106,7 @@ interface CompanionContextValue extends CompanionSnapshot {
   minimize: () => void;
   restore: () => void;
   toggleReducedMotion: () => void;
+  togglePinned: () => void;
 }
 
 const AssistantCompanionContext = createContext<CompanionContextValue | null>(null);
@@ -146,9 +165,13 @@ export function AssistantCompanionProvider({ children }: { children: ReactNode }
     try {
       const saved = window.localStorage.getItem("drfact-companion-preferences");
       if (saved) {
-        const preferences = JSON.parse(saved) as { minimized?: boolean; motionReduced?: boolean };
+        const preferences = JSON.parse(saved) as { minimized?: boolean; motionReduced?: boolean; pinned?: boolean };
         if (preferences.motionReduced) dispatch({ type: "SET_MOTION", reduced: true });
         if (preferences.minimized) dispatch({ type: "MINIMIZE" });
+        // Only an explicit stored choice overrides the parked default.
+        if (typeof preferences.pinned === "boolean") {
+          dispatch({ type: "SET_PIN", pinned: preferences.pinned });
+        }
       }
     } catch { /* Preference storage is optional. */ }
     queueMicrotask(() => { storageReadyRef.current = true; });
@@ -157,18 +180,19 @@ export function AssistantCompanionProvider({ children }: { children: ReactNode }
   useEffect(() => {
     if (!storageReadyRef.current) return;
     try {
-      window.localStorage.setItem("drfact-companion-preferences", JSON.stringify({ minimized: snapshot.minimized, motionReduced: snapshot.motionReduced }));
+      window.localStorage.setItem("drfact-companion-preferences", JSON.stringify({ minimized: snapshot.minimized, motionReduced: snapshot.motionReduced, pinned: snapshot.pinned }));
     } catch { /* Preference storage is optional. */ }
-  }, [snapshot.minimized, snapshot.motionReduced]);
+  }, [snapshot.minimized, snapshot.motionReduced, snapshot.pinned]);
 
   useEffect(() => {
     const handleCompanionEvent = (event: Event) => {
-      const detail = (event as CustomEvent<{ state?: CompanionState; anchorId?: CompanionAnchorId; mode?: CompanionMode; action?: "minimize" | "restore" | "toggle-motion" }>).detail;
+      const detail = (event as CustomEvent<{ state?: CompanionState; anchorId?: CompanionAnchorId; mode?: CompanionMode; action?: "minimize" | "restore" | "toggle-motion" | "toggle-pin" }>).detail;
       if (!detail) return;
       if (detail.mode) dispatch({ type: "SET_MODE", mode: detail.mode });
       if (detail.action === "minimize") dispatch({ type: "MINIMIZE" });
       else if (detail.action === "restore") dispatch({ type: "RESTORE" });
       else if (detail.action === "toggle-motion") dispatch({ type: "TOGGLE_MOTION" });
+      else if (detail.action === "toggle-pin") dispatch({ type: "TOGGLE_PIN" });
       else if (detail.state) transition(detail.state, detail.anchorId);
     };
     window.addEventListener("drfact:companion", handleCompanionEvent);
@@ -206,11 +230,13 @@ export function AssistantCompanionProvider({ children }: { children: ReactNode }
 
   useEffect(() => {
     if (coffeeRef.current) clearTimeout(coffeeRef.current);
-    if (snapshot.minimized || snapshot.motionReduced || snapshot.state !== "idle-perched") return;
+    // Parked means parked: no unprompted coffee break. The doctor can still
+    // play the animation deliberately from the Coffee action.
+    if (snapshot.pinned || snapshot.minimized || snapshot.motionReduced || snapshot.state !== "idle-perched") return;
     const delay = 45_000 + Math.round(Math.random() * 30_000);
     coffeeRef.current = setTimeout(() => transition("coffee-break", snapshot.anchorId, 3_600), delay);
     return () => { if (coffeeRef.current) clearTimeout(coffeeRef.current); };
-  }, [snapshot.anchorId, snapshot.minimized, snapshot.motionReduced, snapshot.state, transition]);
+  }, [snapshot.anchorId, snapshot.minimized, snapshot.motionReduced, snapshot.pinned, snapshot.state, transition]);
 
   const value = useMemo<CompanionContextValue>(() => ({
     ...snapshot,
@@ -231,6 +257,7 @@ export function AssistantCompanionProvider({ children }: { children: ReactNode }
     minimize: () => dispatch({ type: "MINIMIZE" }),
     restore: () => dispatch({ type: "RESTORE" }),
     toggleReducedMotion: () => dispatch({ type: "TOGGLE_MOTION" }),
+    togglePinned: () => dispatch({ type: "TOGGLE_PIN" }),
   }), [snapshot, transition]);
 
   const isSupportedPage =
@@ -276,6 +303,25 @@ export function AssistantAnchorResolver(anchorId: CompanionAnchorId, state: Comp
   return { x: clamp(rect.right - width, margin, maxX), y: clamp(rect.top - height - 12, safeTop, maxY) };
 }
 
+/**
+ * The pre-placement position, shared by the server render and the hydrating
+ * one. Its OBJECT IDENTITY is the marker for "the anchor has not been resolved
+ * yet" — every resolved position is a fresh object — so the movement
+ * controller can tell a real destination from the placeholder it started on.
+ */
+const UNPLACED: ResolvedAnchor = { x: 24, y: 24 };
+
+/**
+ * Clicks that are doing a job, and therefore are not a flight destination.
+ *
+ * Anything interactive: pressing Approve, opening a menu, focusing a field or
+ * following a link must move nothing. Hoisted to module scope so there is one
+ * list rather than one per render, and so it can be asserted directly.
+ */
+const IGNORE_FLIGHT_TARGETS =
+  'button, a, input, textarea, select, label, [role="button"], [role="link"], ' +
+  '[role="tab"], [role="menuitem"], [contenteditable="true"], [data-companion-ignore-pointer]';
+
 function companionDimensions(state: CompanionState) {
   if (state === "minimized") return { width: 52, height: 52 };
   if (typeof window !== "undefined" && window.innerWidth < 768) return { width: 108, height: 124 };
@@ -308,9 +354,14 @@ function signedDirection(value: number, fallback: -1 | 0 | 1): -1 | 0 | 1 {
   return value > 0 ? 1 : -1;
 }
 
-export function AssistantMovementController({ anchorId, state, reducedMotion, debug = false, motionRate = 1, onDragWake, children }: { anchorId: CompanionAnchorId; state: CompanionState; reducedMotion: boolean; debug?: boolean; motionRate?: number; onDragWake?: () => void; children: ReactNode }) {
-  const [position, setPosition] = useState<ResolvedAnchor>({ x: 24, y: 24 });
+export function AssistantMovementController({ anchorId, state, reducedMotion, pinned = false, debug = false, motionRate = 1, onDragWake, children }: { anchorId: CompanionAnchorId; state: CompanionState; reducedMotion: boolean; pinned?: boolean; debug?: boolean; motionRate?: number; onDragWake?: () => void; children: ReactNode }) {
+  // Stays UNPLACED for the server render and the hydrating one — the anchor
+  // depends on the viewport, and resolving it during SSR would put a different
+  // value in the HTML than the browser computes.
+  const [position, setPosition] = useState<ResolvedAnchor>(UNPLACED);
+  /** True for the length of one flight, so the CSS can play the arc. */
   const [flying, setFlying] = useState(false);
+  const flyTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const moverRef = useRef<HTMLDivElement | null>(null);
   const frameRef = useRef(0);
   const initializedRef = useRef(false);
@@ -318,7 +369,6 @@ export function AssistantMovementController({ anchorId, state, reducedMotion, de
   const targetRef = useRef<ResolvedAnchor>({ x: 24, y: 24 });
   const velocityRef = useRef({ x: 0, y: 0 });
   const manualPositionRef = useRef<ResolvedAnchor | null>(null);
-  const flyTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const dragTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const dockTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const didDragRef = useRef(false);
@@ -357,18 +407,31 @@ export function AssistantMovementController({ anchorId, state, reducedMotion, de
 
   useEffect(() => {
     let frame = 0;
+    const resolve = () => {
+      // A viewport that reports 0x0 (pre-layout, a hidden or detached frame)
+      // would resolve every anchor to the top-left corner and, worse, would
+      // count as the first real placement — parking the companion there for the
+      // rest of the session. Stay unplaced until the window can be measured.
+      if (!window.innerWidth || !window.innerHeight) return;
+      if (manualPositionRef.current) {
+        const next = clampToViewport(manualPositionRef.current.x, manualPositionRef.current.y);
+        manualPositionRef.current = next;
+        setPosition(next);
+        return;
+      }
+      const dimensions = companionDimensions(state);
+      setPosition(
+        AssistantAnchorResolver(anchorId, state, dimensions.width, dimensions.height),
+      );
+    };
+    // Always through a frame, including the first placement: read straight out
+    // of the effect and `window.innerWidth` can still be pre-layout, which
+    // resolves the anchor against a viewport a few pixels wide and parks the
+    // companion in the top-left for good. The frame is what guarantees the
+    // measurement is real.
     const update = () => {
       cancelAnimationFrame(frame);
-      frame = requestAnimationFrame(() => {
-        if (manualPositionRef.current) {
-          const next = clampToViewport(manualPositionRef.current.x, manualPositionRef.current.y);
-          manualPositionRef.current = next;
-          setPosition(next);
-          return;
-        }
-        const dimensions = companionDimensions(state);
-        setPosition(AssistantAnchorResolver(anchorId, state, dimensions.width, dimensions.height));
-      });
+      frame = requestAnimationFrame(resolve);
     };
     update();
     window.addEventListener("resize", update);
@@ -379,29 +442,60 @@ export function AssistantMovementController({ anchorId, state, reducedMotion, de
   useEffect(() => {
     targetRef.current = position;
     if (!initializedRef.current) {
+      // FIRST real placement teleports; every later one is animated.
+      //
+      // `position` starts on the UNPLACED placeholder because the anchor is not
+      // knowable during SSR, so treating that placeholder as the starting point
+      // meant every page load began with the companion gliding diagonally
+      // across the whole viewport to its resting place. That entrance was most
+      // of "why is it flying around". Initialisation is therefore deferred
+      // until a resolved position arrives — identified by not being the shared
+      // UNPLACED object.
       currentRef.current = position;
       lastRootRef.current = position;
-      initializedRef.current = true;
+      velocityRef.current = { x: 0, y: 0 };
+      if (position !== UNPLACED) initializedRef.current = true;
     }
   }, [position]);
 
   useEffect(() => {
+    // Parked means parked. Without this, playing the Notes or Coffee animation
+    // after the doctor had dragged the companion somewhere would discard that
+    // position and snap it back to the anchor — the companion moving on its
+    // own, which is the exact thing the pin exists to prevent.
+    if (pinned) return;
     if (["idle-perched", "sleep"].includes(state)) return;
     manualPositionRef.current = null;
-  }, [anchorId, state]);
+  }, [anchorId, pinned, state]);
 
+  // ── Click-to-travel: the companion follows the pointer ────────────────────
+  //
+  // Click an empty part of the page and it flies there. This is the behaviour
+  // the doctor asked to keep, and the PIN is its off switch — parked, this
+  // listener is never even attached, so there is no cost and no chance of a
+  // stray flight.
+  //
+  // Three things keep it out of the way of clinical work:
+  //   * it never fires on a control (see IGNORE below), so a click on Approve,
+  //     a nav item, a form field or a link moves nothing;
+  //   * it is off entirely while parked;
+  //   * the case-review route excludes the companion altogether — see
+  //     COMPANION_EXCLUDED, which exists because a mascot must never be able
+  //     to sit over the decision bar that authorises treatment.
   useEffect(() => {
+    if (pinned) return;
     const handlePointerDestination = (event: PointerEvent) => {
       if (event.button !== 0 || state !== "idle-perched" || draggingRef.current) return;
       const target = event.target;
       if (!(target instanceof Element)) return;
-      if (target.closest('button, a, input, textarea, select, label, [role="button"], [role="link"], [contenteditable="true"], [data-companion-ignore-pointer]')) return;
+      // A click that is doing something else is not a destination.
+      if (target.closest(IGNORE_FLIGHT_TARGETS)) return;
       const dimensions = companionDimensions(state);
       flyTo(clampToViewport(event.clientX - dimensions.width / 2, event.clientY - dimensions.height / 2));
     };
     window.addEventListener("pointerdown", handlePointerDestination, { passive: true });
     return () => window.removeEventListener("pointerdown", handlePointerDestination);
-  }, [clampToViewport, flyTo, state]);
+  }, [clampToViewport, flyTo, pinned, state]);
 
   useEffect(() => () => {
     cancelAnimationFrame(frameRef.current);
@@ -600,7 +694,12 @@ export function AssistantMovementController({ anchorId, state, reducedMotion, de
           moverRef.current.dataset.edgePerched = "false";
         }
         const current = currentRef.current;
-        event.currentTarget.setPointerCapture(event.pointerId);
+        // NO setPointerCapture here. Capturing on pointerdown retargets the
+        // pointerup to this element, so the browser resolves the subsequent
+        // click against the mover instead of the button that was actually
+        // pressed — which is precisely why the Notes and Coffee actions
+        // appeared dead. Capture is taken in onPointerMove, the moment a drag
+        // is real, where it is genuinely needed.
         pointerDownRef.current = { id: event.pointerId, x: event.clientX, y: event.clientY, grabX: event.clientX - current.x, grabY: event.clientY - current.y, type: event.pointerType, lastX: event.clientX, lastY: event.clientY, lastAt: performance.now(), floorY: current.y };
         totalDistanceRef.current = 0;
         gaitDistanceRef.current = 0;
@@ -617,11 +716,25 @@ export function AssistantMovementController({ anchorId, state, reducedMotion, de
         if (!draggingRef.current) {
           draggingRef.current = true;
           didDragRef.current = true;
+          // Now that this is a drag and not a click, keep the pointer even if
+          // it leaves the element.
+          //
+          // Wrapped because setPointerCapture THROWS (NotFoundError) whenever
+          // the pointer id is no longer active — a pointer released between
+          // this move and the capture, a synthetic event, some touch stacks.
+          // `?.` does not help: the method exists, the call fails. Unguarded,
+          // that exception aborts the rest of this handler, so the drag would
+          // be half-started — flagged as a drag, but never given its dragging
+          // state or its locomotion. Capture is an enhancement; losing it must
+          // not cost the drag.
+          try {
+            event.currentTarget.setPointerCapture(event.pointerId);
+          } catch {
+            /* Pointer already gone — the drag continues without capture. */
+          }
           event.currentTarget.dataset.dragging = "true";
           event.currentTarget.dataset.dragPhase = "moving";
-          if (flyTimerRef.current) clearTimeout(flyTimerRef.current);
           if (dragTimerRef.current) clearTimeout(dragTimerRef.current);
-          setFlying(false);
         }
         const now = performance.now();
         const elapsed = Math.max(8, now - pointer.lastAt) / 1000;
@@ -714,6 +827,20 @@ export function AssistantCompanion() {
   const petState = petStateFor(companion.state);
   const label = companion.minimized ? "Restore Dr. FACT companion" : `Dr. FACT draggable companion: ${companion.state.replaceAll("-", " ")}`;
 
+  // Play an animation the moment it is asked for, and stop it the moment it is
+  // asked for again. Previously these only ever set the state, so a second
+  // press did nothing visible and the action read as broken.
+  const playPreview = useCallback((next: CompanionState) => {
+    // A second press on the same action stops it. Applied synchronously — no
+    // requestAnimationFrame hop, which a backgrounded tab never runs, and which
+    // was one more way for these buttons to look dead.
+    companion.transition(
+      companion.state === next ? "idle-perched" : next,
+      companion.anchorId,
+      companion.state === next ? undefined : 10_000,
+    );
+  }, [companion]);
+
   useEffect(() => {
     if (companion.state !== "greeting") {
       slowGreetingAppliedRef.current = false;
@@ -725,24 +852,31 @@ export function AssistantCompanion() {
   }, [companion, motionRate]);
 
   return (
-    <AssistantMovementController anchorId={companion.anchorId} state={companion.state} reducedMotion={reducedMotion} debug={debugEnabled} motionRate={motionRate} onDragWake={() => companion.transition("idle-perched", companion.anchorId)}>
-      <div className={styles.companion} data-mode={companion.mode} data-reduced-motion={reducedMotion ? "true" : "false"}>
-        <button type="button" className={styles.characterButton} onClick={companion.minimized ? companion.restore : companion.succeed} aria-label={label} title={companion.minimized ? "Drag or click to restore" : "Drag me, or click an empty area to make me fly there"}>
+    <AssistantMovementController anchorId={companion.anchorId} state={companion.state} reducedMotion={reducedMotion} pinned={companion.pinned} debug={debugEnabled} motionRate={motionRate} onDragWake={() => companion.transition("idle-perched", companion.anchorId)}>
+      <div className={styles.companion} data-mode={companion.mode} data-pinned={companion.pinned ? "true" : "false"} data-reduced-motion={reducedMotion ? "true" : "false"}>
+        <button type="button" className={styles.characterButton} onClick={companion.minimized ? companion.restore : companion.succeed} aria-label={label} title={companion.minimized ? "Drag or click to restore" : companion.pinned ? "Parked. Drag me anywhere, or unpin me to let me fly again." : "Drag me, or click an empty area and I'll fly there."}>
           <AssistantPet state={petState} size={companion.minimized ? "sm" : "lg"} mode={companion.mode === "doctor" ? "doctor" : "patient"} reducedMotion={reducedMotion && !isExplicitPreview} />
           <AssistantPropRenderer state={companion.state} />
         </button>
         {process.env.NODE_ENV !== "production" && !companion.minimized ? (
           <div className={styles.animationPreviews} aria-label="Mascot animation previews">
-            <button type="button" data-active={companion.state === "note-taking" ? "true" : "false"} onClick={() => companion.transition("note-taking", companion.anchorId, 10_000)} aria-label="Play notebook and pen animation" aria-pressed={companion.state === "note-taking"}>
+            <button type="button" data-active={companion.state === "note-taking" ? "true" : "false"} onClick={() => playPreview("note-taking")} aria-label="Play notebook and pen animation" aria-pressed={companion.state === "note-taking"}>
               <NotebookPen /><span>Notes</span>
             </button>
-            <button type="button" data-active={companion.state === "coffee-break" ? "true" : "false"} onClick={() => companion.transition("coffee-break", companion.anchorId, 10_000)} aria-label="Play coffee drinking animation" aria-pressed={companion.state === "coffee-break"}>
+            <button type="button" data-active={companion.state === "coffee-break" ? "true" : "false"} onClick={() => playPreview("coffee-break")} aria-label="Play coffee drinking animation" aria-pressed={companion.state === "coffee-break"}>
               <Coffee /><span>Coffee</span>
             </button>
             {isExplicitPreview ? <span className={styles.previewStatus} role="status">Playing {companion.state === "coffee-break" ? "coffee" : "notes"}</span> : null}
           </div>
         ) : null}
         <div className={styles.controls} aria-label="Assistant companion controls">
+          {/* First in the rail, and the one control that answers "stop
+              moving". Free (the default) the companion flies to wherever the
+              doctor clicks an empty area, and takes the occasional idle coffee
+              break. Parked, it holds its spot and moves only when dragged. */}
+          <button type="button" onClick={companion.togglePinned} aria-pressed={companion.pinned} aria-label={companion.pinned ? "Let the companion fly to your clicks" : "Park the companion and stop it moving"} title={companion.pinned ? "Parked — click to let me fly again" : "Click to park me here and stop me moving"}>
+            {companion.pinned ? <Pin /> : <PinOff />}
+          </button>
           {process.env.NODE_ENV !== "production" ? (
             <>
               <button type="button" onClick={() => setDebugEnabled((enabled) => !enabled)} aria-pressed={debugEnabled} aria-label="Toggle companion motion debug" title="Motion debug">

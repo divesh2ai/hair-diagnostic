@@ -1,69 +1,137 @@
+# CI — release gate for the clinic-launch line.
+#
+# WHY THIS FILE WAS REWRITTEN
+# ---------------------------
+# The previous ci.yml contained TWO complete workflow documents concatenated
+# into one file (a Node 18 / `npm install` block followed by a Node 20 /
+# `npm ci` block), so `name`, `on` and `jobs` each appeared twice at the top
+# level. That is not a valid workflow: GitHub rejects it at parse time, so
+# NEITHER block ever ran. Every one of the 13 recorded ci.yml runs finished
+# with conclusion `failure`, zero jobs and zero duration — including runs on
+# feat/assessment-v3, feat/doctor-review-v2 and release/clinic-launch-rc1,
+# branches the `on:` filter did not even cover. An invalid file fails before
+# its triggers are evaluated, which is why pushes to unlisted branches still
+# produced failed runs. The repository has therefore had no working CI.
+#
+# This file now contains ONE coherent workflow, and adds `release/**` to the
+# triggers so the clinic-launch line is actually gated. main/master remain.
+#
+# BLOCKING vs INFORMATIONAL
+# -------------------------
+# The historical suite cannot be a valid blocking gate today, and we do not
+# fake it green. Two independent, measured reasons:
+#
+#   1. `tsc` reports 912 errors across 124 files on the untouched release
+#      baseline, so `npm run build` (= `tsc`) and `npm run typecheck`
+#      (= `tsc --noEmit`) both exit non-zero before any change is made.
+#   2. The root package.json declares neither `next` nor `react` (they are
+#      installed under apps/patient-portal), so every test that reaches an
+#      app route handler fails to COLLECT with "Cannot find package
+#      'next/server'". Two files in the gated directories hit this:
+#        - tests/doctor/doctor-authorization.test.ts
+#        - tests/commerce/checkout-route-contract.test.ts
+#      These are environment/packaging failures, not product regressions.
+#
+# So `release-gate` runs only suites that are green on the release baseline
+# and is the check to require in branch protection. `baseline-audit` carries
+# the full historical suite and the typecheck; it reports its real red state
+# and is marked continue-on-error so it does not fail the run. Nothing is
+# masked with `|| true` — every failure stays visible in its own job.
+#
+# Fixing the baseline (root deps, tsc errors) is separate work. When it is
+# done, fold baseline-audit's checks into release-gate and delete this split.
+
 name: CI
 
 on:
   push:
-    branches: [ main, master ]
+    branches:
+      - main
+      - master
+      - 'release/**'
   pull_request:
-    branches: [ main, master ]
+    branches:
+      - main
+      - master
+      - 'release/**'
 
 jobs:
-  build:
+  # ── BLOCKING ───────────────────────────────────────────────────────────────
+  # 35 files / 389 tests, all green on release/clinic-launch-rc1 (33ce512).
+  # Paths are explicit rather than `--exclude`d: passing --exclude on the CLI
+  # replaces the config's exclude array and re-globs in src/packages, pulling
+  # in unrelated red suites.
+  release-gate:
+    name: Release gate (blocking)
     runs-on: ubuntu-latest
 
     steps:
       - uses: actions/checkout@v4
 
-      - name: Use Node.js 18
-        uses: actions/setup-node@v4
-        with:
-          node-version: 18
-          cache: 'npm'
-
-      - name: Install dependencies
-        run: npm install
-
-      - name: Generate Prisma client
-        run: npx prisma generate
-        env:
-          DATABASE_URL: ${{ secrets.DATABASE_URL }}
-
-      - name: Build
-        run: npm run build
-
-      - name: Run tests
-        run: npm test --silent
-        env:
-          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
-          DATABASE_URL: ${{ secrets.DATABASE_URL }}
-name: CI
-
-on:
-  push:
-    branches: [ main, master ]
-  pull_request:
-    branches: [ main, master ]
-
-jobs:
-  build:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Setup Node.js
+      - name: Use Node.js 20
         uses: actions/setup-node@v4
         with:
           node-version: '20'
+          cache: 'npm'
 
       - name: Install dependencies
+        run: npm ci
+
+      # postinstall already runs this; kept explicit so a generate failure is
+      # named rather than buried in the install log. Needs no DATABASE_URL —
+      # `prisma generate` reads the schema, not the database.
+      - name: Generate Prisma client
+        run: npx prisma generate
+
+      - name: Localisation, doctor, report and commerce suites
+        run: |
+          npx vitest run \
+            tests/localisation \
+            tests/reports \
+            tests/doctor/clinical-attention-advice.test.ts \
+            tests/doctor/clinical-signals.test.ts \
+            tests/doctor/dashboard-attention.test.ts \
+            tests/doctor/dashboard-cta-hierarchy.test.ts \
+            tests/doctor/order-summary-delta.test.ts \
+            tests/doctor/order-summary-present.test.ts \
+            tests/doctor/protocol-model.test.ts \
+            tests/doctor/provisioning.test.ts \
+            tests/doctor/review-queue-membership.test.ts \
+            tests/doctor/skin-acne-not-hair.test.ts \
+            tests/commerce/budget-substitution.test.ts \
+            tests/commerce/kit-price-governance.test.ts \
+            tests/commerce/patient-cart-fail-closed.test.ts
+
+  # ── INFORMATIONAL ──────────────────────────────────────────────────────────
+  # Expected red until the baseline is repaired. Do not require this check.
+  baseline-audit:
+    name: Legacy baseline (informational)
+    runs-on: ubuntu-latest
+    continue-on-error: true
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Use Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        id: install
         run: npm ci
 
       - name: Generate Prisma client
         run: npx prisma generate
 
-      - name: Build
-        run: npm run build
+      # `npm run build` is the same `tsc`, minus --noEmit; typecheck gives the
+      # identical signal without writing dist/ into the runner workspace.
+      - name: Typecheck (tsc --noEmit)
+        run: npm run typecheck
 
-      - name: Run tests
-        env:
-          CI: true
+      # Runs even when the typecheck above is red, so both signals land in one
+      # report instead of the first failure hiding the second.
+      - name: Full historical suite
+        if: always() && steps.install.outcome == 'success'
         run: npm test

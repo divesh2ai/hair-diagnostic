@@ -37,7 +37,13 @@ export async function loadClinicBranding(opts: {
     opts.userId
       ? prisma.doctor.findFirst({
           where: { supabaseUserId: opts.userId, deletedAt: null },
-          select: { name: true, avatarUrl: true, photoUrl: true, signatureUrl: true },
+          select: {
+            name: true,
+            avatarUrl: true,
+            photoUrl: true,
+            specialization: true,
+            signatureUrl: true,
+          },
         })
       : Promise.resolve(null),
   ]);
@@ -56,6 +62,7 @@ export async function loadClinicBranding(opts: {
     doctorAvatarUrl:
       doctor?.avatarUrl ?? doctor?.photoUrl ?? "/demo/Dr%20Priya.png",
     doctorName: doctor?.name ?? "Dr Priya",
+    doctorSpecialization: doctor?.specialization ?? null,
     doctorSignatureUrl: doctor?.signatureUrl ?? null,
     pdfBranding: (clinic.pdfBranding as Record<string, unknown> | null) ?? null,
     reportBranding: (clinic.reportBranding as Record<string, unknown> | null) ?? null,

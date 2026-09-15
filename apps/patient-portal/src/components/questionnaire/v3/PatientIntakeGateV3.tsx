@@ -80,6 +80,13 @@ export interface PatientIntakeResult {
    * the server.
    */
   intakeToken: string | null;
+  /**
+   * Explicit opt-in to receive the report and care updates on WhatsApp at
+   * `phone`. Defaults false — never inferred from typing a mobile number,
+   * never pre-checked. See lib/patient/whatsappConsent.ts, the module that
+   * persists it and the one place automated delivery reads it.
+   */
+  whatsappConsent: boolean;
 }
 
 interface PatientIntakeGateV3Props {
@@ -129,6 +136,8 @@ export function PatientIntakeGateV3({
   const [unavailable, setUnavailable] = useState(false);
   const [intent, setIntent] = useState<ReturningVisitType | null>(null);
   const [intentError, setIntentError] = useState<string | null>(null);
+  /** Opt-in only — starts false, and nothing in this component ever sets it true except the checkbox itself. */
+  const [whatsappConsent, setWhatsappConsent] = useState(false);
 
   // Resolved once the lookup succeeds; kept so step 2 can complete without
   // re-running it.
@@ -267,6 +276,7 @@ export function PatientIntakeGateV3({
           relationship: 'NEW',
           visitType: 'INITIAL',
           intakeToken: sessionToken.current,
+          whatsappConsent,
         });
         return;
       }
@@ -285,7 +295,7 @@ export function PatientIntakeGateV3({
       inFlight.current = false;
       setBusy(false);
     }
-  }, [lookupRelationship, name, onComplete, openVisit, phone, t]);
+  }, [lookupRelationship, name, onComplete, openVisit, phone, t, whatsappConsent]);
 
   /**
    * Escape hatch after repeated network failures.
@@ -308,8 +318,9 @@ export function PatientIntakeGateV3({
       relationship: null,
       visitType: null,
       intakeToken: sessionToken.current,
+      whatsappConsent,
     });
-  }, [name, onComplete, openVisit, phone]);
+  }, [name, onComplete, openVisit, phone, whatsappConsent]);
 
   const submitIntent = useCallback(() => {
     if (!intent) {
@@ -323,8 +334,9 @@ export function PatientIntakeGateV3({
       visitType: intent,
       // Already opened when the lookup succeeded, one step back.
       intakeToken: sessionToken.current,
+      whatsappConsent,
     });
-  }, [intent, name, onComplete, t]);
+  }, [intent, name, onComplete, t, whatsappConsent]);
 
   const showConnectionFailure = failures > 0 || unavailable;
   // Never offered for `unavailable`: submission resolves identity through the
@@ -484,6 +496,17 @@ export function PatientIntakeGateV3({
               </p>
             ) : null}
           </div>
+
+          <label className={styles.consentRow} htmlFor="intake-whatsapp-consent">
+            <input
+              id="intake-whatsapp-consent"
+              type="checkbox"
+              checked={whatsappConsent}
+              onChange={(event) => setWhatsappConsent(event.target.checked)}
+              disabled={busy}
+            />
+            <span>{t('intake.whatsappConsentLabel')}</span>
+          </label>
 
           {showConnectionFailure ? (
             <div className={styles.failure} role="alert">

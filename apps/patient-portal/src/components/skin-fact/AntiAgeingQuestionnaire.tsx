@@ -7,6 +7,7 @@ import {
   antiAgeingStorageKey,
   buildAntiAgeingSubmission,
   containsInlineBinary,
+  includesAntiAgeingOption,
   isValidAntiAgeingDraft,
   pruneHiddenAntiAgeingAnswers,
   requiredAntiAgeingImageViews,
@@ -25,6 +26,7 @@ import {
   type SkinCommonProfile,
   type SkinFactIntake,
 } from '@/lib/skin-fact/skinJourney';
+import { normaliseMobile } from '@/lib/patient/phone';
 import styles from './anti-ageing.module.css';
 import { VoiceTextField } from './VoiceTextField';
 
@@ -47,7 +49,7 @@ const PHASES:Record<string,string> = {
 };
 const VIEW_LABELS:Record<string,string>={FRONT:'Front view',LEFT:'Left-side view',RIGHT:'Right-side view'};
 
-const previewCommon:SkinCommonProfile={productType:'SKIN_FACT',intakeType:'COMMON',version:'2.0.0',clinicSlug:'preview',sessionId:'preview-session',completedAt:new Date().toISOString(),answers:{name:'Ananya Sharma',age:'44',gender:'Female',skinType:'Combination',sensitiveSkin:'No'}};
+const previewCommon:SkinCommonProfile={productType:'SKIN_FACT',intakeType:'COMMON',version:'2.0.0',clinicSlug:'preview',sessionId:'preview-session',completedAt:new Date().toISOString(),answers:{name:'Ananya Sharma',age:'44',gender:'Female',skinType:'Combination',sensitiveSkin:'No',phone:'9876543210',whatsappConsent:false}};
 const previewIntake:SkinFactIntake={productType:'SKIN_FACT',version:'1.0.0',clinicSlug:'preview',patientSessionId:'preview-session',intakeId:'preview-intake',selectedConcerns:['ANTI_AGEING'],currentConcernIndex:0,completedConcerns:[],assessmentIds:{},status:'IN_PROGRESS'};
 
 export function AntiAgeingQuestionnaire({preview=false}:{preview?:boolean}) {
@@ -106,7 +108,8 @@ export function AntiAgeingQuestionnaire({preview=false}:{preview?:boolean}) {
       const payload=buildAntiAgeingSubmission(common!,clean);
       if(containsInlineBinary(payload))throw new Error('Invalid inline upload data.');
       if(preview){router.push('/design-preview/skin-fact/anti-ageing/processing');return}
-      const response=await fetch('/api/assessment/submit',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({clinicSlug,concern:'skin_anti_ageing',answers:payload,patientInfo:{name:common!.answers.name,gender:common!.answers.gender}})});
+      const phoneResult=normaliseMobile(common!.answers.phone);
+      const response=await fetch('/api/assessment/submit',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({clinicSlug,concern:'skin_anti_ageing',answers:payload,patientInfo:{name:common!.answers.name,gender:common!.answers.gender,phone:phoneResult.ok?phoneResult.e164:undefined,whatsappConsent:common!.answers.whatsappConsent}})});
       const data=await response.json();if(!response.ok)throw new Error(data.error??'Submission failed');
       localStorage.removeItem(antiAgeingStorageKey(clinicSlug));
       const completed=markConcernComplete(intake!,'ANTI_AGEING',data.assessmentId);
@@ -132,7 +135,7 @@ function QuestionView({question,answers,setAnswer,select,clinicSlug,sessionId,pr
   const answer=answers[question.id];
   const setImage=(view:string,ref?:AntiAgeingStorageReference)=>{const current=(answers.AA_10??{}) as Record<string,AntiAgeingStorageReference>;const next={...current};if(ref)next[view]=ref;else delete next[view];setAnswer('AA_10',next)};
   return <section className={styles.question}><div className={styles.phase}><p className={styles.eyebrow}>{PHASES[question.id]}</p><p className={styles.eyebrow}>{question.id.replace('_','-')}</p></div><h1>{question.title}</h1><p className={styles.instruction}>{question.instruction}</p><div className={styles.card}>
-    {(question.type==='single_select'||question.type==='multi_select')&&<div className={styles.options} role={question.type==='multi_select'?'group':'radiogroup'}>{question.options?.map((option)=>{const active=Array.isArray(answer)?answer.includes(option.value):answer===option.value;return <button type="button" key={option.value} className={`${styles.option} ${active?styles.selected:''}`} aria-checked={active} role={question.type==='multi_select'?'checkbox':'radio'} onClick={()=>select(question,option.value)}>{active?<Check size={15}/>:<Sparkles size={14}/>} {option.label}</button>})}</div>}
+    {(question.type==='single_select'||question.type==='multi_select')&&<div className={styles.options} role={question.type==='multi_select'?'group':'radiogroup'}>{question.options?.map((option)=>{const active=Array.isArray(answer)?includesAntiAgeingOption(answer,option.value):answer===option.value;return <button type="button" key={option.value} className={`${styles.option} ${active?styles.selected:''}`} aria-checked={active} role={question.type==='multi_select'?'checkbox':'radio'} onClick={()=>select(question,option.value)}>{active?<Check size={15}/>:<Sparkles size={14}/>} {option.label}</button>})}</div>}
     {question.type==='textarea'&&<VoiceTextField className={styles.textArea} value={String(answer??'')} onChange={(value)=>setAnswer(question.id,value)} placeholder="Type your answer here…" ariaLabel={question.title}/>}
     {question.id==='AA_09'&&<DocumentUploads value={(answers.AA_09??[]) as AntiAgeingStorageReference[]} onChange={(value)=>setAnswer('AA_09',value)} clinicSlug={clinicSlug} sessionId={sessionId} preview={preview}/>}
     {question.id==='AA_10'&&<><p className={styles.privacy}><ShieldCheck size={16}/> Adding clear photos is optional, but it can help the clinical team understand your concern more accurately and support the best possible outcome.</p><div className={styles.uploadGrid}>{requiredAntiAgeingImageViews.map((view)=><UploadSlot key={view} label={VIEW_LABELS[view]} view={view} questionId={`AA_10_${view}`} value={(answers.AA_10 as Record<string,AntiAgeingStorageReference>|undefined)?.[view]} onChange={(ref)=>setImage(view,ref)} clinicSlug={clinicSlug} sessionId={sessionId} preview={preview}/>)}</div><p className={styles.privacy}><ShieldCheck size={16}/> Clinical images are stored securely and are visible only to authorised reviewers.</p></>}

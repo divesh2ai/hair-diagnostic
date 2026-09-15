@@ -80,6 +80,7 @@ export type Dictionary = {
     sectionOperations: string;
     sectionGovernance: string;
     sectionSystem: string;
+    support: string;
   };
   shell: {
     searchPlaceholder: string;

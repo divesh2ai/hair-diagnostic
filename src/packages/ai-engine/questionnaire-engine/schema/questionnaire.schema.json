@@ -2017,6 +2017,28 @@
               ]
             },
             {
+              "label": "Miscarriage",
+              "value": "Miscarriage",
+              "icon": "🕊️",
+              "triggers": [
+                "MISCARRIAGE → PHENOTYPE INFLAMATION (inflammatory load)",
+                "MISCARRIAGE → PRO IMMUNE GOLD (immune recovery, via IMMUNE_DEPLETION allow-list)"
+              ],
+              "clinicalTags": [
+                "miscarriage",
+                "pregnancy_loss",
+                "hormonal_crash",
+                "systemic_inflammation",
+                "immune_depletion"
+              ],
+              "followUpQuestions": [],
+              "visibleOnlyIf": {
+                "dependsOn": "sex",
+                "operator": "equals",
+                "value": "Female"
+              }
+            },
+            {
               "label": "Peri-menopause",
               "value": "Peri-menopause",
               "icon": "🌅",

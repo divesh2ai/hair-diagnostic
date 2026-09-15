@@ -58,6 +58,7 @@ export const ta: Dictionary = {
     sectionOperations: "செயல்பாடுகள்",
     sectionGovernance: "நிர்வாகம்",
     sectionSystem: "அமைப்பு",
+    support: "Help & Support",
   },
   shell: {
     searchPlaceholder: "நோயாளிகள், அறிக்கைகள், கிளினிக்குகளைத் தேடவும்…",

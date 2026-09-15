@@ -11,6 +11,7 @@ import {
   type PigmentationDraft, type StorageReference, type UploadView,
 } from '@/lib/skin-fact/pigmentation';
 import { loadSkinCommonProfile, loadSkinFactIntake, markConcernComplete, nextIncompleteConcern, skinIntakeStorageKey, type SkinFactIntake } from '@/lib/skin-fact/skinJourney';
+import { normaliseMobile } from '@/lib/patient/phone';
 import styles from './pigmentation.module.css';
 import { VoiceTextField } from './VoiceTextField';
 
@@ -82,7 +83,7 @@ export function PigmentationQuestionnaire() {
   async function submit(){
     if(!validateCurrent())return;setSubmitting(true);setError('');
     const clean={...draft!,answers:pruneHiddenPigmentationAnswers(draft!.answers)};
-    try{const response=await fetch('/api/assessment/submit',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({clinicSlug,concern:'skin_pigmentation',answers:buildPigmentationSubmission(common!,clean),patientInfo:{name:common!.answers.name,gender:common!.answers.gender}})});const data=await response.json();if(!response.ok)throw new Error(data.error??'Submission failed');localStorage.removeItem(pigmentationStorageKey(clinicSlug,draft!.skinIntakeId));const completed=markConcernComplete(intake!,'PIGMENTATION',data.assessmentId);localStorage.setItem(skinIntakeStorageKey(clinicSlug,common!.sessionId),JSON.stringify(completed));const upcoming=nextIncompleteConcern(completed);router.push(upcoming?`/q/${clinicSlug}/skin/transition?from=PIGMENTATION&next=${upcoming}`:`/q/${clinicSlug}/skin/complete`)}catch(caught){setError(caught instanceof Error?caught.message:'Submission failed');setSubmitting(false)}
+    try{const phoneResult=normaliseMobile(common!.answers.phone);const response=await fetch('/api/assessment/submit',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({clinicSlug,concern:'skin_pigmentation',answers:buildPigmentationSubmission(common!,clean),patientInfo:{name:common!.answers.name,gender:common!.answers.gender,phone:phoneResult.ok?phoneResult.e164:undefined,whatsappConsent:common!.answers.whatsappConsent}})});const data=await response.json();if(!response.ok)throw new Error(data.error??'Submission failed');localStorage.removeItem(pigmentationStorageKey(clinicSlug,draft!.skinIntakeId));const completed=markConcernComplete(intake!,'PIGMENTATION',data.assessmentId);localStorage.setItem(skinIntakeStorageKey(clinicSlug,common!.sessionId),JSON.stringify(completed));const upcoming=nextIncompleteConcern(completed);router.push(upcoming?`/q/${clinicSlug}/skin/transition?from=PIGMENTATION&next=${upcoming}`:`/q/${clinicSlug}/skin/complete`)}catch(caught){setError(caught instanceof Error?caught.message:'Submission failed');setSubmitting(false)}
   }
 
   return <div className={styles.shell}>

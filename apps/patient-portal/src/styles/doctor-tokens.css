@@ -14,22 +14,31 @@
  *
  * ── The colour thesis ───────────────────────────────────────────────────────
  * A clinical workspace that is all grey reads as unfinished, and a doctor
- * scanning it has nothing to navigate by. So colour is used generously here —
+ * scanning it has nothing to navigate by. So colour is used deliberately here —
  * but every hue MEANS something, and the meaning is stable:
  *
- *   HairOS green   the one action to take, and the treatment objective
+ *   Plum           the brand, the primary action, and the treatment objective
  *   Violet         hair & shedding — the presenting complaint
- *   Cyan           scalp — the site
+ *   Teal           scalp — the site
  *   Amber          lifestyle — modifiable contributors
  *   Blue           medical & metabolic — systemic contributors
  *   Slate          previous treatments — history
+ *   Green          success, approval and completion — NOTHING else
  *   Rose / amber   severity, and only severity
+ *   Champagne      a luxury hairline. Never carries meaning, never text.
  *
  * A doctor learns "blue means systemic" once and then finds it instantly on
  * every case. That is colour doing navigational work. What it must never do is
  * decorate: no hue appears here that does not stand for a category or a state,
  * and the accents are keyed off stable identities in the view model, not off
  * display labels that could be renamed.
+ *
+ * ── The material ────────────────────────────────────────────────────────────
+ * The ground is warm — porcelain and parchment, not the blue-grey of a generic
+ * console. Roughly 85% of the page is that neutral material; colour arrives in
+ * chips, icons, rails, status and the one CTA, never as a large tinted block.
+ * Green in particular is now RESERVED: it means a decision was made and saved,
+ * so it may not be spent on ambient branding, or it stops meaning anything.
  *
  * Each family is a triple — `-ink` for text, `-tint` for fills, `-edge` for
  * the rail on the left of a card. Same lightness relationship across all five,
@@ -44,51 +53,91 @@
  */
 
 [data-surface="doctor"] {
-  /* ── Ground ── */
-  --hd-bg: #f6f8f9;
-  --hd-surface: #ffffff;
-  --hd-surface-sunken: #f1f5f5;
-  --hd-border: #e2e8e8;
-  --hd-border-strong: #cbd5d5;
-  --hd-text: #142027;
-  --hd-text-secondary: #5c6b73;
-  --hd-text-muted: #8697a0;
+  /* ── Ground — warm porcelain, not blue-grey ── */
+  --hd-bg: #f7f5f2;
+  --hd-surface: #fffefc;
+  --hd-surface-alt: #fbf8f4;
+  --hd-surface-sunken: #f2eee8;
+  --hd-border: #e7e0d8;
+  --hd-border-strong: #d8cec2;
+  --hd-text: #1c2430;
+  --hd-text-secondary: #4f5b67;
+  --hd-text-muted: #7a8694;
+  --hd-text-subtle: #98a2ad;
 
-  /* ── HairOS green — action and objective only ── */
-  --hd-primary: #087f68;
-  --hd-primary-dark: #056653;
-  --hd-primary-tint: #e3f3ef;
+  /* The eyebrow is a real section heading, set at 11px bold — small enough
+   * that WCAG counts it as normal text, so it may not use --hd-text-muted
+   * (3.9:1 on the surface). Calibrated against the PAGE ground #f7f5f2 rather
+   * than the card, because that is the darker of the two and several eyebrows
+   * sit directly on it: 4.6:1 there, 4.9:1 on porcelain. Still reads as a
+   * recessive warm grey, not as body ink. */
+  --hd-eyebrow-ink: #646f7b;
 
-  /* ── Clinical category accents ── */
-  --hd-hair-ink: #6d43a8;
-  --hd-hair-tint: #f2edfa;
-  --hd-hair-edge: #a685d4;
+  /* ── Brand plum — the primary action and the treatment objective ── */
+  --hd-primary: #6c4ab6;
+  --hd-primary-dark: #56369b;
+  --hd-primary-tint: #f3eefb;
+  --hd-primary-border: #ddd2f4;
 
-  --hd-scalp-ink: #0f7490;
-  --hd-scalp-tint: #e4f4f8;
-  --hd-scalp-edge: #5eafc6;
+  /* ── Champagne — the one luxury detail ───────────────────────────────────
+   * A hairline and nothing else. At 2.3:1 on the surface it is unreadable as
+   * text and must never be used as one; it exists to make an edge feel
+   * considered, and it carries no clinical meaning whatsoever. */
+  --hd-champagne: #c6a86a;
+  --hd-champagne-tint: #f8f2e7;
 
-  --hd-lifestyle-ink: #9a5c11;
-  --hd-lifestyle-tint: #fdf3e2;
-  --hd-lifestyle-edge: #dda548;
+  /* ── Clinical category accents — restrained, same lightness relationship ── */
+  --hd-hair-ink: #7b4fc9;
+  --hd-hair-tint: #f4effc;
+  --hd-hair-edge: #b79ae4;
 
-  --hd-medical-ink: #2258a8;
-  --hd-medical-tint: #e8f0fb;
-  --hd-medical-edge: #6f9ede;
+  /* Spec tone #1B7F7A measures 4.3:1 as the 10px bold `.hd-condition` chip on
+     its own tint. Darkened to 5.2:1; the tint and edge keep the spec values,
+     so the family still reads as the same teal. */
+  --hd-scalp-ink: #166b67;
+  --hd-scalp-tint: #eaf5f4;
+  --hd-scalp-edge: #7fbab6;
 
-  --hd-history-ink: #4a5a68;
-  --hd-history-tint: #eef2f5;
-  --hd-history-edge: #93a5b3;
+  /* #A56A1E is 4.45:1 as an 11px bold category title — just under. */
+  --hd-lifestyle-ink: #945f1a;
+  --hd-lifestyle-tint: #fcf5ea;
+  --hd-lifestyle-edge: #d9b071;
+
+  --hd-medical-ink: #356ac3;
+  --hd-medical-tint: #ecf2fc;
+  --hd-medical-edge: #90b2e6;
+
+  /* Spec value #66768A measures 4.35:1 on the surface — under the floor for
+   * the 11px category titles it sets. Darkened one notch to 5.1:1; the edge
+   * and icon keep the lighter spec tone, where contrast is not a text rule. */
+  --hd-history-ink: #5f6e81;
+  --hd-history-tint: #f1f3f6;
+  --hd-history-edge: #a9b4c1;
 
   /* ── State ── */
-  --hd-attention: #b7791f;
-  --hd-attention-tint: #fdf6e8;
-  --hd-critical: #b54747;
-  --hd-critical-tint: #fbeeee;
-  --hd-success: #067a5b;
-  --hd-success-tint: #e5f4ef;
-  --hd-info: #4b6b7a;
-  --hd-info-tint: #eef3f5;
+  --hd-attention: #a56a1e;
+  --hd-attention-tint: #fcf5ea;
+  --hd-critical: #b5473e;
+  /* Same reason as --hd-success-ink: the spec tone is a mark colour, and
+     measures 4.4:1 as 11px pill text on its own tint. This is 5.1:1. */
+  --hd-critical-ink: #a63c34;
+  --hd-critical-tint: #fdf1f0;
+
+  /* Green means "decided and saved", and only that.
+   *
+   * Three values because one hue cannot do three jobs at AA: --hd-success is
+   * the mark and the pill fill; --hd-success-ink is the same green darkened
+   * for pill TEXT (11px on tint, 5.3:1); --hd-success-strong is darker still
+   * so white 14px semibold on the filled Approve button clears 5.2:1. The
+   * spec tone #2E8B57 would measure 3.9:1 white-on-fill. Same green family,
+   * simply legible — the file already does this for --hd-st-action-ink. */
+  --hd-success: #2e8b57;
+  --hd-success-ink: #256f46;
+  --hd-success-strong: #27784b;
+  --hd-success-tint: #edf8f1;
+
+  --hd-info: #5f6e81;
+  --hd-info-tint: #f1f3f6;
 
   /* ── Workflow status ──────────────────────────────────────────────────────
    * WHERE A CASE STANDS, as distinct from what a finding is ABOUT. The
@@ -116,9 +165,11 @@
    * status — but if the two ever meet on one screen, `future` is the one to
    * move, since scheduling is the newer idea.
    */
-  --hd-st-done-ink: var(--hd-success);
+  /* Text role takes the darkened success ink; the edge stays the lighter
+     spec green, where no text rule applies. */
+  --hd-st-done-ink: var(--hd-success-ink);
   --hd-st-done-tint: var(--hd-success-tint);
-  --hd-st-done-edge: #34a383;
+  --hd-st-done-edge: #6fb894;
 
   /* Darker than --hd-attention (#b7791f), and that is the whole point.
    * These chips are 11.5px text on their own tint, where #b7791f measures
@@ -130,17 +181,17 @@
   --hd-st-action-tint: var(--hd-attention-tint);
   --hd-st-action-edge: #dda548;
 
-  --hd-st-working-ink: #0f7490;
-  --hd-st-working-tint: #e4f4f8;
-  --hd-st-working-edge: #5eafc6;
+  --hd-st-working-ink: var(--hd-scalp-ink);
+  --hd-st-working-tint: var(--hd-scalp-tint);
+  --hd-st-working-edge: var(--hd-scalp-edge);
 
   --hd-st-fail-ink: var(--hd-critical);
   --hd-st-fail-tint: var(--hd-critical-tint);
   --hd-st-fail-edge: #d98080;
 
-  --hd-st-future-ink: #6d43a8;
-  --hd-st-future-tint: #f2edfa;
-  --hd-st-future-edge: #a685d4;
+  --hd-st-future-ink: var(--hd-hair-ink);
+  --hd-st-future-tint: var(--hd-hair-tint);
+  --hd-st-future-edge: var(--hd-hair-edge);
 
   /* --hd-text-muted on the sunken surface is 2.75:1. Muted grey is the right
    * INTENT for "nothing has happened", but a label nobody can read is not a
@@ -152,8 +203,10 @@
 
   --hd-radius: 16px;
   --hd-radius-sm: 10px;
-  --hd-shadow: 0 1px 2px rgba(20, 32, 39, 0.05);
-  --hd-shadow-lift: 0 6px 20px -12px rgba(20, 32, 39, 0.28);
+  /* Warm-cast shadows. A neutral-black shadow over parchment reads as grey
+     dirt; keying the shadow to the ink colour keeps the material warm. */
+  --hd-shadow: 0 1px 2px rgba(28, 36, 48, 0.04);
+  --hd-shadow-lift: 0 8px 24px -14px rgba(28, 36, 48, 0.26);
 
   --hd-font: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
   --hd-font-display: var(--font-dm-serif), Georgia, serif;
@@ -172,6 +225,8 @@
 [data-surface="doctor"] [data-cat="LIFESTYLE"] { --cat-ink: var(--hd-lifestyle-ink); --cat-tint: var(--hd-lifestyle-tint); --cat-edge: var(--hd-lifestyle-edge); }
 [data-surface="doctor"] [data-cat="MEDICAL"] { --cat-ink: var(--hd-medical-ink); --cat-tint: var(--hd-medical-tint); --cat-edge: var(--hd-medical-edge); }
 [data-surface="doctor"] [data-cat="TREATMENTS"] { --cat-ink: var(--hd-history-ink); --cat-tint: var(--hd-history-tint); --cat-edge: var(--hd-history-edge); }
+/* Neutral role for interpretations flagged without a matching selection. */
+[data-surface="doctor"] [data-cat="OTHER"] { --cat-ink: var(--hd-history-ink); --cat-tint: var(--hd-history-tint); --cat-edge: var(--hd-history-edge); }
 
 /* A category block: tinted ground, coloured rail, coloured heading. */
 [data-surface="doctor"] .hd-cat {
@@ -229,12 +284,57 @@
   box-shadow: var(--hd-shadow);
 }
 
-/* The hero band. A whisper of the brand hue behind the clinical picture so the
-   top of the case reads as the top of the case. */
+/* The hero band — the clinical conclusion.
+ *
+ * This used to be a pale-green wash running 62% down the card: the single
+ * largest block of colour on the page, and it was spending the approval hue on
+ * a panel where nothing had been approved. Green now means "decided", so it
+ * cannot sit here.
+ *
+ * What replaced it is material rather than tint. The card is porcelain; a
+ * champagne hairline rides the top edge, and a lavender wash so faint it reads
+ * as light rather than as colour falls away within the first fifth. The
+ * conclusion is distinguished by weight and by that top edge — not by being a
+ * coloured box. Nothing about it is a status, so nothing about it is a status
+ * colour. */
 [data-surface="doctor"] .hd-hero {
+  position: relative;
   background:
-    linear-gradient(180deg, var(--hd-primary-tint) 0%, rgba(255, 255, 255, 0) 62%),
+    linear-gradient(180deg, var(--hd-primary-tint) 0%, rgba(255, 254, 252, 0) 22%),
     var(--hd-surface);
+}
+
+/* The luxury detail, and very nearly the only one on the page. 2px, warm, and
+   purely material — it states nothing, so it never needs to be read. */
+[data-surface="doctor"] .hd-hero::before {
+  content: "";
+  position: absolute;
+  inset: 0 0 auto 0;
+  height: 2px;
+  background: linear-gradient(
+    90deg,
+    var(--hd-champagne) 0%,
+    color-mix(in srgb, var(--hd-champagne) 35%, transparent) 55%,
+    transparent 100%
+  );
+  pointer-events: none;
+}
+
+/* The sticky decision bar's ground.
+ *
+ * Porcelain, never pure white. A #ffffff bar held translucent over a warm
+ * parchment page reads as a second, colder theme laid on top of the first, and
+ * the seam is most visible exactly here — the bar floats over scrolling
+ * content, so the two grounds are always adjacent. Backdrop-filter support
+ * gets the more transparent value; everything else gets the opaque-ish one. */
+[data-surface="doctor"] .hd-decision-bar {
+  background: color-mix(in srgb, var(--hd-surface) 95%, transparent);
+}
+
+@supports (backdrop-filter: blur(1px)) {
+  [data-surface="doctor"] .hd-decision-bar {
+    background: color-mix(in srgb, var(--hd-surface) 82%, transparent);
+  }
 }
 
 [data-surface="doctor"] .hd-eyebrow {
@@ -242,7 +342,7 @@
   font-weight: 700;
   letter-spacing: 0.07em;
   text-transform: uppercase;
-  color: var(--hd-text-muted);
+  color: var(--hd-eyebrow-ink);
 }
 
 [data-surface="doctor"] .hd-label { font-size: 13px; color: var(--hd-text-secondary); }
@@ -336,17 +436,24 @@
   white-space: nowrap;
 }
 
+/* Pills are 11px bold on their own tint, so each takes the TEXT-weight value of
+   its family, never the mark-weight one. */
 [data-surface="doctor"] .hd-pill-neutral { background: var(--hd-surface-sunken); color: var(--hd-text-secondary); }
 [data-surface="doctor"] .hd-pill-attention { background: var(--hd-attention-tint); color: var(--hd-attention); }
-[data-surface="doctor"] .hd-pill-critical { background: var(--hd-critical-tint); color: var(--hd-critical); }
+[data-surface="doctor"] .hd-pill-critical { background: var(--hd-critical-tint); color: var(--hd-critical-ink); }
 [data-surface="doctor"] .hd-pill-primary { background: var(--hd-primary-tint); color: var(--hd-primary-dark); }
-[data-surface="doctor"] .hd-pill-success { background: var(--hd-success-tint); color: var(--hd-success); }
+[data-surface="doctor"] .hd-pill-success { background: var(--hd-success-tint); color: var(--hd-success-ink); }
 [data-surface="doctor"] .hd-pill-info { background: var(--hd-info-tint); color: var(--hd-info); }
 
 /* ── Actions ──────────────────────────────────────────────────────────────────
  * Exactly one primary per screen state. The doctor never has to work out which
- * control is the next step: the filled green button is, and there is only ever
+ * control is the next step: the filled plum button is, and there is only ever
  * one of it.
+ *
+ * The primary fill moved from green to plum so that green could be given back
+ * to approval. On a page whose only filled green control is Approve, green
+ * carries the decision by itself; when every primary button was green, it was
+ * just the button colour.
  */
 
 [data-surface="doctor"] .hd-btn {
@@ -374,14 +481,17 @@
   border-color: var(--hd-primary-dark);
 }
 
+/* Porcelain, with a warm refined edge — a considered surface rather than a
+   grey outline. Hover warms the fill and brings the plum edge up. */
 [data-surface="doctor"] .hd-btn-secondary {
   background: var(--hd-surface);
   color: var(--hd-text);
   border: 1px solid var(--hd-border-strong);
 }
 [data-surface="doctor"] .hd-btn-secondary:hover:not(:disabled) {
-  background: var(--hd-surface-sunken);
+  background: var(--hd-surface-alt);
   border-color: var(--hd-primary);
+  color: var(--hd-primary-dark);
 }
 
 [data-surface="doctor"] .hd-btn:disabled {
@@ -396,13 +506,295 @@
   [data-surface="doctor"] .hd-btn { transition: none; }
 }
 
+/* ── Tailwind palette remap — SCOPED ─────────────────────────────────────────
+ *
+ * The review page was built before this token layer existed, so a good deal of
+ * it still names Tailwind palette steps directly: `text-stone-500`,
+ * `bg-emerald-50`, `border-rose-200`. Those are hundreds of call sites across a
+ * dozen clinical components, and rewriting every className by hand to chase a
+ * visual refresh is exactly how clinical wording gets edited by accident.
+ *
+ * Tailwind v4 compiles `bg-stone-200` to `background-color: var(--color-stone-200)`
+ * — the value is resolved at the USE site, not baked in. So redefining those
+ * variables here re-materialises every one of those call sites at once, and the
+ * components keep their original source. Not one clinical string, prop, handler
+ * or conditional is touched to achieve the repaint, which is the point: a diff
+ * that cannot change behaviour cannot change clinical behaviour either.
+ *
+ * Still scoped to [data-surface="doctor"]. Elsewhere in the product `stone-500`
+ * is Tailwind's stone-500 exactly as before.
+ *
+ * The mapping is by ROLE, not by hue:
+ *
+ *   stone / slate   the warm neutral material and the ink on it
+ *   emerald         success — and it is now only ever used for success
+ *   rose / red      severity and failure
+ *   amber / yellow  caution, warm rather than yellow
+ *   teal            the doctor's own authorship — mapped onto brand plum
+ *   sky             medical & metabolic, matching the category token
+ */
+
+[data-surface="doctor"] {
+  /* Warm neutral material. */
+  --color-stone-50: var(--hd-surface-alt);
+  --color-stone-100: var(--hd-surface-sunken);
+  --color-stone-200: var(--hd-border);
+  --color-stone-300: var(--hd-border-strong);
+  /* Tailwind's own stone-500 measured 4.9:1 on the old ground, so mapping it
+     to --hd-text-muted (3.7:1) would have quietly REGRESSED every small label
+     that uses it — "Version 1", "Doctor notes", the section eyebrows. It takes
+     the eyebrow ink instead, which is the same recessive warm grey at 4.7:1.
+     stone-400 likewise steps up rather than down — it carries the kit PHASE
+     numbers and the disclosure carets, which are content, not decoration, so
+     it takes the same ink. The two steps collapsing to one value costs a
+     hierarchy level that was imperceptible at 11px anyway. Genuinely
+     decorative marks can still reach for --hd-text-subtle explicitly. */
+  --color-stone-400: var(--hd-eyebrow-ink);
+  --color-stone-500: var(--hd-eyebrow-ink);
+  --color-stone-600: var(--hd-text-secondary);
+  --color-stone-700: #3c4855;
+  --color-stone-800: #2a3542;
+  --color-stone-900: var(--hd-text);
+
+  /* Ink. Slate was the cool counterpart to stone; both now resolve to the one
+     warm ink ramp, which is what stops the page reading as two themes. */
+  --color-slate-50: var(--hd-surface-alt);
+  --color-slate-100: var(--hd-surface-sunken);
+  --color-slate-200: var(--hd-border);
+  --color-slate-300: var(--hd-border-strong);
+  --color-slate-400: var(--hd-eyebrow-ink);
+  --color-slate-500: var(--hd-eyebrow-ink);
+  --color-slate-600: var(--hd-text-secondary);
+  --color-slate-700: #3c4855;
+  --color-slate-800: #2a3542;
+  --color-slate-900: var(--hd-text);
+
+  /* Success — approval, completion, nothing else. */
+  --color-emerald-50: var(--hd-success-tint);
+  --color-emerald-100: #dcf0e4;
+  --color-emerald-200: #bfe3cd;
+  --color-emerald-600: var(--hd-success-strong);
+  --color-emerald-700: #1f6540;
+  --color-emerald-800: var(--hd-success-ink);
+  --color-emerald-900: #1b4d33;
+  --color-emerald-950: #12341f;
+  --color-green-50: var(--hd-success-tint);
+  --color-green-600: var(--hd-success-strong);
+  --color-green-700: #1f6540;
+
+  /* Severity and failure. */
+  --color-rose-50: var(--hd-critical-tint);
+  --color-rose-100: #fae2e0;
+  --color-rose-200: #f2d2cf;
+  --color-rose-600: var(--hd-critical);
+  --color-rose-700: #a63c34;
+  --color-rose-800: #9b3a32;
+  --color-rose-900: #7e2f28;
+  --color-rose-950: #5c231e;
+  --color-red-50: var(--hd-critical-tint);
+  --color-red-100: #fae2e0;
+  --color-red-200: #f2d2cf;
+  --color-red-600: var(--hd-critical);
+  --color-red-700: #a63c34;
+  --color-red-800: #9b3a32;
+  --color-red-900: #7e2f28;
+  --color-red-950: #5c231e;
+
+  /* Caution — warm parchment amber, not a wellness-app yellow. */
+  --color-amber-50: var(--hd-attention-tint);
+  --color-amber-100: #f7ead4;
+  --color-amber-200: #eddcc0;
+  --color-amber-500: var(--hd-lifestyle-edge);
+  --color-amber-600: var(--hd-attention);
+  --color-amber-700: #8f5c19;
+  --color-amber-800: #7c5016;
+  --color-amber-900: #6a4413;
+  --color-amber-950: #4e3210;
+  --color-yellow-50: var(--hd-attention-tint);
+  --color-yellow-600: var(--hd-attention);
+  --color-yellow-800: #7c5016;
+
+  /* The doctor's own hand on the plan — "added by doctor", "returning". That
+     is brand authority rather than a clinical category, so it takes plum. */
+  --color-teal-50: var(--hd-primary-tint);
+  --color-teal-100: #ebe2f8;
+  --color-teal-200: var(--hd-primary-border);
+  --color-teal-600: var(--hd-primary);
+  --color-teal-700: var(--hd-primary-dark);
+  --color-teal-800: #4a2e86;
+  --color-teal-900: #3c2570;
+
+  /* Medical & metabolic, matching --hd-medical-*. */
+  --color-sky-50: var(--hd-medical-tint);
+  --color-sky-100: #dde9f8;
+  --color-sky-200: #c9dbf5;
+  --color-sky-600: var(--hd-medical-ink);
+  --color-sky-700: #2d5daf;
+  --color-sky-800: #2a559c;
+  --color-sky-900: #234780;
+}
+
+/* ── The command band ─────────────────────────────────────────────────────────
+ *
+ * The Doctor Dashboard opens on one dark panel and the rest of the page is the
+ * usual porcelain. That is a deliberate exception to "no large tinted block",
+ * and it is the only one on the surface.
+ *
+ * The reason is that the dashboard is not a document, it is a console. Its top
+ * band answers three questions at once — who is working, what is the next
+ * action, and what is the state of the day — and on a flat parchment page all
+ * three arrived as small grey type competing with a patient card underneath.
+ * Ink gives that band a floor to stand on, so the eye lands there first and
+ * leaves with the whole operating picture.
+ *
+ * It carries no clinical meaning. Nothing inside it states a severity, a
+ * diagnosis or a decision; it is identity, counts and one link. The clinical
+ * colour language is untouched and still lives on the cards below.
+ */
+
+[data-surface="doctor"] {
+  --hd-ink-band: #1b2330;
+  --hd-ink-band-2: #2c3849;
+  --hd-on-ink: #f6f3ee;
+  /* 7.2:1 on the band. The metric labels are 11px, so they take a value that
+     clears the normal-text floor, not a decorative grey. */
+  --hd-on-ink-muted: #a9b3c0;
+  --hd-on-ink-line: rgb(255 255 255 / 0.10);
+}
+
+[data-surface="doctor"] .hd-command {
+  position: relative;
+  overflow: hidden;
+  border-radius: 24px;
+  background:
+    radial-gradient(120% 140% at 8% 0%, rgb(108 74 182 / 0.34) 0%, rgb(108 74 182 / 0) 46%),
+    linear-gradient(135deg, var(--hd-ink-band) 0%, var(--hd-ink-band-2) 100%);
+  color: var(--hd-on-ink);
+  box-shadow: 0 24px 48px -32px rgb(15 23 42 / 0.55);
+}
+
+/* The same champagne hairline the review hero wears, so the two surfaces are
+   recognisably one product. Material, never meaning. */
+[data-surface="doctor"] .hd-command::before {
+  content: "";
+  position: absolute;
+  inset: 0 0 auto 0;
+  height: 2px;
+  background: linear-gradient(
+    90deg,
+    var(--hd-champagne) 0%,
+    color-mix(in srgb, var(--hd-champagne) 30%, transparent) 55%,
+    transparent 100%
+  );
+  pointer-events: none;
+}
+
+[data-surface="doctor"] .hd-command-greeting {
+  font-family: var(--hd-font-display);
+  font-weight: 400;
+  font-size: 30px;
+  line-height: 1.12;
+  letter-spacing: -0.008em;
+  color: var(--hd-on-ink);
+}
+
+@media (max-width: 640px) {
+  [data-surface="doctor"] .hd-command-greeting { font-size: 24px; }
+}
+
+[data-surface="doctor"] .hd-command-meta {
+  font-size: 13px;
+  color: var(--hd-on-ink-muted);
+}
+
+/* The metric rail. Hairline dividers rather than boxes — five counts should
+   read as one instrument, not as five cards. */
+[data-surface="doctor"] .hd-command-rail {
+  border-top: 1px solid var(--hd-on-ink-line);
+}
+
+[data-surface="doctor"] .hd-command-metric {
+  position: relative;
+  display: block;
+  padding: 14px 20px;
+  border-top: 1px solid var(--hd-on-ink-line);
+  transition: background-color 120ms ease;
+}
+
+@media (min-width: 640px) {
+  [data-surface="doctor"] .hd-command-metric { border-top: 0; border-left: 1px solid var(--hd-on-ink-line); }
+  [data-surface="doctor"] .hd-command-metric:first-child { border-left: 0; }
+}
+
+[data-surface="doctor"] a.hd-command-metric:hover { background: rgb(255 255 255 / 0.06); }
+
+[data-surface="doctor"] .hd-command-value {
+  font-family: var(--hd-font-display);
+  font-size: 28px;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+  color: var(--hd-on-ink);
+}
+
+[data-surface="doctor"] .hd-command-value[data-muted="true"] { color: var(--hd-on-ink-muted); }
+
+[data-surface="doctor"] .hd-command-label {
+  margin-top: 5px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--hd-on-ink-muted);
+}
+
+[data-surface="doctor"] .hd-command-cta {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  border-radius: 14px;
+  padding: 11px 18px;
+  background: var(--hd-primary);
+  color: #fff;
+  font-size: 14px;
+  font-weight: 600;
+  box-shadow: 0 10px 24px -12px rgb(108 74 182 / 0.9);
+  transition: background-color 120ms ease, transform 120ms ease;
+}
+
+[data-surface="doctor"] .hd-command-cta:hover { background: #7b57c9; }
+
+[data-surface="doctor"] .hd-command-cta-quiet {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  border-radius: 14px;
+  padding: 11px 16px;
+  border: 1px solid var(--hd-on-ink-line);
+  background: rgb(255 255 255 / 0.04);
+  color: var(--hd-on-ink);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+[data-surface="doctor"] .hd-command-cta-quiet:hover { background: rgb(255 255 255 / 0.1); }
+
+[data-surface="doctor"] .hd-command :focus-visible {
+  outline: 2px solid var(--hd-champagne);
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  [data-surface="doctor"] .hd-command-cta,
+  [data-surface="doctor"] .hd-command-metric { transition: none; }
+}
+
 /* ── Focus ────────────────────────────────────────────────────────────────── */
 
 /* One visible treatment for the whole surface. A keyboard user on a clinical
    screen must always see where they are before pressing a key that authorises
    treatment. */
 [data-surface="doctor"] :focus-visible {
-  outline: 2px solid var(--hd-primary);
+  outline: 2px solid var(--hd-primary-dark);
   outline-offset: 2px;
   border-radius: 4px;
 }

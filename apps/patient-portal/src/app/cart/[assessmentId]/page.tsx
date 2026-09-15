@@ -240,13 +240,13 @@ export default function PatientCartPage({
       {/* ── DOCTOR STRIP ───────────────────────────────────────── */}
       {cart.doctor && (
         <section className="mt-4 flex items-center gap-3 rounded-2xl border border-stone-200 bg-white p-3">
-          <div className="relative size-14 shrink-0 overflow-hidden rounded-full bg-stone-100 ring-1 ring-stone-200">
+          <div className="relative size-16 shrink-0 overflow-hidden rounded-full bg-stone-100 ring-2 ring-white shadow-sm">
             {cart.doctor.photoUrl ? (
               <Image
                 src={cart.doctor.photoUrl}
                 alt={cart.doctor.name ?? "Doctor"}
                 fill
-                sizes="56px"
+                sizes="64px"
                 className="object-cover"
                 unoptimized
               />
@@ -256,8 +256,10 @@ export default function PatientCartPage({
               // This strip exists to tell the patient WHO approved their plan,
               // and a stock clip-art icon says the opposite — it reads as
               // "no real person here". Initials carry the doctor's identity
-              // even with no photograph on file.
-              <div className="flex h-full w-full items-center justify-center bg-teal-50 text-sm font-semibold text-teal-800">
+              // even with no photograph on file. Solid teal rather than a
+              // pale tint — a faint fill at this size read as an empty
+              // circle, which is indistinguishable from a broken image.
+              <div className="flex h-full w-full items-center justify-center bg-teal-700 text-lg font-semibold text-white">
                 {doctorInitials(cart.doctor.name)}
               </div>
             )}
@@ -333,7 +335,7 @@ export default function PatientCartPage({
                 </span>
                 {/* Quantity is shown, never edited — this is a prescribed
                     amount from an approved consultation. */}
-                <span className="text-[11px] text-stone-500">
+                <span className="text-sm font-medium text-stone-700">
                   &middot; Qty {li.quantity}
                 </span>
               </div>
@@ -397,12 +399,18 @@ export default function PatientCartPage({
             type="button"
             onClick={confirm}
             disabled={confirming}
-            className="inline-flex w-full items-center justify-center gap-2 rounded-full bg-slate-900 px-4 py-3 text-sm font-medium text-white shadow hover:bg-slate-800 disabled:opacity-50"
+            // The clinic's own colour, not a generic dark button — this is
+            // the one action on the page with a real consequence, and the
+            // brand colour already carried into `--brand` (see Frame) had
+            // never actually been drawn on anything. `brightness` for hover
+            // instead of a second named colour, since it works regardless of
+            // which clinic's colour lands here.
+            className="inline-flex w-full items-center justify-center gap-2 rounded-full bg-[var(--brand,#0f766e)] px-4 py-3.5 text-base font-semibold text-white shadow-md shadow-black/10 transition hover:brightness-110 active:brightness-95 disabled:opacity-50"
           >
             {confirming ? (
-              <Loader2 className="size-4 animate-spin" />
+              <Loader2 className="size-5 animate-spin" />
             ) : (
-              <ShoppingBag className="size-4" />
+              <ShoppingBag className="size-5" />
             )}
             {confirming ? "Confirming…" : "Confirm my order"}
           </button>

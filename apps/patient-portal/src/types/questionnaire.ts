@@ -195,6 +195,8 @@ export interface PatientIntakeState {
    * code. Null when no session could be issued.
    */
   intakeToken: string | null;
+  /** Explicit opt-in to WhatsApp delivery at `phone`. See lib/patient/whatsappConsent.ts. */
+  whatsappConsent: boolean;
 }
 
 export interface ProgressState {

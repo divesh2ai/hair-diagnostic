@@ -29,7 +29,7 @@ export const mrContent: AssessmentContentPack = {
   sections: {
     S1_PATIENT_IDENTITY: {
       title: 'तुमच्याबद्दल',
-      body: 'थोडक्यात काही माहिती, जेणेकरून पुढचे मूल्यांकन पूर्णपणे तुमच्यानुसार करता येईल.',
+      body: 'तुमच्याबद्दलची काही माहिती आम्हाला तुमचे मूल्यमापन अधिक अचूकपणे करण्यास मदत करेल.',
     },
     S2_HAIR_LOSS_ASSESSMENT: {
       title: 'केसांचा इतिहास',
@@ -41,11 +41,11 @@ export const mrContent: AssessmentContentPack = {
     },
     S4_MEDICAL_HISTORY: {
       title: 'जीवनशैली',
-      body: 'झोप, ताण आणि रोजच्या सवयी केसांच्या वाढीच्या चक्रावर वाटतो त्यापेक्षा खूप जास्त परिणाम करतात.',
+      body: 'झोप, ताण आणि रोजच्या सवयी केसांच्या वाढीवर परिणाम करतात.',
     },
     S5_NUTRITION_AND_DIET: {
       title: 'पोषण, आहार आणि ट्रीटमेंट',
-      body: 'पोषणाची थोडीशी कमतरतासुद्धा अनुवंशिक केसगळतीसारखी दिसू शकते. आम्ही नेमका हाच फरक ओळखत आहोत.',
+      body: 'पोषणाची कमतरता ही केसगळतीचे कारण असू शकते.',
     },
     S6_GRADE_AND_ADDITIONAL: {
       title: 'संपूर्ण चित्र',
@@ -64,7 +64,7 @@ export const mrContent: AssessmentContentPack = {
       placeholder: 'वय (वर्षांमध्ये)',
     },
     goal: {
-      title: 'तुमची सर्वात मोठी चिंता कोणती आहे?',
+      title: 'केसांबद्दलची तुमची समस्या निवडा.',
       exclusivityToast:
         'आता फक्त नवीन केस उगवण्यावर लक्ष राहील — सुरू असलेल्या केसगळतीचे विश्लेषण काढून टाकले आहे.',
       options: {
@@ -76,7 +76,7 @@ export const mrContent: AssessmentContentPack = {
       },
     },
     sex: {
-      title: 'तुमचे लिंग काय आहे?',
+      title: 'तुमचे लिंग कोणते आहे?',
       options: {
         Male: 'पुरुष',
         Female: 'स्त्री',
@@ -86,7 +86,7 @@ export const mrContent: AssessmentContentPack = {
 
     // ── S2 · Hair loss assessment ────────────────────────────────────────────
     duration: {
-      title: 'तुम्हाला केस गळण्याचा त्रास किती काळापासून आहे?',
+      title: 'तुमचे केस किती काळापासून गळत आहेत?',
       options: {
         '1–3 months': '1–3 महिने',
         '3–6 months': '3–6 महिने',
@@ -210,6 +210,7 @@ export const mrContent: AssessmentContentPack = {
         'Heavy bleeding periods': 'पाळीत जास्त रक्तस्राव',
         'Currently pregnant': 'सध्या गर्भवती आहे',
         'Post-delivery or breastfeeding': 'बाळंतपणानंतर किंवा स्तनपान सुरू आहे',
+        Miscarriage: 'गर्भपात',
         'Peri-menopause': 'मेनोपॉजची सुरुवात (पेरी-मेनोपॉज)',
         'Post-menopause': 'मेनोपॉजनंतर',
         'Hormone Replacement Therapy (HRT)': 'हार्मोन रिप्लेसमेंट थेरपी (HRT)',
