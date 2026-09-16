@@ -344,8 +344,10 @@ export function recommendTopicals(
       "Hypertension — Minoxidil is a vasodilator and is contraindicated. Non-Minoxidil pattern-loss formulation chosen.");
     rec(recommended, seen, "Trichogain Serum",
       "Hypertension — non-Minoxidil follicle support.");
-    rec(recommended, seen, "CR Serum",
-      "Hypertension — gentle non-Minoxidil topical, alternate day or night use.");
+    // CR Serum is no longer proactively recommended here. It remains in the
+    // topical catalogue and in the contraindication / safety-evaluator
+    // allowed-and-safe lists, so a doctor may still select it and those rules
+    // continue to resolve it — it is simply never auto-added to a kit.
     caution(cautions, "Minoxidil (topical or oral)",
       "Hypertension — Minoxidil topical and oral both compound antihypertensive medication effects.");
     if (p.age > 60) {
