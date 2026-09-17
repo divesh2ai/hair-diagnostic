@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { requireDoctorContext, assertDoctorInClinic } from "@/lib/auth";
 
@@ -53,6 +54,29 @@ export async function GET(
       return NextResponse.json({ error: "Patient not found" }, { status: 404 });
     }
 
+    // `concern` decides which review surface each timeline row opens — skin
+    // cases have their own (see lib/doctor/reviewHref), and without it every
+    // one of them deep-links into the HAIR consultation, which is the exact
+    // misrouting that module was written to prevent.
+    //
+    // It lives at rawResponses->'__meta'->>'concern', which Prisma cannot
+    // project: asking for it through `select` means selecting the whole
+    // `rawResponses` blob, i.e. dragging this patient's every questionnaire
+    // answer across the wire to read one short string. One indexed lookup over
+    // the ids already loaded instead — mirrors the list route.
+    const concerns = new Map<string, string | null>();
+    const assessmentIds = patient.assessments.map((a) => a.id);
+    if (assessmentIds.length > 0) {
+      const rows = await prisma.$queryRaw<
+        Array<{ id: string; concern: string | null }>
+      >(Prisma.sql`
+        SELECT a.id, a."rawResponses"->'__meta'->>'concern' AS "concern"
+        FROM "Assessment" a
+        WHERE a.id IN (${Prisma.join(assessmentIds)})
+      `);
+      for (const r of rows) concerns.set(r.id, r.concern);
+    }
+
     return NextResponse.json({
       patient: {
         id: patient.id,
@@ -71,6 +95,7 @@ export async function GET(
             id: a.id,
             status: a.status,
             reviewDecision: a.reviewDecision,
+            concern: concerns.get(a.id) ?? null,
             submittedAt: a.submittedAt?.toISOString() ?? null,
             primaryDiagnosis: sev?.primaryDiagnosis ?? null,
             severity: sev?.severity ?? null,

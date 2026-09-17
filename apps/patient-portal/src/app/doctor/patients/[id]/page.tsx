@@ -5,7 +5,8 @@ import { useParams } from "next/navigation";
 import Link from "next/link";
 import { ArrowLeft, User, Phone, Mail, Stethoscope, Building2 } from "lucide-react";
 import { SeverityBadge } from "@/components/ui/StatusBadges";
-import { standingOf } from "@/lib/doctor/clinicalStanding";
+import { standingOf, nextActionOf } from "@/lib/doctor/clinicalStanding";
+import { reviewHref } from "@/lib/doctor/reviewHref";
 
 interface PatientDetail {
   id: string;
@@ -23,6 +24,8 @@ interface PatientDetail {
     submittedAt: string | null;
     primaryDiagnosis: string | null;
     severity: string | null;
+    /** Routes the row to the right review surface. See lib/doctor/reviewHref. */
+    concern: string | null;
   }[];
 }
 
@@ -121,17 +124,56 @@ export default function PatientTimelinePage() {
                   <SeverityBadge severity={a.severity} />
                 </div>
               </div>
-              <Link
-                href={`/doctor/reports/${a.id}`}
-                className="text-sm text-sky-600 font-medium"
-              >
-                Open report →
-              </Link>
+              <TimelineAction assessment={a} />
             </li>
           ))}
         </ul>
       </section>
     </div>
+  );
+}
+
+/**
+ * The one next step for a timeline row, decided the same way the registry
+ * decides it.
+ *
+ * This replaced an unconditional `Open report →` linking straight to
+ * `/doctor/reports/{id}`, which was wrong twice over:
+ *
+ *   It bypassed lib/doctor/reviewHref, so every skin case on this page
+ *   deep-linked into the HAIR consultation — the precise misrouting that
+ *   module exists to prevent, and which the read path then refuses, so the
+ *   doctor met a refusal that reads as a broken record.
+ *
+ *   It promised a report for EVERY row regardless of standing. A still-
+ *   generating assessment offered "Open report", and a doctor who pressed it
+ *   arrived at a page with nothing to read.
+ *
+ * `nextActionOf` already encodes all of it: a real destination when there is
+ * one, and inert TEXT — never a dead button — when there is not.
+ */
+function TimelineAction({
+  assessment,
+}: {
+  assessment: PatientDetail["assessments"][number];
+}) {
+  const facts = {
+    assessmentCount: 1,
+    lastStatus: assessment.status,
+    lastReviewDecision: assessment.reviewDecision,
+  };
+  const action = nextActionOf(facts, {
+    assessmentId: assessment.id,
+    reviewHref: reviewHref({ id: assessment.id, concern: assessment.concern }),
+  });
+
+  if (action.kind === "inert") {
+    return <span className="text-sm text-slate-400">{action.label}</span>;
+  }
+  return (
+    <Link href={action.href} className="text-sm text-sky-600 font-medium">
+      {action.label} →
+    </Link>
   );
 }
 
