@@ -19,6 +19,9 @@ function doctor(over: Partial<DoctorProvisioningInput> = {}): DoctorProvisioning
     email: null,
     phone: null,
     supabaseUserId: null,
+    // Explicitly null, never omitted: left `undefined`, every `!== null` check
+    // downstream reads as "linked" and the whole suite inverts.
+    supabasePhoneUserId: null,
     isActive: true,
     deletedAt: null,
     provisioningStatus: "CONTACT_REQUIRED",
@@ -63,6 +66,50 @@ describe("hasDashboardAccess", () => {
     const linked = { supabaseUserId: "auth-uid-1", provisioningStatus: "ACTIVE" } as const;
     expect(hasDashboardAccess(doctor({ ...linked, isActive: false }))).toBe(false);
     expect(hasDashboardAccess(doctor({ ...linked, deletedAt: new Date() }))).toBe(false);
+  });
+
+  // ── The mobile identity ───────────────────────────────────────────────────
+  // requireDoctorContext matches EITHER identity column, so this predicate has
+  // to as well. While it read only `supabaseUserId`, the Super Admin console
+  // showed "no dashboard access" for a doctor the API was letting straight in
+  // — precisely the disagreement the comment on this function forbids.
+
+  it("is true for a doctor linked by mobile alone", () => {
+    expect(
+      hasDashboardAccess(
+        doctor({
+          phone: "+919820000001",
+          supabaseUserId: null,
+          supabasePhoneUserId: "phone-auth-uid",
+          provisioningStatus: "ACTIVE",
+        }),
+      ),
+    ).toBe(true);
+  });
+
+  it("is true for a doctor carrying both identities", () => {
+    expect(
+      hasDashboardAccess(
+        doctor({
+          email: "doctor@example.com",
+          phone: "+919820000001",
+          supabaseUserId: "email-auth-uid",
+          supabasePhoneUserId: "phone-auth-uid",
+          provisioningStatus: "ACTIVE",
+        }),
+      ),
+    ).toBe(true);
+  });
+
+  it("still refuses a mobile-linked doctor once deactivated or removed", () => {
+    const phoneLinked = {
+      supabasePhoneUserId: "phone-auth-uid",
+      provisioningStatus: "ACTIVE",
+    } as const;
+    expect(hasDashboardAccess(doctor({ ...phoneLinked, isActive: false }))).toBe(false);
+    expect(hasDashboardAccess(doctor({ ...phoneLinked, deletedAt: new Date() }))).toBe(
+      false,
+    );
   });
 });
 

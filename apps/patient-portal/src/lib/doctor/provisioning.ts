@@ -24,6 +24,13 @@ export interface DoctorProvisioningInput {
   email: string | null;
   phone: string | null;
   supabaseUserId: string | null;
+  /**
+   * The phone auth identity, when Supabase minted a separate user for it.
+   * Required rather than optional: a caller that forgets it would silently
+   * report a mobile-linked doctor as having no dashboard access, which is the
+   * exact drift the comment on `hasDashboardAccess` forbids.
+   */
+  supabasePhoneUserId: string | null;
   isActive: boolean;
   deletedAt: Date | null;
   provisioningStatus: DoctorProvisioningStatus;
@@ -65,7 +72,12 @@ export function accountStatusOf(d: DoctorProvisioningInput): AccountStatus {
 // soft-deleted. Any change here must be made there too, or the console will
 // promise access the API refuses.
 export function hasDashboardAccess(d: DoctorProvisioningInput): boolean {
-  return d.supabaseUserId !== null && d.isActive && d.deletedAt === null;
+  // EITHER identity counts as linked, because requireDoctorContext now matches
+  // either (see lib/auth/doctorIdentity). A doctor linked by mobile alone has
+  // a null `supabaseUserId`, and reading only that column made this console
+  // report "no access" for someone the API lets straight in.
+  const linked = d.supabaseUserId !== null || d.supabasePhoneUserId !== null;
+  return linked && d.isActive && d.deletedAt === null;
 }
 
 export function contactStatusOf(d: DoctorProvisioningInput): ContactStatus {
