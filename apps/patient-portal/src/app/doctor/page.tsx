@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
 import { getAuthClaims } from "@/lib/auth";
+import { doctorAuthIdentityWhere } from "@/lib/auth/doctorIdentity";
 import { prisma } from "@/lib/prisma";
 import { loadDashboardStats } from "@/lib/doctor/dashboardStats";
 import { DoctorDashboardClient } from "./DoctorDashboardClient";
@@ -31,7 +32,7 @@ export default async function DoctorDashboardPage() {
   if (!claims?.sub) redirect("/login");
 
   const doctor = await prisma.doctor.findFirst({
-    where: { supabaseUserId: claims.sub, isActive: true, deletedAt: null },
+    where: { ...doctorAuthIdentityWhere(claims.sub), isActive: true, deletedAt: null },
     select: {
       name: true,
       clinicId: true,

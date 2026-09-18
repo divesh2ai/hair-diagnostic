@@ -3,6 +3,7 @@ import Link from "next/link";
 import { AlertTriangle, ArrowLeft, Clock, User } from "lucide-react";
 import { prisma } from "@/lib/prisma";
 import { getAuthClaims } from "@/lib/auth";
+import { doctorAuthIdentityWhere } from "@/lib/auth/doctorIdentity";
 import { isReviewUnavailable } from "@/lib/doctor/reviewHref";
 import "@/styles/doctor-tokens.css";
 
@@ -58,7 +59,7 @@ export default async function SkinReviewUnavailablePage({
   if (!claims?.sub) redirect("/login");
 
   const doctor = await prisma.doctor.findFirst({
-    where: { supabaseUserId: claims.sub, isActive: true, deletedAt: null },
+    where: { ...doctorAuthIdentityWhere(claims.sub), isActive: true, deletedAt: null },
     select: { clinicId: true },
   });
   if (!doctor) redirect("/login?reason=forbidden");

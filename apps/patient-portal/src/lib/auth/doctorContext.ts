@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getAuthClaims, type AuthClaims, type AuthError } from "./legacy";
 import type { SystemRole } from "./roles";
+import { doctorAuthIdentityWhere } from "./doctorIdentity";
 
 // Canonical Doctor authorization context for the current request.
 //
@@ -65,8 +66,10 @@ export async function requireDoctorContext(): Promise<DoctorContext | AuthError>
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   }
   const doctor = await prisma.doctor.findFirst({
+    // Either linked Supabase identity — a mobile-OTP session carries the
+    // phone uid, an email-OTP session the email uid, for the same doctor.
     where: {
-      supabaseUserId: claims.sub,
+      ...doctorAuthIdentityWhere(claims.sub),
       isActive: true,
       deletedAt: null,
     },

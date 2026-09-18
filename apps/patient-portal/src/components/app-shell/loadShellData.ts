@@ -10,6 +10,7 @@ import { navForRole, type NavSection } from "@/lib/navigation";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { prisma } from "@/lib/prisma";
 import type { SystemRole } from "@/lib/auth";
+import { doctorAuthIdentityWhere } from "@/lib/auth/doctorIdentity";
 import type { ClinicBranding } from "@/lib/branding";
 
 export type ShellData = {
@@ -140,7 +141,7 @@ export async function loadDoctorShellData(): Promise<DoctorShellData> {
   const data = await loadShellData();
   const doctor = await prisma.doctor.findFirst({
     where: {
-      supabaseUserId: data.userId,
+      ...doctorAuthIdentityWhere(data.userId),
       isActive: true,
       deletedAt: null,
     },

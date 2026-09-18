@@ -27,7 +27,12 @@ export async function POST() {
   });
 
   if (!result.ok) {
-    const status = result.reason === "unregistered" ? 403 : 409;
+    // Distinct statuses so the client can say something true rather than
+    // collapsing every refusal into "invalid code":
+    //   403 unregistered — number matches no provisioned Doctor
+    //   403 inactive     — matches a Doctor whose access was withdrawn
+    //   409 conflict     — matches a Doctor held by another auth identity
+    const status = result.reason === "conflict" ? 409 : 403;
     return NextResponse.json({ ok: false, reason: result.reason }, { status });
   }
 
