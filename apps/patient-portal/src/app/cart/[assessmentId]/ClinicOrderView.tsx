@@ -32,6 +32,8 @@ export function ClinicOrderView({ cart: initial }: { cart: CartData }) {
   const [confirming, setConfirming] = useState(false);
   const [confirmed, setConfirmed] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [sharing, setSharing] = useState(false);
+  const [shareError, setShareError] = useState<string | null>(null);
 
   const setQuantity = async (kitId: string, quantity: number) => {
     if (quantity < 1 || quantity > 99 || pendingKitId) return;
@@ -89,52 +91,93 @@ export function ClinicOrderView({ cart: initial }: { cart: CartData }) {
     }
   };
 
+  // Reuses the existing governed WhatsApp send path
+  // (api/consultation/[assessmentId]/share) rather than composing a wa.me
+  // link by hand: that endpoint is the ONE place the message copy, the
+  // signed report link and the audit trail (MANUAL_SHARE_OPENED) are
+  // produced, and it is what the review page's own Share already calls. A
+  // second, ad-hoc wa.me builder here would drift from that message the
+  // first time either one changed.
+  const shareOnWhatsApp = async () => {
+    setSharing(true);
+    setShareError(null);
+    try {
+      const res = await fetch(`/api/consultation/${cart.assessmentId}/share`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ subject: "REPORT", mode: "manual" }),
+      });
+      const j = await res.json().catch(() => ({}));
+      if (!res.ok || !j.waUrl) {
+        setShareError(j.message ?? "Could not prepare the WhatsApp message.");
+        return;
+      }
+      window.open(j.waUrl, "_blank", "noreferrer");
+    } catch {
+      setShareError("Could not prepare the WhatsApp message.");
+    } finally {
+      setSharing(false);
+    }
+  };
+
   const totalUnits = useMemo(
     () => cart.lineItems.reduce((sum, li) => sum + li.quantity, 0),
     [cart.lineItems],
   );
 
   const onePagerHref = `/reports/${cart.assessmentId}/one-page`;
-  const patientPhone = cart.patient?.phone ?? "";
 
   if (confirmed) {
     return (
-      <div data-surface="doctor" className="mx-auto max-w-lg py-10">
-        <div className="hd-card p-6 text-center">
-          <CheckCircle2 className="mx-auto size-10 text-emerald-600" aria-hidden />
-          <p className="mt-3 text-lg font-medium text-slate-900">Treatment Approved</p>
-          <p className="text-lg font-medium text-slate-900">Clinic Order Confirmed</p>
-          {cart.patient?.name && (
-            <p className="mt-1 text-sm text-stone-500">Patient: {cart.patient.name}</p>
-          )}
-
-          <div className="mt-6 space-y-2.5">
-            <Link
-              href={onePagerHref}
-              target="_blank"
-              rel="noreferrer"
-              className="hd-btn hd-btn-secondary w-full justify-center"
-            >
-              <FileText className="size-4" aria-hidden />
-              View Approved Report
-            </Link>
-            {patientPhone && (
-              <a
-                href={`https://wa.me/${patientPhone.replace(/[^0-9]/g, "")}?text=${encodeURIComponent(
-                  `Hi${cart.patient?.name ? " " + cart.patient.name : ""}, your Dr FACT treatment plan is approved. Your report: ${typeof window !== "undefined" ? window.location.origin : ""}${onePagerHref}`,
-                )}`}
-                target="_blank"
-                rel="noreferrer"
-                className="hd-btn hd-btn-secondary w-full justify-center"
-              >
-                <MessageCircle className="size-4" aria-hidden />
-                Share Report on WhatsApp
-              </a>
+      <div data-surface="doctor" className="v2-canvas min-h-screen">
+        <div className="mx-auto max-w-md px-4 py-16 sm:px-0">
+          <div className="v2-card-elevated p-7 text-center">
+            <CheckCircle2 className="mx-auto size-9" style={{ color: "var(--status-success)" }} aria-hidden />
+            <p className="mt-4 font-serif text-[21px] leading-snug text-[color:var(--ink-primary)]">
+              Treatment approved
+              <br />
+              Clinic order confirmed
+            </p>
+            {cart.patient?.name && (
+              <p className="mt-2 text-sm text-[color:var(--ink-secondary)]">{cart.patient.name}</p>
             )}
-            <Link href="/doctor" className="hd-btn hd-btn-secondary w-full justify-center">
-              <LayoutDashboard className="size-4" aria-hidden />
-              Back to Dashboard
-            </Link>
+            <p className="mt-0.5 text-sm tabular-nums text-[color:var(--ink-tertiary)]">
+              {cart.lineItems.length} {cart.lineItems.length === 1 ? "kit" : "kits"}
+              {cart.subtotalLabel ? ` · ${cart.subtotalLabel}` : ""}
+            </p>
+
+            <div className="mt-7 space-y-2">
+              <p className="v2-eyebrow text-left">Patient communication</p>
+              {shareError && (
+                <p role="alert" className="text-left text-xs" style={{ color: "var(--status-critical)" }}>
+                  {shareError}
+                </p>
+              )}
+              <div className="grid grid-cols-2 gap-2">
+                <Link
+                  href={onePagerHref}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="v2-btn v2-btn-secondary"
+                >
+                  <FileText className="size-4" aria-hidden />
+                  View report
+                </Link>
+                <button
+                  type="button"
+                  onClick={shareOnWhatsApp}
+                  disabled={sharing}
+                  className="v2-btn v2-btn-secondary"
+                >
+                  {sharing ? <Loader2 className="size-4 animate-spin" aria-hidden /> : <MessageCircle className="size-4" aria-hidden />}
+                  Share on WhatsApp
+                </button>
+              </div>
+              <Link href="/doctor" className="v2-btn v2-btn-primary mt-2 w-full">
+                <LayoutDashboard className="size-4" aria-hidden />
+                Done
+              </Link>
+            </div>
           </div>
         </div>
       </div>
@@ -142,78 +185,82 @@ export function ClinicOrderView({ cart: initial }: { cart: CartData }) {
   }
 
   return (
-    <div data-surface="doctor" className="mx-auto max-w-xl px-4 py-8 sm:px-0">
-      <header className="mb-5">
-        <p className="hd-eyebrow">Clinic Order</p>
-        <div className="mt-1 flex flex-wrap gap-x-4 gap-y-0.5 text-sm text-stone-600">
-          {cart.patient?.name && <span>Patient: {cart.patient.name}</span>}
-          {cart.doctor?.name && <span>Doctor: {cart.doctor.name}</span>}
-          {cart.clinic?.name && <span>Clinic: {cart.clinic.name}</span>}
-        </div>
-        <p className="mt-2 text-sm font-medium text-slate-800">
-          {cart.lineItems.length} approved product{cart.lineItems.length === 1 ? "" : "s"}
-        </p>
-      </header>
+    <div data-surface="doctor" className="v2-canvas min-h-screen">
+      <div className="mx-auto max-w-xl px-4 py-8 sm:px-0">
+        <header className="mb-5">
+          <p className="v2-eyebrow">Clinic order</p>
+          <div className="mt-1.5 space-y-0.5 text-sm text-[color:var(--ink-secondary)]">
+            {cart.patient?.name && <p className="font-medium text-[color:var(--ink-primary)]">{cart.patient.name}</p>}
+            {cart.doctor?.name && <p>{cart.doctor.name}</p>}
+            {cart.clinic?.name && <p>{cart.clinic.name}</p>}
+          </div>
+          <p className="mt-2 text-sm font-medium" style={{ color: "var(--status-success)" }}>
+            Treatment approved · {cart.lineItems.length} product{cart.lineItems.length === 1 ? "" : "s"}
+          </p>
+        </header>
 
-      {error && (
-        <div role="alert" className="mb-4 rounded-lg border border-rose-200 bg-rose-50 px-3 py-2.5 text-sm text-rose-900">
-          {error}
-        </div>
-      )}
+        {error && (
+          <div role="alert" className="mb-4 rounded-lg px-3 py-2.5 text-sm" style={{ background: "var(--status-critical-bg)", color: "var(--status-critical)" }}>
+            {error}
+          </div>
+        )}
 
-      <div className="hd-card divide-y divide-stone-100">
-        {cart.lineItems.map((li) => (
-          <ClinicOrderLine
-            key={li.kitId}
-            item={li}
-            busy={pendingKitId === li.kitId}
-            onQuantityChange={(q) => setQuantity(li.kitId, q)}
-          />
-        ))}
-      </div>
-
-      <div className="hd-card mt-4 space-y-2.5 p-4 sm:p-5">
-        <div className="flex items-baseline justify-between text-sm">
-          <span className="text-stone-600">Products / units</span>
-          <span className="tabular-nums font-medium text-slate-800">
-            {cart.lineItems.length} / {totalUnits}
-          </span>
+        <div className="v2-card divide-y" style={{ borderColor: "var(--v2-border-subtle)" }}>
+          {cart.lineItems.map((li) => (
+            <ClinicOrderLine
+              key={li.kitId}
+              item={li}
+              busy={pendingKitId === li.kitId}
+              onQuantityChange={(q) => setQuantity(li.kitId, q)}
+            />
+          ))}
         </div>
-        <div className="flex items-baseline justify-between">
-          <span className="text-base font-medium text-slate-900">Order Total</span>
-          {cart.subtotalMinor === null ? (
-            <span className="text-sm font-medium text-amber-700">Pricing pending</span>
-          ) : (
-            <span className="font-serif text-2xl text-slate-900 tabular-nums">
-              {cart.subtotalLabel}
+
+        <div className="v2-card-elevated mt-4 space-y-2.5 p-4 sm:p-5">
+          <div className="flex items-baseline justify-between text-sm">
+            <span className="text-[color:var(--ink-secondary)]">Products / units</span>
+            <span className="tabular-nums font-medium text-[color:var(--ink-primary)]">
+              {cart.lineItems.length} / {totalUnits}
             </span>
+          </div>
+          <div className="flex items-baseline justify-between">
+            <span className="text-base font-medium text-[color:var(--ink-primary)]">Order value</span>
+            {cart.subtotalMinor === null ? (
+              <span className="text-sm font-medium" style={{ color: "var(--status-attention)" }}>
+                Pricing pending
+              </span>
+            ) : (
+              <span className="font-serif text-2xl text-[color:var(--ink-primary)] tabular-nums">
+                {cart.subtotalLabel}
+              </span>
+            )}
+          </div>
+          {cart.subtotalMinor === null && (
+            <p className="text-xs leading-relaxed" style={{ color: "var(--status-attention)" }}>
+              One or more products are not yet priced — the order value cannot be confirmed until
+              every line has an approved price.
+            </p>
+          )}
+
+          <button
+            type="button"
+            onClick={confirmOrder}
+            disabled={confirming || !cart.chargeable}
+            className="v2-btn v2-btn-primary mt-2 w-full"
+          >
+            {confirming ? (
+              <Loader2 className="size-4 animate-spin" aria-hidden />
+            ) : (
+              <ClipboardCheck className="size-4" aria-hidden />
+            )}
+            {confirming ? "Confirming…" : "Confirm clinic order"}
+          </button>
+          {!cart.chargeable && (
+            <p className="text-center text-xs text-[color:var(--ink-tertiary)]">
+              Resolve pricing/catalog mapping on every line to confirm.
+            </p>
           )}
         </div>
-        {cart.subtotalMinor === null && (
-          <p className="text-xs leading-relaxed text-amber-800">
-            One or more products are not yet priced — the order total cannot be confirmed until
-            every line has an approved price.
-          </p>
-        )}
-
-        <button
-          type="button"
-          onClick={confirmOrder}
-          disabled={confirming || !cart.chargeable}
-          className="mt-2 inline-flex w-full items-center justify-center gap-2 rounded-full bg-emerald-600 px-5 py-3 text-sm font-semibold text-white transition-colors hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-50"
-        >
-          {confirming ? (
-            <Loader2 className="size-4 animate-spin" aria-hidden />
-          ) : (
-            <ClipboardCheck className="size-4" aria-hidden />
-          )}
-          {confirming ? "Confirming…" : "Confirm Clinic Order"}
-        </button>
-        {!cart.chargeable && (
-          <p className="text-center text-xs text-stone-500">
-            Resolve pricing/catalog mapping on every line to confirm.
-          </p>
-        )}
       </div>
     </div>
   );
@@ -232,49 +279,60 @@ function ClinicOrderLine({
 
   return (
     <div className="flex items-start gap-4 p-4 sm:p-5">
-      <ProductImage id={item.kitId} category="kit" size="lg" />
+      {/* "md" is 128px — the closest of ProductImage's fixed sizes (44 / 96 /
+          128 / 176) to the 100–130px target for this row. */}
+      <ProductImage id={item.kitId} category="kit" size="md" />
 
       <div className="min-w-0 flex-1">
         <div className="flex items-start justify-between gap-3">
-          <p className="font-serif text-lg leading-tight text-slate-900">{label}</p>
+          <p className="font-serif text-lg leading-tight text-[color:var(--ink-primary)]">{label}</p>
           <div className="shrink-0 text-right">
             {item.commercialState === "CHARGEABLE" ? (
-              <p className="text-base font-medium tabular-nums text-slate-900">
+              <p className="text-base font-medium tabular-nums text-[color:var(--ink-primary)]">
                 {item.unitPriceLabel}
               </p>
             ) : (
               <p
-                className={`max-w-[9rem] text-[11px] font-medium leading-snug ${
-                  item.commercialState === "PRICE_PENDING" ? "text-amber-700" : "text-stone-500"
-                }`}
+                className="max-w-[9rem] text-[11px] font-medium leading-snug"
+                style={{
+                  color:
+                    item.commercialState === "PRICE_PENDING"
+                      ? "var(--status-attention)"
+                      : "var(--ink-tertiary)",
+                }}
               >
                 {item.commercialState === "PRICE_PENDING"
                   ? "Pricing requires confirmation"
                   : item.commercialState === "IDENTITY_REVIEW"
-                    ? "Catalog mapping required"
+                    ? "Catalog match required"
                     : "Not available to order"}
               </p>
             )}
           </div>
         </div>
 
-        <p className="mt-1 text-[11px] font-semibold uppercase tracking-wider text-teal-700">
+        <p className="mt-1 text-[11px] font-semibold uppercase tracking-wider" style={{ color: "var(--brand-primary)" }}>
           1-month protocol
         </p>
+        {item.commercialState === "IDENTITY_REVIEW" && (
+          <p className="mt-1 rounded-md px-2 py-1 text-[11px] leading-snug" style={{ background: "var(--status-attention-bg)", color: "var(--status-attention)" }}>
+            Review product mapping before confirming this order.
+          </p>
+        )}
 
         <div className="mt-2.5 flex items-center gap-3">
-          <span className="text-xs font-medium text-stone-500">Quantity</span>
-          <div className="inline-flex items-center gap-1 rounded-full border border-stone-300">
+          <span className="text-xs font-medium text-[color:var(--ink-tertiary)]">Order quantity</span>
+          <div className="inline-flex items-center gap-1 rounded-full border" style={{ borderColor: "var(--v2-border-strong)" }}>
             <button
               type="button"
               onClick={() => onQuantityChange(item.quantity - 1)}
               disabled={busy || item.quantity <= 1}
               aria-label={`Decrease quantity for ${label}`}
-              className="flex size-7 items-center justify-center rounded-full text-slate-700 hover:bg-stone-100 disabled:cursor-not-allowed disabled:opacity-40"
+              className="flex size-10 items-center justify-center rounded-full text-[color:var(--ink-primary)] transition-colors hover:bg-[color:var(--surface-muted)] disabled:cursor-not-allowed disabled:opacity-40"
             >
-              <Minus className="size-3.5" aria-hidden />
+              <Minus className="size-4" aria-hidden />
             </button>
-            <span className="w-6 text-center text-sm font-medium tabular-nums text-slate-900">
+            <span className="w-7 text-center text-sm font-medium tabular-nums text-[color:var(--ink-primary)]">
               {busy ? <Loader2 className="mx-auto size-3.5 animate-spin" aria-hidden /> : item.quantity}
             </span>
             <button
@@ -282,14 +340,14 @@ function ClinicOrderLine({
               onClick={() => onQuantityChange(item.quantity + 1)}
               disabled={busy || item.quantity >= 99}
               aria-label={`Increase quantity for ${label}`}
-              className="flex size-7 items-center justify-center rounded-full text-slate-700 hover:bg-stone-100 disabled:cursor-not-allowed disabled:opacity-40"
+              className="flex size-10 items-center justify-center rounded-full text-[color:var(--ink-primary)] transition-colors hover:bg-[color:var(--surface-muted)] disabled:cursor-not-allowed disabled:opacity-40"
             >
-              <Plus className="size-3.5" aria-hidden />
+              <Plus className="size-4" aria-hidden />
             </button>
           </div>
         </div>
 
-        <p className="mt-2 text-xs text-stone-500">Approved treatment</p>
+        <p className="mt-2 text-xs text-[color:var(--ink-tertiary)]">Approved treatment</p>
       </div>
     </div>
   );
