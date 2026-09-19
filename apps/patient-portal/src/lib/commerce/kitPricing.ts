@@ -92,13 +92,13 @@ export const APPROVED_KIT_PRICES_MINOR: Readonly<Record<string, number>> =
     TE_GOLD: rupeesToMinor(2996),
     IRON_UP_GOLD: rupeesToMinor(2527),
     GI_GOLD: rupeesToMinor(3455),
-    PRO_IMMUNE_GOLD: rupeesToMinor(2518),
+    PRO_IMMUNE_GOLD: rupeesToMinor(2638),
     RWL_SHIELD: rupeesToMinor(4402),
     NIGHT_SHIFT: rupeesToMinor(2518),
     FREQUENT_FLYERS: rupeesToMinor(3429),
     TTM_SUPPORT: rupeesToMinor(2858),
     // ── Governed budget alternatives ───────────────────────────────────────
-    PRO_IMMUNE_1: rupeesToMinor(2045),
+    PRO_IMMUNE_1: rupeesToMinor(2145),
     M4_PLUS: rupeesToMinor(1655),
     F4_PLUS: rupeesToMinor(1639),
     HYPOTHYROID_2: rupeesToMinor(1701),
@@ -108,7 +108,7 @@ export const APPROVED_KIT_PRICES_MINOR: Readonly<Record<string, number>> =
     STRESS_BUST_3: rupeesToMinor(1457),
     // ── Approved 2026-09-19, doctor-confirmed (drfact-mumbai) ──────────────
     META_B: rupeesToMinor(3018),
-    PRO_IMMUNE_5_VEG: rupeesToMinor(2182),
+    PRO_IMMUNE_5_VEG: rupeesToMinor(2692),
   });
 
 /**
