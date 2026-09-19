@@ -278,7 +278,7 @@ function OrderDialog({ order, onClose }: { order: Order; onClose: () => void }) 
       >
         <div className="flex items-start justify-between gap-4">
           <div>
-            <p className="hd-eyebrow">Patient order</p>
+            <p className="hd-eyebrow">Clinic order</p>
             <p className="hd-value mt-1 text-lg font-semibold">
               {order.patientName}
             </p>
@@ -330,7 +330,7 @@ function OrderDialog({ order, onClose }: { order: Order; onClose: () => void }) 
             className="hd-btn hd-btn-secondary mt-4 w-full !text-xs"
           >
             <ExternalLink className="size-3.5" aria-hidden />
-            Open the patient&apos;s cart
+            Open clinic order
           </a>
         )}
       </div>

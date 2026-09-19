@@ -5,11 +5,9 @@ import Link from "next/link";
 import {
   ArrowLeft,
   Check,
-  ExternalLink,
   Flag,
   MessageCircle,
   ShieldAlert,
-  ShoppingCart,
 } from "lucide-react";
 import { toast } from "sonner";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
@@ -28,7 +26,7 @@ import type {
 import { ReportActions } from "@/components/ui/ReportActions";
 import { extractSafetyFlags } from "@/lib/doctor/clinicalAttention";
 import { summarizeProtocol } from "@/lib/doctor/protocolModel";
-import { cartHref, absoluteCartUrl } from "@/lib/doctor/cartHref";
+import { cartHref } from "@/lib/doctor/cartHref";
 import { PatientJourney } from "@/components/doctor/PatientJourney";
 import { ReviewHeader } from "./sections/ReviewHeader";
 import { ClinicalAttentionSection } from "./sections/ClinicalAttentionSection";
@@ -1173,33 +1171,6 @@ function DeliveryBlock({
   shareToken?: string;
   operational: ConsultationOperationalState | null;
 }) {
-  // ── Why the origin is read after mount ────────────────────────────────────
-  //
-  // This was inlined as
-  //   `${typeof window !== "undefined" ? window.location.origin : ""}`
-  // which is the first cause React lists for a hydration mismatch: the server
-  // renders the message with an EMPTY origin and the client with a real one,
-  // so the two hrefs disagree and React bails out of patching the tree.
-  //
-  // It is not merely cosmetic. The server-rendered href read
-  // `…confirm your kit order here: /cart/<id>` — a bare relative path. A
-  // doctor clicking before hydration would have sent a PATIENT a WhatsApp
-  // message containing a link that goes nowhere.
-  //
-  // Read from the browser rather than NEXT_PUBLIC_APP_URL, matching
-  // ClinicQrPanel: a stale or unset env var would put a host that does not
-  // serve this clinic into a message sent to a real patient.
-  const hydrated = useHydrated();
-  // The token is REQUIRED here, not optional: this URL is sent to a patient
-  // who has no session, so without it they land on a cart that 404s.
-  const cartUrl = hydrated
-    ? absoluteCartUrl(
-        window.location.origin,
-        assessmentId,
-        operational?.cartToken,
-      )
-    : null;
-
   return (
     <section aria-labelledby="delivery-heading" className="space-y-3">
       <h2
@@ -1220,42 +1191,17 @@ function DeliveryBlock({
           variant="utility"
         />
 
-        {operational?.orderIntentId && (
-          <div className="mt-3 space-y-2 border-t border-stone-100 pt-3">
-            {/* The raw order-intent id and its READY_FOR_FULFILMENT state used
-                to print here. Both are engineering facts: the id is a cuid the
-                doctor cannot act on, and the status names an internal
-                fulfilment stage, not anything about this patient's care. They
-                remain on the order record and in the audit trail; they are
-                simply not decisions a clinician makes on this screen. */}
-            {/* THE CART IS THE POINT OF THIS BLOCK.
-                It used to be a 12px bordered link sitting beside a filled
-                green WhatsApp button, so the loudest control on the block was
-                the one that MESSAGES A PATIENT and the quiet one was the safe
-                check a doctor should make first — exactly backwards. Seeing
-                what the patient will be charged for is the verification step;
-                sending it is the irreversible act.
-
-                So: the cart is the primary, and the send button is demoted to
-                a secondary. Dropping the green also puts this block back in
-                line with the surface rule that green marks a saved decision
-                and nothing else. */}
-            <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
-              <a
-                href={cartHref(assessmentId, operational?.cartToken)}
-                target="_blank"
-                rel="noreferrer"
-                className="hd-btn hd-btn-primary justify-center sm:justify-start"
-              >
-                <ShoppingCart className="size-4" aria-hidden />
-                Preview patient cart
-                <ExternalLink className="size-3.5 opacity-70" aria-hidden />
-                <span className="sr-only">(opens in a new tab)</span>
-              </a>
-
-            </div>
-          </div>
-        )}
+        {/* The clinic-order preview used to be repeated here as its own
+            button — "Preview patient cart" — identical in destination to the
+            sticky decision bar's own "Clinic order" link a few hundred
+            pixels below, on screen at the same time regardless of which tab
+            is open. Two links to the same place is how a doctor stops
+            trusting either one. The decision bar's is the one that stays:
+            it sits beside the order-ready status it is a link FROM, and it
+            is visible from every tab, not just this one. The raw
+            order-intent id and its READY_FOR_FULFILMENT state are still not
+            printed here — engineering facts, not clinical ones — they
+            remain on the order record and in the audit trail. */}
       </div>
     </section>
   );

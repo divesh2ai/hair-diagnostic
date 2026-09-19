@@ -324,7 +324,7 @@ export function DecisionBar({
                   className="hd-btn hd-btn-secondary"
                 >
                   <ShoppingCart className="h-4 w-4" aria-hidden />
-                  Preview cart
+                  Clinic order
                   <span className="sr-only">(opens in a new tab)</span>
                 </a>
               )}
