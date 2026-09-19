@@ -941,3 +941,105 @@
   outline-offset: 2px;
   border-radius: 4px;
 }
+
+/* ── V3 review — one surface with the rest of the doctor experience ───────────
+ *
+ * The V2 pass gave the dashboard, patient deck and Clinic Order a teal-on-ivory
+ * identity (--brand-*, --background-main, --gold-muted). The review page was
+ * built earlier on the plum --hd-* family and never joined them, so a doctor
+ * crossed a colour seam every time they opened a case from the dashboard.
+ *
+ * This block closes that seam WITHOUT repainting anything else. The review root
+ * carries `data-review="v3"`; every other doctor surface (orders, patients,
+ * settings) does not, so `[data-surface="doctor"][data-review="v3"]` — one
+ * specificity step above the base `[data-surface="doctor"]` — retargets the
+ * review's --hd-* tokens to the V2 brand values and leaves those other screens
+ * on plum, byte for byte. Custom properties resolve at the use site, so every
+ * `.hd-card`, `.hd-btn`, `.hd-pill` and remapped Tailwind step on the review
+ * re-materialises in teal/ivory with no className touched.
+ *
+ * What does NOT move: the clinical category accents (hair / scalp / lifestyle /
+ * medical / history) stay exactly as they are — they carry navigational meaning
+ * a doctor has already learned, not brand. Green still means "decided". Rose
+ * and amber still mean severity and caution. Only the brand, the ground and the
+ * ink change hands, from plum to teal.
+ */
+[data-surface="doctor"][data-review="v3"] {
+  /* Ground — warm ivory, matching the dashboard canvas. */
+  --hd-bg: var(--background-main);
+  --hd-surface: var(--surface-primary);
+  --hd-surface-alt: #f2f0ea;
+  --hd-surface-sunken: var(--surface-muted);
+  --hd-border: var(--v2-border-default);
+  --hd-border-strong: var(--v2-border-strong);
+
+  /* Ink — deep clinical green-black, the V2 ink ramp. */
+  --hd-text: var(--ink-primary);
+  --hd-text-secondary: var(--ink-secondary);
+  --hd-text-muted: var(--ink-tertiary);
+  --hd-text-subtle: #9aa19c;
+  /* Recessive warm grey that still clears the 4.5:1 floor on ivory (5.4:1). */
+  --hd-eyebrow-ink: #58635e;
+
+  /* Brand — clinical teal is the one emphasis colour and the primary action. */
+  --hd-primary: var(--brand-primary);
+  --hd-primary-dark: var(--brand-hover);
+  --hd-primary-tint: var(--brand-soft);
+  --hd-primary-border: #c6dcd6;
+
+  /* The one luxury detail — muted gold, in hairlines only, never as text. */
+  --hd-champagne: var(--gold-muted);
+  --hd-champagne-tint: #f4eede;
+}
+
+/* ── V3 treatment rail ────────────────────────────────────────────────────────
+ * The decision moved out of a bottom bar and into a sticky right rail, so the
+ * doctor reads the case on the left and commits to it on the right without the
+ * plan ever leaving the screen. On narrow widths the rail unpins and the
+ * primary decision rides a compact bottom bar instead — see the component.
+ */
+[data-surface="doctor"][data-review="v3"] .hd-rail {
+  position: sticky;
+  top: 20px;
+}
+
+/* The one dominant control on the page. Larger and heavier than a body button,
+   filled with the approval green so a doctor never hunts for the next step. */
+[data-surface="doctor"][data-review="v3"] .hd-approve {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  border-radius: var(--v2-radius-sm);
+  padding: 13px 18px;
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  color: #fff;
+  background: var(--hd-success-strong);
+  box-shadow: 0 10px 24px -14px rgba(39, 120, 75, 0.9);
+  transition: background-color 120ms ease, box-shadow 120ms ease;
+}
+[data-surface="doctor"][data-review="v3"] .hd-approve:hover:not(:disabled) {
+  background: var(--hd-success-ink);
+}
+[data-surface="doctor"][data-review="v3"] .hd-approve:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  box-shadow: none;
+}
+
+/* A left-column section heading. Sans, quiet eyebrow weight above a calm
+   divider — the page reads as a story with headings, not a stack of cards. */
+[data-surface="doctor"][data-review="v3"] .hd-story-title {
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--hd-eyebrow-ink);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  [data-surface="doctor"][data-review="v3"] .hd-approve { transition: none; }
+}
