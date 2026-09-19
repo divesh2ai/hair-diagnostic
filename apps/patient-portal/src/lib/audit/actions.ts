@@ -50,6 +50,11 @@ export const AUDIT_ACTION_GROUPS = {
   "Kit orders & fulfilment": [
     "KIT_ORDER_INTENT_CREATED",
     "KIT_ORDER_INTENT_CANCELLED",
+    // The doctor/clinic confirming the approved order on the Clinic Order
+    // screen — the order lifecycle event that sits between the intent being
+    // created and payment/fulfilment. Distinct from KIT_ORDER_PAYMENT_CONFIRMED
+    // (money) and TREATMENT_START_RECORDED (the patient beginning treatment).
+    "CLINIC_ORDER_CONFIRMED",
     "KIT_ORDER_PAYMENT_CONFIRMED",
     "KIT_ORDER_PAYMENT_DUPLICATE_IGNORED",
     "KIT_ORDER_FULFILMENT_MODE_SET",
