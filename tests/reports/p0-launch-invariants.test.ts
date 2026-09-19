@@ -16,8 +16,17 @@ import type { ClinicalReport, TreatmentPhase } from "../../src/packages/ai-engin
 
 const read = (rel: string) => readFileSync(path.join(process.cwd(), rel), "utf8");
 
-const CART_PAGE = "apps/patient-portal/src/app/cart/[assessmentId]/page.tsx";
+// The Clinic Order refactor split the single ecommerce-flavoured cart page into
+// a thin router (page.tsx) that dispatches a doctor session to ClinicOrderView
+// and a patient cart token to PatientPlanView, and moved the shared order query
+// (including doctor resolution) into lib/cart/loadCartData. These invariants
+// therefore assert against where each behaviour now lives: the PATIENT's
+// read-only plan is PatientPlanView, and the server-side doctor/order
+// resolution is loadCartData — the same module the API route and the page both
+// call, so pinning it pins the behaviour for both callers at once.
 const CART_ROUTE = "apps/patient-portal/src/app/api/cart/[assessmentId]/route.ts";
+const CART_PATIENT_VIEW = "apps/patient-portal/src/app/cart/[assessmentId]/PatientPlanView.tsx";
+const CART_LOADER = "apps/patient-portal/src/lib/cart/loadCartData.ts";
 
 function phase(kitId: string, supporting: string[]): TreatmentPhase {
   return {
@@ -148,7 +157,10 @@ describe("browser / PDF / share consume one clinical mapping", () => {
 });
 
 describe("patient cart — prescribed quantity is read-only", () => {
-  const src = read(CART_PAGE);
+  // The patient's surface is PatientPlanView (page.tsx routes a patient token
+  // there). It is the one that must never let a patient touch the quantity; the
+  // doctor's ClinicOrderView owns quantity, writing only KitOrderIntent.quantities.
+  const src = read(CART_PATIENT_VIEW);
 
   it("has no quantity stepper or quantity state", () => {
     expect(src).not.toMatch(/QtyStepper/);
@@ -171,7 +183,7 @@ describe("patient cart — prescribed quantity is read-only", () => {
 describe("patient cart — protocol duration is not derived from box count", () => {
   // Comments are stripped first: the file deliberately explains which claim
   // was removed, and naming it in prose is not making it.
-  const src = read(CART_PAGE)
+  const src = read(CART_PATIENT_VIEW)
     .replace(/\/\*[\s\S]*?\*\//g, "")
     .replace(/\{\/\*[\s\S]*?\*\/\}/g, "")
     .replace(/^\s*\/\/.*$/gm, "");
@@ -192,11 +204,17 @@ describe("patient cart — protocol duration is not derived from box count", () 
 });
 
 describe("patient cart — doctor identity always renders something true", () => {
-  const src = read(CART_PAGE);
+  const src = read(CART_PATIENT_VIEW);
 
-  it("falls back to initials when there is no photo", () => {
-    expect(src).toMatch(/doctorInitials/);
-    expect(src).toMatch(/cart\.doctor\.photoUrl \?/);
+  it("renders the approving doctor, gated so the block is never empty", () => {
+    // The read-only plan no longer paints a doctor avatar (with a photo-or-
+    // initials fallback); it states, in words, who approved the plan. The
+    // guarantee is the same one the old initials fallback protected: the doctor
+    // identity never renders as an empty or broken block. Here that is the
+    // `cart.doctor &&` gate — the section exists only when a doctor does — plus
+    // the approving-doctor line itself.
+    expect(src).toMatch(/cart\.doctor &&/);
+    expect(src).toMatch(/Reviewed &amp; approved by/);
   });
 
   it("shows name and specialty when present", () => {
@@ -204,9 +222,13 @@ describe("patient cart — doctor identity always renders something true", () =>
     expect(src).toMatch(/cart\.doctor\.specialization/);
   });
 
-  it("the API resolves the doctor from the approved order", () => {
-    const route = read(CART_ROUTE);
-    expect(route).toMatch(/doctor:\s*\{/);
-    expect(route).toMatch(/avatarUrl \?\? intent\.doctor\.photoUrl \?\? null/);
+  it("resolves the doctor from the approved order, server-side", () => {
+    // Doctor resolution moved out of the route and into loadCartData, the one
+    // query the API route and the page's own server render share. Pinning it
+    // here pins it for both callers, and keeps the photo fallback chain honest:
+    // an explicit avatar, else the legacy photo, else null — never a guess.
+    const loader = read(CART_LOADER);
+    expect(loader).toMatch(/doctor:\s*\{/);
+    expect(loader).toMatch(/avatarUrl \?\? intent\.doctor\.photoUrl \?\? null/);
   });
 });
