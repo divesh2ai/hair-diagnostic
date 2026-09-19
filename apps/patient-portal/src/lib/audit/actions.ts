@@ -55,6 +55,7 @@ export const AUDIT_ACTION_GROUPS = {
     // created and payment/fulfilment. Distinct from KIT_ORDER_PAYMENT_CONFIRMED
     // (money) and TREATMENT_START_RECORDED (the patient beginning treatment).
     "CLINIC_ORDER_CONFIRMED",
+    "CLINIC_ORDER_QUANTITY_UPDATED",
     "KIT_ORDER_PAYMENT_CONFIRMED",
     "KIT_ORDER_PAYMENT_DUPLICATE_IGNORED",
     "KIT_ORDER_FULFILMENT_MODE_SET",
