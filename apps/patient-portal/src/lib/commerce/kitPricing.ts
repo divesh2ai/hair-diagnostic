@@ -106,6 +106,9 @@ export const APPROVED_KIT_PRICES_MINOR: Readonly<Record<string, number>> =
     IRON_UP_1: rupeesToMinor(2284),
     GI_HEALTH_1: rupeesToMinor(1967),
     STRESS_BUST_3: rupeesToMinor(1457),
+    // ── Approved 2026-09-19, doctor-confirmed (drfact-mumbai) ──────────────
+    META_B: rupeesToMinor(3018),
+    PRO_IMMUNE_5_VEG: rupeesToMinor(2182),
   });
 
 /**
