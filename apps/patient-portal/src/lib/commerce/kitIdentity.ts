@@ -100,6 +100,12 @@ export const CANONICAL_KIT_IDS = Object.freeze([
   "IRON_UP_1",
   "GI_HEALTH_1",
   "STRESS_BUST_3",
+  // "Pro Immune 5" veg variant — approved 2026-09-19, doctor-confirmed
+  // (drfact-mumbai): the raw prescribed identifier "PRO IMMUNE VEG" names
+  // this product, not PRO_IMMUNE_GOLD or PRO_IMMUNE_1 (both of which are
+  // separate, already-canonical SKUs). See APPROVED_KIT_ALIASES below and
+  // APPROVED_KIT_PRICES_MINOR in kitPricing.ts for its price.
+  "PRO_IMMUNE_5_VEG",
 ] as const);
 
 export type CanonicalKitId = (typeof CANONICAL_KIT_IDS)[number];
@@ -164,6 +170,10 @@ export const APPROVED_KIT_ALIASES: Readonly<Record<string, CanonicalKitId>> =
     "HAIR FACT FREQUENT FLYERS": "FREQUENT_FLYERS",
     "PRO FACT META B HYPOTHYROID": "META_B_HYPOTHYROID",
     "HAIR FACT TTM (OCD)": "TTM_SUPPORT",
+    // Approved 2026-09-19, doctor-confirmed (drfact-mumbai) — see the
+    // CANONICAL_KIT_IDS comment above for PRO_IMMUNE_5_VEG.
+    "PRO FACT META B": "META_B",
+    "PRO IMMUNE VEG": "PRO_IMMUNE_5_VEG",
   });
 
 /**

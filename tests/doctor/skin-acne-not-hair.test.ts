@@ -113,7 +113,13 @@ describe("the acne holding surface", () => {
   });
 
   it("scopes to the caller's own clinic and refuses another's", () => {
-    expect(src).toContain("supabaseUserId: claims.sub");
+    // The doctor must be resolved from the AUTHENTICATED caller, never from a
+    // route param. That lookup moved into the shared `doctorAuthIdentityWhere`
+    // helper when mobile-OTP login landed — a doctor now has two Supabase
+    // identities (phone and email) and both must resolve the same row — so the
+    // assertion follows it there. The guarantee is unchanged: the claim's
+    // `sub`, and nothing else, chooses the doctor.
+    expect(src).toContain("doctorAuthIdentityWhere(claims.sub)");
     expect(src).toContain("assessment.clinicId !== doctor.clinicId");
     expect(src).toContain("notFound()");
   });

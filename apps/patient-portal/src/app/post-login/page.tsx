@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
 import { getClinicContext, UnauthorizedError } from "@/lib/auth";
+import { doctorAuthIdentityWhere } from "@/lib/auth/doctorIdentity";
 import { prisma } from "@/lib/prisma";
 
 export const dynamic = "force-dynamic";
@@ -37,10 +38,20 @@ export default async function PostLoginPage({
   const params = await searchParams;
   const next = params?.next;
 
+  // EITHER linked Supabase identity, not just `supabaseUserId`.
+  //
+  // Supabase mints a separate auth user per channel, so a doctor who was first
+  // linked by e-mail carries their phone uid in `supabasePhoneUserId`. Matching
+  // only the canonical column meant a correct mobile OTP verified, linked, and
+  // then landed here unrecognised — falling through to the DOCTOR branch below
+  // and out to /login?reason=forbidden. See lib/auth/doctorIdentity.
+  //
+  // The liveness predicates are unchanged: an inactive or soft-deleted doctor
+  // is still refused on both identities.
   const hasDoctorRow = await prisma.doctor
     .findFirst({
       where: {
-        supabaseUserId: ctx.userId,
+        ...doctorAuthIdentityWhere(ctx.userId),
         isActive: true,
         deletedAt: null,
       },

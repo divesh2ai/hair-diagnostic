@@ -78,10 +78,7 @@ export function ClinicalAttentionSection({
 
   return (
     <section aria-labelledby="attention-heading" className="space-y-3">
-      <h2
-        id="attention-heading"
-        className="text-[11px] font-semibold uppercase tracking-[0.16em] text-stone-500"
-      >
+      <h2 id="attention-heading" className="hd-story-title">
         Clinical attention
       </h2>
 

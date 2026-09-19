@@ -6,8 +6,11 @@ import { useMinuteTick, useVisibilityPolling } from "@/lib/doctor/useLiveDashboa
 // TYPE-ONLY. lib/doctor/dashboardStats imports Prisma; a value import from it
 // would drag the client into the browser bundle and fail at runtime.
 import type { DashboardCounts, DashboardStats } from "@/lib/doctor/dashboardStats";
-import { toDeckCard } from "@/lib/doctor/patientDeck";
-import { CommandBand, type CommandMetric } from "@/components/doctor/dashboard/CommandBand";
+import {
+  CommandBand,
+  DashboardStatusFilters,
+  type StatusFilterCount,
+} from "@/components/doctor/dashboard/CommandBand";
 import { PatientDeck } from "@/components/doctor/dashboard/PatientDeck";
 import { LiveClinicPanel } from "@/components/doctor/dashboard/LiveClinicPanel";
 import {
@@ -58,6 +61,7 @@ const EMPTY_COUNTS: DashboardCounts = {
   approvedToday: 0,
   reviewedToday: 0,
   kitOrders: 0,
+  sharedToday: 0,
 };
 
 export function DoctorDashboardClient({
@@ -126,10 +130,6 @@ export function DoctorDashboardClient({
     month: "short",
   });
 
-  // The front of the FIFO queue — the same card the deck shows first, so the
-  // band's primary action and the deck can never point at different patients.
-  const nextCard = queue.length > 0 ? toDeckCard(queue[0]) : null;
-
   // The deck renders at most five cards — see PatientDeck's MAX_CARDS.
   const shownInDeck = Math.min(queue.length, 5);
 
@@ -145,45 +145,39 @@ export function DoctorDashboardClient({
     [counts, queue, minuteTick],
   );
 
-  // Labels say "today" wherever the count is scoped to today. On a bare console
-  // rail, "Approved" alone states no period — and a doctor reading it as a
-  // running total would be reading a different number than the one we sent.
-  const metrics = useMemo<CommandMetric[]>(
+  // Needs review / Approved / Ordered / Shared — the four states a doctor
+  // scans the worklist by. Each is a REAL count already computed by the stats
+  // loader (see lib/doctor/dashboardStats.ts); nothing here is derived or
+  // estimated. Only "Needs review" is a live filter on the deck below — the
+  // other three are informational links to where that status lives today
+  // (Approved/Ordered) or, for Shared, no dedicated page exists yet, so it is
+  // a quiet count with no destination rather than a link to somewhere that
+  // does not answer it.
+  const statusCounts = useMemo<StatusFilterCount[]>(
     () => [
       {
-        key: "ready",
-        // "Hair", explicitly. This count is hair-only BY CONSTRUCTION, not by
-        // intention: /api/assessment/submit orchestrates `concern === 'hair'`
-        // and nothing else, so a Skin FACT case never leaves PENDING and can
-        // never enter REVIEW_QUEUE_STATUSES. The Review Queue page it links to
-        // additionally lists skin intakes awaiting their own review, so the
-        // number there is legitimately larger. An unqualified "Ready for
-        // review" beside a queue showing more rows reads as a miscount; naming
-        // the domain is the smallest way to make both true at once.
+        key: "needs-review",
+        label: "Needs review",
         value: counts.pending,
-        label: "Hair reviews ready",
         href: "/doctor/reports?tab=needs_review",
-      },
-      { key: "in-clinic", value: counts.inProgress, label: "In clinic now" },
-      {
-        // A real superset of "approved" — every decision made today. See the
-        // stats loader: reviewedAt is stamped for all terminal decisions.
-        key: "reviewed",
-        value: counts.reviewedToday,
-        label: "Reviewed today",
-        href: "/doctor/reports",
+        active: true,
       },
       {
         key: "approved",
+        label: "Approved",
         value: counts.approvedToday,
-        label: "Approved today",
         href: "/doctor/reports?tab=approved",
       },
       {
-        key: "fulfilment",
+        key: "ordered",
+        label: "Ordered",
         value: counts.kitOrders,
-        label: "Awaiting fulfilment",
         href: "/doctor/orders",
+      },
+      {
+        key: "shared",
+        label: "Shared",
+        value: counts.sharedToday,
       },
     ],
     [counts],
@@ -195,9 +189,9 @@ export function DoctorDashboardClient({
     // product. See styles/doctor-tokens.css for why the tokens are not global.
     <div
       data-surface="doctor"
-      className="min-h-full bg-[color:var(--hd-bg)]"
+      className="v2-canvas min-h-full"
     >
-      <div className="mx-auto w-full max-w-6xl space-y-6 px-5 pb-20 pt-6 sm:px-6 lg:px-10">
+      <div className="mx-auto w-full max-w-6xl space-y-7 px-5 pb-20 pt-7 sm:px-6 lg:px-10">
         {role === "SUPER_ADMIN" && (
           <div className="flex items-start gap-2 rounded-xl border border-[color:var(--hd-medical-edge)] bg-[color:var(--hd-medical-tint)] px-4 py-2.5 text-xs text-[color:var(--hd-medical-ink)]">
             <EyeIcon className="mt-0.5 size-3.5 shrink-0" />
@@ -209,34 +203,25 @@ export function DoctorDashboardClient({
           </div>
         )}
 
-        {/* ── 1 · THE STATE OF THE DAY ──────────────────────────────────── */}
+        {/* ── 1 · WHO AM I, WHERE AM I WORKING ──────────────────────────── */}
         <CommandBand
           greeting={greeting}
           clinicName={clinicName}
           dateLabel={dateLabel}
           photoUrl={photoUrl}
-          metrics={metrics}
-          nextPatientName={nextCard?.name ?? null}
-          nextPatientHref={nextCard?.href ?? null}
-          loading={loading}
         />
 
-        {/* ── 2 · WHO DO I REVIEW NEXT? ─────────────────────────────────── */}
-        <section aria-labelledby="deck-heading" className="space-y-3 pt-1">
-          <div className="flex items-baseline gap-2.5">
-            <h2 id="deck-heading" className="hd-eyebrow">
-              Up next
-            </h2>
-            {/* Only when the deck is actually holding back a backlog. With one
-                patient waiting, "1 of 1 waiting" is a counter that counts
-                nothing — and the band overhead already says how many are
-                ready. */}
-            {counts.pending > shownInDeck && (
-              <span className="text-[11px] tabular-nums text-[color:var(--hd-text-muted)]">
-                Showing {shownInDeck} of {counts.pending}
-              </span>
-            )}
-          </div>
+        {/* ── 2 · WHO NEEDS ME, AND WHAT ELSE IS IN FLIGHT ──────────────── */}
+        <DashboardStatusFilters counts={statusCounts} />
+
+        {/* ── 3 · WHO DO I REVIEW NEXT? ─────────────────────────────────── */}
+        <section aria-label="Patient deck" className="space-y-3">
+          {/* Only when the deck is actually holding back a backlog. */}
+          {counts.pending > shownInDeck && (
+            <p className="text-[11px] tabular-nums text-[color:var(--ink-tertiary)]">
+              Showing {shownInDeck} of {counts.pending}
+            </p>
+          )}
           <PatientDeck
             rows={queue}
             tick={minuteTick}

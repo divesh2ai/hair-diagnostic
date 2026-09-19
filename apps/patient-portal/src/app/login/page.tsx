@@ -6,6 +6,12 @@ import { createBrowserClient } from "@supabase/ssr";
 import { Mail, KeyRound, Zap, Smartphone } from "lucide-react";
 import { toast } from "sonner";
 import { normaliseMobile, rejectionMessage, type E164 } from "@/lib/patient/phone";
+import {
+  classifyOtpError,
+  otpFailureMessage,
+  doctorLinkFailureMessage,
+  toDoctorLinkFailure,
+} from "@/lib/auth/otpErrors";
 
 // Two-step OTP sign-in. Step 1 sends a 6-digit code to the email. Step 2
 // verifies the code and creates a session. This avoids the PKCE
@@ -77,31 +83,35 @@ function LoginInner() {
       setPhoneError(rejectionMessage(parsed.reason));
       return;
     }
+    // A second send must not race the first: two in flight can leave
+    // `verifiedPhone` holding one number while Supabase last issued a code for
+    // the other, and the verify would then be checked against the wrong one.
+    if (phoneSubmitting) return;
     setPhoneSubmitting(true);
     setPhoneError(null);
     try {
+      // The SAME normalised E.164 string is sent here and reused verbatim at
+      // verify — never re-derived from the input box, which the doctor may
+      // have edited in between.
       const { error } = await supabase.auth.signInWithOtp({ phone: parsed.e164 });
       if (error) throw error;
+      // Any code from a previous attempt is dead the moment a new one is
+      // issued, so clear the entry box rather than leaving a stale 6 digits
+      // sitting there looking submittable.
+      setPhoneCode("");
       setVerifiedPhone(parsed.e164);
       setPhoneStep("code");
       setResendCooldown(60);
       toast.success("Code sent", { description: `Check ${parsed.e164} for the verification code.` });
     } catch (err) {
-      const message = err instanceof Error ? err.message : "Unknown error";
-      // Never surface a raw provider error \u2014 the availability check already
-      // decided whether to offer this path at all; a failure here after
-      // that means the provider flipped mid-session, so treat it the same
-      // controlled way rather than printing Supabase's own wording.
-      const isProviderGap = /provider|not.*support|disabled/i.test(message);
-      setPhoneOtpAvailable((prev) => (isProviderGap ? false : prev));
-      setPhoneError(
-        isProviderGap
-          ? "Mobile sign-in isn't available right now. Use email, or contact FACT Support."
-          : message,
-      );
-      toast.error("Could not send code", {
-        description: isProviderGap ? "Mobile sign-in unavailable." : message,
-      });
+      const message = err instanceof Error ? err.message : "";
+      // Never surface a raw provider error \u2014 classify it, then speak in
+      // HairOS's own words. A provider gap also flips the availability flag so
+      // the UI stops offering a path that cannot work.
+      const failure = classifyOtpError(message, "send");
+      if (failure === "provider_unavailable") setPhoneOtpAvailable(false);
+      setPhoneError(otpFailureMessage(failure));
+      toast.error("Could not send code", { description: otpFailureMessage(failure) });
     } finally {
       setPhoneSubmitting(false);
     }
@@ -114,7 +124,12 @@ function LoginInner() {
     setPhoneError(null);
     try {
       const { error } = await supabase.auth.verifyOtp({
+        // `verifiedPhone` is the exact string the SEND used. Re-normalising
+        // `phoneRaw` here would reintroduce the stale-state bug the moment the
+        // doctor edits the box after the code goes out.
         phone: verifiedPhone,
+        // String, trimmed, never coerced through Number \u2014 that would eat a
+        // leading zero and silently submit a 5-digit code.
         token: phoneCode.trim(),
         type: "sms",
       });
@@ -127,20 +142,20 @@ function LoginInner() {
 
       if (!linkRes.ok || !linkBody.ok) {
         await supabase.auth.signOut();
-        setPhoneError(
-          linkBody.reason === "unregistered"
-            ? "This mobile number is not registered for FACT Doctor access. Please contact FACT Support."
-            : "This mobile number could not be signed in. Please contact FACT Support.",
-        );
-        toast.error("Access denied");
+        // The CODE was right; the account is the problem. Say which, so the
+        // doctor stops retyping a code that already worked.
+        const failure = toDoctorLinkFailure(linkBody?.reason);
+        setPhoneError(doctorLinkFailureMessage(failure));
+        toast.error("Access denied", { description: doctorLinkFailureMessage(failure) });
         return;
       }
 
       router.replace(nextPath);
     } catch (err) {
-      const message = err instanceof Error ? err.message : "Unknown error";
-      setPhoneError(message);
-      toast.error("Could not verify code", { description: message });
+      const message = err instanceof Error ? err.message : "";
+      const failure = classifyOtpError(message, "verify");
+      setPhoneError(otpFailureMessage(failure));
+      toast.error("Could not verify code", { description: otpFailureMessage(failure) });
     } finally {
       setPhoneSubmitting(false);
     }
@@ -150,6 +165,9 @@ function LoginInner() {
     setPhoneStep("phone");
     setPhoneCode("");
     setPhoneError(null);
+    // Drop the bound number as well. Leaving it set would let a verify fire
+    // against the PREVIOUS number after the doctor goes back to correct a typo.
+    setVerifiedPhone(null);
   };
 
   const sendCode = async (e: React.FormEvent) => {

@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { writeAuditLog } from "@/lib/audit/writeAuditLog";
+import { isLinkedIdentity } from "./doctorIdentity";
 
 // First-login (and every subsequent login) resolution for a doctor who
 // authenticated via phone OTP.
@@ -22,7 +23,7 @@ import { writeAuditLog } from "@/lib/audit/writeAuditLog";
 
 export type PhoneDoctorLinkResult =
   | { ok: true; doctorId: string; clinicId: string; alreadyLinked: boolean }
-  | { ok: false; reason: "unregistered" | "conflict" };
+  | { ok: false; reason: "unregistered" | "conflict" | "inactive" };
 
 /**
  * Normalise the way Supabase and Doctor.phone can each represent the same
@@ -45,8 +46,20 @@ export async function resolveOrLinkDoctorByPhone(input: {
   // testable without a real Postgres connection; the authorization-bearing
   // copy of this same match lives in the claims hook and runs in the DB.
   const candidates = await prisma.doctor.findMany({
-    where: { isActive: true, deletedAt: null, phone: { not: null } },
-    select: { id: true, clinicId: true, phone: true, supabaseUserId: true },
+    // `isActive` is deliberately NOT filtered here: a deactivated doctor whose
+    // number still matches must be told their access is closed, not that their
+    // number is unrecognised. Liveness is decided below so the two cases stay
+    // distinguishable. Soft-deleted rows stay excluded — those are gone, not
+    // suspended.
+    where: { deletedAt: null, phone: { not: null } },
+    select: {
+      id: true,
+      clinicId: true,
+      phone: true,
+      isActive: true,
+      supabaseUserId: true,
+      supabasePhoneUserId: true,
+    },
   });
   const doctor = candidates.find(
     (d) => d.phone && digitsOnly(d.phone) === phoneDigits,
@@ -65,8 +78,23 @@ export async function resolveOrLinkDoctorByPhone(input: {
     return { ok: false, reason: "unregistered" };
   }
 
-  if (doctor.supabaseUserId === input.supabaseUserId) {
-    // Re-login: already linked to this exact identity. No write needed.
+  if (!doctor.isActive) {
+    // Matched a real, provisioned number whose clinical access has been
+    // withdrawn. Audited separately so "we closed this account" is never
+    // reported to the doctor as "we do not know this number".
+    await writeAuditLog({
+      action: "DOCTOR_PHONE_LOGIN_DENIED_INACTIVE",
+      entityType: "Doctor",
+      entityId: doctor.id,
+      actorId: input.supabaseUserId,
+      actorType: "doctor",
+      clinicId: doctor.clinicId,
+    });
+    return { ok: false, reason: "inactive" };
+  }
+
+  if (isLinkedIdentity(doctor, input.supabaseUserId)) {
+    // Re-login on either linked identity. No write needed.
     return {
       ok: true,
       doctorId: doctor.id,
@@ -75,11 +103,10 @@ export async function resolveOrLinkDoctorByPhone(input: {
     };
   }
 
-  if (doctor.supabaseUserId && doctor.supabaseUserId !== input.supabaseUserId) {
-    // This phone number matches a Doctor row already linked to a DIFFERENT
-    // Supabase identity. Never silently relink — that would let a second
-    // party who somehow verified the same number (SIM swap, provisioning
-    // error) take over clinical access. Fail closed and audit it.
+  if (doctor.supabasePhoneUserId && doctor.supabasePhoneUserId !== input.supabaseUserId) {
+    // A DIFFERENT phone identity already owns this doctor. Two distinct auth
+    // users both holding the same verified number means a SIM swap or a
+    // provisioning error, not a second channel for one person. Fail closed.
     await writeAuditLog({
       action: "DOCTOR_PHONE_LOGIN_DENIED_CONFLICT",
       entityType: "Doctor",
@@ -87,9 +114,77 @@ export async function resolveOrLinkDoctorByPhone(input: {
       actorId: input.supabaseUserId,
       actorType: "doctor",
       clinicId: doctor.clinicId,
-      metadata: { reason: "supabaseUserId_conflict" },
+      metadata: { reason: "phone_identity_conflict" },
     });
     return { ok: false, reason: "conflict" };
+  }
+
+  if (doctor.supabaseUserId && doctor.supabaseUserId !== input.supabaseUserId) {
+    // ── The mobile-login defect this closes ───────────────────────────────
+    // Supabase mints a SEPARATE auth user per channel: the phone user carries
+    // `phone` and no `email`, the email user the reverse. So a doctor who had
+    // already signed in by email reached here with a genuine second uid for
+    // the same person, and this branch used to refuse it outright — the OTP
+    // verified, then the doctor was signed straight back out. That is exactly
+    // what happened to the drfact-mumbai doctor (audit:
+    // DOCTOR_PHONE_LOGIN_DENIED_CONFLICT, reason supabaseUserId_conflict).
+    //
+    // Attaching the phone identity alongside the existing one is safe, and is
+    // NOT the loose matching this function otherwise refuses:
+    //
+    //   • the number matched Doctor.phone in FULL, digit for digit — never a
+    //     suffix or a fuzzy compare;
+    //   • Doctor.phone is Super-Admin-provisioned, so control of that exact
+    //     number is the same grade of evidence as control of the provisioned
+    //     email that linked `supabaseUserId` in the first place;
+    //   • the column is @unique, so this identity cannot also name another
+    //     Doctor row, and the clinic is whatever the matched row says — no
+    //     cross-clinic reach;
+    //   • the existing identity is left untouched, so email stays a working
+    //     fallback.
+    //
+    // The guard below refuses if the incumbent already proved a phone of its
+    // own, and the updateMany re-asserts both columns so a concurrent link
+    // cannot be overwritten.
+    const attached = await prisma.doctor.updateMany({
+      where: {
+        id: doctor.id,
+        supabaseUserId: doctor.supabaseUserId,
+        supabasePhoneUserId: null,
+      },
+      data: { supabasePhoneUserId: input.supabaseUserId, provisioningStatus: "ACTIVE" },
+    });
+
+    if (attached.count === 0) {
+      const fresh = await prisma.doctor.findUnique({
+        where: { id: doctor.id },
+        select: { supabaseUserId: true, supabasePhoneUserId: true, clinicId: true },
+      });
+      if (fresh && isLinkedIdentity(fresh, input.supabaseUserId)) {
+        return { ok: true, doctorId: doctor.id, clinicId: doctor.clinicId, alreadyLinked: true };
+      }
+      await writeAuditLog({
+        action: "DOCTOR_PHONE_LOGIN_DENIED_CONFLICT",
+        entityType: "Doctor",
+        entityId: doctor.id,
+        actorId: input.supabaseUserId,
+        actorType: "doctor",
+        clinicId: doctor.clinicId,
+        metadata: { reason: "race_lost" },
+      });
+      return { ok: false, reason: "conflict" };
+    }
+
+    await writeAuditLog({
+      action: "DOCTOR_PHONE_IDENTITY_ATTACHED",
+      entityType: "Doctor",
+      entityId: doctor.id,
+      actorId: input.supabaseUserId,
+      actorType: "doctor",
+      clinicId: doctor.clinicId,
+    });
+
+    return { ok: true, doctorId: doctor.id, clinicId: doctor.clinicId, alreadyLinked: false };
   }
 
   // First login: doctor.supabaseUserId is null. Link atomically — the
@@ -106,9 +201,9 @@ export async function resolveOrLinkDoctorByPhone(input: {
     // find out which identity actually won.
     const fresh = await prisma.doctor.findUnique({
       where: { id: doctor.id },
-      select: { supabaseUserId: true, clinicId: true },
+      select: { supabaseUserId: true, supabasePhoneUserId: true, clinicId: true },
     });
-    if (fresh?.supabaseUserId === input.supabaseUserId) {
+    if (fresh && isLinkedIdentity(fresh, input.supabaseUserId)) {
       return { ok: true, doctorId: doctor.id, clinicId: doctor.clinicId, alreadyLinked: true };
     }
     await writeAuditLog({

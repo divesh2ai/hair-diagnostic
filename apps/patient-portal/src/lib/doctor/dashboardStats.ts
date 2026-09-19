@@ -46,6 +46,17 @@ export interface DashboardCounts {
   approvedToday: number;
   reviewedToday: number;
   kitOrders: number;
+  /**
+   * Distinct assessments this clinic shared a report/order link for today —
+   * PATIENT_REPORT_SHARED / PATIENT_CART_SHARED (the automated send path,
+   * lib/delivery/sendPatientLink.ts) or MANUAL_SHARE_OPENED (the doctor
+   * opening their own WhatsApp with the same governed link). Read from
+   * AuditLog rather than WhatsappDelivery: the post-approval delivery
+   * columns that count would need (clinicId, sentAt) are not confirmed
+   * applied in every environment (see KitOrderIntent's own header on the
+   * same migration), and AuditLog's schema has no such uncertainty.
+   */
+  sharedToday: number;
   /** Absent, not zero — omitted entirely when no report failed. */
   needsAttention?: number;
   /**
@@ -71,7 +82,14 @@ export const EMPTY_DASHBOARD_COUNTS: DashboardCounts = {
   approvedToday: 0,
   reviewedToday: 0,
   kitOrders: 0,
+  sharedToday: 0,
 };
+
+const SHARE_AUDIT_ACTIONS = [
+  "PATIENT_REPORT_SHARED",
+  "PATIENT_CART_SHARED",
+  "MANUAL_SHARE_OPENED",
+] as const;
 
 interface QueueRow {
   id: string;
@@ -122,6 +140,7 @@ export async function loadDashboardStats(clinicId: string): Promise<DashboardSta
     approvedToday,
     reviewedToday,
     needsAttention,
+    sharedToday,
     queue,
     visits,
   ] = await Promise.all([
@@ -159,6 +178,19 @@ export async function loadDashboardStats(clinicId: string): Promise<DashboardSta
         status: { in: ["FAILED", "PARTIAL_FAILURE"] },
       },
     }),
+    // Distinct assessments, not distinct events — pressing Share twice on one
+    // case must not count as two patients reached today.
+    prisma.auditLog
+      .findMany({
+        where: {
+          clinicId,
+          action: { in: [...SHARE_AUDIT_ACTIONS] },
+          createdAt: { gte: startOfDay },
+        },
+        select: { assessmentId: true },
+        distinct: ["assessmentId"],
+      })
+      .then((rows) => rows.filter((r) => r.assessmentId).length),
     prisma.$queryRaw<QueueRow[]>(Prisma.sql`
       SELECT
         a.id,
@@ -220,6 +252,7 @@ export async function loadDashboardStats(clinicId: string): Promise<DashboardSta
       approvedToday,
       reviewedToday,
       kitOrders,
+      sharedToday,
       // Exceptional, and therefore optional: reports that could not finish
       // generating. On a healthy clinic this is nothing, and a standing
       // "0 needs attention" is a counter that trains a doctor to skip the

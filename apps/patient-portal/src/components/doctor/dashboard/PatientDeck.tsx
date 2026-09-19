@@ -26,7 +26,7 @@ import { PatientDeckCard } from "./PatientDeckCard";
 // the queue. Five cards maximum; the full backlog lives on the Review Queue,
 // one click away.
 //
-// ── Interaction ─────────────────────────────────────────────────────────────
+// ── Interaction ───────────────────────────────────────────────────────────
 // Previous / next buttons, arrow keys, and pointer swipe on the front card all
 // drive one index. No autoplay, no looping, no continuous animation. Position
 // changes are a single 300ms CSS transition — chosen over a motion library for
@@ -49,6 +49,9 @@ const SIDE_VISIBLE = 2;
 
 // Past this horizontal drag the release counts as a swipe.
 const SWIPE_THRESHOLD = 80;
+// Past this much movement, a pointerdown is a drag and not a tap — see
+// onPointerMove below for why capture waits for it.
+const DRAG_CAPTURE_THRESHOLD = 6;
 
 export function PatientDeck({
   rows,
@@ -72,6 +75,7 @@ export function PatientDeck({
   const [reduce, setReduce] = useState(false);
   const [dragDX, setDragDX] = useState(0);
   const dragStart = useRef<number | null>(null);
+  const captured = useRef(false);
   const liveId = useId();
 
   // Read the user's motion preference on the client only, and keep it current.
@@ -111,19 +115,40 @@ export function PatientDeck({
   // Pointer swipe on the front card. Disabled under reduced motion and for a
   // single-card deck. Uses pointer capture so a drag that leaves the card still
   // resolves.
+  //
+  // Capture is taken in onPointerMove, the moment a drag is real — NOT here in
+  // onPointerDown. Capturing on pointerdown retargets the pointerup (and the
+  // click that follows it) to this wrapper instead of the "Review patient"
+  // link underneath, so a plain tap never reached the link: the deck ate every
+  // click before it got to react/next's router. Same lesson already applied in
+  // AssistantMovementController's onPointerDown, for the same reason.
   const onPointerDown = (e: ReactPointerEvent) => {
     if (reduce || cards.length < 2) return;
     dragStart.current = e.clientX;
-    (e.currentTarget as HTMLElement).setPointerCapture?.(e.pointerId);
+    captured.current = false;
   };
   const onPointerMove = (e: ReactPointerEvent) => {
     if (dragStart.current === null) return;
-    setDragDX(e.clientX - dragStart.current);
+    const dx = e.clientX - dragStart.current;
+    if (!captured.current && Math.abs(dx) >= DRAG_CAPTURE_THRESHOLD) {
+      captured.current = true;
+      // Wrapped: setPointerCapture throws (NotFoundError) if the pointer id
+      // is no longer active by the time this fires. Losing capture only means
+      // a drag that leaves the card boundary stops tracking — an enhancement,
+      // not something worth aborting the handler over.
+      try {
+        (e.currentTarget as HTMLElement).setPointerCapture?.(e.pointerId);
+      } catch {
+        /* Pointer already gone — the drag continues without capture. */
+      }
+    }
+    setDragDX(dx);
   };
   const endDrag = () => {
     if (dragStart.current === null) return;
     const dx = dragDX;
     dragStart.current = null;
+    captured.current = false;
     setDragDX(0);
     if (dx <= -SWIPE_THRESHOLD) go(1);
     else if (dx >= SWIPE_THRESHOLD) go(-1);
@@ -319,7 +344,7 @@ export function PatientDeck({
   );
 }
 
-/* ─────────────────────────────────────────────────────────────────────── */
+/* ────────────────────────────────────────────────────────────── */
 
 function DeckEmpty({
   approvedToday,

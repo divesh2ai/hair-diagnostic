@@ -10,6 +10,7 @@ import { navForRole, type NavSection } from "@/lib/navigation";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { prisma } from "@/lib/prisma";
 import type { SystemRole } from "@/lib/auth";
+import { doctorAuthIdentityWhere } from "@/lib/auth/doctorIdentity";
 import type { ClinicBranding } from "@/lib/branding";
 
 export type ShellData = {
@@ -48,8 +49,23 @@ async function resolveDisplayName(
     if (om?.name) return om.name;
   }
   if (role === "DOCTOR" || role === "CLINIC_ADMIN") {
+    // Doctor is the one model carrying a second auth identity, so it cannot
+    // share `orClauses` — OrganizationMember and ClinicMember have no
+    // `supabasePhoneUserId` column and Prisma rejects the field outright.
+    //
+    // A phone-authenticated doctor also has no e-mail on their Supabase user,
+    // so the e-mail fallback below cannot rescue them: without the phone
+    // identity they resolve to no row and the shell greets them by nothing.
+    // The canonical helper is nested inside the OR rather than re-spelled, so
+    // there is still exactly one place that knows how an identity resolves.
     const doc = await prisma.doctor.findFirst({
-      where: { OR: orClauses, isActive: true },
+      where: {
+        OR: [
+          doctorAuthIdentityWhere(userId),
+          ...(email ? [{ email }] : []),
+        ],
+        isActive: true,
+      },
       select: { name: true },
     });
     if (doc?.name) return doc.name;
@@ -140,7 +156,7 @@ export async function loadDoctorShellData(): Promise<DoctorShellData> {
   const data = await loadShellData();
   const doctor = await prisma.doctor.findFirst({
     where: {
-      supabaseUserId: data.userId,
+      ...doctorAuthIdentityWhere(data.userId),
       isActive: true,
       deletedAt: null,
     },

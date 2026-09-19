@@ -680,6 +680,22 @@ model Doctor {
 
   supabaseUserId String? @unique
 
+  // Second Supabase identity for the SAME doctor, used by mobile-OTP login.
+  //
+  // Supabase mints a SEPARATE auth user for a phone sign-in and an email
+  // sign-in: the phone user carries `phone` and no `email`, the email user
+  // the reverse. One human doctor therefore has two auth uids, and a single
+  // `supabaseUserId` column can only ever name one of them — so whichever
+  // channel was linked second was permanently locked out, failing closed in
+  // resolveOrLinkDoctorByPhone as a `supabaseUserId_conflict`.
+  //
+  // This column holds the PHONE identity; `supabaseUserId` keeps its existing
+  // meaning and stays canonical. Both are resolved together through
+  // `doctorAuthIdentityWhere` so mobile is primary and email still works as
+  // the fallback. Unique for the same reason `supabaseUserId` is: one auth
+  // identity may never name two Doctor rows.
+  supabasePhoneUserId String? @unique
+
   clinicId String
   clinic   Clinic @relation(fields: [clinicId], references: [id])
 
