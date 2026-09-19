@@ -101,13 +101,14 @@ describe("kit identity", () => {
     expect(aliased.sourceIdentifierSnapshot).not.toBe(aliased.canonicalKitId);
   });
 
-  it("4b. keeps the approved alias list to exactly the 10 approved entries", () => {
+  it("4b. keeps the approved alias list to exactly the 12 approved entries", () => {
     // 1 pre-existing (PHENOTYPE INFLAMATION) + 8 added 2026-09-08 + 1 added
-    // 2026-09-09 (HAIR FACT TTM (OCD), the 12th pair's canonical side) as a
-    // prerequisite for the budget-substitution feature — the kit-scorer
-    // engine emits the long clinical spelling for every compound kit name,
-    // so the CANONICAL side of most approved substitution pairs could not
-    // otherwise resolve. See kitIdentity.ts's APPROVED_KIT_ALIASES comment.
+    // 2026-09-09 (HAIR FACT TTM (OCD), the 12th pair's canonical side) + 2
+    // added 2026-09-19, doctor-confirmed (drfact-mumbai): "PRO FACT META B" →
+    // META_B and "PRO IMMUNE VEG" → PRO_IMMUNE_5_VEG, the clinical spellings
+    // for the two kits newly approved for patient sale. Commercial identity is
+    // still EXACT-MATCH ONLY — this table simply has two more entries, and the
+    // list is still pinned here so nothing else can be added silently.
     expect(Object.keys(APPROVED_KIT_ALIASES).sort()).toEqual(
       [
         "PHENOTYPE INFLAMATION",
@@ -120,6 +121,8 @@ describe("kit identity", () => {
         "HAIR FACT FREQUENT FLYERS",
         "PRO FACT META B HYPOTHYROID",
         "HAIR FACT TTM (OCD)",
+        "PRO FACT META B",
+        "PRO IMMUNE VEG",
       ].sort(),
     );
   });
@@ -172,24 +175,34 @@ describe("kit pricing authority", () => {
     "STRESS_BUST_3",
   ];
 
-  it("7. approves exactly the 20 kits reconciled for budget substitution — nothing else", () => {
+  // Approved 2026-09-19, doctor-confirmed (drfact-mumbai): two kits approved
+  // for direct patient sale (not as budget alternatives) — META_B at ₹3,018
+  // and PRO_IMMUNE_5_VEG at ₹2,692. Kept as their own list so the reason each
+  // kit carries a price stays legible, and so "nothing else" below still means
+  // exactly the union of the two governance decisions.
+  const APPROVED_2026_09_19 = ["META_B", "PRO_IMMUNE_5_VEG"];
+
+  it("7. approves exactly the reconciled + patient-sale kits — nothing else", () => {
+    const approved = [...RECONCILED_2026_09_08, ...APPROVED_2026_09_19];
     expect(Object.keys(APPROVED_KIT_PRICES_MINOR).sort()).toEqual(
-      [...RECONCILED_2026_09_08].sort(),
+      [...approved].sort(),
     );
-    for (const kitId of RECONCILED_2026_09_08) {
+    for (const kitId of approved) {
       expect(getKitPrice(kitId).status).toBe("PRICE_APPROVED");
     }
     for (const kitId of CANONICAL_KIT_IDS) {
-      if (RECONCILED_2026_09_08.includes(kitId)) continue;
+      if (approved.includes(kitId)) continue;
       expect(getKitPrice(kitId).status).not.toBe("PRICE_APPROVED");
     }
   });
 
   it("7b. never approves a protected UNCHANGED kit's price as a side effect", () => {
-    // These kits were explicitly confirmed to carry no budget alternative;
-    // reconciling the substitution feature must not have touched them.
+    // These kits carry no budget alternative and were NOT among the
+    // doctor-confirmed patient-sale approvals; they must stay unpriced. META_B
+    // is deliberately absent from this list now — it was approved for patient
+    // sale on 2026-09-19 (see APPROVED_2026_09_19) — while every kit that
+    // remains here must still be unable to charge a patient.
     for (const kitId of [
-      "META_B",
       "PCOS",
       "PRO_FACT_THYROID_CARE",
       "PERI_MENOPAUSE",

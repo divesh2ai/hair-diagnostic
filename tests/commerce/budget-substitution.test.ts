@@ -68,7 +68,11 @@ describe("PASS — the 12 approved pairs", () => {
     const prices = sources.map(
       (s) => resolveSubstitutionPriceComparison(s.canonicalKitId, s.alternativeKitId)?.alternativePriceMinor,
     );
-    expect(prices[0]).toBe(204500);
+    // PRO_IMMUNE_1 was repriced 2026-09-19 (₹2,045 → ₹2,145) as part of the
+    // doctor-confirmed Pro Immune price-sheet correction. The invariant this
+    // test protects is unchanged: both canonical kits point at the ONE
+    // PRO_IMMUNE_1 identity and therefore quote the SAME price.
+    expect(prices[0]).toBe(214500);
     expect(prices[0]).toBe(prices[1]);
   });
 });
