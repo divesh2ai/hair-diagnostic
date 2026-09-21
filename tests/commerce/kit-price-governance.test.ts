@@ -140,9 +140,12 @@ describe("kit pricing authority", () => {
   it("6. reports repository figures as PRICE_PRESENT in minor units", () => {
     // ALOPECIA_AREATA, not TE_GOLD — TE_GOLD was reconciled to PRICE_APPROVED
     // by the 2026-09-08 budget-substitution reconciliation (see below).
+    // ₹3,054 is its KIT_PRICE_INR placeholder after the 2026-09-21 refresh of
+    // that map to the governed sheet MRP (was ₹6,800). It is still a
+    // placeholder, not an approved price: this kit stays PRICE_PRESENT.
     const p = getKitPrice("ALOPECIA_AREATA");
     expect(p.status).toBe("PRICE_PRESENT");
-    expect(p.amountMinor).toBe(rupeesToMinor(6800));
+    expect(p.amountMinor).toBe(rupeesToMinor(3054));
     expect(Number.isInteger(p.amountMinor)).toBe(true);
     expect(p.source).toBe("REPOSITORY_PLACEHOLDER");
   });

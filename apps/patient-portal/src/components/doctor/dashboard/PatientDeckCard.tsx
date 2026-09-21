@@ -92,7 +92,7 @@ export function PatientDeckCard({
 function CardFace({ side, children }: { side: "front" | "back"; children: React.ReactNode }) {
   return (
     <div
-      className={`v2-flip-face ${side === "back" ? "v2-flip-face-back" : ""} relative flex h-full flex-col justify-between overflow-hidden rounded-[20px] border border-[color:var(--v2-border-default)] bg-[color:var(--surface-elevated)] p-6 shadow-[0_1px_2px_rgba(20,35,31,0.04),0_18px_36px_-28px_rgba(20,35,31,0.22)] sm:p-7`}
+      className={`v2-flip-face ${side === "back" ? "v2-flip-face-back" : "v2-flip-face-front"} flex h-full flex-col justify-between overflow-hidden rounded-[20px] border border-[color:var(--v2-border-default)] bg-[color:var(--surface-elevated)] p-6 shadow-[0_1px_2px_rgba(20,35,31,0.04),0_18px_36px_-28px_rgba(20,35,31,0.22)] sm:p-7`}
     >
       {children}
     </div>
@@ -109,7 +109,7 @@ function ReviewRow({
   actionLabel: string;
 }) {
   return (
-    <div className="relative mt-6 flex items-center justify-between gap-4 border-t border-[color:var(--v2-border-subtle)] pt-4">
+    <div className="mt-6 flex items-center justify-between gap-4 border-t border-[color:var(--v2-border-subtle)] pt-4">
       <span className="text-[11px] font-semibold uppercase tracking-[0.1em] text-[color:var(--status-attention)]">
         Needs review
       </span>
@@ -118,13 +118,14 @@ function ReviewRow({
           href={card.href}
           aria-label={`${actionLabel} ${card.name}`}
           // Stretched link — same technique the Review Queue row already
-          // uses: `::after` is `position: absolute; inset: 0`, and its
-          // nearest positioned ancestor is CardFace (`relative`), not this
-          // small row, so the pseudo-element covers the FULL card face
-          // exactly, however small the visible link text is. The flip
-          // button is a sibling with its own higher z-index, so it stays
-          // independently clickable above it.
-          className="group/btn relative z-0 inline-flex shrink-0 items-center gap-1.5 text-sm font-medium text-[color:var(--brand-primary)] after:absolute after:inset-0 after:content-['']"
+          // uses: `::after` is `position: absolute; inset: 0`. For it to cover
+          // the FULL card face (so clicking anywhere on the card opens the
+          // review), neither the link nor this row may be a positioned
+          // ancestor — the nearest positioned ancestor must be CardFace
+          // (`.v2-flip-face-front` is `position: relative`). The flip button is
+          // a sibling with its own higher z-index, so it stays independently
+          // clickable above the stretched link.
+          className="group/btn inline-flex shrink-0 items-center gap-1.5 text-sm font-medium text-[color:var(--brand-primary)] after:absolute after:inset-0 after:content-['']"
         >
           {actionLabel}
           <ArrowRight className="h-4 w-4 transition-transform group-hover/btn:translate-x-0.5" aria-hidden />

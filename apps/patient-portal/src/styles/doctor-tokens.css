@@ -335,14 +335,23 @@
   }
 }
 
-/* ── Patient deck flip ────────────────────────────────────────────────────── */
+/* ── Patient deck flip ──────────────────────────────────────────────────────
+ * The front face is in NORMAL FLOW (position: relative), so the flip-inner —
+ * and the invisible height-sizer the deck lays out to measure the front card —
+ * take a real, content-driven height from it. The back face overlays the front
+ * absolutely and is pre-rotated so it faces the reader once the inner flips.
+ *
+ * Both faces used to be `position: absolute; inset: 0`, which left the
+ * flip-inner with no in-flow child and therefore ZERO intrinsic height: the
+ * card collapsed to a title-height sliver and its stretched "Review" link
+ * covered nothing, so the card read as tiny and untappable.
+ */
 [data-surface="doctor"] .v2-flip-scene {
   perspective: 1600px;
 }
 [data-surface="doctor"] .v2-flip-inner {
   position: relative;
   width: 100%;
-  height: 100%;
   transition: transform 200ms ease;
   transform-style: preserve-3d;
 }
@@ -350,12 +359,15 @@
   transform: rotateY(180deg);
 }
 [data-surface="doctor"] .v2-flip-face {
-  position: absolute;
-  inset: 0;
   backface-visibility: hidden;
   -webkit-backface-visibility: hidden;
 }
+[data-surface="doctor"] .v2-flip-face-front {
+  position: relative;
+}
 [data-surface="doctor"] .v2-flip-face-back {
+  position: absolute;
+  inset: 0;
   transform: rotateY(180deg);
 }
 
