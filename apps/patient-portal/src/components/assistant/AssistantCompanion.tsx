@@ -207,6 +207,24 @@ export function AssistantCompanionProvider({ children }: { children: ReactNode }
     }
   }, [pathname]);
 
+  // Keep the companion's mode in step with the surface it is standing on.
+  //
+  // The doctor-facing preview controls (Notes, Coffee, Listening) render only
+  // in "doctor" mode, and the pet uses the mode for its doctor/patient styling.
+  // Nothing else ever set the mode to "doctor", so on every /doctor surface the
+  // companion stayed in the default "general" mode and those controls — the
+  // only way to play the notebook and coffee animations on demand — never
+  // appeared. Derive the mode from the route instead: "doctor" on /doctor,
+  // "patient" on the other patient-facing supported routes.
+  //
+  // /assistant is deliberately excluded: the assistant chat sets the mode
+  // itself there ("patient" for the approved-plan view, "general" otherwise),
+  // and must stay authoritative on its own page.
+  useEffect(() => {
+    if (!pathname || pathname.startsWith("/assistant")) return;
+    dispatch({ type: "SET_MODE", mode: pathname.startsWith("/doctor") ? "doctor" : "patient" });
+  }, [pathname]);
+
   useEffect(() => {
     const markActivity = () => {
       if (snapshot.state === "sleep") dispatch({ type: "TRANSITION", state: "idle-perched" });
