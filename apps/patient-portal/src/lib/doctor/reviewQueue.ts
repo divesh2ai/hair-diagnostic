@@ -17,6 +17,15 @@ import { AssessmentStatus, Prisma } from "@prisma/client";
  * "needs attention" count instead.
  */
 export const REVIEW_QUEUE_STATUSES: AssessmentStatus[] = [
+  AssessmentStatus.PENDING,
+  AssessmentStatus.QUEUED,
+  AssessmentStatus.NORMALIZING,
+  AssessmentStatus.RUNNING_CLINICAL_ENGINE,
+  AssessmentStatus.GENERATING_RECOMMENDATIONS,
+  AssessmentStatus.GENERATING_NARRATIVE,
+  AssessmentStatus.GENERATING_VIDEO_SCRIPT,
+  AssessmentStatus.RENDERING_VIDEO,
+  AssessmentStatus.GENERATING_REPORT,
   AssessmentStatus.CLINICAL_READY,
   AssessmentStatus.REPORT_GENERATING,
   AssessmentStatus.COMPLETED,

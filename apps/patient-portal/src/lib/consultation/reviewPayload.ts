@@ -23,7 +23,7 @@
 
 import type { SystemRole } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
-import { requireDoctorContext, assertDoctorInClinic } from "@/lib/auth";
+import { requireDoctorContext, assertDoctorInClinic, type DoctorContext } from "@/lib/auth";
 import { makeOrchestrator } from "@hairos/packages/consultation-orchestrator";
 import type { Consultation } from "@shared/types/consultation";
 import type {
@@ -169,6 +169,8 @@ function loadAssessmentContext(assessmentId: string) {
  */
 export async function fetchReviewPayload(
   assessmentId: string,
+  resolvedDoctor?: DoctorContext,
+  includeOperational = true,
 ): Promise<ReviewPayloadResult> {
   const requestId = newRequestId();
 
@@ -177,7 +179,7 @@ export async function fetchReviewPayload(
   // neither. They used to run one after the other purely because they were
   // written that way. The tenant check below still gates on both.
   const [authResult, rows] = await Promise.all([
-    requireDoctorContext(),
+    resolvedDoctor ?? requireDoctorContext(),
     loadAssessmentContext(assessmentId).catch((err) => {
       console.error("[consultation.get] assessment context failed", sanitizeErrorClass(err));
       return null;
@@ -267,6 +269,7 @@ export async function fetchReviewPayload(
     authRole,
     mode,
     legacyAssessment: !target.hasAnswers,
+    includeOperational,
     visit: {
       submittedAt: target.submittedAt?.toISOString() ?? null,
       visitType: target.visitType,

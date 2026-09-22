@@ -23,7 +23,7 @@ import { useEffect, useRef, useState } from "react";
 //     stacking behind it
 
 /** Roughly one clinic heartbeat. Fast enough to feel live, slow enough to ignore. */
-export const DASHBOARD_POLL_MS = 15_000;
+export const DASHBOARD_POLL_MS = 3_000;
 
 /**
  * Call `load` on an interval while the document is visible.

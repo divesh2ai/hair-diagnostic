@@ -12,6 +12,7 @@ import { prisma } from "@/lib/prisma";
 import type { SystemRole } from "@/lib/auth";
 import { doctorAuthIdentityWhere } from "@/lib/auth/doctorIdentity";
 import type { ClinicBranding } from "@/lib/branding";
+import { cache } from "react";
 
 export type ShellData = {
   role: SystemRole;
@@ -31,6 +32,7 @@ async function resolveDisplayName(
   role: SystemRole,
   userId: string,
   email: string | null,
+  skipDoctorLookup = false,
 ): Promise<string | null> {
   // Match by supabaseUserId first; fall back to email so pre-provisioned rows
   // still personalize before their supabaseUserId is backfilled.
@@ -49,6 +51,7 @@ async function resolveDisplayName(
     if (om?.name) return om.name;
   }
   if (role === "DOCTOR" || role === "CLINIC_ADMIN") {
+    if (skipDoctorLookup) return null;
     // Doctor is the one model carrying a second auth identity, so it cannot
     // share `orClauses` — OrganizationMember and ClinicMember have no
     // `supabasePhoneUserId` column and Prisma rejects the field outright.
@@ -82,7 +85,7 @@ async function resolveDisplayName(
 
 // Centralised data load for every authenticated layout. Redirects to /login
 // when there's no session — saves every layout from duplicating the dance.
-export async function loadShellData(): Promise<ShellData> {
+export async function loadShellData(options?: { skipDoctorLookup?: boolean }): Promise<ShellData> {
   try {
     const ctx = await getClinicContext();
     const supabase = await createSupabaseServerClient();
@@ -92,7 +95,7 @@ export async function loadShellData(): Promise<ShellData> {
     const [branding, locale, displayName] = await Promise.all([
       loadClinicBranding({ clinicId: ctx.clinicId, userId: ctx.userId }),
       readServerLocale(),
-      resolveDisplayName(ctx.role, ctx.userId, email),
+      resolveDisplayName(ctx.role, ctx.userId, email, options?.skipDoctorLookup),
     ]);
     return {
       role: ctx.role,
@@ -140,6 +143,13 @@ export async function loadSuperAdminShellData(): Promise<ShellData> {
 // that gap. `?view=doctor` is UI navigation intent only; server-side
 // membership is the sole authorisation source.
 export type DoctorShellData = ShellData & {
+  doctor: {
+    id: string;
+    clinicId: string;
+    name: string;
+    email: string | null;
+    isActive: boolean;
+  };
   doctorId: string;
   /**
    * The clinic of the DOCTOR ROW, not the JWT claim. They agree for an
@@ -152,15 +162,15 @@ export type DoctorShellData = ShellData & {
   viewMode: "self" | "admin_view";
 };
 
-export async function loadDoctorShellData(): Promise<DoctorShellData> {
-  const data = await loadShellData();
+export const loadDoctorShellData = cache(async (): Promise<DoctorShellData> => {
+  const data = await loadShellData({ skipDoctorLookup: true });
   const doctor = await prisma.doctor.findFirst({
     where: {
       ...doctorAuthIdentityWhere(data.userId),
       isActive: true,
       deletedAt: null,
     },
-    select: { id: true, clinicId: true },
+    select: { id: true, clinicId: true, name: true, email: true, isActive: true },
   });
   if (!doctor) {
     // No live Doctor row → route away by primary role, never render the
@@ -175,8 +185,15 @@ export async function loadDoctorShellData(): Promise<DoctorShellData> {
   }
   const viewMode: "self" | "admin_view" =
     data.role === "DOCTOR" ? "self" : "admin_view";
-  return { ...data, doctorId: doctor.id, doctorClinicId: doctor.clinicId, viewMode };
-}
+  return {
+    ...data,
+    doctor,
+    displayName: data.displayName ?? doctor.name,
+    doctorId: doctor.id,
+    doctorClinicId: doctor.clinicId,
+    viewMode,
+  };
+});
 
 // Best-effort first-name extraction for greetings: "Dr. Divesh Shah" → "Divesh".
 export function firstNameOf(displayName: string | null, email: string | null): string {

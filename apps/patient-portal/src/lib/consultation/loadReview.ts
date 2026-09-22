@@ -184,6 +184,7 @@ export interface LoadReviewInput {
    */
   visit?: ReviewVisitContext | null;
   requestId: string;
+  includeOperational?: boolean;
 }
 
 export async function loadConsultationReview(
@@ -284,7 +285,7 @@ export async function loadConsultationReview(
   if (legacyAssessment) degradedReasons.push("LEGACY_RAW_RESPONSES_MISSING");
 
   let operational: ConsultationOperationalState | null = null;
-  try {
+  if (input.includeOperational !== false) try {
     operational = await readOperationalState(prisma, assessmentId);
     for (const failure of operational.degraded) {
       warnings.push({ code: `OPTIONAL_${failure.dependency.toUpperCase()}_UNAVAILABLE`, stage: failure.stage });

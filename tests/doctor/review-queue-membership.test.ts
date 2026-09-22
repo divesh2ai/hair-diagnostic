@@ -56,9 +56,14 @@ describe("review queue membership — the full predicate", () => {
     expect(s).toContain(`jsonb_typeof(a."rawResponses") = 'object'`);
   });
 
-  it("excludes FAILED and PARTIAL_FAILURE from the queue statuses", () => {
+  it("keeps valid submissions visible while processing, but excludes failed work", () => {
     const statuses = REVIEW_QUEUE_STATUSES.map(String);
-    expect(statuses).toEqual(["CLINICAL_READY", "REPORT_GENERATING", "COMPLETED"]);
+    expect(statuses).toEqual([
+      "PENDING", "QUEUED", "NORMALIZING", "RUNNING_CLINICAL_ENGINE",
+      "GENERATING_RECOMMENDATIONS", "GENERATING_NARRATIVE",
+      "GENERATING_VIDEO_SCRIPT", "RENDERING_VIDEO", "GENERATING_REPORT",
+      "CLINICAL_READY", "REPORT_GENERATING", "COMPLETED",
+    ]);
     expect(statuses).not.toContain("FAILED");
     expect(statuses).not.toContain("PARTIAL_FAILURE");
   });

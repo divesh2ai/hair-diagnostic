@@ -1,6 +1,6 @@
 import { signReviewToken } from "@/lib/reviewToken";
 import { fetchReviewPayload } from "@/lib/consultation/reviewPayload";
-import { getPatientWhatsappConsent } from "@/lib/patient/whatsappConsent";
+import { loadDoctorShellData } from "@/components/app-shell/loadShellData";
 import { DoctorReviewClient } from "./DoctorReviewClient";
 
 // Doctor review workspace.
@@ -22,7 +22,18 @@ export default async function DoctorReportDetailPage({
 }) {
   const { assessmentId } = await params;
 
-  const initial = await fetchReviewPayload(assessmentId);
+  const shell = await loadDoctorShellData();
+  const initial = await fetchReviewPayload(
+    assessmentId,
+    {
+      authUserId: shell.userId,
+      authEmail: shell.email,
+      authRole: shell.role,
+      doctor: shell.doctor,
+      mode: shell.viewMode === "self" ? "doctor" : "admin_view",
+    },
+    false,
+  );
 
   // Server-minted signed token so the shared patient link resolves with full
   // artifact access on /assessment/[id]/report (anonymous callers only get
@@ -35,14 +46,6 @@ export default async function DoctorReportDetailPage({
   // on, never anything about how it is configured.
   const whatsappAutomationEnabled = process.env.WHATSAPP_AUTOMATION_ENABLED === "1";
 
-  // Consent is read only when there is a patient to read it for, and only
-  // over the guarded reader — see lib/patient/whatsappConsent.ts for why this
-  // cannot be folded into fetchReviewPayload's own query.
-  const patientId = initial.ok ? initial.body.consultation.patient.id : null;
-  const consent = patientId
-    ? await getPatientWhatsappConsent(patientId).catch(() => null)
-    : null;
-
   return (
     <DoctorReviewClient
       assessmentId={assessmentId}
@@ -50,9 +53,7 @@ export default async function DoctorReportDetailPage({
       initialData={initial.ok ? initial.body : null}
       initialError={initial.ok ? null : initial.body}
       whatsappAutomationEnabled={whatsappAutomationEnabled}
-      initialConsent={
-        consent ? { consent: consent.consent, provisioned: consent.provisioned } : null
-      }
+      initialConsent={null}
     />
   );
 }

@@ -270,6 +270,7 @@ export function DoctorReviewClient({
   // ── Optional context — a null here costs a chip, never the review ────────
   const [operational, setOperational] =
     useState<ConsultationOperationalState | null>(initialData?.operational ?? null);
+  const [consent, setConsent] = useState(initialConsent);
   const [visit, setVisit] = useState<ReviewVisitContext | null>(
     initialData?.visit ?? null,
   );
@@ -400,12 +401,43 @@ export function DoctorReviewClient({
   // render is the finished case and there is nothing to fetch. Re-running the
   // mount fetch would spend a round trip re-fetching bytes already on screen.
   const needsClientLoad = useRef(!initialData && !initialError);
+  const deferredRequests = useRef(new Set<string>());
 
   useEffect(() => {
     if (!needsClientLoad.current) return;
     needsClientLoad.current = false;
     void load();
   }, [load]);
+
+  useEffect(() => {
+    if (!initialData) return;
+    const requestKey = `operational:${assessmentId}`;
+    if (deferredRequests.current.has(requestKey)) return;
+    deferredRequests.current.add(requestKey);
+    const controller = new AbortController();
+    void fetch(`/api/consultation/${assessmentId}/operational`, { signal: controller.signal })
+      .then((res) => (res.ok ? res.json() : null))
+      .then((body: { operational?: ConsultationOperationalState } | null) => {
+        if (body?.operational) setOperational(body.operational);
+      })
+      .catch(() => undefined);
+    return () => controller.abort();
+  }, [assessmentId, initialData]);
+
+  useEffect(() => {
+    if (!initialData || !whatsappAutomationEnabled) return;
+    const requestKey = `whatsapp-consent:${assessmentId}`;
+    if (deferredRequests.current.has(requestKey)) return;
+    deferredRequests.current.add(requestKey);
+    const controller = new AbortController();
+    void fetch(`/api/consultation/${assessmentId}/whatsapp-consent`, { signal: controller.signal })
+      .then((res) => (res.ok ? res.json() : null))
+      .then((body: { consent?: { consent: boolean; provisioned: boolean } } | null) => {
+        if (body?.consent) setConsent(body.consent);
+      })
+      .catch(() => undefined);
+    return () => controller.abort();
+  }, [assessmentId, initialData, whatsappAutomationEnabled]);
 
   // Bring the adjust panel into view once it actually exists.
   //
@@ -977,7 +1009,7 @@ export function DoctorReviewClient({
                 : null
             }
             whatsappAutomationEnabled={whatsappAutomationEnabled}
-            consent={initialConsent}
+            consent={consent}
             patientPhoneMasked={maskedPatientPhone}
             waState={waState}
             waErrorReason={waErrorReason}
