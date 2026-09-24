@@ -184,6 +184,15 @@ export interface LoadReviewInput {
    */
   visit?: ReviewVisitContext | null;
   requestId: string;
+  /**
+   * Skip the operational read (report/order/delivery status) entirely and
+   * return `operational: null`. Used by the review PAGE so first paint carries
+   * only the core clinical case; the client fetches operational after mount via
+   * /api/consultation/[id]/operational and fills the non-critical sections
+   * (report pill, delivery, journey). The API GET path leaves this false, so a
+   * client refresh still returns the full payload in one call.
+   */
+  deferOperational?: boolean;
 }
 
 export async function loadConsultationReview(
@@ -200,6 +209,7 @@ export async function loadConsultationReview(
     legacyAssessment,
     visit,
     requestId,
+    deferOperational = false,
   } = input;
 
   const startedAt = Date.now();
@@ -214,12 +224,16 @@ export async function loadConsultationReview(
   } as const;
 
   // Operational metadata (report / order / delivery state) is keyed by
-  // assessmentId alone and never feeds the core clinical payload, so it must
-  // not sit behind the core load on the doctor's first paint. Start it now and
-  // await it in the OPTIONAL block below. readOperationalState is total (never
-  // throws — see its contract), so firing it alongside a core load that may
-  // fail costs at most one harmless, already-resolved read on the error path.
-  const operationalPromise = readOperationalState(prisma, assessmentId);
+  // assessmentId alone and never feeds the core clinical payload. When
+  // deferOperational is set (the review PAGE), it is not read here at all —
+  // first paint carries only the core clinical case and the client fetches it
+  // after mount. Otherwise (the API GET path) it is started now and awaited in
+  // the OPTIONAL block below, overlapping the core load. readOperationalState
+  // is total (never throws), so firing it alongside a core load that may fail
+  // costs at most one harmless, already-resolved read on the error path.
+  const operationalPromise = deferOperational
+    ? null
+    : readOperationalState(prisma, assessmentId);
 
   // ── CORE ──────────────────────────────────────────────────────────────────
   let stored: Awaited<ReturnType<ConsultationOrchestrator["getOrCreateDetailed"]>>;
@@ -293,18 +307,24 @@ export async function loadConsultationReview(
 
   let operational: ConsultationOperationalState | null = null;
   try {
-    // Started in parallel with the core load above; awaited here.
-    operational = await operationalPromise;
-    for (const failure of operational.degraded) {
-      warnings.push({ code: `OPTIONAL_${failure.dependency.toUpperCase()}_UNAVAILABLE`, stage: failure.stage });
-      degradedReasons.push(DEGRADED_REASON_BY_DEPENDENCY[failure.dependency]);
-      logLifecycleEvent({
-        ...logBase,
-        event: "consultation.optional_degraded",
-        severity: "optional",
-        failureStage: failure.stage,
-        errorClass: failure.errorClass,
-      });
+    // Deferred (review page): operational is not read on this path — the client
+    // fetches it after first paint. Otherwise it was started in parallel with
+    // the core load above and is awaited here.
+    if (operationalPromise === null) {
+      operational = null;
+    } else {
+      operational = await operationalPromise;
+      for (const failure of operational.degraded) {
+        warnings.push({ code: `OPTIONAL_${failure.dependency.toUpperCase()}_UNAVAILABLE`, stage: failure.stage });
+        degradedReasons.push(DEGRADED_REASON_BY_DEPENDENCY[failure.dependency]);
+        logLifecycleEvent({
+          ...logBase,
+          event: "consultation.optional_degraded",
+          severity: "optional",
+          failureStage: failure.stage,
+          errorClass: failure.errorClass,
+        });
+      }
     }
   } catch (err) {
     warnings.push({ code: "OPTIONAL_OPERATIONAL_UNAVAILABLE", stage: "UNKNOWN" });

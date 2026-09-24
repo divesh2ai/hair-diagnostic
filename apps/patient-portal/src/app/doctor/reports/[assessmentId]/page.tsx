@@ -22,6 +22,11 @@ export default async function DoctorReportDetailPage({
 }) {
   const { assessmentId } = await params;
 
+  // Core clinical case only on the blocking path — operational/report/delivery
+  // metadata is deferred (loadConsultationReview receives deferOperational) and
+  // the client fills it after first paint. What the doctor needs to read and
+  // decide (identity, findings, plan, approval state, controls) no longer waits
+  // on the operational read.
   const initial = await fetchReviewPayload(assessmentId);
 
   // Server-minted signed token so the shared patient link resolves with full
@@ -38,10 +43,16 @@ export default async function DoctorReportDetailPage({
   // Consent is read only when there is a patient to read it for, and only
   // over the guarded reader — see lib/patient/whatsappConsent.ts for why this
   // cannot be folded into fetchReviewPayload's own query.
+  // Consent drives ONLY the WhatsApp consent line, which renders only when
+  // automation is on — and launch runs automation OFF, so at launch this read
+  // added a sequential DB round trip to first paint for data the doctor never
+  // sees. Read it only when it will actually be shown; otherwise skip it and
+  // keep it off the clinical critical path.
   const patientId = initial.ok ? initial.body.consultation.patient.id : null;
-  const consent = patientId
-    ? await getPatientWhatsappConsent(patientId).catch(() => null)
-    : null;
+  const consent =
+    whatsappAutomationEnabled && patientId
+      ? await getPatientWhatsappConsent(patientId).catch(() => null)
+      : null;
 
   return (
     <DoctorReviewClient

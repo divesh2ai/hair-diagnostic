@@ -420,6 +420,37 @@ export function DoctorReviewClient({
     void load();
   }, [load]);
 
+  // Operational status (report pill, post-approval delivery, patient journey)
+  // is deferred off first paint: the server renders the core clinical case now
+  // (see page.tsx / loadReview deferOperational) and we fetch the operational
+  // slice once, after mount, filling those non-critical sections without ever
+  // blocking the doctor's read. Only runs on the server-rendered path — the
+  // client-load path above already gets operational from its full load().
+  const operationalFetched = useRef(false);
+  useEffect(() => {
+    if (operationalFetched.current || !initialData) return;
+    operationalFetched.current = true;
+    let cancelled = false;
+    void (async () => {
+      try {
+        const res = await fetch(`/api/consultation/${assessmentId}/operational`, {
+          cache: "no-store",
+        });
+        if (!res.ok) return;
+        const j = (await res.json().catch(() => ({}))) as {
+          operational?: ConsultationOperationalState | null;
+        };
+        if (!cancelled && j.operational) setOperational(j.operational);
+      } catch {
+        // Non-critical: the report/delivery/journey sections keep their default
+        // "not started / unavailable" state until the next navigation.
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [assessmentId, initialData]);
+
   // Bring the adjust panel into view once it actually exists.
   //
   // This used to be a pair of requestAnimationFrames fired from the Request

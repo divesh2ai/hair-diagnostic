@@ -207,6 +207,11 @@ export async function GET(req: Request) {
       total: Number(totalRow[0]?.total ?? 0),
       limit,
       offset,
+      // The acting doctor's own id, so the queue page does not need a separate
+      // /api/doctor/me round trip (and a second doctor-context resolution) just
+      // to power the "assigned to me" filter. requireDoctorContext already
+      // resolved it above.
+      doctorId: doctor.id,
     });
   } catch (err) {
     console.error("[DOCTOR REPORTS API]", err);
