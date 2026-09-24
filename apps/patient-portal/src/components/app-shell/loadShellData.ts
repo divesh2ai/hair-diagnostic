@@ -11,6 +11,7 @@ import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { prisma } from "@/lib/prisma";
 import type { SystemRole } from "@/lib/auth";
 import { doctorAuthIdentityWhere } from "@/lib/auth/doctorIdentity";
+import { resolveDoctorIdentity } from "@/lib/auth/requestScope";
 import type { ClinicBranding } from "@/lib/branding";
 
 export type ShellData = {
@@ -154,14 +155,9 @@ export type DoctorShellData = ShellData & {
 
 export async function loadDoctorShellData(): Promise<DoctorShellData> {
   const data = await loadShellData();
-  const doctor = await prisma.doctor.findFirst({
-    where: {
-      ...doctorAuthIdentityWhere(data.userId),
-      isActive: true,
-      deletedAt: null,
-    },
-    select: { id: true, clinicId: true },
-  });
+  // Request-scoped: the dashboard page reuses this exact read instead of
+  // issuing its own identical Doctor query (see @/lib/auth/requestScope).
+  const doctor = await resolveDoctorIdentity(data.userId);
   if (!doctor) {
     // No live Doctor row → route away by primary role, never render the
     // Doctor surface. This is the point that closes the multi-role gap.

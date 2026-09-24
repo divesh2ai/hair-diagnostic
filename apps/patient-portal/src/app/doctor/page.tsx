@@ -1,7 +1,6 @@
 import { redirect } from "next/navigation";
 import { getAuthClaims } from "@/lib/auth";
-import { doctorAuthIdentityWhere } from "@/lib/auth/doctorIdentity";
-import { prisma } from "@/lib/prisma";
+import { resolveDoctorIdentity } from "@/lib/auth/requestScope";
 import { loadDashboardStats } from "@/lib/doctor/dashboardStats";
 import { DoctorDashboardClient } from "./DoctorDashboardClient";
 import "@/styles/doctor-tokens.css";
@@ -31,15 +30,10 @@ export default async function DoctorDashboardPage() {
   // than render a clinical surface for nobody.
   if (!claims?.sub) redirect("/login");
 
-  const doctor = await prisma.doctor.findFirst({
-    where: { ...doctorAuthIdentityWhere(claims.sub), isActive: true, deletedAt: null },
-    select: {
-      name: true,
-      clinicId: true,
-      photoUrl: true,
-      clinic: { select: { name: true } },
-    },
-  });
+  // Request-scoped: the Doctor layout already resolved this exact row while
+  // authorising the page, so this reuses it rather than re-querying (see
+  // @/lib/auth/requestScope).
+  const doctor = await resolveDoctorIdentity(claims.sub);
   if (!doctor) redirect("/login?reason=forbidden");
 
   // A failed first read must not take the page down — the client renders its
