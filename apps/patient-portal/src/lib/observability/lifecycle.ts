@@ -90,6 +90,8 @@ export type LifecycleFailureCode =
   | "stale_version"
   | "grounding_violation"
   | "reasoning_gap"
+  /** A missing or malformed clinical-readiness snapshot — a hard release stop. */
+  | "readiness_snapshot"
   // Clinic floor
   /** Code is deployed ahead of its migration — see lib/prismaErrors. */
   | "schema_drift"

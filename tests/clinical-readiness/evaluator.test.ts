@@ -5,6 +5,8 @@ import { describe, it, expect } from "@jest/globals";
 import {
   evaluateClinicalReadinessForApproval,
   toPatientSafeReadinessDecision,
+  isSoftAdvisoryOnly,
+  isHardBlocked,
 } from "../../packages/shared/clinical-readiness/evaluator";
 import type {
   ClinicalReadinessSnapshot,
@@ -28,6 +30,66 @@ function snap(overrides: Partial<ClinicalReadinessSnapshot> = {}): ClinicalReadi
 const consultationWith = (
   s?: ClinicalReadinessSnapshot | undefined,
 ): Consultation => ({ clinicalReadiness: s } as unknown as Consultation);
+
+// The one classifier approval and the PDF/render gate share.
+describe("isSoftAdvisoryOnly / isHardBlocked — shared governance", () => {
+  const evalOf = (s: ClinicalReadinessSnapshot) =>
+    evaluateClinicalReadinessForApproval(consultationWith(s));
+
+  const groundingSnap = snap({
+    isReadyForApproval: false,
+    groundingViolations: [
+      { ruleId: "scalp.dandruff", section: "What We Found", summary: "mentions dandruff" },
+    ],
+    blockingCodes: ["GROUNDING_VIOLATION_PRESENT"],
+    summary: { groundingViolationCount: 1, reasoningGapCount: 0 },
+  });
+  const reasoningSnap = snap({
+    isReadyForApproval: false,
+    reasoningGaps: [{ kind: "kit.notDiscussedInNarrative", subject: "KIT", summary: "not named" }],
+    blockingCodes: ["REASONING_GAP_PRESENT"],
+    summary: { groundingViolationCount: 0, reasoningGapCount: 1 },
+  });
+  const mixedSnap = snap({
+    isReadyForApproval: false,
+    groundingViolations: [
+      { ruleId: "scalp.dandruff", section: "What We Found", summary: "mentions dandruff" },
+    ],
+    reasoningGaps: [{ kind: "kit.notDiscussedInNarrative", subject: "KIT", summary: "not named" }],
+    blockingCodes: ["GROUNDING_VIOLATION_PRESENT", "REASONING_GAP_PRESENT"],
+    summary: { groundingViolationCount: 1, reasoningGapCount: 1 },
+  });
+
+  it("reasoning-gap-only → soft advisory, NOT hard-blocked", () => {
+    const d = evalOf(reasoningSnap);
+    expect(isSoftAdvisoryOnly(d)).toBe(true);
+    expect(isHardBlocked(d)).toBe(false);
+  });
+
+  it("grounding violation → hard-blocked, NOT soft", () => {
+    const d = evalOf(groundingSnap);
+    expect(isSoftAdvisoryOnly(d)).toBe(false);
+    expect(isHardBlocked(d)).toBe(true);
+  });
+
+  it("mixed (grounding + reasoning) → hard-blocked", () => {
+    const d = evalOf(mixedSnap);
+    expect(isSoftAdvisoryOnly(d)).toBe(false);
+    expect(isHardBlocked(d)).toBe(true);
+  });
+
+  it("missing snapshot → hard-blocked (fail closed)", () => {
+    const d = evaluateClinicalReadinessForApproval(consultationWith(undefined));
+    expect(isHardBlocked(d)).toBe(true);
+    expect(isSoftAdvisoryOnly(d)).toBe(false);
+  });
+
+  it("clean/ready → neither soft-only nor hard-blocked", () => {
+    const d = evalOf(snap());
+    expect(isSoftAdvisoryOnly(d)).toBe(false);
+    expect(isHardBlocked(d)).toBe(false);
+  });
+});
 
 describe("evaluateClinicalReadinessForApproval", () => {
   it("clean snapshot → ready", () => {

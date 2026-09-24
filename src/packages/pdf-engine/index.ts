@@ -87,18 +87,23 @@ export async function generateAndStoreReports(payload: ReportInputPayload) {
     }
   }
 
-  // ── Reasoning-completeness gate (self-reflection pass) ────────────────────
+  // ── Reasoning-completeness advisory (self-reflection pass) ────────────────
+  // Governance: narrative/reasoning-completeness gaps are SOFT advisories — AI
+  // documentation-quality notes (a kit not named in the write-up, a condition
+  // not spelled out), not clinical contraindications. They are recorded and
+  // shown to the doctor in "AI Review Notes", but — matching the approval gate
+  // and evaluator.isSoftAdvisoryOnly — they do NOT block report rendering or
+  // PDF generation. The grounding gate above stays a hard stop. Bypassing
+  // grounding is still a QA-only escape hatch; reasoning gaps need none because
+  // they no longer block. The ReasoningCompletenessError type is retained for
+  // callers that still catch it.
   const gaps = payload.reasoningGaps ?? [];
   if (gaps.length > 0) {
-    if (payload.bypassReasoningGaps) {
-      console.warn(
-        `[PDF Engine] bypassReasoningGaps=true — rendering despite ` +
-          `${gaps.length} gap(s):\n` +
-          formatReasoningGaps({ valid: false, gaps }),
-      );
-    } else {
-      throw new ReasoningCompletenessError(gaps);
-    }
+    console.warn(
+      `[PDF Engine] rendering with ${gaps.length} reasoning-completeness ` +
+        `advisory/advisories (soft — does not block delivery):\n` +
+        formatReasoningGaps({ valid: false, gaps }),
+    );
   }
 
   console.log(`[PDF Engine] Generating reports for Assessment ${payload.assessmentId}...`);

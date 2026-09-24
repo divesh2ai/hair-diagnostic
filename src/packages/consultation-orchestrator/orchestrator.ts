@@ -13,6 +13,7 @@ import type { Consultation, DoctorNote, ConsultationAttachment } from "@shared/t
 import { contentHash } from "./versioning/contentHash";
 import {
   evaluateClinicalReadinessForApproval,
+  isSoftAdvisoryOnly,
   type ReadinessDecision,
 } from "@shared/clinical-readiness/evaluator";
 import type {
@@ -389,10 +390,9 @@ export class ConsultationOrchestrator {
         //   friction. The fact that an advisory was present and acknowledged is
         //   still recorded on the immutable approval event (overrideRecord),
         //   and the doctor's own note is kept when they choose to add one.
-        const reasoningGapsOnly =
-          readiness.groundingViolationCount === 0 &&
-          readiness.reasoningGapCount > 0 &&
-          readiness.blockingCodes.every((c) => c === "REASONING_GAP_PRESENT");
+        // Same shared classifier the PDF/render gate uses — approval and report
+        // release can never disagree on what counts as a soft advisory.
+        const reasoningGapsOnly = isSoftAdvisoryOnly(readiness);
         const isTokenReviewer =
           input.ctx.role.toUpperCase() === "TOKEN_REVIEWER";
 

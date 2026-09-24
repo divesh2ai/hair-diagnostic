@@ -100,6 +100,51 @@ export function evaluateClinicalReadinessForApproval(
   };
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// Hard / soft governance — the SINGLE classifier every gate shares.
+//
+// A not-ready decision is one of two things, and approval, report rendering and
+// PDF/one-pager generation must all agree on which:
+//
+//   SOFT ADVISORY — blocked ONLY by narrative/reasoning-completeness gaps
+//     (REASONING_GAP_PRESENT): a kit not named in the write-up, a detected
+//     condition not spelled out, a thin explanation. These are AI
+//     documentation-quality notes, NOT clinical contraindications. They are
+//     recorded and shown in "AI Review Notes", but they must NOT block approval,
+//     report rendering, PDF generation or patient delivery.
+//
+//   HARD BLOCK — everything else that is not ready: a grounding violation (a
+//     recommendation not traceable to recorded evidence), a missing or malformed
+//     readiness snapshot, or any MIXED set containing one of those. These stop
+//     approval AND report/PDF release.
+//
+// Defining both here — rather than re-deriving the predicate at each gate — is
+// what stops the approval gate and the PDF gate from ever drifting apart again.
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * True when a decision is blocked ONLY by soft reasoning/narrative advisories.
+ * A ready decision is trivially not blocked by anything, so it is not "soft
+ * advisory only" — callers gate on {@link isHardBlocked} or `ready` directly.
+ */
+export function isSoftAdvisoryOnly(decision: ReadinessDecision): boolean {
+  return (
+    decision.groundingViolationCount === 0 &&
+    decision.reasoningGapCount > 0 &&
+    decision.blockingCodes.length > 0 &&
+    decision.blockingCodes.every((c) => c === "REASONING_GAP_PRESENT")
+  );
+}
+
+/**
+ * True when a decision carries a HARD blocker that must stop approval AND
+ * report/PDF release: not ready, and not soft-advisory-only. A ready decision
+ * is never hard-blocked.
+ */
+export function isHardBlocked(decision: ReadinessDecision): boolean {
+  return !decision.ready && !isSoftAdvisoryOnly(decision);
+}
+
 /** Strip doctor-only violation detail before returning to a patient-scoped surface. */
 export function toPatientSafeReadinessDecision(
   decision: ReadinessDecision,
