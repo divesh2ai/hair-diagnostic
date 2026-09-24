@@ -205,11 +205,31 @@ describe("orchestrator.approve — clinical readiness gate", () => {
     expect(eventsWritten.some((e) => e.type === "CONSULTATION_APPROVED")).toBe(false);
   });
 
-  it("reasoning gap: same block", async () => {
+  it("reasoning-gap-only: soft advisory — a doctor approves with no justification", async () => {
+    // Governance change: narrative/reasoning-completeness gaps are AI
+    // documentation-quality advisories, not clinical contraindications. A
+    // signed-in clinician may approve past a reasoning-gap-only case without
+    // typing a written justification; the advisory is recorded on the approval.
     const { repo, eventsWritten } = makeRepo(fakeContent(blockedReasoning()));
     const orch = makeOrch(repo);
     await expect(
       orch.approve({ assessmentId: ASSESSMENT_ID, ctx: doctorCtx, status: "APPROVED" }),
+    ).resolves.toBeTruthy();
+    expect(
+      eventsWritten.filter((e) => e.type === "CONSULTATION_APPROVED"),
+    ).toHaveLength(1);
+  });
+
+  it("reasoning-gap-only: TOKEN_REVIEWER still may not sign past it", async () => {
+    // The anonymous review-link identity never signs past any gap, hard or soft.
+    const { repo, eventsWritten } = makeRepo(fakeContent(blockedReasoning()));
+    const orch = makeOrch(repo);
+    await expect(
+      orch.approve({
+        assessmentId: ASSESSMENT_ID,
+        ctx: { actorId: "token-x", role: "TOKEN_REVIEWER", clinicId: CLINIC },
+        status: "APPROVED",
+      }),
     ).rejects.toBeInstanceOf(ReadinessBlockedError);
     expect(eventsWritten.some((e) => e.type === "CONSULTATION_APPROVED")).toBe(false);
   });

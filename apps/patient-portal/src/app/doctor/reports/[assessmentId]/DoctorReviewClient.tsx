@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
-import { ArrowLeft, Check, Flag, ShieldAlert } from "lucide-react";
+import { ArrowLeft, Check, Flag } from "lucide-react";
 import { toast } from "sonner";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { useHydrated } from "@/lib/format/useHydrated";
@@ -281,9 +281,6 @@ export function DoctorReviewClient({
   // as well would let the button and the record disagree after a reload.
   const [decision, setDecision] = useState<DecisionState>("idle");
   const [decisionError, setDecisionError] = useState<string | null>(null);
-  /** The reason the readiness gate blocked, when it did. */
-  const [readinessBlock, setReadinessBlock] =
-    useState<ReadinessBlockDetail | null>(null);
 
   // ── WhatsApp send, chained after approval ─────────────────────────────────
   //
@@ -606,7 +603,6 @@ export function DoctorReviewClient({
               : "Approved · kit order already existed",
           );
           setNote("");
-          setReadinessBlock(null);
           setDecision("approved");
           // WhatsApp is chained, not coupled: awaited so the journey view
           // reflects it on the very next load, but its own failure has
@@ -633,20 +629,17 @@ export function DoctorReviewClient({
         }
 
         if (res.status === 422 && j.error === "readiness_blocked") {
-          const detail = j.detail as ReadinessBlockDetail | undefined;
-          const overridable =
-            !!detail &&
-            detail.groundingViolationCount === 0 &&
-            detail.reasoningGapCount > 0;
-          // A reasoning-gap-only block can be signed past by the doctor with a
-          // justification. A grounding violation (or missing snapshot) cannot —
-          // show it as a hard stop that only regeneration resolves.
+          // Hard blocker only now — a grounding violation, or a missing/
+          // malformed readiness snapshot. Narrative/reasoning-completeness
+          // advisories no longer block approval (the server approves them as
+          // soft advisories), so they never return 422 here. A hard block is
+          // not something the doctor signs past inline with a typed reason:
+          // surface it and let them Request changes / regenerate.
           setDecision("idle");
-          if (overridable && !readinessOverrideReason) {
-            setReadinessBlock(detail);
-            return;
-          }
-          toast.error(j.message ?? "Approval blocked by clinical readiness gate");
+          toast.error(
+            j.message ??
+              "Approval blocked — this case needs changes before it can be approved.",
+          );
           return;
         }
 
@@ -1012,18 +1005,6 @@ export function DoctorReviewClient({
           onSubmit={submitFeedback}
         />
       )}
-      {readinessBlock && (
-        <ReadinessOverrideModal
-          detail={readinessBlock}
-          submitting={decisionState === "saving"}
-          onCancel={() => setReadinessBlock(null)}
-          onOverride={(reason) => approveAndCreateOrder(reason)}
-          onSendForRevision={() => {
-            setReadinessBlock(null);
-            setRevisionOpen(true);
-          }}
-        />
-      )}
     </div>
   );
 }
@@ -1163,144 +1144,6 @@ function DeliveryBlock({
             remain on the order record and in the audit trail. */}
       </div>
     </section>
-  );
-}
-
-// ── Readiness override modal ─────────────────────────────────────────────────
-//
-// Shown only when the readiness gate blocked approval AND the block is
-// reasoning-gaps-only (the server refuses to accept an override for grounding
-// violations, so those never reach here). The doctor must type a clinical
-// justification; it is persisted on the immutable approval event and the kit
-// order's audit metadata.
-
-type ReadinessBlockDetail = {
-  doctorSummary?: string;
-  groundingViolationCount: number;
-  reasoningGapCount: number;
-  reasoningGaps?: { summary?: string; subject?: string }[];
-};
-
-const MIN_OVERRIDE_REASON = 10;
-
-function ReadinessOverrideModal({
-  detail,
-  submitting,
-  onCancel,
-  onOverride,
-  onSendForRevision,
-}: {
-  detail: ReadinessBlockDetail;
-  submitting: boolean;
-  onCancel: () => void;
-  onOverride: (reason: string) => void;
-  onSendForRevision: () => void;
-}) {
-  const [reason, setReason] = useState("");
-  const canSubmit = reason.trim().length >= MIN_OVERRIDE_REASON && !submitting;
-
-  return (
-    <ModalShell onDismiss={onCancel} labelledBy="readiness-title">
-      <div className="border-b border-stone-200 p-5">
-        <div className="flex items-center gap-2">
-          <ShieldAlert className="h-5 w-5 text-amber-600" aria-hidden />
-          <h2 id="readiness-title" className="font-serif text-lg text-slate-900">
-            Approve past the readiness advisory
-          </h2>
-        </div>
-        <p className="mt-1 text-xs text-stone-500">
-          The AI narrative has{" "}
-          <strong>
-            {detail.reasoningGapCount} reasoning gap
-            {detail.reasoningGapCount === 1 ? "" : "s"}
-          </strong>{" "}
-          — a completeness advisory, not a safety contraindication. As the
-          reviewing clinician you may approve with a recorded justification.
-        </p>
-      </div>
-      <div className="space-y-3 p-5">
-        {detail.reasoningGaps && detail.reasoningGaps.length > 0 && (
-          <div className="rounded-lg border border-amber-200 bg-amber-50 p-3">
-            <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-amber-700">
-              What the gate flagged
-            </p>
-            <ul className="mt-1.5 list-disc space-y-1 pl-4 text-xs text-amber-900">
-              {detail.reasoningGaps.slice(0, 5).map((g, i) => (
-                <li key={i}>{g.summary ?? g.subject ?? "Unspecified gap"}</li>
-              ))}
-            </ul>
-          </div>
-        )}
-
-        {/* Alternative to overriding: flag it for revision instead of signing
-            off. Records the reason and holds the consultation. */}
-        <div className="flex items-start justify-between gap-3 rounded-lg border border-stone-200 bg-stone-50 p-3">
-          <div>
-            <p className="text-xs font-medium text-slate-800">
-              Prefer not to sign off?
-            </p>
-            <p className="mt-0.5 text-[11px] text-stone-600">
-              Flag it for revision instead — records your reason and holds the
-              consultation rather than approving it.
-            </p>
-          </div>
-          <button
-            type="button"
-            onClick={onSendForRevision}
-            disabled={submitting}
-            className="shrink-0 rounded-lg border border-stone-300 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-stone-100 disabled:opacity-50"
-          >
-            Needs revision
-          </button>
-        </div>
-
-        <div className="relative py-1 text-center">
-          <span className="bg-white px-2 text-[10px] font-semibold uppercase tracking-[0.14em] text-stone-400">
-            or approve with justification
-          </span>
-        </div>
-
-        <div>
-          <label
-            htmlFor="readiness-reason"
-            className="text-[10px] font-semibold uppercase tracking-[0.14em] text-stone-500"
-          >
-            Clinical justification (required)
-          </label>
-          <textarea
-            id="readiness-reason"
-            value={reason}
-            onChange={(e) => setReason(e.target.value)}
-            placeholder="e.g. Narrative wording is incomplete but the kit plan and clinical reasoning are correct for this presentation; I take clinical responsibility for this report."
-            rows={4}
-            maxLength={2000}
-            className="mt-1 w-full rounded-lg border border-stone-200 px-3 py-2 text-sm text-slate-800 focus:border-amber-500 focus:outline-none focus:ring-2 focus:ring-amber-500/15"
-          />
-          <p className="mt-1 text-[11px] text-stone-400">
-            Recorded against your name on the approval and the kit order.
-            Minimum {MIN_OVERRIDE_REASON} characters.
-          </p>
-        </div>
-      </div>
-      <div className="flex items-center justify-end gap-2 border-t border-stone-200 p-4">
-        <button
-          type="button"
-          onClick={onCancel}
-          disabled={submitting}
-          className="rounded-lg px-3 py-1.5 text-sm text-slate-700 hover:bg-stone-100 disabled:opacity-50"
-        >
-          Cancel
-        </button>
-        <button
-          type="button"
-          disabled={!canSubmit}
-          onClick={() => onOverride(reason.trim())}
-          className="inline-flex items-center gap-1.5 rounded-lg bg-amber-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-amber-700 disabled:opacity-50"
-        >
-          {submitting ? "Approving…" : "Approve anyway & create order"}
-        </button>
-      </div>
-    </ModalShell>
   );
 }
 

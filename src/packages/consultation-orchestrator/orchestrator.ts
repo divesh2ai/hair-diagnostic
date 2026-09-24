@@ -371,25 +371,44 @@ export class ConsultationOrchestrator {
     if (input.status === "APPROVED") {
       const readiness = evaluateClinicalReadinessForApproval(existing.content);
       if (!readiness.ready) {
-        // A senior doctor may sign past a reasoning gap with a typed
-        // justification — but ONLY reasoning gaps, and never via a synthetic
-        // token-reviewer identity. Grounding violations and missing/malformed
-        // snapshots are hard stops that no override widens.
+        // ── Governance model: hard blockers vs soft advisories ───────────────
+        //
+        // HARD BLOCK — a genuine safety/integrity failure the doctor must not
+        //   sign past unseen: a grounding violation (a recommendation that
+        //   cannot be traced to the recorded evidence), a missing or malformed
+        //   readiness snapshot, or any MIXED set that includes one of those.
+        //   Nothing here widens these, and the anonymous TOKEN_REVIEWER
+        //   identity may never sign past any gap.
+        //
+        // SOFT ADVISORY — a set that is ONLY narrative/reasoning-completeness
+        //   gaps (REASONING_GAP_PRESENT). These are AI documentation-quality
+        //   notes — an FPHL/metabolic/oxidative explanation that reads thin —
+        //   NOT clinical contraindications. A signed-in clinician approves past
+        //   them with no written justification; requiring the doctor to type a
+        //   reason to compensate for an AI narrative gap was non-clinical
+        //   friction. The fact that an advisory was present and acknowledged is
+        //   still recorded on the immutable approval event (overrideRecord),
+        //   and the doctor's own note is kept when they choose to add one.
         const reasoningGapsOnly =
           readiness.groundingViolationCount === 0 &&
           readiness.reasoningGapCount > 0 &&
           readiness.blockingCodes.every((c) => c === "REASONING_GAP_PRESENT");
-        const reason = input.readinessOverride?.reason?.trim() ?? "";
-        const overrideEligible =
-          reasoningGapsOnly &&
-          reason.length >= MIN_READINESS_OVERRIDE_REASON &&
-          input.ctx.role.toUpperCase() !== "TOKEN_REVIEWER";
+        const isTokenReviewer =
+          input.ctx.role.toUpperCase() === "TOKEN_REVIEWER";
 
-        if (!overrideEligible) {
+        if (!reasoningGapsOnly || isTokenReviewer) {
           throw new ReadinessBlockedError(readiness);
         }
+
+        // Soft advisory acknowledged. An optional doctor note is preserved; the
+        // sentinel records that the advisory existed and was signed off without
+        // a required justification.
+        const ackNote = input.readinessOverride?.reason?.trim();
         overrideRecord = {
-          reason,
+          reason:
+            ackNote && ackNote.length > 0
+              ? ackNote
+              : ADVISORY_ACKNOWLEDGED_NO_JUSTIFICATION,
           reasoningGapCount: readiness.reasoningGapCount,
           overriddenBy: input.ctx.actorId,
           at: new Date().toISOString(),
@@ -490,9 +509,12 @@ const APPROVABLE_ASSESSMENT_STATUSES = new Set([
   "PARTIAL_FAILURE",
 ]);
 
-// A readiness override must carry a substantive clinical justification —
-// not "ok" or a stray keystroke. Mirrors the doctor-note minimum intent.
-const MIN_READINESS_OVERRIDE_REASON = 10;
+// Sentinel recorded on the approval event when a case carried only soft
+// narrative/reasoning advisories and the doctor approved without adding a note.
+// It documents that an advisory was present and acknowledged — no written
+// justification is required for a soft advisory (see the approval gate above).
+const ADVISORY_ACKNOWLEDGED_NO_JUSTIFICATION =
+  "ADVISORY_ACKNOWLEDGED_NO_JUSTIFICATION_REQUIRED";
 
 function isSuperAdmin(role: string): boolean {
   return role.toUpperCase() === "SUPER_ADMIN";

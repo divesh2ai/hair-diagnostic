@@ -34,6 +34,16 @@ export type AttentionClass = "attention" | "contradiction" | "limitation";
 
 export interface AttentionItem {
   kind: AttentionClass;
+  /**
+   * HARD — a genuine safety flag (contraindication / caution / allergy) or an
+   *   evidence-integrity failure (grounding violation). The doctor must see
+   *   these plainly; they are not collapsed.
+   * SOFT — an AI documentation/completeness advisory (thin narrative, low
+   *   confidence, missing optional inputs, legacy record). These do not block
+   *   approval and are gathered into one compact, collapsed "AI Review Notes"
+   *   so a documentation gap never reads as a clinical error the doctor made.
+   */
+  severity: "hard" | "soft";
   title: string;
   detail: string;
 }
@@ -105,6 +115,7 @@ export function buildAttentionItems(input: AttentionInput): AttentionItem[] {
   for (const flag of input.safety ?? []) {
     items.push({
       kind: "attention",
+      severity: "hard",
       title: `${flag.source}: ${flag.label}`,
       detail: flag.reason ?? "Recorded by the clinical engine for this patient.",
     });
@@ -117,6 +128,7 @@ export function buildAttentionItems(input: AttentionInput): AttentionItem[] {
     const n = readiness.groundingViolationCount;
     items.push({
       kind: "contradiction",
+      severity: "hard",
       title: "Recommendation not fully supported by recorded evidence",
       detail:
         `${n} recommendation${n === 1 ? "" : "s"} could not be traced back to the ` +
@@ -126,12 +138,16 @@ export function buildAttentionItems(input: AttentionInput): AttentionItem[] {
 
   if (readiness && readiness.reasoningGapCount > 0) {
     const n = readiness.reasoningGapCount;
+    // A reasoning gap is an AI documentation-quality note — a recommendation
+    // that the written narrative explains thinly — NOT a clinical error and NOT
+    // a contraindication. Soft, non-accusatory, and it does not block approval.
     items.push({
       kind: "attention",
-      title: "Incomplete clinical reasoning",
+      severity: "soft",
+      title: "Reasoning note",
       detail:
-        `${n} step${n === 1 ? "" : "s"} in the reasoning chain ${n === 1 ? "is" : "are"} ` +
-        "missing. You can proceed with a written justification.",
+        `${n} recommendation${n === 1 ? " has" : "s have"} limited narrative support ` +
+        "in the AI write-up. This does not change the kit plan and does not prevent approval.",
     });
   }
 
@@ -144,6 +160,7 @@ export function buildAttentionItems(input: AttentionInput): AttentionItem[] {
     const rationale = confidence.overall.rationale?.trim();
     items.push({
       kind: "attention",
+      severity: "soft",
       title: "Limited supporting evidence",
       detail: rationale && rationale.length > 0 ? rationale : "",
     });
@@ -160,6 +177,7 @@ export function buildAttentionItems(input: AttentionInput): AttentionItem[] {
     if (reasons) {
       items.push({
         kind: "limitation",
+        severity: "soft",
         title: "Additional inputs would strengthen this assessment",
         detail: reasons,
       });
@@ -169,6 +187,7 @@ export function buildAttentionItems(input: AttentionInput): AttentionItem[] {
   if (degradedReasons.includes("LEGACY_RAW_RESPONSES_MISSING")) {
     items.push({
       kind: "limitation",
+      severity: "soft",
       title: "Historical record with incomplete responses",
       detail:
         "Some original assessment responses are unavailable for this record. " +
