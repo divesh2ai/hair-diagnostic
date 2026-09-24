@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { Loader2, RefreshCw, Trash2, Undo2, X } from "lucide-react";
 import type { Consultation, TreatmentPhase } from "@shared/types/consultation";
-import { KitLineupEditor } from "../KitLineupEditor";
+import { KitLineupEditor, type SavedConsultation } from "../KitLineupEditor";
 import { TopicalsCard } from "@/components/consultation";
 import { ProductImage } from "@/components/kits/ProductImage";
 import { useKitCatalog } from "@/lib/doctor/kitCatalog";
@@ -64,7 +64,14 @@ export interface ProtocolSectionProps {
   expectedContentVersion: number;
   /** Approved consultations are locked — the order was cut from this lineup. */
   isApproved: boolean;
-  onSaved: () => Promise<void> | void;
+  /**
+   * Called after a successful save. Receives the mutation's OWN authoritative
+   * response ({ consultation, meta } for the version it just wrote), so the
+   * parent can update the UI from it directly instead of paying for a second
+   * full GET reload. Called with no argument only on paths that cannot return
+   * it, where the parent falls back to a reload.
+   */
+  onSaved: (updated?: SavedConsultation) => Promise<void> | void;
   onConflict: () => Promise<void> | void;
   /** Staged, unsaved lineup edits in the advanced editor — surfaced so approval can be guarded. */
   onDirtyChange?: (dirty: boolean) => void;
@@ -134,7 +141,8 @@ export function ProtocolSection({
         return;
       }
       closePanels();
-      await onSaved();
+      const j = (await res.json().catch(() => ({}))) as Partial<SavedConsultation>;
+      await onSaved(j.consultation && j.meta ? { consultation: j.consultation, meta: j.meta } : undefined);
     } finally {
       setBusy(false);
     }
@@ -176,7 +184,8 @@ export function ProtocolSection({
         return;
       }
       closePanels();
-      await onSaved();
+      const j = (await res.json().catch(() => ({}))) as Partial<SavedConsultation>;
+      await onSaved(j.consultation && j.meta ? { consultation: j.consultation, meta: j.meta } : undefined);
     } finally {
       setBusy(false);
     }

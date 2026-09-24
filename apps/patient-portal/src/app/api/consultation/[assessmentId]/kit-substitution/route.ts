@@ -32,6 +32,7 @@ import { prisma } from "@/lib/prisma";
 import { requireDoctorContext, assertDoctorInClinic } from "@/lib/auth";
 import { makeOrchestrator, OrchestratorError } from "@hairos/packages/consultation-orchestrator";
 import { newRequestId } from "@/lib/consultation/loadReview";
+import { consultationMeta } from "@/lib/consultation/meta";
 import { writeAuditLog } from "@/lib/audit/writeAuditLog";
 import { getKitInfo } from "@hairos/packages/registries/kits/info";
 import {
@@ -219,7 +220,7 @@ export async function POST(
         },
       }).catch((err) => console.error("[kit-substitution.substitute] audit failed", err));
 
-      return NextResponse.json({ consultation: stored.content, contentVersion: stored.contentVersion });
+      return NextResponse.json({ consultation: stored.content, contentVersion: stored.contentVersion, meta: consultationMeta(stored) });
     }
 
     if (body.action === "RESTORE") {
@@ -265,7 +266,7 @@ export async function POST(
         },
       }).catch((err) => console.error("[kit-substitution.restore] audit failed", err));
 
-      return NextResponse.json({ consultation: stored.content, contentVersion: stored.contentVersion });
+      return NextResponse.json({ consultation: stored.content, contentVersion: stored.contentVersion, meta: consultationMeta(stored) });
     }
 
     return errorResponse(400, "UNKNOWN_ACTION", "Unrecognised action.", requestId);

@@ -25,6 +25,7 @@ import { PatientJourney } from "@/components/doctor/PatientJourney";
 import { ReviewHeader } from "./sections/ReviewHeader";
 import { ClinicalAttentionSection } from "./sections/ClinicalAttentionSection";
 import { ProtocolSection } from "./sections/ProtocolSection";
+import type { SavedConsultation } from "./KitLineupEditor";
 import { SecondaryDetail } from "./sections/SecondaryDetail";
 import { ClinicalSummarySection } from "./sections/ClinicalSummarySection";
 import { OnePagerBlock } from "./sections/OnePagerBlock";
@@ -393,6 +394,21 @@ export function DoctorReviewClient({
     }
   }, [assessmentId]);
 
+  // Apply a mutation's OWN authoritative response ({ consultation, meta } for
+  // the version it just wrote) directly, instead of firing a second full GET
+  // reload of the whole review. This is what takes a kit reorder / Replace /
+  // Remove / note save from "PATCH + full reload" down to just the PATCH: the
+  // response already carries the new version and its recomputed readiness, and
+  // meta.contentVersion advances so the next edit/approve stays version-safe.
+  // Operational / visit / delivery metadata are intentionally left as-is —
+  // they are non-critical here and refresh on the next natural navigation.
+  const applySaved = useCallback((updated: SavedConsultation) => {
+    setConsultation(updated.consultation as Consultation);
+    setMeta(updated.meta as ConsultationMeta);
+    setError(null);
+    setLoadState("ready");
+  }, []);
+
   // The server already resolved this review (see page.tsx), so the first
   // render is the finished case and there is nothing to fetch. Re-running the
   // mount fetch would spend a round trip re-fetching bytes already on screen.
@@ -475,13 +491,18 @@ export function DoctorReviewClient({
         toast.error(j.message ?? "Could not save note");
         return;
       }
+      const saved = (await res.json().catch(() => ({}))) as Partial<SavedConsultation>;
       toast.success("Note saved — new version created");
       setNote("");
-      await load();
+      if (saved.consultation && saved.meta) {
+        applySaved({ consultation: saved.consultation, meta: saved.meta });
+      } else {
+        await load();
+      }
     } finally {
       setSavingNote(false);
     }
-  }, [assessmentId, consultation, meta, note, load]);
+  }, [assessmentId, consultation, meta, note, load, applySaved]);
 
   /**
    * Approve, and create the kit order.
@@ -636,9 +657,13 @@ export function DoctorReviewClient({
           // not something the doctor signs past inline with a typed reason:
           // surface it and let them Request changes / regenerate.
           setDecision("idle");
+          // Deliberately NOT the server's doctorSummary (j.message), which is
+          // the validator's "Blocked: N unresolved grounding violation(s)"
+          // jargon. The specific, actionable reason is rendered in the review
+          // notes above (see ClinicalAttentionSection); the toast just says an
+          // action is needed and where to resolve it.
           toast.error(
-            j.message ??
-              "Approval blocked — this case needs changes before it can be approved.",
+            "This case needs review before it can be approved — see the note above, then use Request changes.",
           );
           return;
         }
@@ -915,9 +940,10 @@ export function DoctorReviewClient({
               assessmentId={assessmentId}
               expectedContentVersion={meta.contentVersion}
               isApproved={isApproved}
-              onSaved={async () => {
+              onSaved={async (updated) => {
                 toast.success("Treatment plan saved — new version created");
-                await load();
+                if (updated) applySaved(updated);
+                else await load();
               }}
               onConflict={load}
               onDirtyChange={setLineupDirty}

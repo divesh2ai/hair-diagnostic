@@ -121,18 +121,27 @@ export function buildAttentionItems(input: AttentionInput): AttentionItem[] {
     });
   }
 
-  // A grounding violation means a recommendation could not be traced to the
-  // evidence the engine itself recorded — the record disagreeing with itself.
-  // The approval gate already blocks on this; the doctor should see why.
+  // A hard block: something in the report is not supported by the recorded
+  // patient evidence, and approval is held until it is resolved. The doctor
+  // needs WHAT is unsupported, WHY, and WHAT to do — not a bare count and not
+  // validator jargon ("grounding violation"). The per-item summaries carry the
+  // specifics; the resolving action is Request changes (regenerate), because a
+  // narrative claim the evidence does not support is fixed by regenerating the
+  // report, not by removing a kit.
   if (readiness && readiness.groundingViolationCount > 0) {
     const n = readiness.groundingViolationCount;
+    const summaries = (readiness.groundingViolations ?? [])
+      .map((v) => v.summary?.trim())
+      .filter((s): s is string => !!s && s.length > 0);
+    const reason =
+      summaries.length > 0
+        ? summaries.join(" · ")
+        : "Part of this report is not supported by the recorded patient evidence.";
     items.push({
       kind: "contradiction",
       severity: "hard",
-      title: "Recommendation not fully supported by recorded evidence",
-      detail:
-        `${n} recommendation${n === 1 ? "" : "s"} could not be traced back to the ` +
-        "clinical evidence on file. Review before approving.",
+      title: `${n} item${n === 1 ? "" : "s"} need${n === 1 ? "s" : ""} review before approval`,
+      detail: `${reason} Use "Request changes" to regenerate before approving.`,
     });
   }
 
