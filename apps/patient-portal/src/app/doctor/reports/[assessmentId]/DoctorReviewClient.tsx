@@ -549,6 +549,13 @@ export function DoctorReviewClient({
    * only composes and hands back a URL; nothing is recorded as delivered.
    */
   const shareReportManually = useCallback(async () => {
+    // Open the tab synchronously, INSIDE the click's user-gesture context.
+    // A window.open() issued after the await below has lost that context, so
+    // the browser's popup blocker silently drops it and the button reads as
+    // dead. Open a blank tab now and point it at the governed wa.me URL once
+    // the server returns it — the URL and its governance are unchanged; only
+    // the moment the tab opens has moved earlier.
+    const waTab = window.open("about:blank", "_blank");
     try {
       const res = await fetch(`/api/consultation/${assessmentId}/share`, {
         method: "POST",
@@ -557,14 +564,20 @@ export function DoctorReviewClient({
       });
       const j = await res.json().catch(() => ({}));
       if (res.ok && j.ok && j.waUrl) {
-        window.open(j.waUrl, "_blank");
+        // Same governed URL as before (built server-side from the one
+        // buildReportWhatsAppMessage helper); we only navigate the pre-opened
+        // tab instead of opening a fresh one post-await.
+        if (waTab) waTab.location.href = j.waUrl;
+        else window.open(j.waUrl, "_blank");
         if (!j.hasPhone) {
           toast.error("This patient has no WhatsApp number on file — add one before sending.");
         }
       } else {
+        waTab?.close();
         toast.error("Could not prepare the WhatsApp message.");
       }
     } catch {
+      waTab?.close();
       toast.error("Could not reach the server.");
     }
   }, [assessmentId]);
