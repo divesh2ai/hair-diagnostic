@@ -213,6 +213,14 @@ export async function loadConsultationReview(
     legacyAssessment,
   } as const;
 
+  // Operational metadata (report / order / delivery state) is keyed by
+  // assessmentId alone and never feeds the core clinical payload, so it must
+  // not sit behind the core load on the doctor's first paint. Start it now and
+  // await it in the OPTIONAL block below. readOperationalState is total (never
+  // throws — see its contract), so firing it alongside a core load that may
+  // fail costs at most one harmless, already-resolved read on the error path.
+  const operationalPromise = readOperationalState(prisma, assessmentId);
+
   // ── CORE ──────────────────────────────────────────────────────────────────
   let stored: Awaited<ReturnType<ConsultationOrchestrator["getOrCreateDetailed"]>>;
   try {
@@ -285,7 +293,8 @@ export async function loadConsultationReview(
 
   let operational: ConsultationOperationalState | null = null;
   try {
-    operational = await readOperationalState(prisma, assessmentId);
+    // Started in parallel with the core load above; awaited here.
+    operational = await operationalPromise;
     for (const failure of operational.degraded) {
       warnings.push({ code: `OPTIONAL_${failure.dependency.toUpperCase()}_UNAVAILABLE`, stage: failure.stage });
       degradedReasons.push(DEGRADED_REASON_BY_DEPENDENCY[failure.dependency]);
