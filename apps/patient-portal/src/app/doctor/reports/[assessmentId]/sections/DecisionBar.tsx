@@ -460,6 +460,15 @@ function TerminalActions({
   layout: "rail" | "bar";
 }) {
   const stack = layout === "rail";
+  // Launch discipline is WHATSAPP_AUTOMATION_ENABLED=false (see
+  // lib/delivery/sendPatientLink), so an approved case is NOT auto-delivered —
+  // the doctor still has to send it. Make that the primary post-approval action
+  // right here in the rail, rather than leaving it to a secondary control
+  // further down the page, so the normal flow is Review → Approve → Send with
+  // no hunting. Reuses the existing manual-share handler (the 365d69a
+  // popup-safe wa.me path) — no new send capability, no clinical logic.
+  const showManualSend =
+    state === "approved" && !whatsappAutomationEnabled && !!onShareManually;
   return (
     <div className={stack ? "space-y-3" : "flex items-center justify-between gap-3"}>
       <div className="min-w-0">
@@ -487,6 +496,20 @@ function TerminalActions({
       </div>
 
       <div className={stack ? "flex flex-col gap-2" : "flex items-center gap-2"}>
+        {showManualSend && (
+          // Primary post-approval action in the launch (manual-send) config.
+          // Same visual weight as the "Next patient" handoff normally carries;
+          // that handoff is demoted to secondary below so exactly one action
+          // reads as primary here.
+          <button
+            type="button"
+            onClick={onShareManually}
+            className={`inline-flex items-center justify-center gap-2 rounded-lg bg-[color:var(--hd-text)] px-4 py-2 text-sm font-medium text-[color:var(--hd-surface)] transition-colors hover:opacity-90 ${stack ? "w-full" : ""}`}
+          >
+            <MessageCircle className="h-4 w-4" aria-hidden />
+            Send report to patient
+          </button>
+        )}
         {cartHref && (
           <a
             href={cartHref}
@@ -502,7 +525,11 @@ function TerminalActions({
         {nextResolved && nextPatient && (
           <Link
             href={reviewHref({ id: nextPatient.id, concern: nextPatient.concern })}
-            className={`inline-flex items-center justify-center gap-2 rounded-lg bg-[color:var(--hd-text)] px-4 py-2 text-sm font-medium text-[color:var(--hd-surface)] transition-colors hover:opacity-90 ${stack ? "w-full" : ""}`}
+            className={
+              showManualSend
+                ? `hd-btn hd-btn-secondary ${stack ? "w-full" : ""}`
+                : `inline-flex items-center justify-center gap-2 rounded-lg bg-[color:var(--hd-text)] px-4 py-2 text-sm font-medium text-[color:var(--hd-surface)] transition-colors hover:opacity-90 ${stack ? "w-full" : ""}`
+            }
           >
             Next patient
             {stack && (
