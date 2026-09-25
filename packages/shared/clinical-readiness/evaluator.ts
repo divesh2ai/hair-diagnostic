@@ -29,6 +29,13 @@ import type {
 export type ReadinessBlockingCode =
   | "GROUNDING_VIOLATION_PRESENT"
   | "REASONING_GAP_PRESENT"
+  // A recommendation-level evidence failure: a kit is in the protocol with NO
+  // driver, therapy need or rationale — nothing supports WHY it was selected.
+  // This is a treatment-safety failure, not a narrative-prose one, so it is a
+  // HARD block (see isSoftAdvisoryOnly). It is derived from the reasoning-gap
+  // kind `kit.missingTrigger`, which is why it can coexist with
+  // REASONING_GAP_PRESENT on the same decision.
+  | "RECOMMENDATION_UNSUPPORTED_PRESENT"
   | "READINESS_SNAPSHOT_MISSING"
   | "READINESS_SNAPSHOT_MALFORMED";
 
@@ -81,9 +88,17 @@ export function evaluateClinicalReadinessForApproval(
 
   const groundingCount = snapshot.groundingViolations.length;
   const gapCount = snapshot.reasoningGaps.length;
+  // A recommendation-level failure: a kit was selected with no driver / therapy
+  // need / rationale at all. Distinguished from the narrative-prose reasoning
+  // gaps (kit/condition not named, empty section) by its kind, so it can be a
+  // HARD block while the narrative ones stay soft.
+  const unsupportedRecommendation = snapshot.reasoningGaps.some(
+    (g) => g.kind === "kit.missingTrigger",
+  );
   const codes: ReadinessBlockingCode[] = [];
   if (groundingCount > 0) codes.push("GROUNDING_VIOLATION_PRESENT");
   if (gapCount > 0) codes.push("REASONING_GAP_PRESENT");
+  if (unsupportedRecommendation) codes.push("RECOMMENDATION_UNSUPPORTED_PRESENT");
 
   const ready = codes.length === 0 && snapshot.isReadyForApproval;
 
@@ -123,16 +138,42 @@ export function evaluateClinicalReadinessForApproval(
 // ─────────────────────────────────────────────────────────────────────────────
 
 /**
- * True when a decision is blocked ONLY by soft reasoning/narrative advisories.
- * A ready decision is trivially not blocked by anything, so it is not "soft
- * advisory only" — callers gate on {@link isHardBlocked} or `ready` directly.
+ * True when a decision is blocked ONLY by soft AI-narrative advisories.
+ *
+ * Two blocking codes are soft — both are NARRATIVE / documentation-quality
+ * defects, NOT treatment-safety failures (kit selection is driven by recorded
+ * facts, never by the narrative prose):
+ *
+ *   • REASONING_GAP_PRESENT      — a recommendation the write-up explains thinly,
+ *                                  or a condition/kit not named in the narrative.
+ *   • GROUNDING_VIOLATION_PRESENT — a narrative SENTENCE mentions something the
+ *                                  patient did not report (e.g. GLP-1 wording
+ *                                  inserted without evidence). This is Rule 2 /
+ *                                  Rule 7 on the prose — the fix is to correct
+ *                                  the sentence, not to block the clinician.
+ *
+ * Neither blocks approval, report rendering, PDF or delivery. A ready decision
+ * is trivially not blocked, so it is not "soft advisory only" — callers gate on
+ * {@link isHardBlocked} or `ready` directly.
+ *
+ * A missing or malformed readiness snapshot is an INTEGRITY failure, never soft.
  */
 export function isSoftAdvisoryOnly(decision: ReadinessDecision): boolean {
-  return (
-    decision.groundingViolationCount === 0 &&
-    decision.reasoningGapCount > 0 &&
-    decision.blockingCodes.length > 0 &&
-    decision.blockingCodes.every((c) => c === "REASONING_GAP_PRESENT")
+  if (decision.blockingCodes.length === 0) return false;
+  // Hard failures are never soft: an integrity failure (corrupt / absent
+  // readiness data) or a recommendation-level evidence failure (a kit with no
+  // support at all). Both are treatment-safety / data-integrity concerns, not
+  // narrative prose.
+  const hasHardFailure = decision.blockingCodes.some(
+    (c) =>
+      c === "READINESS_SNAPSHOT_MISSING" ||
+      c === "READINESS_SNAPSHOT_MALFORMED" ||
+      c === "RECOMMENDATION_UNSUPPORTED_PRESENT",
+  );
+  if (hasHardFailure) return false;
+  // Otherwise the block is only narrative-quality (reasoning and/or grounding).
+  return decision.blockingCodes.every(
+    (c) => c === "REASONING_GAP_PRESENT" || c === "GROUNDING_VIOLATION_PRESENT",
   );
 }
 

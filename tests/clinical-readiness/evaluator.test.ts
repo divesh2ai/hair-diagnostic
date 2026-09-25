@@ -36,6 +36,9 @@ describe("isSoftAdvisoryOnly / isHardBlocked — shared governance", () => {
   const evalOf = (s: ClinicalReadinessSnapshot) =>
     evaluateClinicalReadinessForApproval(consultationWith(s));
 
+  // A narrative-prose grounding violation: the write-up SENTENCE mentions
+  // something not recorded (Rule 2 / Rule 7). Governance: SOFT — correct the
+  // sentence, don't block the clinician. The recommendation is unaffected.
   const groundingSnap = snap({
     isReadyForApproval: false,
     groundingViolations: [
@@ -44,12 +47,15 @@ describe("isSoftAdvisoryOnly / isHardBlocked — shared governance", () => {
     blockingCodes: ["GROUNDING_VIOLATION_PRESENT"],
     summary: { groundingViolationCount: 1, reasoningGapCount: 0 },
   });
+  // A narrative-completeness reasoning gap: a kit not NAMED in the write-up.
+  // Documentation quality, not treatment safety → SOFT.
   const reasoningSnap = snap({
     isReadyForApproval: false,
     reasoningGaps: [{ kind: "kit.notDiscussedInNarrative", subject: "KIT", summary: "not named" }],
     blockingCodes: ["REASONING_GAP_PRESENT"],
     summary: { groundingViolationCount: 0, reasoningGapCount: 1 },
   });
+  // Both defects are narrative-prose → the whole set is still SOFT.
   const mixedSnap = snap({
     isReadyForApproval: false,
     groundingViolations: [
@@ -59,23 +65,67 @@ describe("isSoftAdvisoryOnly / isHardBlocked — shared governance", () => {
     blockingCodes: ["GROUNDING_VIOLATION_PRESENT", "REASONING_GAP_PRESENT"],
     summary: { groundingViolationCount: 1, reasoningGapCount: 1 },
   });
+  // A recommendation-level evidence failure: a kit selected with NO driver /
+  // therapy need / rationale (kind `kit.missingTrigger`). This is treatment
+  // safety, not prose → HARD, via RECOMMENDATION_UNSUPPORTED_PRESENT.
+  const unsupportedRecoSnap = snap({
+    isReadyForApproval: false,
+    reasoningGaps: [
+      { kind: "kit.missingTrigger", subject: "HAIR FACT TE GOLD", summary: "no trigger" },
+    ],
+    blockingCodes: ["REASONING_GAP_PRESENT"],
+    summary: { groundingViolationCount: 0, reasoningGapCount: 1 },
+  });
+  // A hard recommendation failure alongside a soft narrative one: HARD wins.
+  const unsupportedPlusNarrativeSnap = snap({
+    isReadyForApproval: false,
+    groundingViolations: [
+      { ruleId: "scalp.dandruff", section: "What We Found", summary: "mentions dandruff" },
+    ],
+    reasoningGaps: [
+      { kind: "kit.missingTrigger", subject: "HAIR FACT TE GOLD", summary: "no trigger" },
+    ],
+    blockingCodes: ["GROUNDING_VIOLATION_PRESENT", "REASONING_GAP_PRESENT"],
+    summary: { groundingViolationCount: 1, reasoningGapCount: 1 },
+  });
 
-  it("reasoning-gap-only → soft advisory, NOT hard-blocked", () => {
+  it("reasoning-gap-only (kit not named) → soft advisory, NOT hard-blocked", () => {
     const d = evalOf(reasoningSnap);
     expect(isSoftAdvisoryOnly(d)).toBe(true);
     expect(isHardBlocked(d)).toBe(false);
   });
 
-  it("grounding violation → hard-blocked, NOT soft", () => {
+  // Guardrail: an unsupported narrative SENTENCE is soft. Correct the wording;
+  // do not block the doctor. The treatment plan itself is untouched.
+  it("grounding violation (unsupported narrative sentence) → soft, NOT hard", () => {
     const d = evalOf(groundingSnap);
-    expect(isSoftAdvisoryOnly(d)).toBe(false);
-    expect(isHardBlocked(d)).toBe(true);
+    expect(isSoftAdvisoryOnly(d)).toBe(true);
+    expect(isHardBlocked(d)).toBe(false);
+    // Still not ready, still surfaced — soft ≠ invisible.
+    expect(d.ready).toBe(false);
+    expect(d.blockingCodes).toContain("GROUNDING_VIOLATION_PRESENT");
   });
 
-  it("mixed (grounding + reasoning) → hard-blocked", () => {
+  it("mixed narrative (grounding + kit-not-named) → soft, NOT hard", () => {
     const d = evalOf(mixedSnap);
-    expect(isSoftAdvisoryOnly(d)).toBe(false);
+    expect(isSoftAdvisoryOnly(d)).toBe(true);
+    expect(isHardBlocked(d)).toBe(false);
+  });
+
+  // Guardrail: an unsupported TREATMENT RECOMMENDATION is hard. A kit in the
+  // protocol with nothing supporting why it was selected must block approval.
+  it("unsupported recommendation (kit.missingTrigger) → hard-blocked, NOT soft", () => {
+    const d = evalOf(unsupportedRecoSnap);
+    expect(d.blockingCodes).toContain("RECOMMENDATION_UNSUPPORTED_PRESENT");
     expect(isHardBlocked(d)).toBe(true);
+    expect(isSoftAdvisoryOnly(d)).toBe(false);
+  });
+
+  it("hard recommendation failure + soft narrative → hard-blocked (hard wins)", () => {
+    const d = evalOf(unsupportedPlusNarrativeSnap);
+    expect(d.blockingCodes).toContain("RECOMMENDATION_UNSUPPORTED_PRESENT");
+    expect(isHardBlocked(d)).toBe(true);
+    expect(isSoftAdvisoryOnly(d)).toBe(false);
   });
 
   it("missing snapshot → hard-blocked (fail closed)", () => {

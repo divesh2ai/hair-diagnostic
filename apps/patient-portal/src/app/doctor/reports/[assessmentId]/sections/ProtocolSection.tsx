@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Loader2, RefreshCw, Trash2, Undo2, X } from "lucide-react";
+import { Loader2, RefreshCw, Trash2, Undo2 } from "lucide-react";
 import type { Consultation, TreatmentPhase } from "@shared/types/consultation";
 import { KitLineupEditor, type SavedConsultation } from "../KitLineupEditor";
 import { TopicalsCard } from "@/components/consultation";
@@ -11,12 +11,6 @@ import {
   buildProtocolItems,
   summarizeProtocol,
 } from "@/lib/doctor/protocolModel";
-import {
-  getApprovedAlternativeForKitId,
-  resolveSubstitutionPriceComparisonForKitId,
-} from "@/lib/commerce/budgetSubstitution";
-import { formatInrFromMinor } from "@/lib/commerce/kitPricing";
-import { getKitInfo } from "@hairos/packages/registries/kits/info";
 import { CollapsibleText } from "./CollapsibleText";
 
 // WHAT ARE WE TREATING? — the protocol, the reasoning that produced it, and the
@@ -101,16 +95,14 @@ export function ProtocolSection({
   const summary = summarizeProtocol(phases);
   const topicals = consultation.treatmentPlan.topicals ?? [];
 
-  // One inline panel open at a time, keyed by row index. `busy` gates every
-  // control on the section while a persist is in flight, since all three server
-  // actions advance the version.
-  const [replaceIndex, setReplaceIndex] = useState<number | null>(null);
+  // `busy` gates every control on the section while a persist is in flight,
+  // since the remaining server actions (Remove, and undoing a past
+  // substitution) advance the version.
   const [removeIndex, setRemoveIndex] = useState<number | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const closePanels = () => {
-    setReplaceIndex(null);
     setRemoveIndex(null);
     setError(null);
   };
@@ -227,21 +219,12 @@ export function ProtocolSection({
           {items.map((item, i) => {
             const phase = phases[i] as EditedPhase;
             const substitution = phase?.meta?.substitution;
-            const approvedAlt = !substitution
-              ? getApprovedAlternativeForKitId(item.kitId)
-              : null;
-            const comparison = approvedAlt
-              ? resolveSubstitutionPriceComparisonForKitId(
-                  item.kitId,
-                  approvedAlt.alternativeKitId,
-                )
-              : null;
-            const canReplace =
-              inlineEditable && comparison?.bothPricesApproved === true;
-            const altName = approvedAlt
-              ? getKitInfo(approvedAlt.alternativeKitId)?.displayName ??
-                approvedAlt.alternativeKitId
-              : null;
+            // Replace (offering a budget alternative) is intentionally NOT in
+            // the normal Review flow: it mounted an alternative-kit packshot and
+            // computed candidates the doctor rarely needs. Kit changes live in
+            // the advanced editor ("Request changes"), which loads alternatives
+            // only when the doctor opens it. Remove stays inline; a past
+            // substitution still shows its one-click Undo below.
 
             return (
               <li
@@ -350,27 +333,11 @@ export function ProtocolSection({
 
                     {/* The two inline actions. Quiet, text-weight controls —
                         the one filled button on the page stays Approve. */}
-                    {inlineEditable && replaceIndex !== i && removeIndex !== i && (
+                    {inlineEditable && removeIndex !== i && (
                       <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-2 border-t border-[color:var(--hd-border)] pt-3">
-                        {canReplace && altName && (
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setRemoveIndex(null);
-                              setReplaceIndex(i);
-                              setError(null);
-                            }}
-                            disabled={busy}
-                            className="inline-flex items-center gap-1.5 text-[13px] font-medium text-[color:var(--hd-primary-dark)] hover:underline disabled:opacity-50"
-                          >
-                            <RefreshCw className="h-3.5 w-3.5" aria-hidden />
-                            Replace
-                          </button>
-                        )}
                         <button
                           type="button"
                           onClick={() => {
-                            setReplaceIndex(null);
                             setRemoveIndex(i);
                             setError(null);
                           }}
@@ -380,74 +347,6 @@ export function ProtocolSection({
                           <Trash2 className="h-3.5 w-3.5" aria-hidden />
                           Remove
                         </button>
-                      </div>
-                    )}
-
-                    {/* REPLACE — the one approved alternative, its packshot,
-                        name and the patient saving, then apply / cancel. */}
-                    {replaceIndex === i && approvedAlt && altName && comparison?.bothPricesApproved && (
-                      <div className="mt-3 rounded-xl border border-[color:var(--hd-primary-border)] bg-[color:var(--hd-primary-tint)] p-3.5">
-                        <div className="flex items-center justify-between gap-2">
-                          <p className="hd-eyebrow !text-[color:var(--hd-primary-dark)]">
-                            Replace {item.name}
-                          </p>
-                          <button
-                            type="button"
-                            onClick={closePanels}
-                            disabled={busy}
-                            aria-label="Cancel replacement"
-                            className="rounded p-1 text-[color:var(--hd-text-muted)] hover:text-[color:var(--hd-text)] disabled:opacity-50"
-                          >
-                            <X className="h-4 w-4" aria-hidden />
-                          </button>
-                        </div>
-                        <p className="mt-1 text-[11px] text-[color:var(--hd-text-secondary)]">
-                          Recommended alternative · same treatment objective, approved for budget.
-                        </p>
-                        <div className="mt-2.5 flex items-center gap-3 rounded-lg border border-[color:var(--hd-border)] bg-[color:var(--hd-surface)] p-2.5">
-                          <ProductImage id={approvedAlt.alternativeKitId} category="kit" size="sm" />
-                          <div className="min-w-0 flex-1">
-                            <p className="text-sm font-medium text-[color:var(--hd-text)]">
-                              {altName}
-                            </p>
-                            <p className="mt-0.5 text-xs font-medium text-[color:var(--hd-primary-dark)]">
-                              Patient saving {formatInrFromMinor(comparison.savingMinor!)}
-                            </p>
-                            <p className="text-[11px] text-[color:var(--hd-text-muted)]">
-                              Reason recorded: patient budget / affordability.
-                            </p>
-                          </div>
-                        </div>
-                        {error && (
-                          <p className="mt-2 rounded bg-[color:var(--hd-critical-tint)] px-2 py-1 text-[11px] text-[color:var(--hd-critical-ink)]">
-                            {error}
-                          </p>
-                        )}
-                        <div className="mt-2.5 flex flex-wrap items-center gap-2">
-                          <button
-                            type="button"
-                            onClick={() =>
-                              void runSubstitution({
-                                action: "SUBSTITUTE",
-                                originalKitId: item.kitId,
-                                alternativeKitId: approvedAlt.alternativeKitId,
-                              })
-                            }
-                            disabled={busy}
-                            className="inline-flex items-center gap-1.5 rounded-lg bg-[color:var(--hd-primary)] px-3 py-1.5 text-xs font-semibold text-white hover:bg-[color:var(--hd-primary-dark)] disabled:opacity-50"
-                          >
-                            {busy && <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden />}
-                            Use {altName}
-                          </button>
-                          <button
-                            type="button"
-                            onClick={closePanels}
-                            disabled={busy}
-                            className="rounded-lg border border-[color:var(--hd-border-strong)] bg-[color:var(--hd-surface)] px-3 py-1.5 text-xs font-medium text-[color:var(--hd-text-secondary)] hover:bg-[color:var(--hd-surface-alt)] disabled:opacity-50"
-                          >
-                            Cancel
-                          </button>
-                        </div>
                       </div>
                     )}
 

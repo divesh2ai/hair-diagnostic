@@ -121,27 +121,26 @@ export function buildAttentionItems(input: AttentionInput): AttentionItem[] {
     });
   }
 
-  // A hard block: something in the report is not supported by the recorded
-  // patient evidence, and approval is held until it is resolved. The doctor
-  // needs WHAT is unsupported, WHY, and WHAT to do — not a bare count and not
-  // validator jargon ("grounding violation"). The per-item summaries carry the
-  // specifics; the resolving action is Request changes (regenerate), because a
-  // narrative claim the evidence does not support is fixed by regenerating the
-  // report, not by removing a kit.
+  // A narrative-grounding issue: the write-up mentions something the patient did
+  // not report (e.g. a symptom or medication). This is an AI documentation
+  // -quality defect in the PROSE — the treatment plan is driven by recorded
+  // facts, not the narrative — so it is SOFT and does NOT block approval. It is
+  // surfaced as a quiet note (collapsed under "AI Review Notes") for the record;
+  // the doctor may regenerate via "Request changes" if they want the wording
+  // corrected, but they are not required to.
   if (readiness && readiness.groundingViolationCount > 0) {
-    const n = readiness.groundingViolationCount;
     const summaries = (readiness.groundingViolations ?? [])
       .map((v) => v.summary?.trim())
       .filter((s): s is string => !!s && s.length > 0);
     const reason =
       summaries.length > 0
         ? summaries.join(" · ")
-        : "Part of this report is not supported by the recorded patient evidence.";
+        : "The write-up mentions something not recorded in this patient's answers.";
     items.push({
-      kind: "contradiction",
-      severity: "hard",
-      title: `${n} item${n === 1 ? "" : "s"} need${n === 1 ? "s" : ""} review before approval`,
-      detail: `${reason} Use "Request changes" to regenerate before approving.`,
+      kind: "limitation",
+      severity: "soft",
+      title: "Narrative wording note",
+      detail: `${reason} Does not affect the treatment plan or prevent approval.`,
     });
   }
 

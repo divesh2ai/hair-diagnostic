@@ -90,6 +90,10 @@ export async function POST(
         expectedContentVersion: body.expectedContentVersion,
         notes,
         readinessOverride,
+        // Return as soon as the approval + order are durable; the one-pager
+        // snapshot/render run in the client's follow-up POST to
+        // /api/consultation/[id]/report/prepare, off the doctor's critical path.
+        deferReportPrep: true,
       },
     );
 

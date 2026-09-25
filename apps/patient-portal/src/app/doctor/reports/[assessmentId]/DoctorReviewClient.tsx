@@ -420,36 +420,36 @@ export function DoctorReviewClient({
     void load();
   }, [load]);
 
-  // Operational status (report pill, post-approval delivery, patient journey)
-  // is deferred off first paint: the server renders the core clinical case now
-  // (see page.tsx / loadReview deferOperational) and we fetch the operational
-  // slice once, after mount, filling those non-critical sections without ever
-  // blocking the doctor's read. Only runs on the server-rendered path — the
-  // client-load path above already gets operational from its full load().
+  // Fetch the operational slice (report pill, delivery, journey, order/cart
+  // status) on its own, off the clinical critical path. Used both to fill it
+  // after first paint (server-rendered path defers it) and to refresh it in the
+  // background right after an approval creates the order — never blocking.
+  const refreshOperational = useCallback(async () => {
+    try {
+      const res = await fetch(`/api/consultation/${assessmentId}/operational`, {
+        cache: "no-store",
+      });
+      if (!res.ok) return;
+      const j = (await res.json().catch(() => ({}))) as {
+        operational?: ConsultationOperationalState | null;
+      };
+      if (j.operational) setOperational(j.operational);
+    } catch {
+      // Non-critical: the report/delivery/journey sections keep their default
+      // "not started / unavailable" state until the next navigation.
+    }
+  }, [assessmentId]);
+
+  // Operational status is deferred off first paint: the server renders the core
+  // clinical case now (see page.tsx / loadReview deferOperational) and we fetch
+  // the operational slice once, after mount. Only on the server-rendered path —
+  // the client-load path above already gets operational from its full load().
   const operationalFetched = useRef(false);
   useEffect(() => {
     if (operationalFetched.current || !initialData) return;
     operationalFetched.current = true;
-    let cancelled = false;
-    void (async () => {
-      try {
-        const res = await fetch(`/api/consultation/${assessmentId}/operational`, {
-          cache: "no-store",
-        });
-        if (!res.ok) return;
-        const j = (await res.json().catch(() => ({}))) as {
-          operational?: ConsultationOperationalState | null;
-        };
-        if (!cancelled && j.operational) setOperational(j.operational);
-      } catch {
-        // Non-critical: the report/delivery/journey sections keep their default
-        // "not started / unavailable" state until the next navigation.
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [assessmentId, initialData]);
+    void refreshOperational();
+  }, [initialData, refreshOperational]);
 
   // Bring the adjust panel into view once it actually exists.
   //
@@ -655,15 +655,36 @@ export function DoctorReviewClient({
               : "Approved · kit order already existed",
           );
           setNote("");
+          // Apply the order endpoint's OWN authoritative response — the approved
+          // consultation and its meta (approvalStatus APPROVED, new
+          // contentVersion) — instead of a second full getOrCreateDetailed
+          // reload. The post-approval sections render from isApproved
+          // immediately; operational (order/cart/report status) refreshes in the
+          // background just below. Falls back to load() only if the response did
+          // not carry the authoritative state.
+          if (j.consultation && j.meta) {
+            applySaved({ consultation: j.consultation, meta: j.meta });
+          } else {
+            await load();
+          }
           setDecision("approved");
-          // WhatsApp is chained, not coupled: awaited so the journey view
-          // reflects it on the very next load, but its own failure has
-          // already been handled entirely inside sendReportViaWhatsapp and
-          // cannot reach this catch block or undo the approval above.
+          // Report preparation (one-pager snapshot + render) is deferred off the
+          // approval request (POST /order returns as soon as approval + order are
+          // durable). Kick it off now, in a separate follow-up request, without
+          // blocking the doctor — it is idempotent on the approved version.
+          void fetch(`/api/consultation/${assessmentId}/report/prepare`, {
+            method: "POST",
+          }).catch(() => {
+            // Non-critical: the one-pager sweeper/retry reconciles it later.
+          });
+          // WhatsApp is chained, not coupled: its own failure is handled inside
+          // sendReportViaWhatsapp and cannot undo the approval above.
           if (whatsappAutomationEnabled) {
             await sendReportViaWhatsapp();
           }
-          await load();
+          // Order/cart/report status changed — refresh it in the background,
+          // off the doctor's critical path.
+          void refreshOperational();
           void resolveNextPatient();
           return;
         }
@@ -715,6 +736,8 @@ export function DoctorReviewClient({
       meta,
       note,
       load,
+      applySaved,
+      refreshOperational,
       resolveNextPatient,
       whatsappAutomationEnabled,
       sendReportViaWhatsapp,

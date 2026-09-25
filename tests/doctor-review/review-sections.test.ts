@@ -90,15 +90,21 @@ describe("clinical attention — silence by default", () => {
 });
 
 describe("clinical attention — real signals only", () => {
-  it("classifies a grounding violation as a contradiction, not a limitation", () => {
+  it("classifies a grounding violation as a soft narrative note, not a contradiction", () => {
+    // Governance change: a grounding violation is a narrative-prose defect
+    // (an unsupported SENTENCE), not a treatment-safety contradiction. It is a
+    // soft advisory the doctor may approve past — the wording is corrected, the
+    // plan is untouched — so it must NOT be surfaced as a hard contradiction.
     const items = buildAttentionItems({
       confidence: confidence("high"),
       readiness: readiness(2, 0),
       degradedReasons: [],
     });
     expect(items).toHaveLength(1);
-    expect(items[0]!.kind).toBe("contradiction");
-    expect(items[0]!.detail).toContain("2 recommendations");
+    expect(items[0]!.kind).toBe("limitation");
+    expect(items[0]!.severity).toBe("soft");
+    expect(items[0]!.title).toBe("Narrative wording note");
+    expect(items[0]!.detail).toContain("Does not affect the treatment plan or prevent approval");
   });
 
   it("classifies reasoning gaps as attention, since the doctor can proceed", () => {
@@ -108,7 +114,8 @@ describe("clinical attention — real signals only", () => {
       degradedReasons: [],
     });
     expect(items[0]!.kind).toBe("attention");
-    expect(items[0]!.detail).toContain("1 step");
+    expect(items[0]!.detail).toContain("1 recommendation");
+    expect(items[0]!.detail).toContain("does not prevent approval");
   });
 
   it("flags low confidence but not moderate or high", () => {

@@ -374,29 +374,34 @@ export class ConsultationOrchestrator {
       if (!readiness.ready) {
         // ── Governance model: hard blockers vs soft advisories ───────────────
         //
-        // HARD BLOCK — a genuine safety/integrity failure the doctor must not
-        //   sign past unseen: a grounding violation (a recommendation that
-        //   cannot be traced to the recorded evidence), a missing or malformed
+        // HARD BLOCK — a genuine treatment-safety / data-integrity failure the
+        //   doctor must not sign past unseen: an UNSUPPORTED RECOMMENDATION (a
+        //   kit in the protocol with no driver/therapy-need/rationale at all —
+        //   RECOMMENDATION_UNSUPPORTED_PRESENT), or a missing/malformed
         //   readiness snapshot, or any MIXED set that includes one of those.
         //   Nothing here widens these, and the anonymous TOKEN_REVIEWER
         //   identity may never sign past any gap.
         //
-        // SOFT ADVISORY — a set that is ONLY narrative/reasoning-completeness
-        //   gaps (REASONING_GAP_PRESENT). These are AI documentation-quality
-        //   notes — an FPHL/metabolic/oxidative explanation that reads thin —
-        //   NOT clinical contraindications. A signed-in clinician approves past
-        //   them with no written justification; requiring the doctor to type a
-        //   reason to compensate for an AI narrative gap was non-clinical
-        //   friction. The fact that an advisory was present and acknowledged is
-        //   still recorded on the immutable approval event (overrideRecord),
-        //   and the doctor's own note is kept when they choose to add one.
+        // SOFT ADVISORY — a set that is ONLY AI-narrative quality defects:
+        //   reasoning-completeness gaps (REASONING_GAP_PRESENT — a kit/condition
+        //   not named, a thin write-up) and grounding violations
+        //   (GROUNDING_VIOLATION_PRESENT — a narrative SENTENCE mentions
+        //   something the patient did not report, e.g. GLP-1 wording). These are
+        //   AI documentation-quality notes, NOT clinical contraindications: the
+        //   treatment plan is driven by recorded facts, never by the prose, so
+        //   the fix is to correct the sentence, not to block the clinician. A
+        //   signed-in doctor approves past them with no written justification;
+        //   requiring a typed reason to compensate for an AI narrative gap was
+        //   non-clinical friction. The fact that an advisory was present and
+        //   acknowledged is still recorded on the immutable approval event
+        //   (overrideRecord), and the doctor's own note is kept when they add one.
         // Same shared classifier the PDF/render gate uses — approval and report
         // release can never disagree on what counts as a soft advisory.
-        const reasoningGapsOnly = isSoftAdvisoryOnly(readiness);
+        const softAdvisoryOnly = isSoftAdvisoryOnly(readiness);
         const isTokenReviewer =
           input.ctx.role.toUpperCase() === "TOKEN_REVIEWER";
 
-        if (!reasoningGapsOnly || isTokenReviewer) {
+        if (!softAdvisoryOnly || isTokenReviewer) {
           throw new ReadinessBlockedError(readiness);
         }
 
