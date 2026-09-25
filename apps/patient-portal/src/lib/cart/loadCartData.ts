@@ -5,6 +5,7 @@ import { formatInr } from "@/lib/pricing/kitPrices";
 import { evaluateOrderForPatientCharge } from "@/lib/commerce/sellability";
 import { getKitInfo } from "@hairos/packages/registries/kits/info";
 import { resolveApprovedOrder } from "@/lib/consultation/approvedOrder";
+import { DEFAULT_KIT_QUANTITY } from "@/lib/commerce/kitQuantity";
 import { verifyCartToken } from "@/lib/cartToken";
 import { requireDoctorContext, assertDoctorInClinic } from "@/lib/auth";
 
@@ -140,9 +141,10 @@ export async function loadCartData(
 
   if (!intent || !approved) return null;
 
-  // Quantity prefers the persisted map and falls back to 1 — see
-  // lib/consultation/approvedOrder for why the map is normalised there.
-  const qtyFor = (kitId: string) => approved.quantities?.[kitId] ?? 1;
+  // Quantity prefers the persisted per-kit map (a doctor's explicit stepper
+  // choice) and falls back to the default two-month supply when none was
+  // recorded — see lib/commerce/kitQuantity and lib/consultation/approvedOrder.
+  const qtyFor = (kitId: string) => approved.quantities?.[kitId] ?? DEFAULT_KIT_QUANTITY;
 
   // Commercial identity and price are decided by the governance layer, never
   // by the clinical registry and never by a flat placeholder price. See

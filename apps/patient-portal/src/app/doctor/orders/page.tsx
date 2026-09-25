@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 import { PageContainer } from "@/components/app-shell";
 import { ProductImage } from "@/components/kits/ProductImage";
+import { DEFAULT_KIT_QUANTITY, protocolMonthsLabel } from "@/lib/commerce/kitQuantity";
 import { useHydrated } from "@/lib/format/useHydrated";
 import { OrderTabs } from "./OrderTabs";
 import "@/styles/doctor-tokens.css";
@@ -302,7 +303,9 @@ function OrderDialog({ order, onClose }: { order: Order; onClose: () => void }) 
               <ProductImage id={li.kitId} category="kit" size="sm" />
               <div className="min-w-0 flex-1">
                 <p className="hd-value font-medium">{li.displayName}</p>
-                <p className="hd-label text-xs">1-month protocol · Qty 1</p>
+                <p className="hd-label text-xs">
+                  {protocolMonthsLabel(DEFAULT_KIT_QUANTITY)} · Qty {DEFAULT_KIT_QUANTITY}
+                </p>
               </div>
               <span className="hd-value tabular-nums">{li.priceLabel}</span>
             </li>

@@ -1,6 +1,7 @@
 import Image from "next/image";
 import { ShieldCheck } from "lucide-react";
 import { ProductImage } from "@/components/kits/ProductImage";
+import { protocolMonthsLabel } from "@/lib/commerce/kitQuantity";
 import type { CartData } from "@/lib/cart/loadCartData";
 
 // The patient's read-only view of their approved treatment plan.
@@ -72,7 +73,7 @@ export function PatientPlanView({ cart }: { cart: CartData }) {
                 <p className="font-serif text-lg leading-tight text-slate-900">{labelOf(li)}</p>
                 <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1">
                   <span className="text-[11px] font-semibold uppercase tracking-wider text-teal-700">
-                    1-month protocol
+                    {protocolMonthsLabel(li.quantity)}
                   </span>
                   <span className="text-sm font-medium text-stone-700">&middot; Qty {li.quantity}</span>
                 </div>

@@ -30,6 +30,7 @@ import { z } from "zod";
 import type { KitOrderStatus, PrismaClient } from "@prisma/client";
 import type { Consultation } from "@shared/types/consultation";
 import { KIT_PRICE_INR } from "@/lib/pricing/kitPrices";
+import { DEFAULT_KIT_QUANTITY } from "@/lib/commerce/kitQuantity";
 import { getKitInfo } from "@hairos/packages/registries/kits/info";
 import { extractKitIds } from "@/lib/consultation/approveAndCreateOrder";
 import { buildClinicalSummary } from "@/lib/doctor/clinicalSummary";
@@ -100,7 +101,7 @@ export interface SummaryRow {
   systemRecommended: SummaryKitLine[] | null;
   /** The final ordered lineup (KitOrderIntent.kitIds). */
   finalKits: SummaryKitLine[];
-  /** Sum of final kit quantities (each kit is ×1 today). */
+  /** Sum of final kit quantities (each kit defaults to a two-month supply). */
   finalKitCount: number;
   /** Delta of system vs final. status `indeterminate` when v1 is absent. */
   delta: OrderDelta;
@@ -162,7 +163,10 @@ function resolveKitLine(kitId: string): SummaryKitLine {
     // A retired kit falls back to its raw id rather than being dropped — an
     // omitted line would understate what shipped.
     displayName: info?.displayName ?? kitId,
-    quantity: 1,
+    // Default two-month supply per kit, matching the cart and clinic order
+    // view — see lib/commerce/kitQuantity. Explicit per-kit quantities are not
+    // persisted on the intent yet, so every line uses the default today.
+    quantity: DEFAULT_KIT_QUANTITY,
     unitPriceInr: priced ? KIT_PRICE_INR[kitId]! : null,
   };
 }

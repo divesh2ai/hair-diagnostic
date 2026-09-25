@@ -13,6 +13,7 @@ import {
   LayoutDashboard,
 } from "lucide-react";
 import { ProductImage } from "@/components/kits/ProductImage";
+import { protocolMonthsLabel } from "@/lib/commerce/kitQuantity";
 import type { CartData, CartLineItem } from "@/lib/cart/loadCartData";
 import "@/styles/doctor-tokens.css";
 
@@ -312,7 +313,7 @@ function ClinicOrderLine({
         </div>
 
         <p className="mt-1 text-[11px] font-semibold uppercase tracking-wider" style={{ color: "var(--brand-primary)" }}>
-          1-month protocol
+          {protocolMonthsLabel(item.quantity)}
         </p>
         {item.commercialState === "IDENTITY_REVIEW" && (
           <p className="mt-1 rounded-md px-2 py-1 text-[11px] leading-snug" style={{ background: "var(--status-attention-bg)", color: "var(--status-attention)" }}>

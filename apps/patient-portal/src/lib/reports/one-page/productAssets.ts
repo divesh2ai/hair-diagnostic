@@ -50,7 +50,7 @@ const kits = {
   HAIR_FACT_TE_GOLD: { key: "HAIR_FACT_TE_GOLD", src: `${KIT_ASSET_BASE}/hair_fact_te_gold.png`, alt: "Hair Fact TE Gold kit" },
   HAIR_FACT_TE_GOLD_VEG: { key: "HAIR_FACT_TE_GOLD_VEG", src: `${KIT_ASSET_BASE}/hair_fact_te_gold_veg.png`, alt: "Hair Fact TE Gold Veg kit" },
   PRO_IMMUNE_GOLD: { key: "PRO_IMMUNE_GOLD", src: `${KIT_ASSET_BASE}/pro_immune_gold.png`, alt: "Pro Immune 5 kit" },
-  PRO_IMMUNE_GOLD_PLUS: { key: "PRO_IMMUNE_GOLD_PLUS", src: `${KIT_ASSET_BASE}/Pro Immune - 5.png`, alt: "Pro Immune 5 kit" },
+  PRO_IMMUNE_GOLD_PLUS: { key: "PRO_IMMUNE_GOLD_PLUS", src: `${KIT_ASSET_BASE}/pro_immune_5.png`, alt: "Pro Immune 5 kit" },
   PRO_IMMUNE_VEG: { key: "PRO_IMMUNE_VEG", src: `${KIT_ASSET_BASE}/pro_immune_veg.png`, alt: "Pro Immune 5 kit" },
   PHENOTYPE_INFLAMMATION: { key: "PHENOTYPE_INFLAMMATION", src: `${KIT_ASSET_BASE}/phenotype_inflamation.png`, alt: "Phenotype Inflammation kit" },
   MPHL: { key: "MPHL", src: `${KIT_ASSET_BASE}/mphl_v2.png`, alt: "MPHL Pro kit" },
@@ -77,7 +77,7 @@ const kits = {
   HBR_V2: { key: "HBR_V2", src: `${KIT_ASSET_BASE}/hair_fact_hbr_v2.png`, alt: "Hair Fact Hair Breakage Repair kit" },
   EARLY_GREYING_CARE: { key: "EARLY_GREYING_CARE", src: `${KIT_ASSET_BASE}/early_greying_care_gold.png`, alt: "Early Greying Care Gold kit" },
   HEALTHY_9: { key: "HEALTHY_9", src: `${KIT_ASSET_BASE}/healthy_9.png`, alt: "Healthy-9 pregnancy kit" },
-  PRO_FACT_POST_HYSTERECTOMY: { key: "PRO_FACT_POST_HYSTERECTOMY", src: `${KIT_ASSET_BASE}/Post Hysterectomy Reset.png`, alt: "Pro Fact Post Hysterectomy Reset kit" },
+  PRO_FACT_POST_HYSTERECTOMY: { key: "PRO_FACT_POST_HYSTERECTOMY", src: `${KIT_ASSET_BASE}/post_hysterectomy_reset.png`, alt: "Pro Fact Post Hysterectomy Reset kit" },
   PRO_FACT_THYROID_CARE: { key: "PRO_FACT_THYROID_CARE", src: `${KIT_ASSET_BASE}/thyroid_care.png`, alt: "Pro Fact Thyroid Care kit" },
   RAPID_WEIGHT_LOSS_SHIELD: { key: "RAPID_WEIGHT_LOSS_SHIELD", src: `${KIT_ASSET_BASE}/rapid_weight_loss_shield.png`, alt: "Rapid Weight Loss Shield kit" },
   FH_WELL_3: { key: "FH_WELL_3", src: `${KIT_ASSET_BASE}/f_h_well.png`, alt: "FH Well 3 kit" },
@@ -138,9 +138,9 @@ const topicals = {
   // through to the F-Extend bottle packshots because `topicalAssetCode`
   // matched them on the bare "MINOXIDIL" token, which put a topical bottle
   // on the sheet for an oral prescription. Each now carries its own carton.
-  ORAL_MINOXIDIL_SPIRONOLACTONE: { key: "ORAL_MINOXIDIL_SPIRONOLACTONE", src: `${KIT_ASSET_BASE}/Oral Minoxidil + Spironolactone.png`, alt: "F-S-Oroxidil 1.25-25 — Oral Minoxidil 1.25mg and Spironolactone 25mg tablets" },
-  ORAL_MINOXIDIL_SPIRONOLACTONE_50: { key: "ORAL_MINOXIDIL_SPIRONOLACTONE_50", src: `${KIT_ASSET_BASE}/F-S-Oroxidil 1.25-50.png`, alt: "F-S-Oroxidil 1.25-50 — Oral Minoxidil 1.25mg and Spironolactone 50mg tablets" },
-  ORAL_MINOXIDIL_BICALUTAMIDE: { key: "ORAL_MINOXIDIL_BICALUTAMIDE", src: `${KIT_ASSET_BASE}/Oral Minoxidil + bicalutamide.png`, alt: "F-B-Oroxidil 1.25-50 — Oral Minoxidil 1.25mg and Bicalutamide 50mg tablets" },
+  ORAL_MINOXIDIL_SPIRONOLACTONE: { key: "ORAL_MINOXIDIL_SPIRONOLACTONE", src: `${KIT_ASSET_BASE}/oral_minoxidil_spironolactone.png`, alt: "F-S-Oroxidil 1.25-25 — Oral Minoxidil 1.25mg and Spironolactone 25mg tablets" },
+  ORAL_MINOXIDIL_SPIRONOLACTONE_50: { key: "ORAL_MINOXIDIL_SPIRONOLACTONE_50", src: `${KIT_ASSET_BASE}/oral_minoxidil_spironolactone_50.png`, alt: "F-S-Oroxidil 1.25-50 — Oral Minoxidil 1.25mg and Spironolactone 50mg tablets" },
+  ORAL_MINOXIDIL_BICALUTAMIDE: { key: "ORAL_MINOXIDIL_BICALUTAMIDE", src: `${KIT_ASSET_BASE}/oral_minoxidil_bicalutamide.png`, alt: "F-B-Oroxidil 1.25-50 — Oral Minoxidil 1.25mg and Bicalutamide 50mg tablets" },
 } satisfies Record<string, ProductAsset>;
 
 const recoveryStages = {
