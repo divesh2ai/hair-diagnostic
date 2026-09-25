@@ -69,6 +69,15 @@ export interface ApproveAndCreateOrderInput {
    * Carries the typed clinical justification for the audit trail.
    */
   readinessOverride?: { reason: string };
+  /**
+   * When true, skip the one-pager snapshot (object-store upload) and render
+   * request on this call, returning as soon as the approval + kit order are
+   * durable. The client fires those in a follow-up request
+   * (/api/consultation/[id]/report/prepare → prepareApprovedReport) after it
+   * shows "Approved", so the doctor never waits on report preparation. The
+   * approval and order are already committed either way.
+   */
+  deferReportPrep?: boolean;
 }
 
 export interface ApproveAndCreateOrderResult {
@@ -361,62 +370,142 @@ export async function approveAndCreateOrder(
     }
   }
 
-  // ── Step 3: preserve the sheet this approval released ─────────────────────
+  // ── Steps 3 & 4: preserve + request the one-pager ─────────────────────────
   //
-  // Outside the transaction, and awaited but never able to fail the call.
-  // Approving is what hands the one-pager to a patient, so what was handed
-  // over is worth keeping; but the approval, the order intent and the
-  // assessment mirror are already committed by the time we get here, and none
-  // of them may be undone because an object store was slow or a bucket has not
-  // been created yet. `saveOnePagerSnapshot` is total — it describes failures
-  // rather than throwing — so the worst case is a logged line and no snapshot.
+  // These are the only doctor-CRITICAL-path work that is not the decision
+  // itself: a one-pager snapshot (an object-store UPLOAD — the slow one) and a
+  // render request (a durable PENDING ReportAsset row). The approval, the kit
+  // order and the assessment mirror are already committed above, so neither may
+  // be undone by a slow object store or an unavailable renderer.
   //
-  // Awaited rather than fire-and-forget so a serverless invocation cannot be
-  // frozen mid-upload the moment the response is returned.
-  const snapshot = await saveOnePagerSnapshot({
-    assessmentId: input.assessmentId,
-    clinicId: assessment.clinicId,
-    contentVersion: approved.contentVersion,
-    approvedBy: approved.metadata.approvedBy ?? null,
-  });
-  if (!snapshot.ok) {
-    console.warn(
-      `[one-pager-snapshot] ${input.assessmentId} v${approved.contentVersion} not preserved:`,
-      snapshot.reason,
-      snapshot.detail,
-    );
+  // deferReportPrep moves both off this request. The doctor sees "Approved" as
+  // soon as the approval + order are durable, and the client fires
+  // /api/consultation/[id]/report/prepare (→ prepareApprovedReport) which runs
+  // these two in its own request — reliable because it is a real awaited
+  // request, not a fire-and-forget promise that a serverless freeze could drop.
+  let snapshot: SnapshotResult;
+  let reportAssetId: string | null;
+  if (input.deferReportPrep) {
+    snapshot = { ok: false, reason: "report_not_ready", detail: "deferred to /report/prepare" };
+    reportAssetId = null;
+  } else {
+    const prep = await runOnePagerPrep(prisma, {
+      assessmentId: input.assessmentId,
+      clinicId: assessment.clinicId,
+      patientId: assessment.patientId,
+      consultationId,
+      consultationVersionId: versionRow.id,
+      contentVersion: approved.contentVersion,
+      approvedBy: approved.metadata.approvedBy ?? null,
+      actorId: input.actor.userId,
+    });
+    snapshot = prep.snapshot;
+    reportAssetId = prep.reportAssetId;
   }
-
-  // ── Step 4: request the patient's one-pager ───────────────────────────────
-  //
-  // Approval is what releases the sheet, so approval is what asks for it to be
-  // drawn — NOT the moment a doctor presses Share. By the time anyone shares,
-  // the artefact should already exist.
-  //
-  // What happens here is a durable row, not a render: `requestOnePagerRender`
-  // writes a PENDING ReportAsset and rings a doorbell. It is idempotent on the
-  // approved version, so a double-click, a retried request and the sweeper's
-  // reconciliation all converge on one artefact.
-  //
-  // Total, like the snapshot step above and for the same reason: the approval
-  // and the kit order are already committed, and neither may be undone because
-  // a renderer is unavailable. A failure here costs the patient a picture, not
-  // their report.
-  const render = await requestOnePagerRender({
-    clinicId: assessment.clinicId,
-    patientId: assessment.patientId,
-    assessmentId: input.assessmentId,
-    consultationId,
-    consultationVersionId: versionRow.id,
-    contentVersion: approved.contentVersion,
-    actorId: input.actor.userId,
-  });
 
   return {
     approval: approved,
     intent: result.intent,
     intentCreated: result.intentCreated,
     snapshot,
-    reportAssetId: render.assetId,
+    reportAssetId,
   };
+}
+
+interface OnePagerPrepIds {
+  assessmentId: string;
+  clinicId: string;
+  patientId: string | null;
+  consultationId: string;
+  consultationVersionId: string;
+  contentVersion: number;
+  approvedBy: string | null;
+  actorId: string | null;
+}
+
+/**
+ * Preserve the released sheet (snapshot upload) and request the one-pager
+ * render for an already-approved version. Both are total (describe failures
+ * rather than throwing); a failure costs the patient a picture, not their
+ * approval. Awaited so a serverless invocation cannot be frozen mid-upload.
+ */
+async function runOnePagerPrep(
+  prisma: PrismaClient,
+  ids: OnePagerPrepIds,
+): Promise<{ snapshot: SnapshotResult; reportAssetId: string | null }> {
+  const snapshot = await saveOnePagerSnapshot({
+    assessmentId: ids.assessmentId,
+    clinicId: ids.clinicId,
+    contentVersion: ids.contentVersion,
+    approvedBy: ids.approvedBy,
+  });
+  if (!snapshot.ok) {
+    console.warn(
+      `[one-pager-snapshot] ${ids.assessmentId} v${ids.contentVersion} not preserved:`,
+      snapshot.reason,
+      snapshot.detail,
+    );
+  }
+  const render = await requestOnePagerRender({
+    clinicId: ids.clinicId,
+    patientId: ids.patientId,
+    assessmentId: ids.assessmentId,
+    consultationId: ids.consultationId,
+    consultationVersionId: ids.consultationVersionId,
+    contentVersion: ids.contentVersion,
+    actorId: ids.actorId,
+  });
+  return { snapshot, reportAssetId: render.assetId };
+}
+
+/**
+ * The deferred half of approval's report work, run from a follow-up request
+ * after the doctor already sees "Approved". Re-derives the approved version's
+ * ids from the assessment and runs runOnePagerPrep. A no-op (reason returned)
+ * when there is no approved version yet — it is only ever called right after a
+ * successful approval, and it is idempotent on the approved version.
+ */
+export async function prepareApprovedReport(
+  prisma: PrismaClient,
+  params: { assessmentId: string; actorId?: string | null },
+): Promise<{ ok: boolean; reason?: string }> {
+  const [assessment, consultation] = await Promise.all([
+    prisma.assessment.findUnique({
+      where: { id: params.assessmentId },
+      select: { clinicId: true, patientId: true },
+    }),
+    prisma.consultation.findUnique({
+      where: { assessmentId: params.assessmentId },
+      select: {
+        id: true,
+        currentVersion: {
+          select: {
+            id: true,
+            contentVersion: true,
+            approvalStatus: true,
+            approvedBy: true,
+          },
+        },
+      },
+    }),
+  ]);
+  const version = consultation?.currentVersion;
+  if (!assessment || !consultation || !version) {
+    return { ok: false, reason: "no_version" };
+  }
+  if (String(version.approvalStatus) !== "APPROVED") {
+    return { ok: false, reason: "not_approved" };
+  }
+  await runOnePagerPrep(prisma, {
+    assessmentId: params.assessmentId,
+    clinicId: assessment.clinicId,
+    patientId: assessment.patientId,
+    consultationId: consultation.id,
+    consultationVersionId: version.id,
+    contentVersion: version.contentVersion,
+    // The doctor recorded on the approved version row itself.
+    approvedBy: version.approvedBy ?? null,
+    actorId: params.actorId ?? null,
+  });
+  return { ok: true };
 }

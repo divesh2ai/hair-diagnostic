@@ -2,15 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
-import {
-  ArrowLeft,
-  Check,
-  ExternalLink,
-  Flag,
-  MessageCircle,
-  ShieldAlert,
-  ShoppingCart,
-} from "lucide-react";
+import { ArrowLeft, Check, Flag } from "lucide-react";
 import { toast } from "sonner";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { useHydrated } from "@/lib/format/useHydrated";
@@ -28,11 +20,12 @@ import type {
 import { ReportActions } from "@/components/ui/ReportActions";
 import { extractSafetyFlags } from "@/lib/doctor/clinicalAttention";
 import { summarizeProtocol } from "@/lib/doctor/protocolModel";
-import { cartHref, absoluteCartUrl } from "@/lib/doctor/cartHref";
+import { cartHref } from "@/lib/doctor/cartHref";
 import { PatientJourney } from "@/components/doctor/PatientJourney";
 import { ReviewHeader } from "./sections/ReviewHeader";
 import { ClinicalAttentionSection } from "./sections/ClinicalAttentionSection";
 import { ProtocolSection } from "./sections/ProtocolSection";
+import type { SavedConsultation } from "./KitLineupEditor";
 import { SecondaryDetail } from "./sections/SecondaryDetail";
 import { ClinicalSummarySection } from "./sections/ClinicalSummarySection";
 import { OnePagerBlock } from "./sections/OnePagerBlock";
@@ -40,28 +33,35 @@ import {
   DecisionBar,
   resolveWhatsappSendUiState,
   type DecisionState,
+  type RailTreatment,
   type WhatsappSendUiState,
 } from "./sections/DecisionBar";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Doctor review workspace — PRESENTATION ONLY.
 //
-// The page reads in the order a clinician actually thinks:
+// A 70/30 clinical workspace. The case reads down the left in the order a
+// clinician thinks; the decision lives in a sticky rail on the right, always
+// stating the plan it is about to approve.
 //
-//   ReviewHeader   who is this, and how long have they waited
+//   ReviewHeader                who is this, and how long have they waited
 //
-//   THREE TABS, in the order a review proceeds:
-//     Assessment & interpretation   the case — evidence beside its meaning
-//     Kits & topicals               the plan — what is being dispensed
-//     Recovery & record             one-pager, guidance, safety, audit
+//   LEFT COLUMN (the story):
+//     ClinicalSummarySection    the case — what they reported beside its meaning
+//     ClinicalAttentionSection  safety and data limitations, when there are any
+//     ProtocolSection           the suggested treatment — clinical rows with
+//                               inline Replace / Remove
+//     OnePager + SecondaryDetail  the supporting record
+//     DoctorNotes / feedback    supporting clinical actions
+//     Delivery / PatientJourney what happens after approval
 //
-//   DecisionBar    sticky, BELOW all three tabs
+//   RIGHT RAIL (the decision):
+//     DecisionBar               TREATMENT PLAN checklist, changes summary,
+//                               Request changes, and the one dominant APPROVE.
 //
-// ── Why the decision bar is not in a tab ────────────────────────────────────
-// A doctor must be able to approve from wherever they are. Putting the button
-// inside one tab would mean hunting for the tab that holds it, which is the
-// exact confusion tabs were introduced to remove. It stays pinned under all
-// three, and there is exactly one filled green button on the page.
+// On narrow widths the workspace is a single column and the rail collapses to a
+// compact bar fixed at the bottom of the viewport, so the primary decision is
+// always visible without squeezing a two-column layout onto a phone.
 //
 // The questionnaire is NOT on this page. ClinicalSummarySection shows only the
 // options the patient actually selected, grouped clinically, beside the
@@ -165,15 +165,6 @@ type ReviewErrorCode =
   | "CONSULTATION_LOAD_FAILED";
 
 type ReviewLoadState = "loading" | "ready" | "core_error";
-
-/** The three review tabs, in the order a review proceeds. */
-type ReviewTab = "case" | "plan" | "record";
-
-const REVIEW_TABS: { id: ReviewTab; label: string }[] = [
-  { id: "case", label: "Assessment & interpretation" },
-  { id: "plan", label: "Kits & topicals" },
-  { id: "record", label: "Recovery & record" },
-];
 
 interface CoreLoadError {
   code: ReviewErrorCode;
@@ -291,9 +282,6 @@ export function DoctorReviewClient({
   // as well would let the button and the record disagree after a reload.
   const [decision, setDecision] = useState<DecisionState>("idle");
   const [decisionError, setDecisionError] = useState<string | null>(null);
-  /** The reason the readiness gate blocked, when it did. */
-  const [readinessBlock, setReadinessBlock] =
-    useState<ReadinessBlockDetail | null>(null);
 
   // ── WhatsApp send, chained after approval ─────────────────────────────────
   //
@@ -316,19 +304,6 @@ export function DoctorReviewClient({
    * closing under an unsaved change would hide the reason approval is blocked.
    */
   const [adjustOpen, setAdjustOpen] = useState(false);
-
-  /**
-   * Which of the three review tabs is open.
-   *
-   * The page was one long scroll, so "where does that live" had no answer
-   * except scrolling. Three tabs, in the order a review actually proceeds:
-   * understand the case, then read the plan, then the supporting record.
-   *
-   * The DECISION BAR IS NOT IN A TAB. It stays pinned below all three, because
-   * a doctor must be able to approve from wherever they are without hunting
-   * for the tab that holds the button.
-   */
-  const [reviewTab, setReviewTab] = useState<ReviewTab>("case");
 
   // ── Notes / feedback (clinical supporting actions) ────────────────────────
   const [note, setNote] = useState("");
@@ -419,6 +394,21 @@ export function DoctorReviewClient({
     }
   }, [assessmentId]);
 
+  // Apply a mutation's OWN authoritative response ({ consultation, meta } for
+  // the version it just wrote) directly, instead of firing a second full GET
+  // reload of the whole review. This is what takes a kit reorder / Replace /
+  // Remove / note save from "PATCH + full reload" down to just the PATCH: the
+  // response already carries the new version and its recomputed readiness, and
+  // meta.contentVersion advances so the next edit/approve stays version-safe.
+  // Operational / visit / delivery metadata are intentionally left as-is —
+  // they are non-critical here and refresh on the next natural navigation.
+  const applySaved = useCallback((updated: SavedConsultation) => {
+    setConsultation(updated.consultation as Consultation);
+    setMeta(updated.meta as ConsultationMeta);
+    setError(null);
+    setLoadState("ready");
+  }, []);
+
   // The server already resolved this review (see page.tsx), so the first
   // render is the finished case and there is nothing to fetch. Re-running the
   // mount fetch would spend a round trip re-fetching bytes already on screen.
@@ -429,6 +419,37 @@ export function DoctorReviewClient({
     needsClientLoad.current = false;
     void load();
   }, [load]);
+
+  // Fetch the operational slice (report pill, delivery, journey, order/cart
+  // status) on its own, off the clinical critical path. Used both to fill it
+  // after first paint (server-rendered path defers it) and to refresh it in the
+  // background right after an approval creates the order — never blocking.
+  const refreshOperational = useCallback(async () => {
+    try {
+      const res = await fetch(`/api/consultation/${assessmentId}/operational`, {
+        cache: "no-store",
+      });
+      if (!res.ok) return;
+      const j = (await res.json().catch(() => ({}))) as {
+        operational?: ConsultationOperationalState | null;
+      };
+      if (j.operational) setOperational(j.operational);
+    } catch {
+      // Non-critical: the report/delivery/journey sections keep their default
+      // "not started / unavailable" state until the next navigation.
+    }
+  }, [assessmentId]);
+
+  // Operational status is deferred off first paint: the server renders the core
+  // clinical case now (see page.tsx / loadReview deferOperational) and we fetch
+  // the operational slice once, after mount. Only on the server-rendered path —
+  // the client-load path above already gets operational from its full load().
+  const operationalFetched = useRef(false);
+  useEffect(() => {
+    if (operationalFetched.current || !initialData) return;
+    operationalFetched.current = true;
+    void refreshOperational();
+  }, [initialData, refreshOperational]);
 
   // Bring the adjust panel into view once it actually exists.
   //
@@ -453,15 +474,15 @@ export function DoctorReviewClient({
   // what an anchor link does, and it is what the reduced-motion path would
   // pick anyway.
   useEffect(() => {
-    if (!adjustOpen || reviewTab !== "plan") return;
+    if (!adjustOpen) return;
     const el = document.getElementById("adjust-protocol");
     if (!el) return;
     el.scrollIntoView({ behavior: "auto", block: "center" });
     // Send the keyboard along with the eye. Without this, tabbing on from the
-    // Request changes button walks into the decision bar rather than into the
+    // Request changes button walks into the decision rail rather than into the
     // editor that just opened.
     el.focus({ preventScroll: true });
-  }, [adjustOpen, reviewTab]);
+  }, [adjustOpen]);
 
   const addNote = useCallback(async () => {
     if (!consultation || !meta) return;
@@ -501,13 +522,18 @@ export function DoctorReviewClient({
         toast.error(j.message ?? "Could not save note");
         return;
       }
+      const saved = (await res.json().catch(() => ({}))) as Partial<SavedConsultation>;
       toast.success("Note saved — new version created");
       setNote("");
-      await load();
+      if (saved.consultation && saved.meta) {
+        applySaved({ consultation: saved.consultation, meta: saved.meta });
+      } else {
+        await load();
+      }
     } finally {
       setSavingNote(false);
     }
-  }, [assessmentId, consultation, meta, note, load]);
+  }, [assessmentId, consultation, meta, note, load, applySaved]);
 
   /**
    * Approve, and create the kit order.
@@ -572,6 +598,13 @@ export function DoctorReviewClient({
    * only composes and hands back a URL; nothing is recorded as delivered.
    */
   const shareReportManually = useCallback(async () => {
+    // Open the tab synchronously, INSIDE the click's user-gesture context.
+    // A window.open() issued after the await below has lost that context, so
+    // the browser's popup blocker silently drops it and the button reads as
+    // dead. Open a blank tab now and point it at the governed wa.me URL once
+    // the server returns it — the URL and its governance are unchanged; only
+    // the moment the tab opens has moved earlier.
+    const waTab = window.open("about:blank", "_blank");
     try {
       const res = await fetch(`/api/consultation/${assessmentId}/share`, {
         method: "POST",
@@ -580,14 +613,20 @@ export function DoctorReviewClient({
       });
       const j = await res.json().catch(() => ({}));
       if (res.ok && j.ok && j.waUrl) {
-        window.open(j.waUrl, "_blank");
+        // Same governed URL as before (built server-side from the one
+        // buildReportWhatsAppMessage helper); we only navigate the pre-opened
+        // tab instead of opening a fresh one post-await.
+        if (waTab) waTab.location.href = j.waUrl;
+        else window.open(j.waUrl, "_blank");
         if (!j.hasPhone) {
           toast.error("This patient has no WhatsApp number on file — add one before sending.");
         }
       } else {
+        waTab?.close();
         toast.error("Could not prepare the WhatsApp message.");
       }
     } catch {
+      waTab?.close();
       toast.error("Could not reach the server.");
     }
   }, [assessmentId]);
@@ -616,16 +655,36 @@ export function DoctorReviewClient({
               : "Approved · kit order already existed",
           );
           setNote("");
-          setReadinessBlock(null);
+          // Apply the order endpoint's OWN authoritative response — the approved
+          // consultation and its meta (approvalStatus APPROVED, new
+          // contentVersion) — instead of a second full getOrCreateDetailed
+          // reload. The post-approval sections render from isApproved
+          // immediately; operational (order/cart/report status) refreshes in the
+          // background just below. Falls back to load() only if the response did
+          // not carry the authoritative state.
+          if (j.consultation && j.meta) {
+            applySaved({ consultation: j.consultation, meta: j.meta });
+          } else {
+            await load();
+          }
           setDecision("approved");
-          // WhatsApp is chained, not coupled: awaited so the journey view
-          // reflects it on the very next load, but its own failure has
-          // already been handled entirely inside sendReportViaWhatsapp and
-          // cannot reach this catch block or undo the approval above.
+          // Report preparation (one-pager snapshot + render) is deferred off the
+          // approval request (POST /order returns as soon as approval + order are
+          // durable). Kick it off now, in a separate follow-up request, without
+          // blocking the doctor — it is idempotent on the approved version.
+          void fetch(`/api/consultation/${assessmentId}/report/prepare`, {
+            method: "POST",
+          }).catch(() => {
+            // Non-critical: the one-pager sweeper/retry reconciles it later.
+          });
+          // WhatsApp is chained, not coupled: its own failure is handled inside
+          // sendReportViaWhatsapp and cannot undo the approval above.
           if (whatsappAutomationEnabled) {
             await sendReportViaWhatsapp();
           }
-          await load();
+          // Order/cart/report status changed — refresh it in the background,
+          // off the doctor's critical path.
+          void refreshOperational();
           void resolveNextPatient();
           return;
         }
@@ -643,20 +702,21 @@ export function DoctorReviewClient({
         }
 
         if (res.status === 422 && j.error === "readiness_blocked") {
-          const detail = j.detail as ReadinessBlockDetail | undefined;
-          const overridable =
-            !!detail &&
-            detail.groundingViolationCount === 0 &&
-            detail.reasoningGapCount > 0;
-          // A reasoning-gap-only block can be signed past by the doctor with a
-          // justification. A grounding violation (or missing snapshot) cannot —
-          // show it as a hard stop that only regeneration resolves.
+          // Hard blocker only now — a grounding violation, or a missing/
+          // malformed readiness snapshot. Narrative/reasoning-completeness
+          // advisories no longer block approval (the server approves them as
+          // soft advisories), so they never return 422 here. A hard block is
+          // not something the doctor signs past inline with a typed reason:
+          // surface it and let them Request changes / regenerate.
           setDecision("idle");
-          if (overridable && !readinessOverrideReason) {
-            setReadinessBlock(detail);
-            return;
-          }
-          toast.error(j.message ?? "Approval blocked by clinical readiness gate");
+          // Deliberately NOT the server's doctorSummary (j.message), which is
+          // the validator's "Blocked: N unresolved grounding violation(s)"
+          // jargon. The specific, actionable reason is rendered in the review
+          // notes above (see ClinicalAttentionSection); the toast just says an
+          // action is needed and where to resolve it.
+          toast.error(
+            "This case needs review before it can be approved — see the note above, then use Request changes.",
+          );
           return;
         }
 
@@ -676,6 +736,8 @@ export function DoctorReviewClient({
       meta,
       note,
       load,
+      applySaved,
+      refreshOperational,
       resolveNextPatient,
       whatsappAutomationEnabled,
       sendReportViaWhatsapp,
@@ -792,6 +854,30 @@ export function DoctorReviewClient({
     [consultation],
   );
 
+  // The rail's checklist and its "changes made" line. Both read only provable
+  // provenance off the saved lineup — a governed substitution stamps
+  // meta.substitution, a doctor addition stamps meta.addedByDoctor. Removals
+  // leave no mark (see protocolModel), so they are not claimed as a count.
+  const railTreatments = useMemo<RailTreatment[]>(() => {
+    const phases = consultation?.treatmentPlan.kitPhases ?? [];
+    return phases.map((p) => {
+      const meta = (p as { meta?: { addedByDoctor?: boolean; substitution?: unknown } }).meta;
+      return {
+        name: p.displayName || p.kitId,
+        changed: meta?.substitution
+          ? "substituted"
+          : meta?.addedByDoctor
+            ? "added"
+            : null,
+      };
+    });
+  }, [consultation]);
+
+  const substitutionCount = useMemo(
+    () => railTreatments.filter((t) => t.changed === "substituted").length,
+    [railTreatments],
+  );
+
   if (loadState === "core_error" && error) {
     return (
       <div className="space-y-4">
@@ -852,194 +938,140 @@ export function DoctorReviewClient({
       .branding?.clinicName ?? null;
 
   return (
-    // A single readable column. The old layout reserved 360px for a sidebar
-    // that has since dissolved into the decision bar and the blocks below;
-    // leaving the case squeezed beside empty space would be an artefact of a
-    // component that no longer exists. Prose inside each section is separately
-    // capped so the lines stay readable at 1440.
+    // The 70/30 clinical workspace. The case reads down the left; the decision
+    // rail sits in the right column, sticky, always stating the plan it will
+    // approve. `pb-28` on small screens reserves room for the fixed mobile
+    // decision bar; on `lg` the rail is inline so the padding drops away.
     // `data-surface="doctor"` scopes the HairOS Doctor token layer to this
-    // tree — see styles/doctor-tokens.css for why the tokens are not global.
-    <div data-surface="doctor" className="mx-auto w-full max-w-5xl space-y-7">
+    // tree; `data-review="v3"` opts this page into the V2 teal/ivory brand
+    // without repainting any other doctor surface — see styles/doctor-tokens.css.
+    <div
+      data-surface="doctor"
+      data-review="v3"
+      className="mx-auto w-full max-w-7xl px-4 py-6 pb-28 sm:px-6 lg:px-8 lg:pb-8"
+    >
       <BackLink />
 
       {/* 1 · WHO IS THIS PATIENT? ──────────────────────────────────────────── */}
-      <ReviewHeader
-        patient={patient}
-        clinicName={clinicName}
-        visit={visit}
-        contentVersion={meta.contentVersion}
-        statusSlot={
-          <>
-            <ApprovalBadge status={meta.approvalStatus} />
-            <ReportStatePill
-              state={operational?.reportState ?? "not_started"}
-              onRetry={retryReport}
-              retrying={retryingReport}
+      <div className="mt-4">
+        <ReviewHeader
+          patient={patient}
+          clinicName={clinicName}
+          visit={visit}
+          contentVersion={meta.contentVersion}
+          statusSlot={
+            <>
+              <ApprovalBadge status={meta.approvalStatus} />
+              <ReportStatePill
+                state={operational?.reportState ?? "not_started"}
+                onRetry={retryReport}
+                retrying={retryingReport}
+              />
+            </>
+          }
+        />
+      </div>
+
+      <div className="mt-6 lg:grid lg:grid-cols-[minmax(0,1fr)_340px] lg:items-start lg:gap-8 xl:grid-cols-[minmax(0,1fr)_368px]">
+        {/* LEFT — the clinical story, top to bottom. */}
+        <ErrorBoundary title="Consultation could not be displayed">
+          <div className="min-w-0 space-y-8">
+            {/* WHAT THEY REPORTED · WHAT IT MEANS · WHY IT MATTERS */}
+            <ClinicalSummarySection consultation={consultation} />
+
+            {/* Safety and data limitations — silent when there is nothing. */}
+            <ClinicalAttentionSection
+              confidence={consultation.confidence}
+              readiness={meta.clinicalReadiness ?? null}
+              degradedReasons={coreDegradedReasons}
+              safety={safetyFlags}
             />
-          </>
-        }
-      />
 
-      <ErrorBoundary title="Consultation could not be displayed">
-        <div className="space-y-8">
-          <div
-            role="tablist"
-            aria-label="Clinical review"
-            className="flex flex-wrap gap-1 border-b border-[color:var(--hd-border)]"
-          >
-            {REVIEW_TABS.map(({ id, label }) => {
-              const active = reviewTab === id;
-              return (
-                <button
-                  key={id}
-                  type="button"
-                  role="tab"
-                  id={`review-tab-${id}`}
-                  aria-selected={active}
-                  aria-controls={`review-panel-${id}`}
-                  onClick={() => setReviewTab(id)}
-                  className={`-mb-px border-b-2 px-3.5 py-2 text-sm font-semibold transition-colors ${
-                    active
-                      ? "border-[color:var(--hd-primary)] text-[color:var(--hd-primary-dark)]"
-                      : "border-transparent text-[color:var(--hd-text-secondary)] hover:text-[color:var(--hd-text)]"
-                  }`}
-                >
-                  {label}
-                </button>
-              );
-            })}
-          </div>
+            {/* THE SUGGESTED TREATMENT — clinical rows with inline
+                Replace / Remove. */}
+            <ProtocolSection
+              consultation={consultation}
+              assessmentId={assessmentId}
+              expectedContentVersion={meta.contentVersion}
+              isApproved={isApproved}
+              onSaved={async (updated) => {
+                toast.success("Treatment plan saved — new version created");
+                if (updated) applySaved(updated);
+                else await load();
+              }}
+              onConflict={load}
+              onDirtyChange={setLineupDirty}
+              adjustOpen={adjustOpen}
+              onCloseAdjust={lineupDirty ? undefined : () => setAdjustOpen(false)}
+              onEscalate={() => setRevisionOpen(true)}
+            />
 
-          <div
-            role="tabpanel"
-            id={`review-panel-${reviewTab}`}
-            aria-labelledby={`review-tab-${reviewTab}`}
-            className="space-y-7"
-          >
-            {reviewTab === "case" && (
-              <>
-                <ClinicalSummarySection
-                  consultation={consultation}
-                  onViewPlan={() => setReviewTab("plan")}
-                />
-                {/* Attention is never hidden behind a tab switch — it renders
-                    in whichever panel is open. */}
-                <ClinicalAttentionSection
-                  confidence={consultation.confidence}
-                  readiness={meta.clinicalReadiness ?? null}
-                  degradedReasons={coreDegradedReasons}
-                  safety={safetyFlags}
-                />
-              </>
-            )}
+            {/* THE SUPPORTING RECORD — one-pager, guidance, safety, audit. */}
+            <div className="space-y-6 border-t border-[color:var(--hd-border)] pt-8">
+              <OnePagerBlock assessmentId={assessmentId} />
+              <SecondaryDetail consultation={consultation} />
+            </div>
 
-            {reviewTab === "plan" && (
-              <ProtocolSection
-                consultation={consultation}
+            {/* Clinical supporting actions — notes and engine feedback. Not the
+                decision, and deliberately not in the rail. */}
+            <DoctorNotesBlock
+              note={note}
+              onNoteChange={setNote}
+              onSave={addNote}
+              saving={savingNote}
+              notes={consultation.doctorNotes}
+              onFlagIssue={() => setFeedbackOpen(true)}
+            />
+
+            {/* WHAT HAPPENS AFTER APPROVAL — report and delivery sit AFTER the
+                clinical decision and are plainly separate from it. */}
+            {isApproved && (
+              <DeliveryBlock
                 assessmentId={assessmentId}
-                expectedContentVersion={meta.contentVersion}
-                isApproved={isApproved}
-                onSaved={async () => {
-                  toast.success("Kit lineup saved — new version created");
-                  await load();
-                }}
-                onConflict={load}
-                onDirtyChange={setLineupDirty}
-                adjustOpen={adjustOpen}
-                onCloseAdjust={
-                  lineupDirty ? undefined : () => setAdjustOpen(false)
-                }
-                onEscalate={() => setRevisionOpen(true)}
+                patient={patient}
+                clinicName={clinicName}
+                shareToken={shareToken}
               />
             )}
-
-            {reviewTab === "record" && (
-              <>
-                <OnePagerBlock assessmentId={assessmentId} />
-                <SecondaryDetail consultation={consultation} />
-              </>
-            )}
+            {isApproved && <PatientJourney assessmentId={assessmentId} canSend />}
           </div>
+        </ErrorBoundary>
 
-          {/* Clinical supporting actions — notes and engine feedback. These are
-              not the decision and are deliberately not in the decision bar. */}
-          <DoctorNotesBlock
-            note={note}
-            onNoteChange={setNote}
-            onSave={addNote}
-            saving={savingNote}
-            notes={consultation.doctorNotes}
-            onFlagIssue={() => setFeedbackOpen(true)}
+        {/* RIGHT — the decision rail (sticky on lg; a fixed bar below lg). */}
+        <div className="mt-8 lg:col-start-2 lg:mt-0">
+          <DecisionBar
+            state={decisionState}
+            treatmentCount={protocolSummary.count}
+            doctorAdditions={protocolSummary.addedByDoctor}
+            substitutionCount={substitutionCount}
+            treatments={railTreatments}
+            lineupDirty={lineupDirty}
+            revisionRequested={revisionRequested}
+            errorMessage={decisionError}
+            onApprove={() => approveAndCreateOrder()}
+            adjustOpen={adjustOpen}
+            onRequestChanges={() => setAdjustOpen((v) => !v)}
+            nextResolved={nextResolved}
+            nextPatient={nextPatient}
+            nextLookupFailed={nextLookupFailed}
+            // Only once an order actually exists. Without the intent the cart
+            // API answers "no confirmed plan yet", and a link to that is worse
+            // than no link at all.
+            cartHref={
+              operational?.orderIntentId
+                ? cartHref(assessmentId, operational.cartToken)
+                : null
+            }
+            whatsappAutomationEnabled={whatsappAutomationEnabled}
+            consent={initialConsent}
+            patientPhoneMasked={maskedPatientPhone}
+            waState={waState}
+            waErrorReason={waErrorReason}
+            onRetryWhatsapp={sendReportViaWhatsapp}
+            onShareManually={shareReportManually}
           />
-
-          {/* 8 · WHAT HAPPENS AFTER APPROVAL? ───────────────────────────────
-              Report and delivery sit AFTER the clinical decision and are
-              plainly separate from it: approving does not message anyone. */}
-          {isApproved && (
-            <DeliveryBlock
-              assessmentId={assessmentId}
-              patient={patient}
-              clinicName={clinicName}
-              shareToken={shareToken}
-              operational={operational}
-            />
-          )}
-
-          {/* 9 · WHAT HAPPENED AFTER I APPROVED? ────────────────────────────
-              The answer the doctor previously had to phone Ops for: whether
-              the patient has the plan, opened it, paid, and started. Loads on
-              its own and degrades on its own — a stage it cannot read renders
-              as "unavailable", never as "did not happen". */}
-          {isApproved && (
-            <PatientJourney assessmentId={assessmentId} canSend />
-          )}
         </div>
-      </ErrorBoundary>
-
-      {/* 7 · WHAT EXACTLY AM I APPROVING? ──────────────────────────────────── */}
-      <DecisionBar
-        state={decisionState}
-        treatmentCount={protocolSummary.count}
-        doctorAdditions={protocolSummary.addedByDoctor}
-        lineupDirty={lineupDirty}
-        revisionRequested={revisionRequested}
-        errorMessage={decisionError}
-        onApprove={() => approveAndCreateOrder()}
-        adjustOpen={adjustOpen}
-        onRequestChanges={() => {
-          const opening = !adjustOpen;
-          setAdjustOpen(opening);
-          // The adjust panel only renders inside the Plan tab, so opening it
-          // from any other tab (the default is "case") would toggle state
-          // against an element that isn't mounted — the button would appear
-          // dead. Switch to Plan so the editor is actually there to show.
-          //
-          // Scrolling to it is NOT done here: see the effect above, which
-          // waits for the element to exist rather than guessing when it will.
-          if (opening) setReviewTab("plan");
-        }}
-        nextResolved={nextResolved}
-        nextPatient={nextPatient}
-        nextLookupFailed={nextLookupFailed}
-        // Only once an order actually exists. Without the intent the cart API
-        // answers "no confirmed plan yet", and a link to that is worse than no
-        // link at all.
-        // `orderIntentId` is now resolveApprovedOrder's answer, so non-null
-        // here means the cart endpoint will return 200 for this assessment —
-        // the action is never offered against "no confirmed plan yet".
-        cartHref={
-          operational?.orderIntentId
-            ? cartHref(assessmentId, operational.cartToken)
-            : null
-        }
-        whatsappAutomationEnabled={whatsappAutomationEnabled}
-        consent={initialConsent}
-        patientPhoneMasked={maskedPatientPhone}
-        waState={waState}
-        waErrorReason={waErrorReason}
-        onRetryWhatsapp={sendReportViaWhatsapp}
-        onShareManually={shareReportManually}
-      />
+      </div>
 
       {revisionOpen && (
         <NeedsRevisionModal
@@ -1051,18 +1083,6 @@ export function DoctorReviewClient({
         <FeedbackDrawer
           onClose={() => setFeedbackOpen(false)}
           onSubmit={submitFeedback}
-        />
-      )}
-      {readinessBlock && (
-        <ReadinessOverrideModal
-          detail={readinessBlock}
-          submitting={decisionState === "saving"}
-          onCancel={() => setReadinessBlock(null)}
-          onOverride={(reason) => approveAndCreateOrder(reason)}
-          onSendForRevision={() => {
-            setReadinessBlock(null);
-            setRevisionOpen(true);
-          }}
         />
       )}
     </div>
@@ -1165,41 +1185,12 @@ function DeliveryBlock({
   patient,
   clinicName,
   shareToken,
-  operational,
 }: {
   assessmentId: string;
   patient: Consultation["patient"];
   clinicName: string | null;
   shareToken?: string;
-  operational: ConsultationOperationalState | null;
 }) {
-  // ── Why the origin is read after mount ────────────────────────────────────
-  //
-  // This was inlined as
-  //   `${typeof window !== "undefined" ? window.location.origin : ""}`
-  // which is the first cause React lists for a hydration mismatch: the server
-  // renders the message with an EMPTY origin and the client with a real one,
-  // so the two hrefs disagree and React bails out of patching the tree.
-  //
-  // It is not merely cosmetic. The server-rendered href read
-  // `…confirm your kit order here: /cart/<id>` — a bare relative path. A
-  // doctor clicking before hydration would have sent a PATIENT a WhatsApp
-  // message containing a link that goes nowhere.
-  //
-  // Read from the browser rather than NEXT_PUBLIC_APP_URL, matching
-  // ClinicQrPanel: a stale or unset env var would put a host that does not
-  // serve this clinic into a message sent to a real patient.
-  const hydrated = useHydrated();
-  // The token is REQUIRED here, not optional: this URL is sent to a patient
-  // who has no session, so without it they land on a cart that 404s.
-  const cartUrl = hydrated
-    ? absoluteCartUrl(
-        window.location.origin,
-        assessmentId,
-        operational?.cartToken,
-      )
-    : null;
-
   return (
     <section aria-labelledby="delivery-heading" className="space-y-3">
       <h2
@@ -1220,182 +1211,19 @@ function DeliveryBlock({
           variant="utility"
         />
 
-        {operational?.orderIntentId && (
-          <div className="mt-3 space-y-2 border-t border-stone-100 pt-3">
-            {/* The raw order-intent id and its READY_FOR_FULFILMENT state used
-                to print here. Both are engineering facts: the id is a cuid the
-                doctor cannot act on, and the status names an internal
-                fulfilment stage, not anything about this patient's care. They
-                remain on the order record and in the audit trail; they are
-                simply not decisions a clinician makes on this screen. */}
-            {/* THE CART IS THE POINT OF THIS BLOCK.
-                It used to be a 12px bordered link sitting beside a filled
-                green WhatsApp button, so the loudest control on the block was
-                the one that MESSAGES A PATIENT and the quiet one was the safe
-                check a doctor should make first — exactly backwards. Seeing
-                what the patient will be charged for is the verification step;
-                sending it is the irreversible act.
-
-                So: the cart is the primary, and the send button is demoted to
-                a secondary. Dropping the green also puts this block back in
-                line with the surface rule that green marks a saved decision
-                and nothing else. */}
-            <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
-              <a
-                href={cartHref(assessmentId, operational?.cartToken)}
-                target="_blank"
-                rel="noreferrer"
-                className="hd-btn hd-btn-primary justify-center sm:justify-start"
-              >
-                <ShoppingCart className="size-4" aria-hidden />
-                Preview patient cart
-                <ExternalLink className="size-3.5 opacity-70" aria-hidden />
-                <span className="sr-only">(opens in a new tab)</span>
-              </a>
-
-            </div>
-          </div>
-        )}
+        {/* The clinic-order preview used to be repeated here as its own
+            button — "Preview patient cart" — identical in destination to the
+            sticky decision bar's own "Clinic order" link a few hundred
+            pixels below, on screen at the same time regardless of which tab
+            is open. Two links to the same place is how a doctor stops
+            trusting either one. The decision bar's is the one that stays:
+            it sits beside the order-ready status it is a link FROM, and it
+            is visible from every tab, not just this one. The raw
+            order-intent id and its READY_FOR_FULFILMENT state are still not
+            printed here — engineering facts, not clinical ones — they
+            remain on the order record and in the audit trail. */}
       </div>
     </section>
-  );
-}
-
-// ── Readiness override modal ─────────────────────────────────────────────────
-//
-// Shown only when the readiness gate blocked approval AND the block is
-// reasoning-gaps-only (the server refuses to accept an override for grounding
-// violations, so those never reach here). The doctor must type a clinical
-// justification; it is persisted on the immutable approval event and the kit
-// order's audit metadata.
-
-type ReadinessBlockDetail = {
-  doctorSummary?: string;
-  groundingViolationCount: number;
-  reasoningGapCount: number;
-  reasoningGaps?: { summary?: string; subject?: string }[];
-};
-
-const MIN_OVERRIDE_REASON = 10;
-
-function ReadinessOverrideModal({
-  detail,
-  submitting,
-  onCancel,
-  onOverride,
-  onSendForRevision,
-}: {
-  detail: ReadinessBlockDetail;
-  submitting: boolean;
-  onCancel: () => void;
-  onOverride: (reason: string) => void;
-  onSendForRevision: () => void;
-}) {
-  const [reason, setReason] = useState("");
-  const canSubmit = reason.trim().length >= MIN_OVERRIDE_REASON && !submitting;
-
-  return (
-    <ModalShell onDismiss={onCancel} labelledBy="readiness-title">
-      <div className="border-b border-stone-200 p-5">
-        <div className="flex items-center gap-2">
-          <ShieldAlert className="h-5 w-5 text-amber-600" aria-hidden />
-          <h2 id="readiness-title" className="font-serif text-lg text-slate-900">
-            Approve past the readiness advisory
-          </h2>
-        </div>
-        <p className="mt-1 text-xs text-stone-500">
-          The AI narrative has{" "}
-          <strong>
-            {detail.reasoningGapCount} reasoning gap
-            {detail.reasoningGapCount === 1 ? "" : "s"}
-          </strong>{" "}
-          — a completeness advisory, not a safety contraindication. As the
-          reviewing clinician you may approve with a recorded justification.
-        </p>
-      </div>
-      <div className="space-y-3 p-5">
-        {detail.reasoningGaps && detail.reasoningGaps.length > 0 && (
-          <div className="rounded-lg border border-amber-200 bg-amber-50 p-3">
-            <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-amber-700">
-              What the gate flagged
-            </p>
-            <ul className="mt-1.5 list-disc space-y-1 pl-4 text-xs text-amber-900">
-              {detail.reasoningGaps.slice(0, 5).map((g, i) => (
-                <li key={i}>{g.summary ?? g.subject ?? "Unspecified gap"}</li>
-              ))}
-            </ul>
-          </div>
-        )}
-
-        {/* Alternative to overriding: flag it for revision instead of signing
-            off. Records the reason and holds the consultation. */}
-        <div className="flex items-start justify-between gap-3 rounded-lg border border-stone-200 bg-stone-50 p-3">
-          <div>
-            <p className="text-xs font-medium text-slate-800">
-              Prefer not to sign off?
-            </p>
-            <p className="mt-0.5 text-[11px] text-stone-600">
-              Flag it for revision instead — records your reason and holds the
-              consultation rather than approving it.
-            </p>
-          </div>
-          <button
-            type="button"
-            onClick={onSendForRevision}
-            disabled={submitting}
-            className="shrink-0 rounded-lg border border-stone-300 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-stone-100 disabled:opacity-50"
-          >
-            Needs revision
-          </button>
-        </div>
-
-        <div className="relative py-1 text-center">
-          <span className="bg-white px-2 text-[10px] font-semibold uppercase tracking-[0.14em] text-stone-400">
-            or approve with justification
-          </span>
-        </div>
-
-        <div>
-          <label
-            htmlFor="readiness-reason"
-            className="text-[10px] font-semibold uppercase tracking-[0.14em] text-stone-500"
-          >
-            Clinical justification (required)
-          </label>
-          <textarea
-            id="readiness-reason"
-            value={reason}
-            onChange={(e) => setReason(e.target.value)}
-            placeholder="e.g. Narrative wording is incomplete but the kit plan and clinical reasoning are correct for this presentation; I take clinical responsibility for this report."
-            rows={4}
-            maxLength={2000}
-            className="mt-1 w-full rounded-lg border border-stone-200 px-3 py-2 text-sm text-slate-800 focus:border-amber-500 focus:outline-none focus:ring-2 focus:ring-amber-500/15"
-          />
-          <p className="mt-1 text-[11px] text-stone-400">
-            Recorded against your name on the approval and the kit order.
-            Minimum {MIN_OVERRIDE_REASON} characters.
-          </p>
-        </div>
-      </div>
-      <div className="flex items-center justify-end gap-2 border-t border-stone-200 p-4">
-        <button
-          type="button"
-          onClick={onCancel}
-          disabled={submitting}
-          className="rounded-lg px-3 py-1.5 text-sm text-slate-700 hover:bg-stone-100 disabled:opacity-50"
-        >
-          Cancel
-        </button>
-        <button
-          type="button"
-          disabled={!canSubmit}
-          onClick={() => onOverride(reason.trim())}
-          className="inline-flex items-center gap-1.5 rounded-lg bg-amber-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-amber-700 disabled:opacity-50"
-        >
-          {submitting ? "Approving…" : "Approve anyway & create order"}
-        </button>
-      </div>
-    </ModalShell>
   );
 }
 

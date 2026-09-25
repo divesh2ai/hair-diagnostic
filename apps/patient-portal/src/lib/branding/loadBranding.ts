@@ -1,4 +1,5 @@
 import "server-only";
+import { doctorAuthIdentityWhere } from "@/lib/auth/doctorIdentity";
 import { prisma } from "@/lib/prisma";
 import { PLATFORM_BRANDING, type ClinicBranding } from "./types";
 
@@ -36,7 +37,11 @@ export async function loadClinicBranding(opts: {
     }),
     opts.userId
       ? prisma.doctor.findFirst({
-          where: { supabaseUserId: opts.userId, deletedAt: null },
+          // EITHER linked identity — a doctor who signed in by phone carries
+          // that uid in `supabasePhoneUserId`, and matching only the canonical
+          // column dropped their avatar, specialization and signature from the
+          // header and the report. `deletedAt: null` is unchanged.
+          where: { ...doctorAuthIdentityWhere(opts.userId), deletedAt: null },
           select: {
             name: true,
             avatarUrl: true,

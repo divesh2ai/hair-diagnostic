@@ -20,29 +20,35 @@ const read = (relPath: string) => readFileSync(join(root, "apps/patient-portal/s
 
 describe("dashboard — single dominant primary CTA", () => {
   const commandBand = read("components/doctor/dashboard/CommandBand.tsx");
+  const deckCard = read("components/doctor/dashboard/PatientDeckCard.tsx");
 
-  it("renders the 'Next patient' primary action from one CSS treatment, not a second copy of it", () => {
-    // hd-command-cta is the ONE bold-styled CTA class; hd-command-cta-quiet is
-    // the visually secondary treatment used for "Full queue" / "Open review
-    // queue". If hd-command-cta starts being applied a second time, a second
-    // primary-weight action has been added to the band.
-    const primaryUses = commandBand.match(/className="hd-command-cta"/g) ?? [];
-    expect(primaryUses.length).toBe(1);
+  it("keeps the command band identity-only, with no queue CTA competing with the deck", () => {
+    // V2 moved the single dominant action out of the header and onto the
+    // patient deck (the front card IS the next patient). The band is now a
+    // plain identity header; it must not grow a primary CTA or a review-queue
+    // link back, or the deck's card would no longer be the one dominant action.
+    expect(commandBand).not.toMatch(/hd-command-cta/);
+    expect(commandBand).not.toMatch(/href="\/doctor\/reports"/);
+    expect(commandBand).not.toMatch(/Open review queue|Full queue/);
   });
 
-  it("only ever shows the front-of-queue link OR the empty-queue link, never both", () => {
-    // hasNext branches the whole CTA cluster; the empty-queue link
-    // ("Open review queue") is in the else branch, so the two can never
-    // render together, whatever the queue count is.
-    expect(commandBand).toContain("hasNext ? (");
-    expect(commandBand).toContain("Open review queue");
-    expect(commandBand).toContain("Full queue");
+  it("puts the one review action on the deck card, as a single stretched link", () => {
+    // The interactive front card carries exactly one action element — a
+    // stretched Link (::after inset-0) covering the whole face, its href from
+    // the shared resolver — while the non-interactive back cards carry a plain
+    // span, never a second link. One <Link> in the whole component is that
+    // single primary treatment.
+    const links = deckCard.match(/<Link\b/g) ?? [];
+    expect(links.length).toBe(1);
+    expect(deckCard).toMatch(/href=\{card\.href\}/);
   });
 
   it("names the next patient rather than reimplementing FIFO in the component", () => {
-    // The band takes nextPatientName/nextPatientHref as props — it has no
-    // query, no sort, no filter of its own to disagree with the shared one.
-    expect(commandBand).not.toMatch(/ORDER BY|\.sort\(|reviewQueueSql/);
+    // Neither the band nor the deck card runs a query, sort or filter of its
+    // own to disagree with the shared queue resolver.
+    for (const src of [commandBand, deckCard]) {
+      expect(src).not.toMatch(/ORDER BY|\.sort\(|reviewQueueSql/);
+    }
   });
 });
 
@@ -89,8 +95,12 @@ describe("dashboard — next-patient target uses the shared route-safe resolver"
     expect(patientDeckLib).toContain("href: reviewHref(row)");
   });
 
-  it("derives the command band's primary target from the same toDeckCard as the deck, not a separate lookup", () => {
-    expect(dashboardClient).toContain("toDeckCard(queue[0])");
+  it("derives the deck from the one shared queue, not a separate next-patient lookup", () => {
+    // V2: there is no command-band target any more. The deck consumes the same
+    // queue the dashboard already holds (stats.queue) and builds its own cards
+    // via reviewHref; there is no separate queue[0] lookup feeding a duplicate
+    // primary target elsewhere.
+    expect(dashboardClient).toContain("rows={queue}");
   });
 });
 

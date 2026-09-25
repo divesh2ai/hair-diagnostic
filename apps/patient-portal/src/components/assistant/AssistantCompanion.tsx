@@ -3,7 +3,7 @@
 import { createContext, type ReactNode, useCallback, useContext, useEffect, useMemo, useReducer, useRef, useState } from "react";
 import { usePathname } from "next/navigation";
 import { useReducedMotion } from "framer-motion";
-import { Activity, Coffee, Minus, Move, NotebookPen, PersonStanding, Pin, PinOff, RotateCcw } from "lucide-react";
+import { Activity, Coffee, Mic, Minus, Move, NotebookPen, PersonStanding, Pin, PinOff, RotateCcw } from "lucide-react";
 import { AssistantPet, type AssistantPetState } from "./AssistantPet";
 import styles from "./AssistantCompanion.module.css";
 
@@ -205,6 +205,24 @@ export function AssistantCompanionProvider({ children }: { children: ReactNode }
       transientRef.current = setTimeout(() => dispatch({ type: "TRANSITION", state: "idle-perched" }), 720);
       previousPathRef.current = pathname;
     }
+  }, [pathname]);
+
+  // Keep the companion's mode in step with the surface it is standing on.
+  //
+  // The doctor-facing preview controls (Notes, Coffee, Listening) render only
+  // in "doctor" mode, and the pet uses the mode for its doctor/patient styling.
+  // Nothing else ever set the mode to "doctor", so on every /doctor surface the
+  // companion stayed in the default "general" mode and those controls — the
+  // only way to play the notebook and coffee animations on demand — never
+  // appeared. Derive the mode from the route instead: "doctor" on /doctor,
+  // "patient" on the other patient-facing supported routes.
+  //
+  // /assistant is deliberately excluded: the assistant chat sets the mode
+  // itself there ("patient" for the approved-plan view, "general" otherwise),
+  // and must stay authoritative on its own page.
+  useEffect(() => {
+    if (!pathname || pathname.startsWith("/assistant")) return;
+    dispatch({ type: "SET_MODE", mode: pathname.startsWith("/doctor") ? "doctor" : "patient" });
   }, [pathname]);
 
   useEffect(() => {
@@ -468,7 +486,7 @@ export function AssistantMovementController({ anchorId, state, reducedMotion, pi
     manualPositionRef.current = null;
   }, [anchorId, pinned, state]);
 
-  // ── Click-to-travel: the companion follows the pointer ────────────────────
+  // ── Click-to-travel: the companion follows the pointer ─────────────────
   //
   // Click an empty part of the page and it flies there. This is the behaviour
   // the doctor asked to keep, and the PIN is its off switch — parked, this
@@ -823,7 +841,10 @@ export function AssistantCompanion() {
   const slowGreetingAppliedRef = useRef(false);
   const systemReducedMotion = useReducedMotion();
   const reducedMotion = Boolean(systemReducedMotion || companion.motionReduced);
-  const isExplicitPreview = companion.state === "note-taking" || companion.state === "coffee-break";
+  const isExplicitPreview =
+    companion.state === "note-taking" ||
+    companion.state === "coffee-break" ||
+    companion.state === "listening";
   const petState = petStateFor(companion.state);
   const label = companion.minimized ? "Restore Dr. FACT companion" : `Dr. FACT draggable companion: ${companion.state.replaceAll("-", " ")}`;
 
@@ -858,7 +879,14 @@ export function AssistantCompanion() {
           <AssistantPet state={petState} size={companion.minimized ? "sm" : "lg"} mode={companion.mode === "doctor" ? "doctor" : "patient"} reducedMotion={reducedMotion && !isExplicitPreview} />
           <AssistantPropRenderer state={companion.state} />
         </button>
-        {process.env.NODE_ENV !== "production" && !companion.minimized ? (
+        {/* Doctor-facing controls, live in every environment — not gated to
+            NODE_ENV !== "production" any more. `next build` (what every
+            Vercel deployment, Preview included, runs) always sets
+            NODE_ENV=production, so that gate meant these three buttons could
+            never appear on any deployed URL, only under `next dev`. Kept off
+            for patients: these are debug-flavoured preview controls, not
+            something to hand a patient mid-consultation. */}
+        {companion.mode === "doctor" && !companion.minimized ? (
           <div className={styles.animationPreviews} aria-label="Mascot animation previews">
             <button type="button" data-active={companion.state === "note-taking" ? "true" : "false"} onClick={() => playPreview("note-taking")} aria-label="Play notebook and pen animation" aria-pressed={companion.state === "note-taking"}>
               <NotebookPen /><span>Notes</span>
@@ -866,7 +894,14 @@ export function AssistantCompanion() {
             <button type="button" data-active={companion.state === "coffee-break" ? "true" : "false"} onClick={() => playPreview("coffee-break")} aria-label="Play coffee drinking animation" aria-pressed={companion.state === "coffee-break"}>
               <Coffee /><span>Coffee</span>
             </button>
-            {isExplicitPreview ? <span className={styles.previewStatus} role="status">Playing {companion.state === "coffee-break" ? "coffee" : "notes"}</span> : null}
+            <button type="button" data-active={companion.state === "listening" ? "true" : "false"} onClick={() => playPreview("listening")} aria-label="Play listening animation" aria-pressed={companion.state === "listening"}>
+              <Mic /><span>Listening</span>
+            </button>
+            {isExplicitPreview ? (
+              <span className={styles.previewStatus} role="status">
+                Playing {companion.state === "coffee-break" ? "coffee" : companion.state === "listening" ? "listening" : "notes"}
+              </span>
+            ) : null}
           </div>
         ) : null}
         <div className={styles.controls} aria-label="Assistant companion controls">

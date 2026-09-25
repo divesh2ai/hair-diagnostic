@@ -1,10 +1,14 @@
-// orchestrator.approve blocks when the persisted clinical-readiness snapshot
-// isn't clear:
-//   • grounding violation → ReadinessBlockedError, no APPROVED event, no
-//     status change on the version.
-//   • reasoning gap → same behavior.
-//   • historical rows with no snapshot → fail closed (same error class,
+// orchestrator.approve gates on the persisted clinical-readiness snapshot,
+// under the hard/soft governance model:
+//   • unsupported treatment recommendation (kit.missingTrigger →
+//     RECOMMENDATION_UNSUPPORTED_PRESENT) → HARD: ReadinessBlockedError, no
+//     APPROVED event, no status change — for every role, doctor included.
+//   • historical rows with no snapshot → HARD, fail closed (same error class,
 //     READINESS_SNAPSHOT_MISSING).
+//   • grounding violation (unsupported narrative sentence) → SOFT: a signed-in
+//     DOCTOR approves past it with no written justification; the anonymous
+//     TOKEN_REVIEWER still may not.
+//   • reasoning-completeness gap (kit not named) → SOFT: same as grounding.
 //   • clean snapshot → approves and emits CONSULTATION_APPROVED exactly once.
 // Reject / revision-request paths must NOT be gated — a doctor must be able
 // to reject or ask for edits precisely because readiness fails.
@@ -88,6 +92,24 @@ function blockedReasoning(): ClinicalReadinessSnapshot {
     groundingViolations: [],
     reasoningGaps: [
       { kind: "kit.notDiscussedInNarrative", subject: "HAIR FACT TE GOLD", summary: "not named" },
+    ],
+    blockingCodes: ["REASONING_GAP_PRESENT"],
+    summary: { groundingViolationCount: 0, reasoningGapCount: 1 },
+  };
+}
+
+// A recommendation-level evidence failure — a kit selected with NO trigger at
+// all. Distinct from a narrative gap: this is treatment safety, so it is a HARD
+// block (RECOMMENDATION_UNSUPPORTED_PRESENT) that even a doctor cannot sign past.
+function blockedUnsupportedRecommendation(): ClinicalReadinessSnapshot {
+  return {
+    schemaVersion: 1,
+    evaluatedAt: "2026-07-03T00:00:00.000Z",
+    sourceClinicalArtifactVersion: "v4",
+    isReadyForApproval: false,
+    groundingViolations: [],
+    reasoningGaps: [
+      { kind: "kit.missingTrigger", subject: "HAIR FACT TE GOLD", summary: "no trigger" },
     ],
     blockingCodes: ["REASONING_GAP_PRESENT"],
     summary: { groundingViolationCount: 0, reasoningGapCount: 1 },
@@ -194,22 +216,79 @@ describe("orchestrator.approve — clinical readiness gate", () => {
     expect(eventsWritten.filter((e) => e.type === "CONSULTATION_APPROVED")).toHaveLength(1);
   });
 
-  it("grounding violation: throws ReadinessBlockedError; no approval event; no status change", async () => {
-    const { repo, versions, eventsWritten } = makeRepo(fakeContent(blockedGrounding()));
+  it("grounding violation (unsupported narrative sentence): soft — a DOCTOR approves past it", async () => {
+    // Governance change: a grounding violation is a narrative-prose defect
+    // (Rule 2 / Rule 7 on the write-up), not a treatment-safety failure. The
+    // kit selection is driven by recorded facts, never by the sentence, so a
+    // signed-in doctor signs off with no written justification.
+    const { repo, eventsWritten } = makeRepo(fakeContent(blockedGrounding()));
     const orch = makeOrch(repo);
-    const before = versions.length;
     await expect(
       orch.approve({ assessmentId: ASSESSMENT_ID, ctx: doctorCtx, status: "APPROVED" }),
+    ).resolves.toBeTruthy();
+    expect(
+      eventsWritten.filter((e) => e.type === "CONSULTATION_APPROVED"),
+    ).toHaveLength(1);
+  });
+
+  it("grounding violation: TOKEN_REVIEWER still may not sign past it", async () => {
+    const { repo, eventsWritten } = makeRepo(fakeContent(blockedGrounding()));
+    const orch = makeOrch(repo);
+    await expect(
+      orch.approve({
+        assessmentId: ASSESSMENT_ID,
+        ctx: { actorId: "token-x", role: "TOKEN_REVIEWER", clinicId: CLINIC },
+        status: "APPROVED",
+      }),
     ).rejects.toBeInstanceOf(ReadinessBlockedError);
+    expect(eventsWritten.some((e) => e.type === "CONSULTATION_APPROVED")).toBe(false);
+  });
+
+  it("unsupported recommendation (kit.missingTrigger): HARD — throws; no approval event; no status change; even for a DOCTOR", async () => {
+    const { repo, versions, eventsWritten } = makeRepo(
+      fakeContent(blockedUnsupportedRecommendation()),
+    );
+    const orch = makeOrch(repo);
+    const before = versions.length;
+    let err: unknown;
+    try {
+      await orch.approve({ assessmentId: ASSESSMENT_ID, ctx: doctorCtx, status: "APPROVED" });
+    } catch (e) {
+      err = e;
+    }
+    expect(err).toBeInstanceOf(ReadinessBlockedError);
+    expect((err as ReadinessBlockedError).decision.blockingCodes).toContain(
+      "RECOMMENDATION_UNSUPPORTED_PRESENT",
+    );
     expect(versions.length).toBe(before);
     expect(eventsWritten.some((e) => e.type === "CONSULTATION_APPROVED")).toBe(false);
   });
 
-  it("reasoning gap: same block", async () => {
+  it("reasoning-gap-only: soft advisory — a doctor approves with no justification", async () => {
+    // Governance change: narrative/reasoning-completeness gaps are AI
+    // documentation-quality advisories, not clinical contraindications. A
+    // signed-in clinician may approve past a reasoning-gap-only case without
+    // typing a written justification; the advisory is recorded on the approval.
     const { repo, eventsWritten } = makeRepo(fakeContent(blockedReasoning()));
     const orch = makeOrch(repo);
     await expect(
       orch.approve({ assessmentId: ASSESSMENT_ID, ctx: doctorCtx, status: "APPROVED" }),
+    ).resolves.toBeTruthy();
+    expect(
+      eventsWritten.filter((e) => e.type === "CONSULTATION_APPROVED"),
+    ).toHaveLength(1);
+  });
+
+  it("reasoning-gap-only: TOKEN_REVIEWER still may not sign past it", async () => {
+    // The anonymous review-link identity never signs past any gap, hard or soft.
+    const { repo, eventsWritten } = makeRepo(fakeContent(blockedReasoning()));
+    const orch = makeOrch(repo);
+    await expect(
+      orch.approve({
+        assessmentId: ASSESSMENT_ID,
+        ctx: { actorId: "token-x", role: "TOKEN_REVIEWER", clinicId: CLINIC },
+        status: "APPROVED",
+      }),
     ).rejects.toBeInstanceOf(ReadinessBlockedError);
     expect(eventsWritten.some((e) => e.type === "CONSULTATION_APPROVED")).toBe(false);
   });
@@ -245,7 +324,7 @@ describe("orchestrator.approve — clinical readiness gate", () => {
   });
 
   it("does not throw a plain OrchestratorError for readiness — the discriminator matters for the 422 route response", async () => {
-    const { repo } = makeRepo(fakeContent(blockedGrounding()));
+    const { repo } = makeRepo(fakeContent(blockedUnsupportedRecommendation()));
     const orch = makeOrch(repo);
     try {
       await orch.approve({ assessmentId: ASSESSMENT_ID, ctx: doctorCtx, status: "APPROVED" });

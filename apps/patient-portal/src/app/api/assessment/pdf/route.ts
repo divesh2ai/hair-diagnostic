@@ -5,7 +5,10 @@ import { signReportUrl } from '@hairos/packages/pdf-engine/storage';
 import { getClinicContext, handleAuthError, isSuperAdmin } from '@/lib/auth';
 import { verifyReviewToken } from '@/lib/reviewToken';
 import { logLifecycleEvent } from '@/lib/observability/lifecycle';
-import { evaluateClinicalReadinessForApproval } from '@shared/clinical-readiness/evaluator';
+import {
+  evaluateClinicalReadinessForApproval,
+  isHardBlocked,
+} from '@shared/clinical-readiness/evaluator';
 import type { Consultation } from '@shared/types/consultation';
 import { prisma } from '@/lib/prisma';
 type PdfPayload = Parameters<typeof generateAndStoreReports>[0];
@@ -241,15 +244,20 @@ export async function GET(req: Request) {
     | Consultation
     | null
     | undefined;
+  // Same governance as the approval gate (see orchestrator.approve and
+  // evaluator.isSoftAdvisoryOnly): only a HARD blocker refuses the report.
+  // A reasoning-gap-only case is a soft advisory — it approves, and it must
+  // render/deliver too, so it is NOT refused here. Grounding violations and
+  // missing/malformed snapshots remain hard stops that fail closed.
   const readiness = evaluateClinicalReadinessForApproval(consultationContent ?? null);
-  if (!readiness.ready) {
+  if (isHardBlocked(readiness)) {
     logLifecycleEvent({
       event: 'pdf.release_denied',
       assessmentId,
       clinicId: assessment.clinicId,
       failureCode: readiness.blockingCodes.includes('GROUNDING_VIOLATION_PRESENT')
         ? 'grounding_violation'
-        : 'reasoning_gap',
+        : 'readiness_snapshot',
       audience,
     });
     return NextResponse.json(

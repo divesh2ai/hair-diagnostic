@@ -2,6 +2,8 @@
 --
 -- Registered in Supabase: Auth → Hooks → custom_access_token.
 -- Captured from production: 2026-08-10 (project gwkgopbscdftpitppgwe).
+-- Phone IDENTITY column (supabasePhoneUserId) added: 2026-09-18 (see
+--   prisma/migrations/20260918_doctor_phone_identity/migration.sql).
 -- Phone fallback for Doctor added: 2026-09-09 (see
 -- prisma/migrations/20260909_doctor_phone_otp_claims/migration.sql).
 -- See supabase/README.md for the sync workflow.
@@ -89,6 +91,12 @@ BEGIN
     JOIN public."Clinic" c ON c.id = d."clinicId"
     WHERE (
         d."supabaseUserId" = uid
+        -- Mobile-OTP identity for the SAME doctor. Supabase mints a separate
+        -- auth user per channel, so a doctor already linked by email reaches
+        -- here with a second uid; without this the token would carry no role
+        -- at all once that uid is attached, because every branch below
+        -- requires "supabaseUserId" IS NULL.
+        OR d."supabasePhoneUserId" = uid
         OR (d."supabaseUserId" IS NULL AND d.email = user_email)
         OR (
           d."supabaseUserId" IS NULL

@@ -50,6 +50,12 @@ export const AUDIT_ACTION_GROUPS = {
   "Kit orders & fulfilment": [
     "KIT_ORDER_INTENT_CREATED",
     "KIT_ORDER_INTENT_CANCELLED",
+    // The doctor/clinic confirming the approved order on the Clinic Order
+    // screen — the order lifecycle event that sits between the intent being
+    // created and payment/fulfilment. Distinct from KIT_ORDER_PAYMENT_CONFIRMED
+    // (money) and TREATMENT_START_RECORDED (the patient beginning treatment).
+    "CLINIC_ORDER_CONFIRMED",
+    "CLINIC_ORDER_QUANTITY_UPDATED",
     "KIT_ORDER_PAYMENT_CONFIRMED",
     "KIT_ORDER_PAYMENT_DUPLICATE_IGNORED",
     "KIT_ORDER_FULFILMENT_MODE_SET",
@@ -108,6 +114,16 @@ export const AUDIT_ACTION_GROUPS = {
     "DOCTOR_PHONE_LOGIN_LINKED",
     "DOCTOR_PHONE_LOGIN_DENIED_UNREGISTERED",
     "DOCTOR_PHONE_LOGIN_DENIED_CONFLICT",
+    // A matched, provisioned number whose clinical access has been withdrawn.
+    // Separate from DENIED_UNREGISTERED so "we closed this account" is never
+    // reported, or audited, as "we do not know this number".
+    "DOCTOR_PHONE_LOGIN_DENIED_INACTIVE",
+    // Supabase mints a separate auth user per channel, so a doctor already
+    // linked by email arrives at mobile login with a second uid for the same
+    // person. This records that second identity being attached to the existing
+    // Doctor row — a link, not a denial, and not the same event as
+    // DOCTOR_PHONE_LOGIN_LINKED, which is a first login onto an unlinked row.
+    "DOCTOR_PHONE_IDENTITY_ATTACHED",
   ],
 } as const;
 

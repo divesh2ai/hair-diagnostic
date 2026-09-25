@@ -13,7 +13,18 @@ import {
   Undo2,
 } from "lucide-react";
 import type { Consultation, TreatmentPhase } from "@shared/types/consultation";
+import type { ConsultationMeta } from "@/lib/consultation/meta";
 import { loadKitCatalog, type KitCatalogItem } from "@/lib/doctor/kitCatalog";
+
+/**
+ * The authoritative state a save endpoint returns for the version it just
+ * wrote. Threaded up through onSaved so the review page can update from the
+ * mutation's own response instead of a second full GET reload.
+ */
+export interface SavedConsultation {
+  consultation: Consultation;
+  meta: ConsultationMeta;
+}
 import { ProductImage } from "@/components/kits/ProductImage";
 import {
   getApprovedAlternativeForKitId,
@@ -62,7 +73,7 @@ type EditedPhase = TreatmentPhase & {
 interface Props {
   consultation: Consultation;
   expectedContentVersion: number;
-  onSaved: () => Promise<void> | void;
+  onSaved: (updated?: SavedConsultation) => Promise<void> | void;
   onConflict: () => Promise<void> | void;
   assessmentId: string;
   disabled?: boolean;
@@ -199,7 +210,11 @@ export function KitLineupEditor({
         setError(j.message ?? "Could not save the kit lineup.");
         return;
       }
-      await onSaved();
+      // PATCH returns the authoritative { consultation, meta } for the new
+      // version — hand it up so the page updates from it directly instead of
+      // paying for a second full reload.
+      const j = (await res.json().catch(() => ({}))) as Partial<SavedConsultation>;
+      await onSaved(j.consultation && j.meta ? { consultation: j.consultation, meta: j.meta } : undefined);
     } finally {
       setSaving(false);
     }
@@ -233,7 +248,8 @@ export function KitLineupEditor({
         return;
       }
       setBudgetPanelIndex(null);
-      await onSaved();
+      const j = (await res.json().catch(() => ({}))) as Partial<SavedConsultation>;
+      await onSaved(j.consultation && j.meta ? { consultation: j.consultation, meta: j.meta } : undefined);
     } finally {
       setBudgetBusy(false);
     }

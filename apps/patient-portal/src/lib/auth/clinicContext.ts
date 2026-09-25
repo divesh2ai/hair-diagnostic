@@ -1,5 +1,5 @@
 import { headers } from "next/headers";
-import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { readSupabaseClaims } from "./requestScope";
 import { isSystemRole, type SystemRole } from "./roles";
 
 // ClinicContext — the resolved identity for a server-side request.
@@ -30,8 +30,9 @@ export class ForbiddenError extends Error {
 // Read context from the verified Supabase JWT. Source of truth — use this in
 // route handlers and server actions. Throws UnauthorizedError if no session.
 export async function getClinicContext(): Promise<ClinicContext> {
-  const supabase = await createSupabaseServerClient();
-  const { data, error } = await supabase.auth.getClaims();
+  // Request-scoped: shares one getClaims() with getAuthClaims() and any other
+  // caller in the same server render (see ./requestScope).
+  const { data, error } = await readSupabaseClaims();
   const claims = data?.claims as
     | { user_role?: string; clinic_id?: string; sub?: string }
     | undefined;

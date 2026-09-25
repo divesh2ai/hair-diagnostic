@@ -11,8 +11,22 @@ import {
 
 // WHAT NEEDS ATTENTION? — and nothing at all when the answer is "nothing".
 //
+// ── Hard clinical/safety items ONLY ─────────────────────────────────────────
+// This section renders ONLY genuine HARD items — a recorded safety flag
+// (contraindication / caution / allergy) or an evidence-integrity failure. The
+// soft AI documentation advisories (narrative wording notes, reasoning gaps,
+// optional-information suggestions, AI completeness messages) are deliberately
+// NOT rendered in the doctor's normal consultation flow: a documentation gap
+// must never compete with the treatment plan and Approve for the doctor's
+// attention, or read as a clinical error the reviewing doctor made.
+//
+// Those soft items are not discarded — buildAttentionItems still derives them
+// from the persisted clinical-readiness snapshot, so they remain in the
+// readiness metadata for auditability. They are simply filtered out of this
+// screen.
+//
 // ── Silence is the default ──────────────────────────────────────────────────
-// This section returns null when there is nothing to say. A card reading "No
+// This section returns null when there are no HARD items. A card reading "No
 // issues detected" on every routine case is worse than absent: it trains the
 // doctor to skip the region, so the one case that does carry a warning gets
 // skipped too. It also must never claim "no red flags" — the pathway
@@ -31,6 +45,8 @@ import {
 // "LEGACY_DEGRADED" and "rawResponses" never reach the screen. The doctor is
 // told which part of the record they can rely on.
 
+// Labels are deliberately non-accusatory. Only a genuine safety flag or an
+// evidence-integrity failure is rendered as a prominent card.
 const CLASS_META: Record<
   AttentionClass,
   { label: string; box: string; icon: typeof AlertTriangle }
@@ -41,12 +57,12 @@ const CLASS_META: Record<
     icon: AlertTriangle,
   },
   contradiction: {
-    label: "Clinical contradiction",
+    label: "Recommendation review",
     box: "border-red-200 bg-red-50/70 text-red-950",
     icon: GitCompareArrows,
   },
   limitation: {
-    label: "Data limitation",
+    label: "Additional information",
     box: "border-stone-200 bg-stone-50 text-slate-800",
     icon: Info,
   },
@@ -73,20 +89,23 @@ export function ClinicalAttentionSection({
     safety,
   });
 
-  // Quiet when there is nothing to say. See header.
-  if (items.length === 0) return null;
+  // HARD ONLY — genuine safety flags and evidence-integrity failures. The
+  // doctor must weigh these before approving. Soft AI documentation/
+  // completeness advisories are intentionally dropped from this screen (they
+  // remain in the readiness metadata for audit — see header).
+  const hard = items.filter((i) => i.severity === "hard");
+
+  // Quiet when there is no hard item. See header: a routine case, or one
+  // carrying only soft advisories, renders nothing at all here.
+  if (hard.length === 0) return null;
 
   return (
     <section aria-labelledby="attention-heading" className="space-y-3">
-      <h2
-        id="attention-heading"
-        className="text-[11px] font-semibold uppercase tracking-[0.16em] text-stone-500"
-      >
+      <h2 id="attention-heading" className="hd-story-title">
         Clinical attention
       </h2>
-
       <ul className="space-y-2.5">
-        {items.map((item, i) => {
+        {hard.map((item, i) => {
           const meta = CLASS_META[item.kind];
           const Icon = meta.icon;
           return (

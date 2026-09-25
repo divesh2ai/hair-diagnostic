@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { ClipboardList, X, Activity, Package, ArrowRight } from "lucide-react";
+import { ClipboardList, X, Activity } from "lucide-react";
 import type { Consultation } from "@shared/types/consultation";
 import { buildClinicalSummary } from "@/lib/doctor/clinicalSummary";
 import { buildMergedGroups, type MergedGroup } from "@/lib/doctor/clinicalSignals";
@@ -39,24 +39,13 @@ import { AssessmentTranscript } from "./AssessmentTranscript";
 
 export interface ClinicalSummarySectionProps {
   consultation: Consultation;
-  /**
-   * Switch to the full plan tab. When provided, a lightweight recommended-
-   * treatment summary is shown between the conclusion and the evidence so the
-   * doctor sees WHAT is recommended without leaving the case — the full "why",
-   * formulation and editor stay on the plan tab (no duplication).
-   */
-  onViewPlan?: () => void;
 }
 
 export function ClinicalSummarySection({
   consultation,
-  onViewPlan,
 }: ClinicalSummarySectionProps) {
   const vm = buildClinicalSummary(consultation);
   const [transcriptOpen, setTranscriptOpen] = useState(false);
-  // Source-backed kit lineup, names only, in stored phase order (same order
-  // protocolModel trusts). No rationale/formulation here — that is the plan.
-  const lineup = consultation.treatmentPlan?.kitPhases ?? [];
 
   if (vm.isEmpty) {
     return (
@@ -76,10 +65,7 @@ export function ClinicalSummarySection({
   return (
     <section aria-labelledby="summary-heading" className="space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
-        <h2 id="summary-heading" className="hd-step-label">
-          <span className="hd-step-num" aria-hidden>
-            1
-          </span>
+        <h2 id="summary-heading" className="hd-story-title">
           The case
         </h2>
         <button
@@ -153,64 +139,11 @@ export function ClinicalSummarySection({
           )}
         </div>
 
-        {/* RECOMMENDED TREATMENT — priority 2, right under the conclusion and
-            above the evidence. A source-backed glance (kit names + count) so
-            the decision object is visible in the default view; the full plan,
-            rationale and editor live one click away on the plan tab. */}
-        {onViewPlan && lineup.length > 0 && (
-          <div className="hd-divide-t p-5 sm:p-6">
-            <div className="flex items-center justify-between gap-3">
-              <h3 className="hd-eyebrow flex items-center gap-1.5">
-                <Package className="size-3.5 text-[color:var(--hd-primary-dark)]" aria-hidden />
-                Recommended treatment
-              </h3>
-              <button
-                type="button"
-                onClick={onViewPlan}
-                className="inline-flex items-center gap-1 text-[11px] font-medium text-[color:var(--hd-primary-dark)] hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--hd-primary)]"
-              >
-                View full plan
-                <ArrowRight className="size-3" aria-hidden />
-              </button>
-            </div>
-            <ol className="mt-2.5 flex flex-wrap gap-2">
-              {lineup.map((p, i) => (
-                <li
-                  key={`${p.kitId}-${i}`}
-                  // The leading phase carries a plum outline and a faint
-                  // lavender ground; the rest stay porcelain. This asserts
-                  // nothing new — the lineup is already rendered in stored
-                  // phase order and already numbered, so the emphasis only
-                  // gives visual weight to the ordering the record states.
-                  className={
-                    "inline-flex items-center gap-2 rounded-lg py-1 pl-1.5 pr-2.5 " +
-                    (i === 0
-                      ? "border border-[color:var(--hd-primary-border)] bg-[color:var(--hd-primary-tint)]"
-                      : "border border-[color:var(--hd-border)] bg-[color:var(--hd-surface)]")
-                  }
-                >
-                  <span
-                    className={
-                      "flex size-5 items-center justify-center rounded-md text-[10px] font-semibold tabular-nums " +
-                      (i === 0
-                        ? "bg-[color:var(--hd-primary)] text-white"
-                        : "bg-[color:var(--hd-primary-tint)] text-[color:var(--hd-primary-dark)]")
-                    }
-                  >
-                    {i + 1}
-                  </span>
-                  <span className="hd-value text-[13px] font-medium">
-                    {p.displayName || p.kitId}
-                  </span>
-                </li>
-              ))}
-            </ol>
-            <p className="hd-label mt-2 text-xs">
-              {lineup.length} intervention{lineup.length === 1 ? "" : "s"} · full
-              rationale and formulation in the plan
-            </p>
-          </div>
-        )}
+        {/* The recommended treatment is no longer glanced here: on the V3
+            workspace the full plan reads immediately below this section in the
+            same column, and the rail carries the checklist — a third copy would
+            be duplicate information. This section stays the case: what they
+            reported, and what it means. */}
 
         {/* FINDINGS — the clubbed signal → pattern → meaning flow. */}
         <div className="hd-divide-t space-y-5 p-5 sm:p-6">

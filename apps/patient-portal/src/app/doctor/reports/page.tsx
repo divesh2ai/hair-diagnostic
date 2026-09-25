@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import {
   ArrowRight,
@@ -204,26 +204,13 @@ function ReviewQueue({
   // none of them cost a request.
   const minuteTick = useMinuteTick();
 
+  // The acting doctor's own id — used only by the "assigned to me" filter.
+  // It now rides on the /api/doctor/reports response (see load()) instead of a
+  // separate /api/doctor/me fetch, so the initial queue load resolves the
+  // doctor context ONCE and makes one fewer round trip.
   const [doctorMe, setDoctorMe] = useState<{ id: string } | null>(null);
   const [doctorMeLoading, setDoctorMeLoading] = useState(true);
   const [doctorMeError, setDoctorMeError] = useState<string | null>(null);
-
-  useEffect(() => {
-    setDoctorMeLoading(true);
-    fetch("/api/doctor/me")
-      .then((r) => {
-        if (!r.ok) throw new Error("Failed to load doctor profile");
-        return r.json();
-      })
-      .then((data) => {
-        setDoctorMe(data.doctor);
-        setDoctorMeLoading(false);
-      })
-      .catch((err) => {
-        setDoctorMeError(err instanceof Error ? err.message : String(err));
-        setDoctorMeLoading(false);
-      });
-  }, []);
 
   const set = (k: keyof Filters, v: string | boolean) =>
     setFilters((f) => ({ ...f, [k]: v }));
@@ -307,11 +294,21 @@ function ReviewQueue({
         setRows(data.rows ?? []);
         setTotal(data.total ?? 0);
         setLoadError(false);
+        // The doctor's own id rides on this response — no separate /api/doctor/me
+        // round trip. Only the "assigned to me" filter uses it, and it does not
+        // change between polls, so it is resolved on the foreground load only.
+        if (!background) {
+          if (data.doctorId) setDoctorMe({ id: data.doctorId });
+          setDoctorMeError(null);
+          setDoctorMeLoading(false);
+        }
       } catch {
         if (!background) {
           setRows([]);
           setTotal(0);
           setLoadError(true);
+          setDoctorMeError("Failed to load doctor profile");
+          setDoctorMeLoading(false);
         }
       } finally {
         if (!background) setLoading(false);
@@ -327,12 +324,24 @@ function ReviewQueue({
   // polling never reverts a filter the doctor just set.
   useVisibilityPolling(() => load(true));
 
+  // Facets populate ONLY the advanced "More filters" panel, which is closed by
+  // default. Fetch them lazily the first time the doctor opens it, so they are
+  // off the initial queue load (one fewer round trip + doctor-context
+  // resolution). `facets === null` before the first open is the panel's own
+  // "loading" state.
+  const facetsRequested = useRef(false);
   useEffect(() => {
+    if (!filtersOpen || facetsRequested.current) return;
+    facetsRequested.current = true;
     fetch("/api/doctor/reports/facets")
       .then((r) => r.json())
       .then(setFacets)
-      .catch(() => setFacets(null));
-  }, []);
+      .catch(() => {
+        // Allow a retry on the next open if the first attempt failed.
+        facetsRequested.current = false;
+        setFacets(null);
+      });
+  }, [filtersOpen]);
 
   useEffect(() => {
     load();

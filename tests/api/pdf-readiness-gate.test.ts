@@ -93,7 +93,11 @@ const CLEAN_SNAPSHOT = {
   summary: { groundingViolationCount: 0, reasoningGapCount: 0 },
 };
 
-const BLOCKED_SNAPSHOT = {
+// Not ready, blocked ONLY by a narrative grounding violation (an unsupported
+// SENTENCE in the write-up). Under the aligned governance this is a SOFT
+// advisory — it must NOT refuse the report; the sentence is corrected, the
+// clinician is not blocked. Renders and delivers, exactly as approval proceeds.
+const GROUNDING_ONLY_SNAPSHOT = {
   ...CLEAN_SNAPSHOT,
   isReadyForApproval: false,
   groundingViolations: [
@@ -101,6 +105,32 @@ const BLOCKED_SNAPSHOT = {
   ],
   blockingCodes: ["GROUNDING_VIOLATION_PRESENT"],
   summary: { groundingViolationCount: 1, reasoningGapCount: 0 },
+};
+
+// Not ready, but blocked ONLY by a soft reasoning/narrative advisory. Under the
+// aligned governance this must NOT refuse the report — it renders and delivers,
+// exactly as approval now proceeds for the same case.
+const REASONING_GAP_ONLY_SNAPSHOT = {
+  ...CLEAN_SNAPSHOT,
+  isReadyForApproval: false,
+  reasoningGaps: [
+    { kind: "kit.notDiscussedInNarrative", subject: "HAIR FACT TE GOLD", summary: "not named" },
+  ],
+  blockingCodes: ["REASONING_GAP_PRESENT"],
+  summary: { groundingViolationCount: 0, reasoningGapCount: 1 },
+};
+
+// Not ready, blocked by a recommendation-level evidence failure — a kit with no
+// trigger at all (kit.missingTrigger). This is treatment safety, not prose, so
+// it is a HARD block: the report MUST refuse (422), matching the approval gate.
+const UNSUPPORTED_RECOMMENDATION_SNAPSHOT = {
+  ...CLEAN_SNAPSHOT,
+  isReadyForApproval: false,
+  reasoningGaps: [
+    { kind: "kit.missingTrigger", subject: "HAIR FACT TE GOLD", summary: "no trigger" },
+  ],
+  blockingCodes: ["REASONING_GAP_PRESENT"],
+  summary: { groundingViolationCount: 0, reasoningGapCount: 1 },
 };
 
 beforeEach(() => {
@@ -138,12 +168,12 @@ describe("GET /api/assessment/pdf — readiness gate", () => {
     (global as { fetch: unknown }).fetch = originalFetch;
   });
 
-  it("APPROVED + blocked snapshot → 422 with structured code", async () => {
+  it("APPROVED + unsupported-recommendation snapshot → 422 with structured code", async () => {
     getClinicContext.mockResolvedValueOnce({ userId: "u", role: "DOCTOR", clinicId: "c1" });
     consultationFindUnique.mockResolvedValueOnce({
       currentVersion: {
         approvalStatus: "APPROVED",
-        content: { clinicalReadiness: BLOCKED_SNAPSHOT },
+        content: { clinicalReadiness: UNSUPPORTED_RECOMMENDATION_SNAPSHOT },
       },
     });
     const res = await GET(getReq("abc"));
@@ -151,8 +181,45 @@ describe("GET /api/assessment/pdf — readiness gate", () => {
     const body = (await res.json()) as Record<string, unknown>;
     expect(body.code).toBe("readiness_blocked");
     expect(Array.isArray(body.blockingCodes)).toBe(true);
-    expect(body.blockingCodes).toContain("GROUNDING_VIOLATION_PRESENT");
-    expect(body.groundingViolationCount).toBe(1);
+    expect(body.blockingCodes).toContain("RECOMMENDATION_UNSUPPORTED_PRESENT");
+  });
+
+  it("APPROVED + grounding-only snapshot → 200 (unsupported narrative sentence is soft, does not block PDF)", async () => {
+    getClinicContext.mockResolvedValueOnce({ userId: "u", role: "DOCTOR", clinicId: "c1" });
+    consultationFindUnique.mockResolvedValueOnce({
+      currentVersion: {
+        approvalStatus: "APPROVED",
+        content: { clinicalReadiness: GROUNDING_ONLY_SNAPSHOT },
+      },
+    });
+    const originalFetch = global.fetch;
+    (global as { fetch: unknown }).fetch = jest.fn().mockResolvedValue({
+      ok: true,
+      body: new ReadableStream(),
+      headers: new Headers({ "content-type": "application/pdf" }),
+    });
+    const res = await GET(getReq("abc"));
+    expect(res.status).toBe(200);
+    (global as { fetch: unknown }).fetch = originalFetch;
+  });
+
+  it("APPROVED + reasoning-gap-only snapshot → 200 (soft advisory does not block PDF)", async () => {
+    getClinicContext.mockResolvedValueOnce({ userId: "u", role: "DOCTOR", clinicId: "c1" });
+    consultationFindUnique.mockResolvedValueOnce({
+      currentVersion: {
+        approvalStatus: "APPROVED",
+        content: { clinicalReadiness: REASONING_GAP_ONLY_SNAPSHOT },
+      },
+    });
+    const originalFetch = global.fetch;
+    (global as { fetch: unknown }).fetch = jest.fn().mockResolvedValue({
+      ok: true,
+      body: new ReadableStream(),
+      headers: new Headers({ "content-type": "application/pdf" }),
+    });
+    const res = await GET(getReq("abc"));
+    expect(res.status).toBe(200);
+    (global as { fetch: unknown }).fetch = originalFetch;
   });
 
   it("APPROVED + missing snapshot (historical row) → 422 READINESS_SNAPSHOT_MISSING", async () => {

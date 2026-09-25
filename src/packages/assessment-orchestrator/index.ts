@@ -29,6 +29,7 @@ import type { AssessmentArtifact } from "@shared/types/assessment";
 import { buildNarrative } from "../ai-engine/explanations/builders/buildNarrative";
 import type { ExplanationContext } from "../ai-engine/explanations/types";
 import { persistNarrativeArtifact } from "./persistence/persistArtifacts";
+import { ensureConsultationGuarded } from "./persistence/ensureConsultation";
 import { assembleAssessmentNarratives } from "./narratives/assembleNarratives";
 import { buildClinicalReport } from "../ai-engine/report-engine";
 import { buildClinicalFacts } from "../ai-engine/clinical-facts";
@@ -403,6 +404,40 @@ async function runPhaseA(ctx: PipelineContext): Promise<PhaseRecorder> {
   await logAssessmentEvent(prisma, ctx.assessmentId, "RECOMMENDATIONS_COMPLETE", {
     stage: "clinical_ready",
     durationMs: Date.now() - ctx.phaseAStart,
+  });
+
+  // ── Canonical Consultation + ConsultationVersion ────────────────────────
+  // Composed through the consultation orchestrator — the same entry point the
+  // doctor UI uses — so the canonical clinical record exists as soon as the
+  // clinical outputs are final, instead of only once a doctor happens to open
+  // the case. See persistence/ensureConsultation.ts for why this runs after
+  // the CLINICAL_READY checkpoint and why it never fails the assessment.
+  await runStage(ctx, phase, "consultation", async (t) => {
+    const result = await ensureConsultationGuarded(prisma, ctx.assessmentId);
+    t.tick("db");
+
+    if (result.status === "failed") {
+      // Surface it through the same channel every other stage reports through.
+      // Deliberately not rethrown: lazy creation on doctor read is still a
+      // working fallback, and a good clinical run must not be discarded.
+      await prisma.orchestrationLog
+        .create({
+          data: {
+            assessmentId: ctx.assessmentId,
+            stage: "consultation",
+            status: "FAILED",
+            durationMs: 0,
+            error: result.reason ?? "unknown",
+          },
+        })
+        .catch(() => {});
+      await logAssessmentEvent(prisma, ctx.assessmentId, "FAILED", {
+        stage: "consultation",
+        message: result.reason ?? "unknown",
+      }).catch(() => {});
+    }
+
+    return result;
   });
 
   phase.finish();

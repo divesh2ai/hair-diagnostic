@@ -274,6 +274,12 @@ export async function fetchReviewPayload(
       reviewPathway: target.reviewPathway,
     },
     requestId,
+    // This is the review PAGE's first-paint load. Operational/report/delivery
+    // status is non-critical for reading and deciding the case, so it is not
+    // read here — the client fetches it after paint via
+    // /api/consultation/[id]/operational. The API GET path (client refresh)
+    // does not set this, so it still returns the full payload in one call.
+    deferOperational: true,
   });
 
   if (!result.ok) {

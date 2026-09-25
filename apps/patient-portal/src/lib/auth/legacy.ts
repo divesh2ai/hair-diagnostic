@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { readSupabaseClaims } from "./requestScope";
 import type { SystemRole } from "./roles";
 
 export type { SystemRole };
@@ -20,8 +20,9 @@ export type AuthClaims = {
 // the session is missing or invalid. Verified server-side via JWKS —
 // never trust client-forwarded role headers.
 export async function getAuthClaims(): Promise<AuthClaims | null> {
-  const supabase = await createSupabaseServerClient();
-  const { data, error } = await supabase.auth.getClaims();
+  // Request-scoped: shares one getClaims() with getClinicContext() and any
+  // other caller in the same server render (see ./requestScope).
+  const { data, error } = await readSupabaseClaims();
   if (error || !data?.claims) return null;
   const c = data.claims as Record<string, unknown>;
   return {

@@ -20,9 +20,24 @@ const CHECKOUT_ROUTE = path.join(
   process.cwd(),
   "apps/patient-portal/src/app/api/cart/[assessmentId]/checkout/route.ts",
 );
-const CART_PAGE = path.join(
+// The Clinic Order refactor moved the shared order query (commercial charge
+// evaluation, doctor resolution, subtotal gating) into lib/cart/loadCartData —
+// the ONE module both the API route and the page's server render call — and
+// split the page into a doctor's ClinicOrderView and a patient's read-only
+// PatientPlanView. These invariants assert against where each behaviour now
+// lives, so they still pin the real fail-closed guarantees rather than the
+// old single ecommerce page.
+const CART_LOADER = path.join(
   process.cwd(),
-  "apps/patient-portal/src/app/cart/[assessmentId]/page.tsx",
+  "apps/patient-portal/src/lib/cart/loadCartData.ts",
+);
+const CART_PATIENT_VIEW = path.join(
+  process.cwd(),
+  "apps/patient-portal/src/app/cart/[assessmentId]/PatientPlanView.tsx",
+);
+const CART_CLINIC_VIEW = path.join(
+  process.cwd(),
+  "apps/patient-portal/src/app/cart/[assessmentId]/ClinicOrderView.tsx",
 );
 
 const read = (p: string) => readFileSync(p, "utf8");
@@ -42,18 +57,23 @@ const LIVE_IDENTIFIERS = [
 
 describe("the fabricated price is gone from the patient path", () => {
   it("the cart route neither imports nor calls the fabricating helpers", () => {
-    const src = read(CART_ROUTE);
-    // Strip comments first: the file deliberately explains why these helpers
-    // were removed, and naming them in prose is not using them.
-    const code = src
-      .replace(/\/\*[\s\S]*?\*\//g, "")
-      .replace(/^\s*\/\/.*$/gm, "");
+    // Strip comments first: the files deliberately explain why these helpers
+    // were removed, and naming them in prose is not using them. The route and
+    // the shared loader are BOTH checked — the fabricating helpers must be
+    // absent from the whole patient path — and the governed charge evaluation
+    // now runs in the loader both the route and the page call.
+    const stripComments = (s: string) =>
+      s.replace(/\/\*[\s\S]*?\*\//g, "").replace(/^\s*\/\/.*$/gm, "");
+    const routeCode = stripComments(read(CART_ROUTE));
+    const loaderCode = stripComments(read(CART_LOADER));
 
-    expect(code).not.toMatch(/import[^;]*\bpriceForKit\b[^;]*;/);
-    expect(code).not.toMatch(/import[^;]*\btotalRevenueInr\b[^;]*;/);
-    expect(code).not.toMatch(/\bpriceForKit\s*\(/);
-    expect(code).not.toMatch(/\btotalRevenueInr\s*\(/);
-    expect(code).toMatch(/evaluateOrderForPatientCharge\s*\(/);
+    for (const code of [routeCode, loaderCode]) {
+      expect(code).not.toMatch(/import[^;]*\bpriceForKit\b[^;]*;/);
+      expect(code).not.toMatch(/import[^;]*\btotalRevenueInr\b[^;]*;/);
+      expect(code).not.toMatch(/\bpriceForKit\s*\(/);
+      expect(code).not.toMatch(/\btotalRevenueInr\s*\(/);
+    }
+    expect(loaderCode).toMatch(/evaluateOrderForPatientCharge\s*\(/);
   });
 
   // The 2026-09-08 budget-substitution reconciliation (see
@@ -69,10 +89,13 @@ describe("the fabricated price is gone from the patient path", () => {
   //      GOLD", …) for every compound kit name, not the short canonical key
   //      — commercial identity is still EXACT-MATCH ONLY, it just now has
   //      more entries in its exact-match table.
-  // Only two of the nine stay blocked: "PRO FACT META B PCOS" (explicitly
-  // held for review) and "PRO FACT META B" / "META_B" (never reconciled —
-  // META_B has no budget alternative and was not touched).
-  const STILL_BLOCKED_LIVE_IDENTIFIERS = ["PRO FACT META B PCOS", "PRO FACT META B", "META_B"];
+  // Only ONE of the nine now stays blocked: "PRO FACT META B PCOS" (explicitly
+  // held for review, never resolves). "PRO FACT META B" / "META_B" USED to be
+  // blocked too, but META_B was approved for direct patient sale on 2026-09-19
+  // (doctor-confirmed, drfact-mumbai) and "PRO FACT META B" was added as its
+  // approved alias — so both are now genuinely chargeable, exactly like the
+  // 2026-09-08 reconciled identifiers.
+  const STILL_BLOCKED_LIVE_IDENTIFIERS = ["PRO FACT META B PCOS"];
   const NOW_CHARGEABLE_LIVE_IDENTIFIERS = [
     "FPHL",
     "MPHL",
@@ -80,9 +103,11 @@ describe("the fabricated price is gone from the patient path", () => {
     "PRO IMMUNE GOLD",
     "IRON UP GOLD",
     "HAIR FACT TE GOLD",
+    "PRO FACT META B",
+    "META_B",
   ];
 
-  it("no live identifier can produce a patient price at all today, unless reconciled 2026-09-08", () => {
+  it("no live identifier can produce a patient price at all today, unless reconciled", () => {
     for (const raw of STILL_BLOCKED_LIVE_IDENTIFIERS) {
       const d = evaluateKitForPatientSale(raw);
       expect(d.sellable).toBe(false);
@@ -117,8 +142,10 @@ describe("the fabricated price is gone from the patient path", () => {
   });
 
   it("the cart page derives no price arithmetic from a raw unit price", () => {
-    const src = read(CART_PAGE);
-    // The old page multiplied a never-null unitPriceInr. That field is gone.
+    // The patient's read-only plan is where a total would be shown; it must
+    // read the server-computed subtotal, never multiply a raw unit price (the
+    // old page multiplied a never-null unitPriceInr — that field is gone).
+    const src = read(CART_PATIENT_VIEW);
     expect(src).not.toMatch(/unitPriceInr/);
     expect(src).toMatch(/subtotalMinor/);
   });
@@ -143,8 +170,10 @@ describe("PRO FACT META B PCOS never becomes PCOS (veg)", () => {
   it("the raw identifier survives, so the cart shows it instead of a name", () => {
     const d = evaluateKitForPatientSale("PRO FACT META B PCOS");
     expect(d.sourceIdentifierSnapshot).toBe("PRO FACT META B PCOS");
-    // The cart route may only name a kit via a resolved canonical id.
-    expect(read(CART_ROUTE)).toMatch(
+    // The loader (the one query the route and the page share) may only name a
+    // kit via a resolved canonical id — an unresolved line keeps its raw
+    // identifier and is never given a registry display name.
+    expect(read(CART_LOADER)).toMatch(
       /decision\.canonicalKitId \? getKitInfo\(decision\.canonicalKitId\)/,
     );
   });
@@ -225,20 +254,26 @@ describe("no misleading total, no monetary progression", () => {
     expect(fphlOnly.chargeable).toBe(true);
     expect(fphlOnly.totalAmountMinor).toBe(358300);
 
+    // PRO_IMMUNE_GOLD was repriced 2026-09-19 (₹2,518 → ₹2,638) as part of the
+    // doctor-confirmed Pro Immune price-sheet correction.
     const mphlProImmune = evaluateOrderForPatientCharge(["MPHL", "PRO IMMUNE GOLD"]);
     expect(mphlProImmune.chargeable).toBe(true);
-    expect(mphlProImmune.totalAmountMinor).toBe(363700 + 251800);
+    expect(mphlProImmune.totalAmountMinor).toBe(363700 + 263800);
   });
 
   it("every other real prescription on file remains non-chargeable", () => {
     // Each of these still contains at least one line blocked on identity (a
     // spelling with no canonical match or approved alias, or an identifier
-    // explicitly held for review) or on price (META_B was never reconciled —
-    // no budget alternative exists for it) — see the note above.
+    // explicitly held for review) or on price (a resolved kit that carries no
+    // APPROVED price). META_B is deliberately NOT used to make an order blocked
+    // any more — it is now approved for patient sale — so these orders lean on
+    // identifiers that genuinely still cannot charge: "PRO FACT META B PCOS"
+    // (held for review, unresolved) and ALOPECIA_AREATA / HBR (resolve, but
+    // were never price-approved).
     const realOrders = [
       ["PRO FACT META B PCOS", "IRON UP GOLD"],
-      ["HAIR FACT TE GOLD", "PHENOTYPE INFLAMATION", "META_B"],
-      ["PRO FACT META B"],
+      ["HAIR FACT TE GOLD", "ALOPECIA_AREATA"],
+      ["HBR"],
     ];
     for (const kits of realOrders) {
       const order = evaluateOrderForPatientCharge(kits);
@@ -254,12 +289,19 @@ describe("no misleading total, no monetary progression", () => {
     expect(src).toMatch(/if \(!commercial\.chargeable\)/);
   });
 
-  it("the cart page gates its confirm button on the server flag", () => {
-    expect(read(CART_PAGE)).toMatch(/!cart\.chargeable/);
+  it("the clinic order gates its confirm button on the server flag", () => {
+    // Confirming the order is the doctor's action, on the doctor-only
+    // ClinicOrderView; the confirm button is disabled unless the server says
+    // the whole order is chargeable. (That the patient's PatientPlanView has no
+    // quantity control or order action at all is pinned in
+    // p0-launch-invariants.)
+    expect(read(CART_CLINIC_VIEW)).toMatch(/!cart\.chargeable/);
   });
 
-  it("the route emits a subtotal only when the whole order is chargeable", () => {
-    const src = read(CART_ROUTE);
+  it("the loader emits a subtotal only when the whole order is chargeable", () => {
+    // Subtotal gating moved into loadCartData, the one query the route and the
+    // page share, so both callers get null rather than a partial total.
+    const src = read(CART_LOADER);
     expect(src).toMatch(/commercial\.chargeable\s*\n?\s*\?/);
     expect(src).toMatch(/subtotalMinor/);
   });
