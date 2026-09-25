@@ -89,6 +89,7 @@ jobs:
             tests/localisation \
             tests/reports \
             tests/doctor/clinical-attention-advice.test.ts \
+            tests/doctor/clinical-attention-soft-hidden.test.ts \
             tests/doctor/clinical-signals.test.ts \
             tests/doctor/dashboard-attention.test.ts \
             tests/doctor/dashboard-cta-hierarchy.test.ts \
