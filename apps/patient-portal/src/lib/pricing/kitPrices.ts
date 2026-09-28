@@ -32,13 +32,18 @@ export const KIT_PRICE_INR: Record<string, number> = {
   META_B: 3018,
   META_B_HYPOTHYROID: 2316,
   META_B_HYPOTHYROID_VEG: 2316,
-  PCOS: 2291,
+  // Raised from ₹2,291 to ₹3,009 on 2026-09-28, doctor-confirmed (drfact-mumbai),
+  // and approved for patient charging in APPROVED_KIT_PRICES_MINOR. This map
+  // mirrors the approved rupee value so the doctor estimate matches the charge.
+  PCOS: 3009,
   PERI_MENOPAUSE: 4196,
-  PERI_MENOPAUSE_VEG: 4196,
+  // Veg variants priced distinctly from their base kits; revised 2026-09-28 and
+  // approved for patient charging in APPROVED_KIT_PRICES_MINOR.
+  PERI_MENOPAUSE_VEG: 3602,
   POST_MENOPAUSE: 2142,
   POST_MENOPAUSE_VEG: 2142,
   TE_GOLD: 2996,
-  TE_GOLD_VEG: 2996,
+  TE_GOLD_VEG: 3394,
   // IRON_UP_1 and IRON_UP_4_VEG were removed: both are superseded by
   // IRON_UP_GOLD ("PRO FACT IRON UP"). Neither resolved to a documented kit,
   // so the lineup editor listed them by their raw id — a doctor picking from
