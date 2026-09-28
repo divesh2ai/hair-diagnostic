@@ -124,13 +124,15 @@ export const APPROVED_KIT_PRICES_MINOR: Readonly<Record<string, number>> =
     // PRICE_APPROVED. Paired with the "HAIR FACT HAIR BREAKAGE REPAIR (HBR)"
     // alias in kitIdentity.ts.
     HBR: rupeesToMinor(2854),
-    // Peri-menopause (base and veg) and TE Gold veg — doctor-confirmed
-    // 2026-09-28. Veg variants are priced as their own SKUs (the veg labels are
-    // aliased to the veg canonicals in kitIdentity.ts, not collapsed onto the
-    // base). All three match the figures already in KIT_PRICE_INR.
+    // Peri-menopause (base and veg) and TE Gold veg — doctor-confirmed. Veg
+    // variants are priced as their own SKUs (the veg labels are aliased to the
+    // veg canonicals in kitIdentity.ts, not collapsed onto the base). The veg
+    // figures were revised 2026-09-28 to prices distinct from their base kits
+    // (PERI_MENOPAUSE_VEG 4196 → 3602, TE_GOLD_VEG 2996 → 3394); KIT_PRICE_INR
+    // mirrors them.
     PERI_MENOPAUSE: rupeesToMinor(4196),
-    PERI_MENOPAUSE_VEG: rupeesToMinor(4196),
-    TE_GOLD_VEG: rupeesToMinor(2996),
+    PERI_MENOPAUSE_VEG: rupeesToMinor(3602),
+    TE_GOLD_VEG: rupeesToMinor(3394),
   });
 
 /**

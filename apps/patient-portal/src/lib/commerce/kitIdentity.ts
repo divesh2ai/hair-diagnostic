@@ -207,7 +207,8 @@ export const APPROVED_KIT_ALIASES: Readonly<Record<string, CanonicalKitId>> =
     // identity maps each veg label to its distinct veg canonical, keeping
     // veg/non-veg separate the way CANONICAL_KIT_IDS and the price table do.
     // Prices approved in APPROVED_KIT_PRICES_MINOR (PERI_MENOPAUSE 4196,
-    // PERI_MENOPAUSE_VEG 4196, TE_GOLD_VEG 2996 rupees).
+    // PERI_MENOPAUSE_VEG 3602, TE_GOLD_VEG 3394 rupees — the veg figures revised
+    // 2026-09-28 to prices distinct from their base kits).
     "HAIR FACT PERI MENOPAUSE": "PERI_MENOPAUSE",
     "HAIR FACT PERI MENOPAUSE VEG": "PERI_MENOPAUSE_VEG",
     "HAIR FACT TE GOLD VEG": "TE_GOLD_VEG",
