@@ -105,8 +105,7 @@ describe("other approved kits in this cart are untouched", () => {
 
 describe("checkout stays fail-closed for still-blocked kits", () => {
   it.each([
-    "HAIR FACT PERI MENOPAUSE VEG",
-    "HAIR FACT TE GOLD VEG",
+    "HAIR FACT POST MENOPAUSE VEG", // no approved alias — genuinely unresolved
     "SOME KIT THAT DOES NOT EXIST",
   ])("does not sell %s", (rawLabel) => {
     const decision = evaluateKitForPatientSale(rawLabel);
@@ -117,7 +116,7 @@ describe("checkout stays fail-closed for still-blocked kits", () => {
   it("blocks and refuses to total an order containing a blocked kit", () => {
     const order = evaluateOrderForPatientCharge([
       "FH WELL 3", // now sellable
-      "HAIR FACT TE GOLD VEG", // still blocked (no approved alias)
+      "HAIR FACT POST MENOPAUSE VEG", // still blocked (no approved alias)
     ]);
     expect(order.chargeable).toBe(false);
     expect(order.totalAmountMinor).toBeNull();

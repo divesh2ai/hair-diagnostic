@@ -66,7 +66,7 @@ describe("kit identity", () => {
 
   it("2a. leaves a genuinely unaliased clinical spelling unresolved", () => {
     // The exact-match rule still holds for everything not explicitly approved.
-    const id = resolveKitIdentity("HAIR FACT TE GOLD VEG");
+    const id = resolveKitIdentity("HAIR FACT POST MENOPAUSE VEG");
     expect(id.status).toBe("UNRESOLVED");
     expect(id.canonicalKitId).toBeNull();
     expect(id.resolutionMethod).toBe("NONE");
@@ -118,7 +118,7 @@ describe("kit identity", () => {
     expect(aliased.sourceIdentifierSnapshot).not.toBe(aliased.canonicalKitId);
   });
 
-  it("4b. keeps the approved alias list to exactly the 15 approved entries", () => {
+  it("4b. keeps the approved alias list to exactly the 18 approved entries", () => {
     // 1 pre-existing (PHENOTYPE INFLAMATION) + 8 added 2026-09-08 + 1 added
     // 2026-09-09 (HAIR FACT TTM (OCD), the 12th pair's canonical side) + 2
     // added 2026-09-19, doctor-confirmed (drfact-mumbai): "PRO FACT META B" →
@@ -145,6 +145,9 @@ describe("kit identity", () => {
         "FH WELL 3",
         "PRO FACT META B PCOS",
         "HAIR FACT HAIR BREAKAGE REPAIR (HBR)",
+        "HAIR FACT PERI MENOPAUSE",
+        "HAIR FACT PERI MENOPAUSE VEG",
+        "HAIR FACT TE GOLD VEG",
       ].sort(),
     );
   });
@@ -214,7 +217,16 @@ describe("kit pricing authority", () => {
   // BREAKAGE REPAIR (HBR)" spelling added as an approved alias). Its own list
   // for the same reason as the 2026-09-19 pair — so "nothing else" below stays
   // the exact union of the governance decisions.
-  const APPROVED_2026_09_28 = ["FH_WELL_3", "PCOS", "HBR"];
+  const APPROVED_2026_09_28 = [
+    "FH_WELL_3",
+    "PCOS",
+    "HBR",
+    // Peri-menopause (base + veg) and TE Gold veg — the veg labels aliased to
+    // their distinct veg SKUs, not collapsed onto the base.
+    "PERI_MENOPAUSE",
+    "PERI_MENOPAUSE_VEG",
+    "TE_GOLD_VEG",
+  ];
 
   it("7. approves exactly the reconciled + patient-sale kits — nothing else", () => {
     const approved = [
@@ -238,12 +250,12 @@ describe("kit pricing authority", () => {
     // These kits carry no budget alternative and were NOT among the
     // doctor-confirmed patient-sale approvals; they must stay unpriced. META_B
     // is deliberately absent from this list now — it was approved for patient
-    // sale on 2026-09-19 (see APPROVED_2026_09_19) — and FH_WELL_3, PCOS and HBR
-    // likewise, approved on 2026-09-28; every kit that remains here must still
-    // be unable to charge a patient.
+    // sale on 2026-09-19 (see APPROVED_2026_09_19) — as were FH_WELL_3, PCOS,
+    // HBR, PERI_MENOPAUSE, PERI_MENOPAUSE_VEG and TE_GOLD_VEG on 2026-09-28
+    // (APPROVED_2026_09_28); every kit that remains here must still be unable to
+    // charge a patient.
     for (const kitId of [
       "PRO_FACT_THYROID_CARE",
-      "PERI_MENOPAUSE",
       "POST_MENOPAUSE",
       "EARLY_GREYING_CARE_GOLD",
       "HEALTHY_9",
@@ -272,7 +284,7 @@ describe("combined sellability matrix", () => {
   const resolved = resolveKitIdentity("TE_GOLD");
   // A clinical spelling with no approved alias — the current UNRESOLVED example
   // now that PRO FACT META B PCOS has been promoted to an approved alias.
-  const unresolved = resolveKitIdentity("HAIR FACT TE GOLD VEG");
+  const unresolved = resolveKitIdentity("HAIR FACT POST MENOPAUSE VEG");
   const missing = resolveKitIdentity("POST_HYSTERECTOMY_RESET");
 
   it("8. RESOLVED + PRICE_APPROVED is eligible", () => {
@@ -371,7 +383,7 @@ describe("patient charging boundary", () => {
   it("14. an unresolved identity cannot enter patient checkout", () => {
     const order = evaluateOrderForPatientCharge([
       "TE_GOLD",
-      "HAIR FACT TE GOLD VEG",
+      "HAIR FACT POST MENOPAUSE VEG",
     ]);
     expect(order.chargeable).toBe(false);
     expect(order.totalAmountMinor).toBeNull();
@@ -379,7 +391,7 @@ describe("patient charging boundary", () => {
 
     // And the unresolved line carries no price of its own.
     const line = order.lines.find(
-      (l) => l.sourceIdentifierSnapshot === "HAIR FACT TE GOLD VEG",
+      (l) => l.sourceIdentifierSnapshot === "HAIR FACT POST MENOPAUSE VEG",
     );
     expect(line?.chargeableAmountMinor).toBeNull();
     expect(line?.canonicalKitId).toBeNull();
@@ -392,9 +404,9 @@ describe("patient charging boundary", () => {
   });
 
   it("15. an internal reviewer can still see the reason and the raw id", () => {
-    const d = evaluateKitForPatientSale("HAIR FACT TE GOLD VEG");
+    const d = evaluateKitForPatientSale("HAIR FACT POST MENOPAUSE VEG");
     expect(d.reasons).toContain("KIT_IDENTITY_REQUIRES_REVIEW");
-    expect(d.sourceIdentifierSnapshot).toBe("HAIR FACT TE GOLD VEG");
+    expect(d.sourceIdentifierSnapshot).toBe("HAIR FACT POST MENOPAUSE VEG");
     expect(d.identityStatus).toBe("UNRESOLVED");
 
     // A present-but-unapproved price stays visible to internal review as a

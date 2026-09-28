@@ -199,6 +199,18 @@ export const APPROVED_KIT_ALIASES: Readonly<Record<string, CanonicalKitId>> =
     // registry's KIT_ID_TO_ENTRY already maps to canonical HBR. Price approved
     // in APPROVED_KIT_PRICES_MINOR at the sheet figure ₹2,854.
     "HAIR FACT HAIR BREAKAGE REPAIR (HBR)": "HBR",
+    // Approved 2026-09-28, doctor-confirmed (drfact-mumbai). NOTE: unlike the
+    // aliases above, these deliberately DIVERGE from the registry's
+    // KIT_ID_TO_ENTRY, which collapses the veg spellings onto the non-veg base
+    // ("HAIR FACT TE GOLD VEG" -> TE_GOLD, "HAIR FACT PERI MENOPAUSE VEG" ->
+    // PERI_MENOPAUSE). A veg prescription must ship the veg SKU, so commercial
+    // identity maps each veg label to its distinct veg canonical, keeping
+    // veg/non-veg separate the way CANONICAL_KIT_IDS and the price table do.
+    // Prices approved in APPROVED_KIT_PRICES_MINOR (PERI_MENOPAUSE 4196,
+    // PERI_MENOPAUSE_VEG 4196, TE_GOLD_VEG 2996 rupees).
+    "HAIR FACT PERI MENOPAUSE": "PERI_MENOPAUSE",
+    "HAIR FACT PERI MENOPAUSE VEG": "PERI_MENOPAUSE_VEG",
+    "HAIR FACT TE GOLD VEG": "TE_GOLD_VEG",
   });
 
 /**

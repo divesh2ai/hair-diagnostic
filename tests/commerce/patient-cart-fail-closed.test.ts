@@ -96,7 +96,7 @@ describe("the fabricated price is gone from the patient path", () => {
   // an approved alias. So every live identifier is now genuinely chargeable,
   // exactly like the 2026-09-08 reconciled ones. A still-blocked example (for
   // the fail-closed assertions that need one) is any clinical spelling that was
-  // never aliased, e.g. "HAIR FACT TE GOLD VEG".
+  // never aliased, e.g. "HAIR FACT POST MENOPAUSE VEG".
   const STILL_BLOCKED_LIVE_IDENTIFIERS: string[] = [];
   const NOW_CHARGEABLE_LIVE_IDENTIFIERS = [
     "FPHL",
@@ -231,7 +231,7 @@ describe("no misleading total, no monetary progression", () => {
   it("a cart with one unresolved line has no total", () => {
     const order = evaluateOrderForPatientCharge([
       "FPHL",
-      "HAIR FACT TE GOLD VEG", // no approved alias — genuinely unresolved
+      "HAIR FACT POST MENOPAUSE VEG", // no approved alias — genuinely unresolved
     ]);
     expect(order.chargeable).toBe(false);
     expect(order.totalAmountMinor).toBeNull();
@@ -279,11 +279,11 @@ describe("no misleading total, no monetary progression", () => {
     // APPROVED price). META_B is deliberately NOT used to make an order blocked
     // any more — it is now approved for patient sale, as are "PRO FACT META B
     // PCOS" and HBR (2026-09-28) — so these orders lean on identifiers that
-    // genuinely still cannot charge: "HAIR FACT TE GOLD VEG" (a clinical
+    // genuinely still cannot charge: "HAIR FACT POST MENOPAUSE VEG" (a clinical
     // spelling with no approved alias, unresolved) and ALOPECIA_AREATA /
     // HEALTHY_9 (resolve, but were never price-approved).
     const realOrders = [
-      ["HAIR FACT TE GOLD VEG", "IRON UP GOLD"],
+      ["HAIR FACT POST MENOPAUSE VEG", "IRON UP GOLD"],
       ["HAIR FACT TE GOLD", "ALOPECIA_AREATA"],
       ["HEALTHY_9"],
     ];
