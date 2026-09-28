@@ -89,13 +89,15 @@ describe("the fabricated price is gone from the patient path", () => {
   //      GOLD", …) for every compound kit name, not the short canonical key
   //      — commercial identity is still EXACT-MATCH ONLY, it just now has
   //      more entries in its exact-match table.
-  // Only ONE of the nine now stays blocked: "PRO FACT META B PCOS" (explicitly
-  // held for review, never resolves). "PRO FACT META B" / "META_B" USED to be
-  // blocked too, but META_B was approved for direct patient sale on 2026-09-19
-  // (doctor-confirmed, drfact-mumbai) and "PRO FACT META B" was added as its
-  // approved alias — so both are now genuinely chargeable, exactly like the
-  // 2026-09-08 reconciled identifiers.
-  const STILL_BLOCKED_LIVE_IDENTIFIERS = ["PRO FACT META B PCOS"];
+  // None of the nine stays blocked any more. "PRO FACT META B" / "META_B" were
+  // approved for direct patient sale on 2026-09-19, and "PRO FACT META B PCOS"
+  // — the last hold — was confirmed on 2026-09-28 to name the single PCOS 6
+  // (veg) product (canonical PCOS, ₹3,009) and promoted from a review hold to
+  // an approved alias. So every live identifier is now genuinely chargeable,
+  // exactly like the 2026-09-08 reconciled ones. A still-blocked example (for
+  // the fail-closed assertions that need one) is any clinical spelling that was
+  // never aliased, e.g. "HAIR FACT POST MENOPAUSE VEG".
+  const STILL_BLOCKED_LIVE_IDENTIFIERS: string[] = [];
   const NOW_CHARGEABLE_LIVE_IDENTIFIERS = [
     "FPHL",
     "MPHL",
@@ -105,6 +107,7 @@ describe("the fabricated price is gone from the patient path", () => {
     "HAIR FACT TE GOLD",
     "PRO FACT META B",
     "META_B",
+    "PRO FACT META B PCOS",
   ];
 
   it("no live identifier can produce a patient price at all today, unless reconciled", () => {
@@ -151,28 +154,34 @@ describe("the fabricated price is gone from the patient path", () => {
   });
 });
 
-describe("PRO FACT META B PCOS never becomes PCOS (veg)", () => {
-  it("the clinical registry still resolves it — and is not the authority", () => {
-    // Pinned deliberately: if this ever stops being true the divergence below
-    // is no longer meaningful and this suite should be revisited.
+describe("PRO FACT META B PCOS resolves to PCOS (veg) by approved alias", () => {
+  it("the clinical registry names it the veg PCOS 6 product", () => {
+    // The commercial alias below points at this same canonical (PCOS), so the
+    // patient sees this display name — but resolution is the exact-match table,
+    // not this normaliser (see the fuzzy-refusal test).
     expect(getKitInfo("PRO FACT META B PCOS")?.displayName).toBe(
       "PRO FACT META B - PCOS 6 (veg)",
     );
   });
 
-  it("the commercial decision refuses it and carries no canonical id", () => {
+  it("the commercial decision now resolves it to PCOS and sells at ₹3,009", () => {
+    // Doctor-confirmed 2026-09-28: promoted from a review hold to an approved
+    // alias, with canonical PCOS repriced ₹2,291 → ₹3,009 and cleared for sale.
     const d = evaluateKitForPatientSale("PRO FACT META B PCOS");
-    expect(d.identityStatus).toBe("UNRESOLVED");
-    expect(d.canonicalKitId).toBeNull();
-    expect(d.reasons).toContain("KIT_IDENTITY_REQUIRES_REVIEW");
+    expect(d.identityStatus).toBe("RESOLVED");
+    expect(d.canonicalKitId).toBe("PCOS");
+    expect(d.priceStatus).toBe("PRICE_APPROVED");
+    expect(d.sellable).toBe(true);
+    expect(d.chargeableAmountMinor).toBe(300900);
+    expect(d.reasons).toEqual([]);
   });
 
-  it("the raw identifier survives, so the cart shows it instead of a name", () => {
+  it("the raw identifier survives verbatim, and the loader names it via the canonical", () => {
     const d = evaluateKitForPatientSale("PRO FACT META B PCOS");
+    // The canonical form never overwrites the source snapshot, even when resolved.
     expect(d.sourceIdentifierSnapshot).toBe("PRO FACT META B PCOS");
-    // The loader (the one query the route and the page share) may only name a
-    // kit via a resolved canonical id — an unresolved line keeps its raw
-    // identifier and is never given a registry display name.
+    // The loader (the one query the route and the page share) names a kit via
+    // its resolved canonical id — now non-null for this identifier.
     expect(read(CART_LOADER)).toMatch(
       /decision\.canonicalKitId \? getKitInfo\(decision\.canonicalKitId\)/,
     );
@@ -222,15 +231,17 @@ describe("no misleading total, no monetary progression", () => {
   it("a cart with one unresolved line has no total", () => {
     const order = evaluateOrderForPatientCharge([
       "FPHL",
-      "PRO FACT META B PCOS",
+      "HAIR FACT POST MENOPAUSE VEG", // no approved alias — genuinely unresolved
     ]);
     expect(order.chargeable).toBe(false);
     expect(order.totalAmountMinor).toBeNull();
   });
 
   it("a cart of resolved-but-unapproved lines still has no total", () => {
-    // ALOPECIA_AREATA + HBR: both resolve, neither was reconciled.
-    const order = evaluateOrderForPatientCharge(["ALOPECIA_AREATA", "HBR"]);
+    // ALOPECIA_AREATA + HEALTHY_9: both resolve, neither has an approved price.
+    // (HBR is deliberately NOT used here any more — it was approved for patient
+    // sale on 2026-09-28.)
+    const order = evaluateOrderForPatientCharge(["ALOPECIA_AREATA", "HEALTHY_9"]);
     expect(order.chargeable).toBe(false);
     expect(order.totalAmountMinor).toBeNull();
     expect(order.blockingReasons).toContain("PRICE_NOT_APPROVED");
@@ -266,14 +277,15 @@ describe("no misleading total, no monetary progression", () => {
     // spelling with no canonical match or approved alias, or an identifier
     // explicitly held for review) or on price (a resolved kit that carries no
     // APPROVED price). META_B is deliberately NOT used to make an order blocked
-    // any more — it is now approved for patient sale — so these orders lean on
-    // identifiers that genuinely still cannot charge: "PRO FACT META B PCOS"
-    // (held for review, unresolved) and ALOPECIA_AREATA / HBR (resolve, but
-    // were never price-approved).
+    // any more — it is now approved for patient sale, as are "PRO FACT META B
+    // PCOS" and HBR (2026-09-28) — so these orders lean on identifiers that
+    // genuinely still cannot charge: "HAIR FACT POST MENOPAUSE VEG" (a clinical
+    // spelling with no approved alias, unresolved) and ALOPECIA_AREATA /
+    // HEALTHY_9 (resolve, but were never price-approved).
     const realOrders = [
-      ["PRO FACT META B PCOS", "IRON UP GOLD"],
+      ["HAIR FACT POST MENOPAUSE VEG", "IRON UP GOLD"],
       ["HAIR FACT TE GOLD", "ALOPECIA_AREATA"],
-      ["HBR"],
+      ["HEALTHY_9"],
     ];
     for (const kits of realOrders) {
       const order = evaluateOrderForPatientCharge(kits);

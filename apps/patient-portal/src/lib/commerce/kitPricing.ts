@@ -109,6 +109,28 @@ export const APPROVED_KIT_PRICES_MINOR: Readonly<Record<string, number>> =
     // ── Approved 2026-09-19, doctor-confirmed (drfact-mumbai) ──────────────
     META_B: rupeesToMinor(3018),
     PRO_IMMUNE_5_VEG: rupeesToMinor(2692),
+    // ── Approved 2026-09-28, doctor-confirmed (drfact-mumbai) ──────────────
+    // ₹3,394 is the figure the 2026-09-21 governed price-sheet refresh loaded
+    // into KIT_PRICE_INR (REPOSITORY_PLACEHOLDER); the clinic confirmed it as
+    // the patient charge, promoting FH_WELL_3 from PRICE_PRESENT to
+    // PRICE_APPROVED. Paired with the "FH WELL 3" alias in kitIdentity.ts.
+    FH_WELL_3: rupeesToMinor(3394),
+    // PCOS 6 (veg) — the single product "PRO FACT META B PCOS" was confirmed to
+    // name (see kitIdentity.ts). Clinic-confirmed patient price raised from the
+    // sheet's ₹2,291 to ₹3,009; KIT_PRICE_INR mirrors the new figure.
+    PCOS: rupeesToMinor(3009),
+    // Hair Breakage Repair — clinic-confirmed at the sheet figure ₹2,854 (the
+    // same value already in KIT_PRICE_INR), promoting HBR from PRICE_PRESENT to
+    // PRICE_APPROVED. Paired with the "HAIR FACT HAIR BREAKAGE REPAIR (HBR)"
+    // alias in kitIdentity.ts.
+    HBR: rupeesToMinor(2854),
+    // Peri-menopause (base and veg) and TE Gold veg — doctor-confirmed
+    // 2026-09-28. Veg variants are priced as their own SKUs (the veg labels are
+    // aliased to the veg canonicals in kitIdentity.ts, not collapsed onto the
+    // base). All three match the figures already in KIT_PRICE_INR.
+    PERI_MENOPAUSE: rupeesToMinor(4196),
+    PERI_MENOPAUSE_VEG: rupeesToMinor(4196),
+    TE_GOLD_VEG: rupeesToMinor(2996),
   });
 
 /**

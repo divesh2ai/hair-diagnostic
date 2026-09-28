@@ -174,19 +174,62 @@ export const APPROVED_KIT_ALIASES: Readonly<Record<string, CanonicalKitId>> =
     // CANONICAL_KIT_IDS comment above for PRO_IMMUNE_5_VEG.
     "PRO FACT META B": "META_B",
     "PRO IMMUNE VEG": "PRO_IMMUNE_5_VEG",
+    // Approved 2026-09-28, doctor-confirmed (drfact-mumbai): the kit-scorer
+    // emits the bare clinical spelling "FH WELL 3" (spaces, no underscores),
+    // which is not the canonical key and carried no alias — so every cart
+    // containing it resolved the line as UNRESOLVED, blanked its price, and
+    // (because a cart cannot be part-priced) suppressed the whole order total.
+    // This names exactly one product: canonical FH_WELL_3, its identical entry
+    // in registries/kits/info.ts, and no veg/plus variant that a normaliser
+    // could confuse it with. Price approved alongside in APPROVED_KIT_PRICES_MINOR.
+    "FH WELL 3": "FH_WELL_3",
+    // Approved 2026-09-28, doctor-confirmed (drfact-mumbai): "PRO FACT META B
+    // PCOS" was previously held in IDENTIFIERS_REQUIRING_REVIEW because its
+    // normalised form could resolve to a veg variant nobody had confirmed. The
+    // clinic has now confirmed the prescription DOES mean the single PCOS 6
+    // (veg) product — canonical PCOS, whose registry displayName is already
+    // "PRO FACT META B - PCOS 6 (veg)" — so it is promoted from a review hold
+    // to an explicit approved alias. Removed from IDENTIFIERS_REQUIRING_REVIEW
+    // below; price approved in APPROVED_KIT_PRICES_MINOR.
+    "PRO FACT META B PCOS": "PCOS",
+    // Approved 2026-09-28, doctor-confirmed (drfact-mumbai): the Hair Breakage
+    // Repair kit is prescribed as "HAIR FACT HAIR BREAKAGE REPAIR (HBR)" (the
+    // only spelling present in KitOrderIntent.kitIds), which carried no alias —
+    // so its carts showed no price and no total. This is the exact spelling the
+    // registry's KIT_ID_TO_ENTRY already maps to canonical HBR. Price approved
+    // in APPROVED_KIT_PRICES_MINOR at the sheet figure ₹2,854.
+    "HAIR FACT HAIR BREAKAGE REPAIR (HBR)": "HBR",
+    // Approved 2026-09-28, doctor-confirmed (drfact-mumbai). NOTE: unlike the
+    // aliases above, these deliberately DIVERGE from the registry's
+    // KIT_ID_TO_ENTRY, which collapses the veg spellings onto the non-veg base
+    // ("HAIR FACT TE GOLD VEG" -> TE_GOLD, "HAIR FACT PERI MENOPAUSE VEG" ->
+    // PERI_MENOPAUSE). A veg prescription must ship the veg SKU, so commercial
+    // identity maps each veg label to its distinct veg canonical, keeping
+    // veg/non-veg separate the way CANONICAL_KIT_IDS and the price table do.
+    // Prices approved in APPROVED_KIT_PRICES_MINOR (PERI_MENOPAUSE 4196,
+    // PERI_MENOPAUSE_VEG 4196, TE_GOLD_VEG 2996 rupees).
+    "HAIR FACT PERI MENOPAUSE": "PERI_MENOPAUSE",
+    "HAIR FACT PERI MENOPAUSE VEG": "PERI_MENOPAUSE_VEG",
+    "HAIR FACT TE GOLD VEG": "TE_GOLD_VEG",
   });
 
 /**
  * Identifiers explicitly withheld from resolution pending commercial review.
  *
- * This is defence in depth, not redundancy. `PRO FACT META B PCOS` would be
- * resolved by the clinical registry's normaliser (see the file header), so
- * listing it here guarantees that a future refactor which reaches for
- * `getKitInfo` cannot quietly re-enable the substitution.
+ * The mechanism is retained (a review hold outranks every resolution rule in
+ * `resolveKitIdentity`) even though it is currently empty: it is where the next
+ * ambiguous identifier goes, and keeping it exported means callers and tests do
+ * not churn when one is added.
+ *
+ * Was `["PRO FACT META B PCOS"]` — held because its normalised form could
+ * resolve to a veg variant nobody had confirmed. The clinic confirmed on
+ * 2026-09-28 that it names the single PCOS 6 (veg) product, so it moved to an
+ * explicit entry in `APPROVED_KIT_ALIASES` above (→ canonical `PCOS`) rather
+ * than staying a normalisation guess. This is an approval of that exact
+ * spelling, not a relaxation of the exact-match rule: any other unlisted
+ * identifier still resolves UNRESOLVED.
  */
-export const IDENTIFIERS_REQUIRING_REVIEW = Object.freeze(
-  new Set<string>(["PRO FACT META B PCOS"]),
-);
+export const IDENTIFIERS_REQUIRING_REVIEW = Object.freeze(new Set<string>([]));
 
 /**
  * Resolve a raw clinical identifier to a canonical commercial kit.
