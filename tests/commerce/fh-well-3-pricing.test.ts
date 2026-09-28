@@ -105,7 +105,6 @@ describe("other approved kits in this cart are untouched", () => {
 
 describe("checkout stays fail-closed for still-blocked kits", () => {
   it.each([
-    "HAIR FACT HAIR BREAKAGE REPAIR (HBR)", // no approved alias / price yet
     "HAIR FACT PERI MENOPAUSE VEG",
     "HAIR FACT TE GOLD VEG",
     "SOME KIT THAT DOES NOT EXIST",

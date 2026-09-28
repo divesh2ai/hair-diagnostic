@@ -119,6 +119,11 @@ export const APPROVED_KIT_PRICES_MINOR: Readonly<Record<string, number>> =
     // name (see kitIdentity.ts). Clinic-confirmed patient price raised from the
     // sheet's ₹2,291 to ₹3,009; KIT_PRICE_INR mirrors the new figure.
     PCOS: rupeesToMinor(3009),
+    // Hair Breakage Repair — clinic-confirmed at the sheet figure ₹2,854 (the
+    // same value already in KIT_PRICE_INR), promoting HBR from PRICE_PRESENT to
+    // PRICE_APPROVED. Paired with the "HAIR FACT HAIR BREAKAGE REPAIR (HBR)"
+    // alias in kitIdentity.ts.
+    HBR: rupeesToMinor(2854),
   });
 
 /**

@@ -238,8 +238,10 @@ describe("no misleading total, no monetary progression", () => {
   });
 
   it("a cart of resolved-but-unapproved lines still has no total", () => {
-    // ALOPECIA_AREATA + HBR: both resolve, neither was reconciled.
-    const order = evaluateOrderForPatientCharge(["ALOPECIA_AREATA", "HBR"]);
+    // ALOPECIA_AREATA + HEALTHY_9: both resolve, neither has an approved price.
+    // (HBR is deliberately NOT used here any more — it was approved for patient
+    // sale on 2026-09-28.)
+    const order = evaluateOrderForPatientCharge(["ALOPECIA_AREATA", "HEALTHY_9"]);
     expect(order.chargeable).toBe(false);
     expect(order.totalAmountMinor).toBeNull();
     expect(order.blockingReasons).toContain("PRICE_NOT_APPROVED");
@@ -275,15 +277,15 @@ describe("no misleading total, no monetary progression", () => {
     // spelling with no canonical match or approved alias, or an identifier
     // explicitly held for review) or on price (a resolved kit that carries no
     // APPROVED price). META_B is deliberately NOT used to make an order blocked
-    // any more — it is now approved for patient sale, as is "PRO FACT META B
-    // PCOS" (2026-09-28) — so these orders lean on identifiers that genuinely
-    // still cannot charge: "HAIR FACT TE GOLD VEG" (a clinical spelling with no
-    // approved alias, unresolved) and ALOPECIA_AREATA / HBR (resolve, but were
-    // never price-approved).
+    // any more — it is now approved for patient sale, as are "PRO FACT META B
+    // PCOS" and HBR (2026-09-28) — so these orders lean on identifiers that
+    // genuinely still cannot charge: "HAIR FACT TE GOLD VEG" (a clinical
+    // spelling with no approved alias, unresolved) and ALOPECIA_AREATA /
+    // HEALTHY_9 (resolve, but were never price-approved).
     const realOrders = [
       ["HAIR FACT TE GOLD VEG", "IRON UP GOLD"],
       ["HAIR FACT TE GOLD", "ALOPECIA_AREATA"],
-      ["HBR"],
+      ["HEALTHY_9"],
     ];
     for (const kits of realOrders) {
       const order = evaluateOrderForPatientCharge(kits);

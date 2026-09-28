@@ -192,6 +192,13 @@ export const APPROVED_KIT_ALIASES: Readonly<Record<string, CanonicalKitId>> =
     // to an explicit approved alias. Removed from IDENTIFIERS_REQUIRING_REVIEW
     // below; price approved in APPROVED_KIT_PRICES_MINOR.
     "PRO FACT META B PCOS": "PCOS",
+    // Approved 2026-09-28, doctor-confirmed (drfact-mumbai): the Hair Breakage
+    // Repair kit is prescribed as "HAIR FACT HAIR BREAKAGE REPAIR (HBR)" (the
+    // only spelling present in KitOrderIntent.kitIds), which carried no alias —
+    // so its carts showed no price and no total. This is the exact spelling the
+    // registry's KIT_ID_TO_ENTRY already maps to canonical HBR. Price approved
+    // in APPROVED_KIT_PRICES_MINOR at the sheet figure ₹2,854.
+    "HAIR FACT HAIR BREAKAGE REPAIR (HBR)": "HBR",
   });
 
 /**
