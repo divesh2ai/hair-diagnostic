@@ -105,7 +105,6 @@ describe("other approved kits in this cart are untouched", () => {
 
 describe("checkout stays fail-closed for still-blocked kits", () => {
   it.each([
-    "PRO FACT META B PCOS", // deliberately held for review (veg/non-veg ambiguity)
     "HAIR FACT HAIR BREAKAGE REPAIR (HBR)", // no approved alias / price yet
     "HAIR FACT PERI MENOPAUSE VEG",
     "HAIR FACT TE GOLD VEG",
@@ -119,7 +118,7 @@ describe("checkout stays fail-closed for still-blocked kits", () => {
   it("blocks and refuses to total an order containing a blocked kit", () => {
     const order = evaluateOrderForPatientCharge([
       "FH WELL 3", // now sellable
-      "PRO FACT META B PCOS", // still blocked
+      "HAIR FACT TE GOLD VEG", // still blocked (no approved alias)
     ]);
     expect(order.chargeable).toBe(false);
     expect(order.totalAmountMinor).toBeNull();

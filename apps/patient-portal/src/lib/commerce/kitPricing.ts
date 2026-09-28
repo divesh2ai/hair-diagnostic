@@ -115,6 +115,10 @@ export const APPROVED_KIT_PRICES_MINOR: Readonly<Record<string, number>> =
     // the patient charge, promoting FH_WELL_3 from PRICE_PRESENT to
     // PRICE_APPROVED. Paired with the "FH WELL 3" alias in kitIdentity.ts.
     FH_WELL_3: rupeesToMinor(3394),
+    // PCOS 6 (veg) — the single product "PRO FACT META B PCOS" was confirmed to
+    // name (see kitIdentity.ts). Clinic-confirmed patient price raised from the
+    // sheet's ₹2,291 to ₹3,009; KIT_PRICE_INR mirrors the new figure.
+    PCOS: rupeesToMinor(3009),
   });
 
 /**

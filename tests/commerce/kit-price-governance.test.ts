@@ -53,20 +53,37 @@ describe("kit identity", () => {
     expect(aliased.resolutionMethod).toBe("APPROVED_ALIAS");
   });
 
-  it("2. leaves PRO FACT META B PCOS unresolved", () => {
+  it("2. resolves PRO FACT META B PCOS to canonical PCOS via an approved alias", () => {
+    // Doctor-confirmed 2026-09-28: this raw label names the single PCOS 6 (veg)
+    // product. It moved from IDENTIFIERS_REQUIRING_REVIEW to an explicit
+    // approved alias, so it now resolves — by exact-table lookup, not fuzzy
+    // matching.
     const id = resolveKitIdentity("PRO FACT META B PCOS");
+    expect(id.status).toBe("RESOLVED");
+    expect(id.canonicalKitId).toBe("PCOS");
+    expect(id.resolutionMethod).toBe("APPROVED_ALIAS");
+  });
+
+  it("2a. leaves a genuinely unaliased clinical spelling unresolved", () => {
+    // The exact-match rule still holds for everything not explicitly approved.
+    const id = resolveKitIdentity("HAIR FACT TE GOLD VEG");
     expect(id.status).toBe("UNRESOLVED");
     expect(id.canonicalKitId).toBeNull();
     expect(id.resolutionMethod).toBe("NONE");
   });
 
-  it("2b. does not inherit the clinical registry's normalisation-based match", () => {
-    // The registry DOES resolve it — to the vegetarian PCOS kit. This test
-    // pins the divergence: rendering may normalise, selling may not.
+  it("2b. resolution is the approved table, not the registry normaliser", () => {
+    // The registry's normaliser resolves the label to the veg PCOS kit; the
+    // approved alias now points at the SAME canonical, but by an explicit
+    // exact-match entry (APPROVED_ALIAS), never by normalisation. The proof is
+    // that near-miss spellings the normaliser would accept still do not sell —
+    // see test 2c.
     expect(getKitInfo("PRO FACT META B PCOS")?.displayName).toBe(
       "PRO FACT META B - PCOS 6 (veg)",
     );
-    expect(resolveKitIdentity("PRO FACT META B PCOS").canonicalKitId).toBeNull();
+    const id = resolveKitIdentity("PRO FACT META B PCOS");
+    expect(id.canonicalKitId).toBe("PCOS");
+    expect(id.resolutionMethod).toBe("APPROVED_ALIAS");
   });
 
   it("2c. refuses every near-miss spelling rather than guessing", () => {
@@ -101,7 +118,7 @@ describe("kit identity", () => {
     expect(aliased.sourceIdentifierSnapshot).not.toBe(aliased.canonicalKitId);
   });
 
-  it("4b. keeps the approved alias list to exactly the 13 approved entries", () => {
+  it("4b. keeps the approved alias list to exactly the 14 approved entries", () => {
     // 1 pre-existing (PHENOTYPE INFLAMATION) + 8 added 2026-09-08 + 1 added
     // 2026-09-09 (HAIR FACT TTM (OCD), the 12th pair's canonical side) + 2
     // added 2026-09-19, doctor-confirmed (drfact-mumbai): "PRO FACT META B" →
@@ -126,6 +143,7 @@ describe("kit identity", () => {
         "PRO FACT META B",
         "PRO IMMUNE VEG",
         "FH WELL 3",
+        "PRO FACT META B PCOS",
       ].sort(),
     );
   });
@@ -188,11 +206,13 @@ describe("kit pricing authority", () => {
   // exactly the union of the two governance decisions.
   const APPROVED_2026_09_19 = ["META_B", "PRO_IMMUNE_5_VEG"];
 
-  // Approved 2026-09-28, doctor-confirmed (drfact-mumbai): FH_WELL_3 at ₹3,394,
-  // promoting it from PRICE_PRESENT to PRICE_APPROVED. Its own list for the same
-  // reason as the 2026-09-19 pair — so "nothing else" below stays the exact
-  // union of the governance decisions.
-  const APPROVED_2026_09_28 = ["FH_WELL_3"];
+  // Approved 2026-09-28, doctor-confirmed (drfact-mumbai): FH_WELL_3 at ₹3,394
+  // (promoted from PRICE_PRESENT) and PCOS raised to ₹3,009 and cleared for
+  // patient sale (its "PRO FACT META B PCOS" spelling promoted from a review
+  // hold to an approved alias). Its own list for the same reason as the
+  // 2026-09-19 pair — so "nothing else" below stays the exact union of the
+  // governance decisions.
+  const APPROVED_2026_09_28 = ["FH_WELL_3", "PCOS"];
 
   it("7. approves exactly the reconciled + patient-sale kits — nothing else", () => {
     const approved = [
@@ -216,11 +236,10 @@ describe("kit pricing authority", () => {
     // These kits carry no budget alternative and were NOT among the
     // doctor-confirmed patient-sale approvals; they must stay unpriced. META_B
     // is deliberately absent from this list now — it was approved for patient
-    // sale on 2026-09-19 (see APPROVED_2026_09_19) — and FH_WELL_3 likewise,
-    // approved on 2026-09-28; every kit that remains here must still be unable
-    // to charge a patient.
+    // sale on 2026-09-19 (see APPROVED_2026_09_19) — and FH_WELL_3 and PCOS
+    // likewise, approved on 2026-09-28; every kit that remains here must still
+    // be unable to charge a patient.
     for (const kitId of [
-      "PCOS",
       "PRO_FACT_THYROID_CARE",
       "PERI_MENOPAUSE",
       "POST_MENOPAUSE",
@@ -250,7 +269,9 @@ describe("kit pricing authority", () => {
 
 describe("combined sellability matrix", () => {
   const resolved = resolveKitIdentity("TE_GOLD");
-  const unresolved = resolveKitIdentity("PRO FACT META B PCOS");
+  // A clinical spelling with no approved alias — the current UNRESOLVED example
+  // now that PRO FACT META B PCOS has been promoted to an approved alias.
+  const unresolved = resolveKitIdentity("HAIR FACT TE GOLD VEG");
   const missing = resolveKitIdentity("POST_HYSTERECTOMY_RESET");
 
   it("8. RESOLVED + PRICE_APPROVED is eligible", () => {
@@ -349,7 +370,7 @@ describe("patient charging boundary", () => {
   it("14. an unresolved identity cannot enter patient checkout", () => {
     const order = evaluateOrderForPatientCharge([
       "TE_GOLD",
-      "PRO FACT META B PCOS",
+      "HAIR FACT TE GOLD VEG",
     ]);
     expect(order.chargeable).toBe(false);
     expect(order.totalAmountMinor).toBeNull();
@@ -357,7 +378,7 @@ describe("patient charging boundary", () => {
 
     // And the unresolved line carries no price of its own.
     const line = order.lines.find(
-      (l) => l.sourceIdentifierSnapshot === "PRO FACT META B PCOS",
+      (l) => l.sourceIdentifierSnapshot === "HAIR FACT TE GOLD VEG",
     );
     expect(line?.chargeableAmountMinor).toBeNull();
     expect(line?.canonicalKitId).toBeNull();
@@ -370,9 +391,9 @@ describe("patient charging boundary", () => {
   });
 
   it("15. an internal reviewer can still see the reason and the raw id", () => {
-    const d = evaluateKitForPatientSale("PRO FACT META B PCOS");
+    const d = evaluateKitForPatientSale("HAIR FACT TE GOLD VEG");
     expect(d.reasons).toContain("KIT_IDENTITY_REQUIRES_REVIEW");
-    expect(d.sourceIdentifierSnapshot).toBe("PRO FACT META B PCOS");
+    expect(d.sourceIdentifierSnapshot).toBe("HAIR FACT TE GOLD VEG");
     expect(d.identityStatus).toBe("UNRESOLVED");
 
     // A present-but-unapproved price stays visible to internal review as a

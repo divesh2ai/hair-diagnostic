@@ -32,7 +32,10 @@ export const KIT_PRICE_INR: Record<string, number> = {
   META_B: 3018,
   META_B_HYPOTHYROID: 2316,
   META_B_HYPOTHYROID_VEG: 2316,
-  PCOS: 2291,
+  // Raised from ₹2,291 to ₹3,009 on 2026-09-28, doctor-confirmed (drfact-mumbai),
+  // and approved for patient charging in APPROVED_KIT_PRICES_MINOR. This map
+  // mirrors the approved rupee value so the doctor estimate matches the charge.
+  PCOS: 3009,
   PERI_MENOPAUSE: 4196,
   PERI_MENOPAUSE_VEG: 4196,
   POST_MENOPAUSE: 2142,
