@@ -96,6 +96,7 @@ h1{font-size:28px;color:#f0fdf4;margin-bottom:4px}
 .multi-grid{display:flex;flex-direction:column;gap:4px;max-height:210px;overflow-y:auto;margin-bottom:8px}
 .multi-btn{text-align:left;font-size:12px;padding:8px 16px;border-radius:10px;border:1px solid #0f2d18;color:#86efac;background:#0b1a0f;cursor:pointer;transition:all 0.2s;font-family:Georgia,serif}
 .multi-btn.sel{background:#4ade80;color:#052e0f;border-color:#4ade80}
+.multi-btn .chk{display:none}.multi-btn.sel .chk{display:inline}
 .confirm-btn{width:100%;padding:10px;border-radius:10px;font-size:13px;font-weight:600;background:linear-gradient(135deg,#4ade80,#16a34a);color:#052e0f;border:none;cursor:pointer}
 .text-row{display:flex;gap:8px}
 .text-input{flex:1;font-size:13px;padding:10px 16px;border-radius:10px;border:1px solid #0f2d18;background:#0b1a0f;color:#d1fae5;outline:none;font-family:Georgia,serif}
@@ -472,8 +473,8 @@ function render() {
       inputHtml = `<div class="choice-grid">${step.opts.map(o=>`<button class="choice-btn" onclick="submitAnswer('${o.replace(/'/g,"\\'")}')">  ${o}</button>`).join("")}</div>`;
     } else if(step.type==="multi"){
       const selSet=new Set(state.multiSel);
-      inputHtml = `<div class="multi-grid">${step.opts.map(o=>`<button class="multi-btn${selSet.has(o)?" sel":""}" onclick="toggleMulti('${o.replace(/'/g,"\\'")}')">  ${selSet.has(o)?"✓ ":""}${o}</button>`).join("")}</div>
-      <button class="confirm-btn" onclick="confirmMulti()">Confirm (${state.multiSel.length} selected) →</button>`;
+      inputHtml = `<div class="multi-grid">${step.opts.map(o=>`<button class="multi-btn${selSet.has(o)?" sel":""}" data-opt="${o.replace(/"/g,'&quot;')}" onclick="toggleMulti('${o.replace(/'/g,"\\'")}')">  <span class="chk">✓ </span>${o}</button>`).join("")}</div>
+      <button class="confirm-btn" id="multi-confirm" onclick="confirmMulti()">Confirm (${state.multiSel.length} selected) →</button>`;
     } else {
       inputHtml = `<div class="text-row"><input class="text-input" id="text-inp" type="${step.type==="number"?"number":"text"}" placeholder="${step.type==="textarea"?"Type here or press Enter to skip...":"Type your answer..."}" onkeydown="if(event.key==='Enter')submitText()"><button class="send-btn" onclick="submitText()">→</button></div>`;
     }
@@ -510,7 +511,15 @@ function startQuiz(){
 function toggleMulti(opt){
   const i=state.multiSel.indexOf(opt);
   if(i>=0) state.multiSel.splice(i,1); else state.multiSel.push(opt);
-  render();
+  // Targeted DOM update — no full re-render, so taps feel instant
+  const btn=[...document.querySelectorAll('.multi-btn')].find(b=>b.dataset.opt===opt);
+  if(btn){
+    btn.classList.toggle('sel', i<0);
+    const cf=document.getElementById('multi-confirm');
+    if(cf) cf.textContent='Confirm ('+state.multiSel.length+' selected) →';
+  } else {
+    render();
+  }
 }
 
 function confirmMulti(){
@@ -539,16 +548,16 @@ function submitAnswer(val){
     if(nextStep.id==="hormonal"&&(newAns.sex||"").includes("Male")){
       state.answers.hormonal=["N/A — Male"];
       state.stepIdx=next+1;
-      setTimeout(()=>addMsg("assistant",STEPS[next+1]?.label||""),350);
+      setTimeout(()=>addMsg("assistant",STEPS[next+1]?.label||""),120);
       return;
     }
     state.stepIdx=next;
-    setTimeout(()=>addMsg("assistant",nextStep.label),350);
+    setTimeout(()=>addMsg("assistant",nextStep.label),120);
   } else {
     state.phase="thinking";
     addMsg("assistant",`Thank you, **${newAns.name}**! 🌿 Analysing your complete hair profile... just a moment.`);
     state.thinking=true; render();
-    setTimeout(()=>runAnalysis(newAns),700);
+    setTimeout(()=>runAnalysis(newAns),250);
   }
 }
 
