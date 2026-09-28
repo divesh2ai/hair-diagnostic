@@ -101,14 +101,16 @@ describe("kit identity", () => {
     expect(aliased.sourceIdentifierSnapshot).not.toBe(aliased.canonicalKitId);
   });
 
-  it("4b. keeps the approved alias list to exactly the 12 approved entries", () => {
+  it("4b. keeps the approved alias list to exactly the 13 approved entries", () => {
     // 1 pre-existing (PHENOTYPE INFLAMATION) + 8 added 2026-09-08 + 1 added
     // 2026-09-09 (HAIR FACT TTM (OCD), the 12th pair's canonical side) + 2
     // added 2026-09-19, doctor-confirmed (drfact-mumbai): "PRO FACT META B" →
     // META_B and "PRO IMMUNE VEG" → PRO_IMMUNE_5_VEG, the clinical spellings
-    // for the two kits newly approved for patient sale. Commercial identity is
-    // still EXACT-MATCH ONLY — this table simply has two more entries, and the
-    // list is still pinned here so nothing else can be added silently.
+    // for the two kits newly approved for patient sale + 1 added 2026-09-28,
+    // doctor-confirmed (drfact-mumbai): "FH WELL 3" → FH_WELL_3. Commercial
+    // identity is still EXACT-MATCH ONLY — this table simply has one more
+    // entry, and the list is still pinned here so nothing else can be added
+    // silently.
     expect(Object.keys(APPROVED_KIT_ALIASES).sort()).toEqual(
       [
         "PHENOTYPE INFLAMATION",
@@ -123,6 +125,7 @@ describe("kit identity", () => {
         "HAIR FACT TTM (OCD)",
         "PRO FACT META B",
         "PRO IMMUNE VEG",
+        "FH WELL 3",
       ].sort(),
     );
   });
@@ -185,8 +188,18 @@ describe("kit pricing authority", () => {
   // exactly the union of the two governance decisions.
   const APPROVED_2026_09_19 = ["META_B", "PRO_IMMUNE_5_VEG"];
 
+  // Approved 2026-09-28, doctor-confirmed (drfact-mumbai): FH_WELL_3 at ₹3,394,
+  // promoting it from PRICE_PRESENT to PRICE_APPROVED. Its own list for the same
+  // reason as the 2026-09-19 pair — so "nothing else" below stays the exact
+  // union of the governance decisions.
+  const APPROVED_2026_09_28 = ["FH_WELL_3"];
+
   it("7. approves exactly the reconciled + patient-sale kits — nothing else", () => {
-    const approved = [...RECONCILED_2026_09_08, ...APPROVED_2026_09_19];
+    const approved = [
+      ...RECONCILED_2026_09_08,
+      ...APPROVED_2026_09_19,
+      ...APPROVED_2026_09_28,
+    ];
     expect(Object.keys(APPROVED_KIT_PRICES_MINOR).sort()).toEqual(
       [...approved].sort(),
     );
@@ -203,8 +216,9 @@ describe("kit pricing authority", () => {
     // These kits carry no budget alternative and were NOT among the
     // doctor-confirmed patient-sale approvals; they must stay unpriced. META_B
     // is deliberately absent from this list now — it was approved for patient
-    // sale on 2026-09-19 (see APPROVED_2026_09_19) — while every kit that
-    // remains here must still be unable to charge a patient.
+    // sale on 2026-09-19 (see APPROVED_2026_09_19) — and FH_WELL_3 likewise,
+    // approved on 2026-09-28; every kit that remains here must still be unable
+    // to charge a patient.
     for (const kitId of [
       "PCOS",
       "PRO_FACT_THYROID_CARE",
@@ -212,7 +226,6 @@ describe("kit pricing authority", () => {
       "POST_MENOPAUSE",
       "HBR",
       "EARLY_GREYING_CARE_GOLD",
-      "FH_WELL_3",
       "HEALTHY_9",
       "ALOPECIA_AREATA",
       "LACTIHEALTH",
@@ -298,7 +311,7 @@ describe("patient charging boundary", () => {
   // reconciled for budget substitution on 2026-09-08 (see the reconciliation
   // block above). These still cannot be charged; TE_GOLD/MPHL/FPHL etc. are
   // deliberately NOT used here any more, since reconciliation approved them.
-  const STILL_UNAPPROVED = ["ALOPECIA_AREATA", "HBR", "FH_WELL_3", "HEALTHY_9"];
+  const STILL_UNAPPROVED = ["ALOPECIA_AREATA", "HBR", "HEALTHY_9"];
 
   it("13. a kit with no approved price still cannot produce a chargeable amount", () => {
     for (const kitId of STILL_UNAPPROVED) {

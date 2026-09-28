@@ -174,6 +174,15 @@ export const APPROVED_KIT_ALIASES: Readonly<Record<string, CanonicalKitId>> =
     // CANONICAL_KIT_IDS comment above for PRO_IMMUNE_5_VEG.
     "PRO FACT META B": "META_B",
     "PRO IMMUNE VEG": "PRO_IMMUNE_5_VEG",
+    // Approved 2026-09-28, doctor-confirmed (drfact-mumbai): the kit-scorer
+    // emits the bare clinical spelling "FH WELL 3" (spaces, no underscores),
+    // which is not the canonical key and carried no alias — so every cart
+    // containing it resolved the line as UNRESOLVED, blanked its price, and
+    // (because a cart cannot be part-priced) suppressed the whole order total.
+    // This names exactly one product: canonical FH_WELL_3, its identical entry
+    // in registries/kits/info.ts, and no veg/plus variant that a normaliser
+    // could confuse it with. Price approved alongside in APPROVED_KIT_PRICES_MINOR.
+    "FH WELL 3": "FH_WELL_3",
   });
 
 /**

@@ -109,6 +109,12 @@ export const APPROVED_KIT_PRICES_MINOR: Readonly<Record<string, number>> =
     // ── Approved 2026-09-19, doctor-confirmed (drfact-mumbai) ──────────────
     META_B: rupeesToMinor(3018),
     PRO_IMMUNE_5_VEG: rupeesToMinor(2692),
+    // ── Approved 2026-09-28, doctor-confirmed (drfact-mumbai) ──────────────
+    // ₹3,394 is the figure the 2026-09-21 governed price-sheet refresh loaded
+    // into KIT_PRICE_INR (REPOSITORY_PLACEHOLDER); the clinic confirmed it as
+    // the patient charge, promoting FH_WELL_3 from PRICE_PRESENT to
+    // PRICE_APPROVED. Paired with the "FH WELL 3" alias in kitIdentity.ts.
+    FH_WELL_3: rupeesToMinor(3394),
   });
 
 /**
