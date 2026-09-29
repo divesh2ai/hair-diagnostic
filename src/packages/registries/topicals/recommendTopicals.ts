@@ -19,7 +19,7 @@
  *   · Frizzy hair → avoid alcohol-heavy formulations
  *
  * Auto-injects (added after the branch fires, unless an override blocked them):
- *   · F-Biwash+ on any dandruff / itching / psoriasis scalp
+ *   · F-Biwash Pro on any dandruff / itching / psoriasis scalp
  *   · F-Trichosilk D&F (With/Without Treatment) on dry / frizzy hair
  *
  * Output capped at 6 recommended + 4 cautions. Pure function, no side effects.
@@ -763,14 +763,14 @@ function finaliseWithAutoInjects(
 ): TopicalDecision {
   const seen = new Set(decision.recommended.map((r) => r.name));
 
-  // AUTO_01 — F-Biwash+ on any dandruff / itching / psoriasis scalp.
+  // AUTO_01 — F-Biwash Pro on any dandruff / itching / psoriasis scalp.
   if (
     !f.isPregnancy &&
     (f.isDandruffItching ||
       f.isPsoriasis ||
       p.scalpTokens.some((s) => /dandruff|itching|psoriasis/.test(s)))
   ) {
-    rec(decision.recommended, seen, "F-Biwash+ Anti-Dandruff Shampoo",
+    rec(decision.recommended, seen, "F-Biwash Pro (Anti-Dandruff Shampoo)",
       "Medicated scalp cleansing — always added when the scalp microenvironment is compromised by dandruff, itching or psoriasis.");
   }
 

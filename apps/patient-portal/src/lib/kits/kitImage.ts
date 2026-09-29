@@ -142,7 +142,7 @@ const KIT_ALIASES: ReadonlyArray<readonly [RegExp, string]> = [
 //   • Emugrow's suffix chain runs longest-first (MCRD → MC R → MCR → MC),
 //     because each shorter code is a prefix of the longer ones.
 const TOPICAL_ALIASES: ReadonlyArray<readonly [RegExp, string]> = [
-  // F-Biwash and F-Biwash Plus are ONE product — the anti-dandruff shampoo.
+  // F-Biwash and F-Biwash Pro are ONE product — the anti-dandruff shampoo.
   // See resolveTopicalImage's note on the asset that does not exist.
   [/BIWASH|ANTI[-\s_]?DANDRUFF|SHAMPOO/, "F_BIWASH_PLUS"],
   [/EMUGROW.*MC ?R ?D|EMUGROW.*MCRD|MCRD/, "F_EMUGROW_MCRD"],
@@ -255,9 +255,9 @@ export function resolveKitImage(kitId: string | null | undefined): ResolvedProdu
  * ── The F-Biwash asset ──────────────────────────────────────────────────────
  * The manifest carried an `F_BIWASH` entry pointing at `f_biwash.png`, which
  * does not exist on disk — the only broken reference in the whole registry.
- * The fix is NOT to rename a file: F-Biwash and F-Biwash+ are one product,
- * the anti-dandruff shampoo, and the report layer already canonicalises both
- * names to "F-Biwash Pro (Anti-Dandruff Shampoo)". So both codes resolve to
+ * The fix is NOT to rename a file: F-Biwash and F-Biwash Pro are one product,
+ * the anti-dandruff shampoo (the product registry now emits the canonical name
+ * "F-Biwash Pro (Anti-Dandruff Shampoo)" at source). So both codes resolve to
  * the packshot that exists, `f_biwashplus.png`, and the manifest entry now
  * points there too.
  */

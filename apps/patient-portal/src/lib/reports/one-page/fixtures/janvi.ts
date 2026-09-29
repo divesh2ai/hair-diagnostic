@@ -137,11 +137,11 @@ export const janviFixture: OnePageReportViewModel = {
       asset: topical("F_EMUGROW_MCRD", "F-Emugrow MCRD topical"),
     },
     {
-      name: "F-Biwash Plus",
+      name: "F-Biwash Pro (Anti-Dandruff Shampoo)",
       topicalCode: "F_BIWASH_PLUS",
       purpose: "Scalp cleansing support",
       usage: "Use as prescribed. Massage into the scalp. Rinse thoroughly.",
-      asset: topical("F_BIWASH_PLUS", "F-Biwash Plus topical"),
+      asset: topical("F_BIWASH_PLUS", "F-Biwash Pro topical"),
     },
   ],
   topicalNote: "",

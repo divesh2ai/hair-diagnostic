@@ -113,7 +113,7 @@ const kits = {
 
 const topicals = {
   F_BIWASH: { key: "F_BIWASH", src: `${KIT_ASSET_BASE}/f_biwash.png`, alt: "F-Biwash topical packshot" },
-  F_BIWASH_PLUS: { key: "F_BIWASH_PLUS", src: `${KIT_ASSET_BASE}/f_biwashplus.png`, alt: "F-Biwash Plus topical packshot" },
+  F_BIWASH_PLUS: { key: "F_BIWASH_PLUS", src: `${KIT_ASSET_BASE}/f_biwashplus.png`, alt: "F-Biwash Pro topical packshot" },
   F_EMUGROW_MC: { key: "F_EMUGROW_MC", src: `${KIT_ASSET_BASE}/f_emugrow_mc.png`, alt: "F-Emugrow MC topical packshot" },
   F_EMUGROW_MCR: { key: "F_EMUGROW_MCR", src: `${KIT_ASSET_BASE}/f_emugrow_mcr.png`, alt: "F-Emugrow MCR topical packshot" },
   F_EMUGROW_MC_R: { key: "F_EMUGROW_MC_R", src: `${KIT_ASSET_BASE}/f_emugrow_mc_r.png`, alt: "F-Emugrow MC R topical packshot" },

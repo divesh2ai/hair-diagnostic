@@ -162,7 +162,7 @@ export const rahulFixture: OnePageReportViewModel = {
       topicalCode: "F_BIWASH_PLUS",
       purpose: "Anti-dandruff shampoo for a healthier scalp barrier.",
       usage: "Use 2–3 times weekly as advised.",
-      asset: topical("F_BIWASH_PLUS", "F-Biwash Plus topical"),
+      asset: topical("F_BIWASH_PLUS", "F-Biwash Pro topical"),
     },
     {
       name: "F-Emugrow MCRD",
