@@ -590,6 +590,10 @@ function kitAssetCode(raw: string): string {
 
 function topicalAssetCode(raw: string): string {
   const text = cleanText(raw).toUpperCase();
+  // F-Biwash Pro (current) vs F-Biwash+ (deprecated) are DIFFERENT products —
+  // the PRO branch must precede the generic one so the current product wins and
+  // only a legacy/bare anti-dandruff spelling maps to the deprecated F_BIWASH_PLUS.
+  if (/F[-\s]?BIWASH\s+PRO|BIWASH.*\bPRO\b/.test(text)) return "F_BIWASH_PRO";
   if (/BIWASH|ANTI-DANDRUFF|SHAMPOO/.test(text)) return "F_BIWASH_PLUS";
   if (/EMUGROW.*MC R D|EMUGROW.*MCRD|MCRD/.test(text)) return "F_EMUGROW_MCRD";
   if (/EMUGROW.*MC R/.test(text)) return "F_EMUGROW_MC_R";

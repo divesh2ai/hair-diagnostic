@@ -7,64 +7,74 @@ import { getTopicalProduct } from "../../src/packages/registries/topicals/produc
 import { resolveTopicalImage } from "../../apps/patient-portal/src/lib/kits/kitImage";
 import type { ScalpState, PatientAnswers } from "../../src/packages/types";
 
-// Regression for the "F-Biwash+" → "F-Biwash Pro" patient-facing rename.
-//
-// The invariant under test: ONLY the display name changed. The internal topical
-// identity (`F_BIWASH_PLUS`) that the scorer's injection, the image resolver and
-// the registry all key off is unchanged — so nothing in the recommendation or
-// asset-resolution path moves, only the string a patient/doctor reads.
+// F-Biwash Pro is a DIFFERENT product that REPLACES the deprecated F-Biwash+.
+// This is not a rename/alias: the current product has its own canonical
+// internal id (F_BIWASH_PRO) and its own packshot; F-Biwash+ (F_BIWASH_PLUS)
+// survives only to render historical snapshots and is never produced for a new
+// recommendation.
 
-const NEW_NAME = "F-Biwash Pro (Anti-Dandruff Shampoo)";
-const OLD_NAME = "F-Biwash+ Anti-Dandruff Shampoo";
-const INTERNAL_CODE = "F_BIWASH_PLUS";
-
+const CURRENT_NAME = "F-Biwash Pro (Anti-Dandruff Shampoo)";
+const CURRENT_CODE = "F_BIWASH_PRO";
+const LEGACY_NAME = "F-Biwash+ Anti-Dandruff Shampoo";
+const LEGACY_CODE = "F_BIWASH_PLUS";
 const noAnswers = {} as PatientAnswers;
 
-describe("F-Biwash Pro rename — internal code is unchanged", () => {
-  it("still resolves the anti-dandruff shampoo asset to F_BIWASH_PLUS from the NEW name", () => {
-    const img = resolveTopicalImage(NEW_NAME);
+describe("F-Biwash Pro is a distinct current product (not F-Biwash+)", () => {
+  it("the current product resolves to its own internal code F_BIWASH_PRO", () => {
+    const img = resolveTopicalImage(CURRENT_NAME);
     expect(img).not.toBeNull();
-    expect(img!.code).toBe(INTERNAL_CODE);
+    expect(img!.code).toBe(CURRENT_CODE);
+    expect(img!.code).not.toBe(LEGACY_CODE);
   });
 
-  it("also resolves the LEGACY name to the same F_BIWASH_PLUS code (historical data stays valid)", () => {
-    // The image/identity resolver matches on the BIWASH/ANTI-DANDRUFF/SHAMPOO
-    // substring, so an old snapshot that still reads "F-Biwash+" keeps resolving
-    // to the same internal code and packshot.
-    const img = resolveTopicalImage(OLD_NAME);
-    expect(img?.code).toBe(INTERNAL_CODE);
+  it("the current product's packshot is its OWN asset, not the deprecated one", () => {
+    const img = resolveTopicalImage(CURRENT_NAME);
+    expect(img!.src).toContain("f_biwashpro.png");
+    // Must NOT inherit the deprecated product's photo.
+    expect(img!.src).not.toContain("f_biwashplus.png");
+  });
+
+  it("the deprecated F-Biwash+ name resolves to the distinct legacy code/asset", () => {
+    // Retained only for historical evidence — a different code and a different
+    // packshot from the current product.
+    const legacy = resolveTopicalImage(LEGACY_NAME);
+    expect(legacy!.code).toBe(LEGACY_CODE);
+    expect(legacy!.src).toContain("f_biwashplus.png");
+    // Proves the two are NOT the same product.
+    expect(legacy!.code).not.toBe(CURRENT_CODE);
   });
 });
 
-describe("F-Biwash Pro rename — the scorer injection is unchanged in behaviour", () => {
-  it("still injects the anti-dandruff shampoo for a dandruff scalp, under the new name", () => {
+describe("new recommendations emit F-Biwash Pro, never F-Biwash+", () => {
+  it("the scorer injects F-Biwash Pro for a dandruff scalp, resolving to F_BIWASH_PRO", () => {
     const protocol = buildAdjunctProtocol(["DANDRUFF"] as ScalpState[], noAnswers);
     const names = protocol.scalpCorrection.map((i) => i.productName);
-    expect(names).toContain(NEW_NAME);
-    // The injected item still resolves to the same internal code.
-    const injected = protocol.scalpCorrection.find((i) => i.productName === NEW_NAME);
-    expect(resolveTopicalImage(injected!.productName)?.code).toBe(INTERNAL_CODE);
+    expect(names).toContain(CURRENT_NAME);
+    expect(names).not.toContain(LEGACY_NAME);
+    const injected = protocol.scalpCorrection.find((i) => i.productName === CURRENT_NAME);
+    expect(resolveTopicalImage(injected!.productName)?.code).toBe(CURRENT_CODE);
   });
 
-  it("emits no lingering 'F-Biwash+' anywhere in the injected item's text", () => {
+  it("the injected item carries no 'F-Biwash+' text at all", () => {
     const protocol = buildAdjunctProtocol(["OILY_SCALP"] as ScalpState[], noAnswers);
     const blob = JSON.stringify(protocol.scalpCorrection);
     expect(blob).toContain("F-Biwash Pro");
     expect(blob).not.toContain("F-Biwash+");
   });
+
+  it("the registry holds the current product under its own name, not the deprecated one", () => {
+    expect(getTopicalProduct(CURRENT_NAME)).not.toBeNull();
+    expect(getTopicalProduct(LEGACY_NAME)).toBeNull();
+  });
 });
 
-describe("F-Biwash Pro rename — the registry is the single source of the name", () => {
-  it("finds the product under the new name and no longer under the old one", () => {
-    expect(getTopicalProduct(NEW_NAME)).not.toBeNull();
-    expect(getTopicalProduct(OLD_NAME)).toBeNull();
-  });
-
-  it("no renamed source still emits the old 'F-Biwash+' name", () => {
-    // Guards the whole rename: the recommender's AUTO_01 rule, the scorer's
-    // product constant, the two product catalogues and the schema must all
-    // carry the new name. (The generated assistant formulations file is out of
-    // scope — it regenerates from an external spreadsheet.)
+describe("no active source still emits the deprecated product", () => {
+  it("no recommendation-path source string contains 'F-Biwash+'", () => {
+    // The recommendation/engine output path must never emit the deprecated
+    // product. (The report-rendering layer — viewModel.ts / kitImage.ts /
+    // productAssets.ts — legitimately still names F-Biwash+ in comments and a
+    // legacy branch that resolves historical snapshots; those are covered by
+    // the distinct-product tests above, not this scan.)
     const root = process.cwd();
     const files = [
       "src/packages/registries/topicals/recommendTopicals.ts",
@@ -72,7 +82,6 @@ describe("F-Biwash Pro rename — the registry is the single source of the name"
       "src/packages/ai-engine/kit-scorer/adjunctProtocolEngine.ts",
       "src/packages/ai-engine/clinical-engine/kits/products.json",
       "src/packages/ai-engine/questionnaire-engine/schema/topical-engine.schema.json",
-      "apps/patient-portal/src/lib/reports/one-page/viewModel.ts",
     ];
     for (const rel of files) {
       const text = readFileSync(path.join(root, rel), "utf8");
@@ -80,7 +89,7 @@ describe("F-Biwash Pro rename — the registry is the single source of the name"
     }
   });
 
-  it("the one-page report no longer carries a Biwash-specific normalisation override", () => {
+  it("the one-page report has no Biwash-specific normalisation override", () => {
     const vm = readFileSync(
       path.join(process.cwd(), "apps/patient-portal/src/lib/reports/one-page/viewModel.ts"),
       "utf8",

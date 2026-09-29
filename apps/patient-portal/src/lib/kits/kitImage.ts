@@ -142,8 +142,10 @@ const KIT_ALIASES: ReadonlyArray<readonly [RegExp, string]> = [
 //   • Emugrow's suffix chain runs longest-first (MCRD → MC R → MCR → MC),
 //     because each shorter code is a prefix of the longer ones.
 const TOPICAL_ALIASES: ReadonlyArray<readonly [RegExp, string]> = [
-  // F-Biwash and F-Biwash Pro are ONE product — the anti-dandruff shampoo.
-  // See resolveTopicalImage's note on the asset that does not exist.
+  // F-Biwash Pro (current) and F-Biwash+ (deprecated) are DIFFERENT products.
+  // The PRO branch MUST precede the generic one, so the current product wins
+  // and only a legacy/bare anti-dandruff spelling falls through to F_BIWASH_PLUS.
+  [/F[-\s]?BIWASH\s+PRO|BIWASH.*\bPRO\b/, "F_BIWASH_PRO"],
   [/BIWASH|ANTI[-\s_]?DANDRUFF|SHAMPOO/, "F_BIWASH_PLUS"],
   [/EMUGROW.*MC ?R ?D|EMUGROW.*MCRD|MCRD/, "F_EMUGROW_MCRD"],
   [/EMUGROW.*MC ?R\b/, "F_EMUGROW_MC_R"],
@@ -252,14 +254,14 @@ export function resolveKitImage(kitId: string | null | undefined): ResolvedProdu
 /**
  * The product image for a topical. Never returns a kit packshot.
  *
- * ── The F-Biwash asset ──────────────────────────────────────────────────────
- * The manifest carried an `F_BIWASH` entry pointing at `f_biwash.png`, which
- * does not exist on disk — the only broken reference in the whole registry.
- * The fix is NOT to rename a file: F-Biwash and F-Biwash Pro are one product,
- * the anti-dandruff shampoo (the product registry now emits the canonical name
- * "F-Biwash Pro (Anti-Dandruff Shampoo)" at source). So both codes resolve to
- * the packshot that exists, `f_biwashplus.png`, and the manifest entry now
- * points there too.
+ * ── F-Biwash Pro (current) vs F-Biwash+ (deprecated) ────────────────────────
+ * These are DIFFERENT products, not two names for one. The current
+ * recommendation is "F-Biwash Pro (Anti-Dandruff Shampoo)" → code F_BIWASH_PRO,
+ * whose packshot is its own asset (`f_biwashpro.png`, pending upload) and must
+ * NOT be inherited from the deprecated product. The legacy codes `F_BIWASH` /
+ * `F_BIWASH_PLUS` (packshot `f_biwashplus.png`) resolve only historical
+ * snapshots that stored the old "F-Biwash+" name, as historical evidence; they
+ * are never produced for a new recommendation.
  */
 export function resolveTopicalImage(
   productName: string | null | undefined,

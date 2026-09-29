@@ -138,10 +138,10 @@ export const janviFixture: OnePageReportViewModel = {
     },
     {
       name: "F-Biwash Pro (Anti-Dandruff Shampoo)",
-      topicalCode: "F_BIWASH_PLUS",
+      topicalCode: "F_BIWASH_PRO",
       purpose: "Scalp cleansing support",
       usage: "Use as prescribed. Massage into the scalp. Rinse thoroughly.",
-      asset: topical("F_BIWASH_PLUS", "F-Biwash Pro topical"),
+      asset: topical("F_BIWASH_PRO", "F-Biwash Pro topical"),
     },
   ],
   topicalNote: "",
