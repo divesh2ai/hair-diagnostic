@@ -261,8 +261,20 @@ function buildFilterOptions(
 
 // ─────────────────────────────────────────────────────────────────────────────
 // MUTUAL EXCLUSIVITY GROUPS
-// Converts pairwise deselect rules into groups of mutually exclusive option IDs.
-// Also supports single-choice emulation via `allOptionsExclusive`.
+// Converts pairwise deselect rules into 2-element groups of mutually exclusive
+// option IDs — one group per unordered rule pair, deduplicated. Also supports
+// single-choice emulation via `allOptionsExclusive`.
+//
+// Pairs are NOT transitively merged into a single disjoint group. Merging would
+// over-reach on partially-connected clusters: e.g. "Currently pregnant ↔
+// Miscarriage" shares "Currently pregnant" with the pregnant/peri/post triangle,
+// and merging would wrongly make Miscarriage exclusive with Peri/Post-menopause
+// too. Keeping each rule as its own 2-element group preserves the exact intent.
+//
+// An option may appear in several groups; the runtime (applyGroupExclusivity /
+// computeGroupExclusivityDeselections) unions across every group the selected
+// option belongs to. For a fully-connected cluster (all pairwise rules present,
+// e.g. pregnant/peri/post) this reproduces the old merged-group behaviour.
 // ─────────────────────────────────────────────────────────────────────────────
 
 function buildMutualExclusivityGroups(
@@ -281,34 +293,20 @@ function buildMutualExclusivityGroups(
 
   if (!rules.rules?.length) return undefined;
 
-  // Merge pairwise rules into disjoint groups
-  const groups: Set<string>[] = [];
+  const seen = new Set<string>();
+  const groups: string[][] = [];
 
   for (const rule of rules.rules) {
     const { selecting, deselects } = rule;
-    let merged: Set<string> | undefined;
-
-    for (const group of groups) {
-      if (group.has(selecting) || group.has(deselects)) {
-        if (!merged) {
-          merged = group;
-        } else {
-          // Merge two groups
-          for (const item of group) merged.add(item);
-          groups.splice(groups.indexOf(group), 1);
-        }
-      }
-    }
-
-    if (merged) {
-      merged.add(selecting);
-      merged.add(deselects);
-    } else {
-      groups.push(new Set([selecting, deselects]));
-    }
+    if (!selecting || !deselects || selecting === deselects) continue;
+    // Deduplicate by unordered pair — {A,B} and {B,A} are the same group.
+    const key = [selecting, deselects].sort().join('\u0000');
+    if (seen.has(key)) continue;
+    seen.add(key);
+    groups.push([selecting, deselects]);
   }
 
-  return groups.map(g => Array.from(g));
+  return groups.length ? groups : undefined;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

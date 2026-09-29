@@ -70,10 +70,10 @@ describe('diet question — single-choice emulation', () => {
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Guards — the diet change must not disturb the hormonal question.
-// (Miscarriage remains reproductive HISTORY and is intentionally non-exclusive;
-//  see tests/ai-engine/miscarriageKits.test.ts for the clinical rationale.)
+// (Miscarriage ↔ Currently pregnant exclusivity is covered in depth in
+//  tests/ai-engine/miscarriageKits.test.ts; here we just guard non-regression.)
 // ─────────────────────────────────────────────────────────────────────────────
-describe('hormonal question — unchanged reproductive-state exclusivity', () => {
+describe('hormonal question — reproductive-state exclusivity intact', () => {
   const hormonal = byId('hormonal');
   const groups = hormonal.mutualExclusivityGroups ?? [];
   const sharesAGroup = (a: string, b: string) =>
@@ -86,9 +86,12 @@ describe('hormonal question — unchanged reproductive-state exclusivity', () =>
     expect(tap(hormonal, ['Currently pregnant'], 'Post-menopause')).toEqual(['Post-menopause']);
   });
 
-  it('Miscarriage joins no exclusivity group (history, not a current state)', () => {
-    for (const group of groups) {
-      expect(group).not.toContain('Miscarriage');
-    }
+  it('Miscarriage is exclusive with Currently pregnant only — not peri/post', () => {
+    expect(sharesAGroup('Miscarriage', 'Currently pregnant')).toBe(true);
+    expect(sharesAGroup('Miscarriage', 'Peri-menopause')).toBe(false);
+    expect(sharesAGroup('Miscarriage', 'Post-menopause')).toBe(false);
+    // both selection orders keep only the latest conflicting choice
+    expect(tap(hormonal, ['Miscarriage'], 'Currently pregnant')).toEqual(['Currently pregnant']);
+    expect(tap(hormonal, ['Currently pregnant'], 'Miscarriage')).toEqual(['Miscarriage']);
   });
 });

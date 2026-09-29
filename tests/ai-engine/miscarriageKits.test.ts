@@ -17,27 +17,28 @@ import {
 } from '@/runtime/optionFilterEngine';
 
 // ─────────────────────────────────────────────────────────────────────────────
-// MISCARRIAGE — clinical rule 2026-09-05, corrected 2026-09-07.
+// MISCARRIAGE — clinical rule 2026-09-05, corrected 2026-09-07, revised 2026-09-29.
 //
 //   hormonal includes 'Miscarriage'
 //   ⇒ PHENOTYPE INFLAMATION (via the MISCARRIAGE condition) and
 //     PRO IMMUNE GOLD (via the IMMUNE_DEPLETION allow-list).
 //
-// MEANING: reproductive HISTORY, not a current episode. The protocol has never
-// carried a recency qualifier for this option (it did not exist anywhere in the
-// repo or its git history before 2026-09-05), and every option in this question
-// that denotes a *current* state says so in its own label — "Currently
-// pregnant", "Post-delivery or breastfeeding", "Peri-menopause",
-// "Post-menopause", "Post-hysterectomy". Bare "Miscarriage" therefore reads as
-// history, exactly like the bare condition names PCOS and Endometriosis.
+// EXCLUSIVITY (2026-09-29): "Currently pregnant" and "Miscarriage" are now
+// mutually exclusive — a patient cannot simultaneously declare an ongoing
+// pregnancy and a miscarriage. The rule is SYMMETRIC and latest-wins:
+//   • selecting "Currently pregnant" deselects "Miscarriage"
+//   • selecting "Miscarriage" deselects "Currently pregnant"
+// It is applied PER-PAIR, so Miscarriage remains freely combinable with every
+// other option (PCOS, Endometriosis, Peri/Post-menopause, Heavy bleeding, and —
+// pending separate clinical review — "Post-delivery or breastfeeding").
 //
-// Consequence: it must NOT exclude any concurrent reproductive state. A patient
-// may have had a miscarriage and be pregnant, breastfeeding or post-delivery
-// now. These tests pin that no exclusion exists in either direction.
+// SAFETY: "Currently pregnant" drives the pregnancy kit lock (HEALTHY-9 only).
+// The exclusivity removes "Currently pregnant" from the stored answer whenever
+// Miscarriage wins, so no stale pregnancy value survives to bypass — and when
+// "Currently pregnant" wins, the lock still fires. These tests pin both.
 //
-// Guarded here because the schema's `triggers` strings are descriptive metadata
-// only — the runtime re-implements routing in TypeScript, so a schema edit
-// alone would prescribe nothing.
+// Miscarriage on its own is still reproductive history that drives its two kits
+// and must NOT trip the pregnancy lock.
 // ─────────────────────────────────────────────────────────────────────────────
 
 const PHENOTYPE = 'PHENOTYPE INFLAMATION';
@@ -138,50 +139,67 @@ describe('Miscarriage — condition detection', () => {
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
-// ANSWER INTEGRITY — Miscarriage is history and excludes nothing.
+// EXCLUSIVITY — Currently pregnant ↔ Miscarriage (symmetric, latest-wins).
 // ─────────────────────────────────────────────────────────────────────────────
-describe('Miscarriage — no exclusivity, answer integrity', () => {
-  it('CASE 0 — carries no disable rule and joins no exclusivity group', () => {
+describe('Miscarriage ↔ Currently pregnant — mutual exclusivity', () => {
+  it('CASE 0 — Miscarriage is grouped ONLY with Currently pregnant', () => {
     const q = hormonalQuestion();
-    // The one-way disable mechanism was removed; nothing may reintroduce it.
+    // The one-way disable mechanism is not reintroduced.
     expect((q as Record<string, unknown>).optionDisableRules).toBeUndefined();
-    for (const group of q.mutualExclusivityGroups ?? []) {
-      expect(group).not.toContain(MISCARRIAGE);
-    }
+    const groupsWithMiscarriage = (q.mutualExclusivityGroups ?? []).filter((g) =>
+      g.includes(MISCARRIAGE),
+    );
+    expect(groupsWithMiscarriage.length).toBe(1);
+    expect(groupsWithMiscarriage[0].slice().sort()).toEqual([MISCARRIAGE, PREGNANT].sort());
   });
 
-  it('CASE 1 — Miscarriage + Currently pregnant both persist', () => {
-    expect(tap([MISCARRIAGE], PREGNANT)).toEqual([MISCARRIAGE, PREGNANT]);
+  it('ORDER 1 — Miscarriage then Currently pregnant → only Currently pregnant', () => {
+    let answer = tap([], MISCARRIAGE);
+    expect(answer).toEqual([MISCARRIAGE]);
+    answer = tap(answer, PREGNANT);
+    expect(answer).toEqual([PREGNANT]);
   });
 
-  it('CASE 1 — Miscarriage + Post-delivery/breastfeeding both persist', () => {
-    expect(tap([MISCARRIAGE], POSTPARTUM)).toEqual([MISCARRIAGE, POSTPARTUM]);
+  it('ORDER 2 — Currently pregnant then Miscarriage → only Miscarriage', () => {
+    let answer = tap([], PREGNANT);
+    expect(answer).toEqual([PREGNANT]);
+    answer = tap(answer, MISCARRIAGE);
+    expect(answer).toEqual([MISCARRIAGE]);
   });
 
-  it('CASE 1 — Miscarriage + PCOS both persist', () => {
+  it('the two are never both active regardless of surrounding selections', () => {
+    // Start with pregnant + an unrelated option, then pick miscarriage.
+    const answer = tap([PREGNANT, PCOS], MISCARRIAGE);
+    expect(answer).toContain(MISCARRIAGE);
+    expect(answer).not.toContain(PREGNANT);
+    expect(answer).toContain(PCOS); // unrelated option preserved
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// COEXISTENCE — Miscarriage excludes ONLY Currently pregnant, nothing else.
+// ─────────────────────────────────────────────────────────────────────────────
+describe('Miscarriage — coexists with every non-pregnancy option', () => {
+  it('Miscarriage + PCOS both persist', () => {
     expect(tap([MISCARRIAGE], PCOS)).toEqual([MISCARRIAGE, PCOS]);
   });
 
-  it('CASE 2 — selecting Miscarriage last removes nothing', () => {
-    expect(tap([PREGNANT, POSTPARTUM], MISCARRIAGE))
-      .toEqual([PREGNANT, POSTPARTUM, MISCARRIAGE]);
+  it('Miscarriage + Post-delivery/breastfeeding both persist (pending review)', () => {
+    expect(tap([MISCARRIAGE], POSTPARTUM)).toEqual([MISCARRIAGE, POSTPARTUM]);
   });
 
-  it('CASE 2 — selecting Miscarriage first removes nothing', () => {
-    let answer = tap([], MISCARRIAGE);
-    answer = tap(answer, PREGNANT);
-    answer = tap(answer, POSTPARTUM);
-    expect(answer).toEqual([MISCARRIAGE, PREGNANT, POSTPARTUM]);
+  it('Miscarriage + Peri-menopause both persist (no transitive exclusion)', () => {
+    expect(tap([MISCARRIAGE], 'Peri-menopause')).toEqual([MISCARRIAGE, 'Peri-menopause']);
   });
 
-  it('CASE 4 — Miscarriage toggles off without disturbing the others', () => {
-    const answer = tap([MISCARRIAGE, PREGNANT, POSTPARTUM], MISCARRIAGE);
-    expect(answer).toEqual([PREGNANT, POSTPARTUM]);
-  });
-
-  it('CASE 8 — PCOS and unrelated options are unaffected by Miscarriage', () => {
+  it('CASE 8 — PCOS / Endometriosis / Heavy bleeding are unaffected by Miscarriage', () => {
     const answer = tap([PCOS, 'Endometriosis', 'Heavy bleeding periods'], MISCARRIAGE);
     expect(answer).toEqual([PCOS, 'Endometriosis', 'Heavy bleeding periods', MISCARRIAGE]);
+  });
+
+  it('toggling Miscarriage off leaves the coexisting options intact', () => {
+    const answer = tap([MISCARRIAGE, POSTPARTUM], MISCARRIAGE);
+    expect(answer).toEqual([POSTPARTUM]);
   });
 
   it('pregnant + breastfeeding stay co-selectable (untouched by this change)', () => {
@@ -189,37 +207,58 @@ describe('Miscarriage — no exclusivity, answer integrity', () => {
   });
 
   it('the existing menopause exclusivity still fires', () => {
-    // Guards against having weakened the symmetric group rules.
     expect(tap([PREGNANT], 'Post-menopause')).toEqual(['Post-menopause']);
   });
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
-// PERSISTENCE — the stored answer must survive navigation, resume and submit.
+// SAFETY — the pregnancy lock must survive the exclusivity, no stale bypass.
+// ─────────────────────────────────────────────────────────────────────────────
+describe('Miscarriage exclusivity — pregnancy safety lock', () => {
+  it('when Currently pregnant wins, the pregnancy lock still fires', () => {
+    // Miscarriage first, then pregnant → answer is [PREGNANT].
+    const answer = tap([MISCARRIAGE], PREGNANT);
+    expect(answer).toEqual([PREGNANT]);
+    const ans: PatientAnswers = { ...base, hormonal: answer };
+    const present = detectConditions(ans, flagsFor({ isPregnant: true }));
+    expect(present.has('PREGNANCY')).toBe(true);
+  });
+
+  it('when Miscarriage wins, no stale "Currently pregnant" survives to bypass', () => {
+    // Pregnant first, then miscarriage → answer must NOT retain pregnant.
+    const answer = tap([PREGNANT], MISCARRIAGE);
+    expect(answer).toEqual([MISCARRIAGE]);
+    expect(answer).not.toContain(PREGNANT);
+    const ans: PatientAnswers = { ...base, hormonal: answer };
+    const present = detectConditions(ans, flagsFor({}));
+    // The patient has declared not-pregnant, so no pregnancy lock from hormonal.
+    expect(present.has('PREGNANCY')).toBe(false);
+    // ...and the miscarriage signal is intact.
+    expect(present.has('MISCARRIAGE')).toBe(true);
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// PERSISTENCE — a reachable stored answer survives navigation, resume, submit.
 // ─────────────────────────────────────────────────────────────────────────────
 describe('Miscarriage — stored answer survives the round trip', () => {
-  const stored = [MISCARRIAGE, PREGNANT, POSTPARTUM];
+  const stored = [MISCARRIAGE, POSTPARTUM]; // reachable: miscarriage excludes only pregnant
 
-  it('CASE 5/6 — a JSON round trip (Next→Back, save→resume) preserves it', () => {
-    // The store persists answers verbatim through JSON in localStorage; both
-    // navigation and resume read back through this same shape.
+  it('a JSON round trip (Next→Back, save→resume) preserves it', () => {
     expect(JSON.parse(JSON.stringify({ hormonal: stored })).hormonal).toEqual(stored);
   });
 
-  it('CASE 6/7 — every stored value stays visible, so none is filtered on resume', () => {
-    // filterAnswerToVisible runs against the restored answers and drops any
-    // option the gates hide. All three must survive for a 32-year-old female.
+  it('every stored value stays visible, so none is filtered on resume', () => {
     const q = hormonalQuestion();
     const visible = getVisibleOptions(q, femaleAnswers).map((o) => o.id);
     expect(visible).toEqual(expect.arrayContaining(stored));
     expect(filterAnswerToVisible(q, stored, femaleAnswers)).toEqual(stored);
   });
 
-  it('CASE 7 — the submitted payload carries all three values into the engine', () => {
+  it('the submitted payload carries the values into the engine', () => {
     const ans: PatientAnswers = { ...base, hormonal: stored };
-    const present = detectConditions(ans, flagsFor({ isPregnant: true }));
-    // Miscarriage is still recognised alongside a concurrent pregnancy.
-    expect(present.has('PREGNANCY')).toBe(true);
+    const present = detectConditions(ans, flagsFor({}));
+    expect(present.has('MISCARRIAGE')).toBe(true);
     expect(ans.hormonal).toEqual(stored);
   });
 });
