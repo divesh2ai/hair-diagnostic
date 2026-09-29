@@ -112,8 +112,20 @@ const kits = {
 } satisfies Record<string, ProductAsset>;
 
 const topicals = {
-  F_BIWASH: { key: "F_BIWASH", src: `${KIT_ASSET_BASE}/f_biwash.png`, alt: "F-Biwash topical packshot" },
-  F_BIWASH_PLUS: { key: "F_BIWASH_PLUS", src: `${KIT_ASSET_BASE}/f_biwashplus.png`, alt: "F-Biwash Plus topical packshot" },
+  // ── DEPRECATED product: F-Biwash+ ────────────────────────────────────────
+  // F-Biwash+ is a DIFFERENT, now-discontinued product — NOT an old name for
+  // F-Biwash Pro. These entries and their packshots are retained ONLY so that
+  // historical report snapshots which stored the old name still render the
+  // correct (old) product image. They are never emitted for a new
+  // recommendation; the current product is F_BIWASH_PRO below.
+  F_BIWASH: { key: "F_BIWASH", src: `${KIT_ASSET_BASE}/f_biwash.png`, alt: "F-Biwash+ topical packshot (deprecated)" },
+  F_BIWASH_PLUS: { key: "F_BIWASH_PLUS", src: `${KIT_ASSET_BASE}/f_biwashplus.png`, alt: "F-Biwash+ topical packshot (deprecated)" },
+  // ── CURRENT product: F-Biwash Pro (Anti-Dandruff Shampoo) ────────────────
+  // A distinct product that REPLACES F-Biwash+. Its packshot is its own asset
+  // and must NOT reuse f_biwashplus.png (the deprecated product's photo). The
+  // f_biwashpro.png file is not yet in the asset bucket — until it is uploaded
+  // the report shows a missing packshot rather than the wrong product's image.
+  F_BIWASH_PRO: { key: "F_BIWASH_PRO", src: `${KIT_ASSET_BASE}/f_biwashpro.png`, alt: "F-Biwash Pro (Anti-Dandruff Shampoo) topical packshot" },
   F_EMUGROW_MC: { key: "F_EMUGROW_MC", src: `${KIT_ASSET_BASE}/f_emugrow_mc.png`, alt: "F-Emugrow MC topical packshot" },
   F_EMUGROW_MCR: { key: "F_EMUGROW_MCR", src: `${KIT_ASSET_BASE}/f_emugrow_mcr.png`, alt: "F-Emugrow MCR topical packshot" },
   F_EMUGROW_MC_R: { key: "F_EMUGROW_MC_R", src: `${KIT_ASSET_BASE}/f_emugrow_mc_r.png`, alt: "F-Emugrow MC R topical packshot" },

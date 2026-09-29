@@ -159,10 +159,10 @@ export const rahulFixture: OnePageReportViewModel = {
   topicalCare: [
     {
       name: "F-Biwash Pro (Anti-Dandruff Shampoo)",
-      topicalCode: "F_BIWASH_PLUS",
+      topicalCode: "F_BIWASH_PRO",
       purpose: "Anti-dandruff shampoo for a healthier scalp barrier.",
       usage: "Use 2–3 times weekly as advised.",
-      asset: topical("F_BIWASH_PLUS", "F-Biwash Plus topical"),
+      asset: topical("F_BIWASH_PRO", "F-Biwash Pro topical"),
     },
     {
       name: "F-Emugrow MCRD",
@@ -245,7 +245,7 @@ export const rahulFixture: OnePageReportViewModel = {
       { kitCode: "MPHL", name: "MPHL Pro", status: "valid" },
     ],
     topicals: [
-      { topicalCode: "F_BIWASH_PLUS", name: "F-Biwash Pro (Anti-Dandruff Shampoo)", status: "valid" },
+      { topicalCode: "F_BIWASH_PRO", name: "F-Biwash Pro (Anti-Dandruff Shampoo)", status: "valid" },
       { topicalCode: "F_EMUGROW_MCRD", name: "F-Emugrow MCRD", status: "valid" },
       { topicalCode: "F_EXTEND_5", name: "F-Extend 5% Minoxidil", status: "valid" },
     ],

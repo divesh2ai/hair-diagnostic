@@ -26,7 +26,7 @@ import type { AdjunctItem, AdjunctProtocol } from './types';
 // Names must match canonical entries in products.json exactly.
 
 const PRODUCTS = {
-  BIOWASH:          'F-Biwash+ Anti-Dandruff Shampoo',
+  BIOWASH:          'F-Biwash Pro (Anti-Dandruff Shampoo)',
   TRICHOSILK_WITH:  'F-Trichosilk D&F (With Treatment)',
   TRICHOSILK_WO:    'F-Trichosilk D&F (Without Treatment)',
 } as const;
@@ -45,7 +45,7 @@ function hasTreatmentHistory(ans: PatientAnswers): boolean {
 /**
  * SC-1 · OILY / DANDRUFF SCALP
  * Trigger: OILY_SCALP or DANDRUFF
- * Product: F-Biwash+ Anti-Dandruff Shampoo
+ * Product: F-Biwash Pro (Anti-Dandruff Shampoo)
  */
 function ruleScBiowashOilyDandruff(
   scalpStates: readonly ScalpState[]
@@ -69,19 +69,19 @@ function ruleScBiowashOilyDandruff(
       'that accelerates perifollicular fibrosis. Malassezia colonisation in dandruff further elevates ' +
       'IL-1 and TNF-alpha, directly suppressing the anagen phase. The oral supplement protocol cannot ' +
       'reach follicles efficiently until the scalp environment is corrected. ' +
-      'F-Biwash+ (antimicrobial + antifungal complex) clears Malassezia load, reduces sebum oxidation, ' +
+      'F-Biwash Pro (antimicrobial + antifungal complex) clears Malassezia load, reduces sebum oxidation, ' +
       'and restores follicular opening hygiene as a prerequisite for nutrient delivery.',
     usageInstruction:
       'Use 2–3 times per week on wash days. Apply to wet scalp, lather gently for 3–5 minutes ' +
       'to allow active contact, then rinse thoroughly. Doctor to confirm frequency based on severity.',
-    appliedRule: `SC_BIOWASH_OILY_DANDRUFF: ${conditions.join('/')} confirmed — F-Biwash+ injected for scalp microenvironment correction.`,
+    appliedRule: `SC_BIOWASH_OILY_DANDRUFF: ${conditions.join('/')} confirmed — F-Biwash Pro injected for scalp microenvironment correction.`,
   };
 }
 
 /**
  * SC-2 · INFLAMED SCALP / PERIFOLLICULAR INFLAMMATION
  * Trigger: INFLAMED_SCALP or PSORIATIC_SCALP (if BIOWASH not already added)
- * Product: F-Biwash+ Anti-Dandruff Shampoo (with separate clinical rationale)
+ * Product: F-Biwash Pro (Anti-Dandruff Shampoo) (with separate clinical rationale)
  */
 function ruleScBiowashInflammation(
   scalpStates: readonly ScalpState[],
@@ -105,12 +105,12 @@ function ruleScBiowashInflammation(
       'Perifollicular and scalp inflammation confirmed. Inflammatory cytokine load ' +
       '(IL-1α, TNF-α, PGD2) at the follicle directly suppresses anagen entry and accelerates ' +
       'miniaturisation — these cytokines are not addressed by the oral supplement protocol alone. ' +
-      'F-Biwash+ provides topical anti-inflammatory scalp correction as a complementary layer, ' +
+      'F-Biwash Pro provides topical anti-inflammatory scalp correction as a complementary layer, ' +
       'reducing scalp immune activation so the oral protocol can restore follicle cycling effectively.',
     usageInstruction:
       'Use 2–3 times per week. Apply to wet scalp, lather gently for 3–5 minutes, rinse thoroughly. ' +
       'Avoid vigorous rubbing — gentle circular massage only on inflamed areas.',
-    appliedRule: `SC_BIOWASH_INFLAM: ${conditions.join('/')} confirmed — F-Biwash+ injected for anti-inflammatory scalp correction.`,
+    appliedRule: `SC_BIOWASH_INFLAM: ${conditions.join('/')} confirmed — F-Biwash Pro injected for anti-inflammatory scalp correction.`,
   };
 }
 

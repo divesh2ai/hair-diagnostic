@@ -201,7 +201,7 @@ export const TOPICAL_PRODUCTS: TopicalProduct[] = [
     mechanism: "Heat-protectant shield. Fibre repair, moisture retention, anti-frizz. No active pharmaceutical ingredient.",
   },
   {
-    name: "F-Biwash+ Anti-Dandruff Shampoo",
+    name: "F-Biwash Pro (Anti-Dandruff Shampoo)",
     tags: ["dandruff", "itching", "fungal", "inflammation", "psoriasis", "seborrheic"],
     scalpMatch: ["dandruff", "itching", "oily", "fungal", "sensitive", "inflammation", "psoriasis"],
     gender: ["male", "female"],

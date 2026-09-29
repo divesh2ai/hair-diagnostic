@@ -97,7 +97,12 @@ function buildTopicalCareWithValidation(report: ClinicalReport): {
   for (const item of raw) {
     const rawName = shortText(item.name, "", LIMITS.topicalName);
     const topicalCode = topicalAssetCode(rawName);
-    const name = canonicalTopicalName(rawName, topicalCode);
+    // The display name is derived from the upstream data, which now emits the
+    // canonical product names directly (e.g. the anti-dandruff shampoo is
+    // "F-Biwash Pro (Anti-Dandruff Shampoo)" at source — see
+    // registries/topicals/products.ts). The one-page-only Biwash normalisation
+    // override was removed so every surface shows the same name.
+    const name = rawName;
     if (!name) {
       validation.push({ topicalCode, name: "", status: "suppressed_missing_name" });
       continue;
@@ -583,21 +588,12 @@ function kitAssetCode(raw: string): string {
   return text.replace(/[\s-]+/g, "_").replace(/[^A-Z0-9_]/g, "");
 }
 
-/**
- * Canonical display name for topicals. Locks the anti-dandruff shampoo to
- * "F-Biwash Pro (Anti-Dandruff Shampoo)" so every report ships the same
- * label — regardless of whether the upstream data called it Biwash+ / Biwash
- * Plus / Anti-Dandruff Shampoo.
- */
-function canonicalTopicalName(rawName: string, topicalCode: string): string {
-  if (topicalCode === "F_BIWASH_PLUS" || topicalCode === "F_BIWASH") {
-    return "F-Biwash Pro (Anti-Dandruff Shampoo)";
-  }
-  return rawName;
-}
-
 function topicalAssetCode(raw: string): string {
   const text = cleanText(raw).toUpperCase();
+  // F-Biwash Pro (current) vs F-Biwash+ (deprecated) are DIFFERENT products —
+  // the PRO branch must precede the generic one so the current product wins and
+  // only a legacy/bare anti-dandruff spelling maps to the deprecated F_BIWASH_PLUS.
+  if (/F[-\s]?BIWASH\s+PRO|BIWASH.*\bPRO\b/.test(text)) return "F_BIWASH_PRO";
   if (/BIWASH|ANTI-DANDRUFF|SHAMPOO/.test(text)) return "F_BIWASH_PLUS";
   if (/EMUGROW.*MC R D|EMUGROW.*MCRD|MCRD/.test(text)) return "F_EMUGROW_MCRD";
   if (/EMUGROW.*MC R/.test(text)) return "F_EMUGROW_MC_R";

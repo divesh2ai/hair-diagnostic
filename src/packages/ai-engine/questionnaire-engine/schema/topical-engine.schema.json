@@ -159,7 +159,7 @@
         "mechanism": "Heat protectant shield. Fibre repair, moisture retention, anti-frizz. No active pharmaceutical ingredient."
       },
       {
-        "name": "F-Biwash+ Anti-Dandruff Shampoo",
+        "name": "F-Biwash Pro (Anti-Dandruff Shampoo)",
         "tags": ["dandruff","itching","fungal","inflammation","psoriasis","seborrheic"],
         "scalpMatch": ["dandruff","itching","oily","fungal","sensitive","inflammation","psoriasis"],
         "gender": ["male","female"],
@@ -351,7 +351,7 @@
       {
         "branch": "MALE_18_TO_55_DANDRUFF_ITCHING",
         "condition": "gender=male AND age 18–55 AND isDandruffItching",
-        "recommended": "F-Emugrow MCRD (replace topical Minoxidil) + Finasteride topical (0.25% Grade 1-2 / 2.5% Grade 3+ alternate-day → taper). F-Biwash+ Anti-Dandruff Shampoo on wash days.",
+        "recommended": "F-Emugrow MCRD (replace topical Minoxidil) + Finasteride topical (0.25% Grade 1-2 / 2.5% Grade 3+ alternate-day → taper). F-Biwash Pro (Anti-Dandruff Shampoo) on wash days.",
         "caution": ["Oral Minoxidil 1.25–2.5mg"],
         "clinicalRationale": "Malassezia-driven sebaceous inflammation — Minoxidil alcohol vehicle strips lipid barrier, intensifying itch/flaking."
       },
@@ -440,7 +440,7 @@
       {
         "branch": "FEMALE_DANDRUFF_ITCHING",
         "condition": "gender=female AND isDandruffItching",
-        "recommended": "age<30: F-Emugrow MCR | age>30: F-Emugrow MCRD. Use F-Biwash+ on wash days.",
+        "recommended": "age<30: F-Emugrow MCR | age>30: F-Emugrow MCRD. Use F-Biwash Pro on wash days.",
         "caution": ["Minoxidil 2% (once dandruff/itching are controlled)"]
       },
       {
@@ -489,7 +489,7 @@
       {
         "ruleId": "AUTO_01_FBIWASH",
         "trigger": "NOT isPregnancy AND (isDandruffItching OR isPsoriasisScalp OR patient.scalp_condition has dandruff/itching/psoriasis)",
-        "inject": "F-Biwash+ Anti-Dandruff Shampoo added to recommended[] regardless of branch outcome",
+        "inject": "F-Biwash Pro (Anti-Dandruff Shampoo) added to recommended[] regardless of branch outcome",
         "clinicalRationale": "Ensures medicated scalp cleansing is always prescribed when scalp microenvironment is compromised by dandruff, itching or psoriasis"
       },
       {
@@ -588,7 +588,7 @@
       "TOPICAL_PROTOCOL_ROWS represents a structured clinical lookup (sourced from spreadsheet) while recommendTopicals() is a rule-based override engine. Both run and the protocol row selector provides the single 'recommended treatment' string for the report header.",
       "F-Emugrow MCRD appears as both a database product and an auto-inject rule (AUTO_02) — it can be added twice if the main branch also selects it. The output cap (slice(0,6)) prevents overflow but deduplication is not enforced.",
       "The pregnancy and hypertension early-returns bypass all scoring — these are absolute contraindication gates identical in philosophy to the matchProtocol() absolute locks (ALOPECIA_AREATA at 105, TTM at 102).",
-      "The auto-inject F-Biwash+ rule is the topical engine's equivalent of the kit engine's PRO IMMUNE always-last rule — both enforce a mandatory product based on a specific condition flag regardless of other scoring outcomes."
+      "The auto-inject F-Biwash Pro rule is the topical engine's equivalent of the kit engine's PRO IMMUNE always-last rule — both enforce a mandatory product based on a specific condition flag regardless of other scoring outcomes."
     ]
   }
 }
