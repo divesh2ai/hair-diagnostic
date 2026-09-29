@@ -2625,6 +2625,12 @@
           "visibilityRules": [],
           "skipLogic": [],
           "dependencies": [],
+          "mutualExclusivityRules": {
+            "description": "Diet is a single-choice question — a patient has one primary dietary pattern. allOptionsExclusive makes every option mutually exclusive so only one can be selected, while the answer stays a multi_select array (e.g. [\"Vegetarian\"]) to keep downstream array-based scoring (isVeg / metabolic / crash-diet detectors) unaffected.",
+            "toastMessage": "Only one diet type can be selected — replacing the previous one.",
+            "allOptionsExclusive": true,
+            "rules": []
+          },
           "validation": {
             "hint": null
           },
