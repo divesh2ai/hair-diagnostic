@@ -16,6 +16,9 @@ import {
   PenLine,
 } from "lucide-react";
 import { PageContainer } from "@/components/app-shell";
+import { ImageUploader } from "@/components/ui/image-uploader";
+import { LogoUploader } from "@/components/ui/logo-uploader";
+import { canManageClinic, type SystemRole } from "@/lib/auth/roles";
 
 // The Doctor Profile is IDENTITY ONLY: who the clinician is and how they
 // appear on clinical surfaces. Operational preferences (workspace accent,
@@ -123,6 +126,65 @@ export default function DoctorProfilePage() {
     }
   };
 
+  // ── Signature (doctor-self) ──────────────────────────────────────────────
+  const uploadSignature = async (file: File): Promise<string> => {
+    const form = new FormData();
+    form.append("file", file);
+    const res = await fetch("/api/doctor/me/signature", { method: "POST", body: form });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data?.error ?? "Upload failed");
+    setMe((prev) =>
+      prev?.doctor
+        ? { ...prev, doctor: { ...prev.doctor, signatureUrl: data.signatureUrl } }
+        : prev,
+    );
+    toast.success("Signature updated");
+    return data.signatureUrl;
+  };
+
+  const removeSignature = async () => {
+    const res = await fetch("/api/doctor/me/signature", { method: "DELETE" });
+    if (!res.ok) {
+      toast.error("Could not remove signature");
+      return;
+    }
+    setMe((prev) =>
+      prev?.doctor ? { ...prev, doctor: { ...prev.doctor, signatureUrl: null } } : prev,
+    );
+    toast.success("Signature removed");
+  };
+
+  // ── Clinic logo (clinic-wide — managers only) ────────────────────────────
+  const uploadClinicLogo = async (file: File): Promise<string> => {
+    const form = new FormData();
+    form.append("file", file);
+    const res = await fetch("/api/clinic/logo", { method: "POST", body: form });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data?.error ?? "Upload failed");
+    setMe((prev) =>
+      prev?.clinic
+        ? { ...prev, clinic: { ...prev.clinic, logoUrl: data.logoUrl } }
+        : prev,
+    );
+    toast.success("Clinic logo updated");
+    return data.logoUrl;
+  };
+
+  const removeClinicLogo = async () => {
+    const res = await fetch("/api/clinic/logo", { method: "DELETE" });
+    if (!res.ok) {
+      toast.error("Could not remove logo");
+      return;
+    }
+    setMe((prev) =>
+      prev?.clinic ? { ...prev, clinic: { ...prev.clinic, logoUrl: null } } : prev,
+    );
+    toast.success("Clinic logo removed");
+  };
+
+  const role = (me?.role ?? null) as SystemRole | null;
+  const canManageLogo = canManageClinic(role);
+
   const savedAvatar = me?.doctor?.photoUrl ?? null;
   const currentAvatar = preview ?? savedAvatar;
   const displayName = me?.doctor?.name ?? me?.email ?? "Doctor";
@@ -170,12 +232,10 @@ export default function DoctorProfilePage() {
               Professional profile
             </p>
             <div className="flex flex-col items-center gap-6 text-center sm:flex-row sm:items-center sm:text-left">
-              <button
-                type="button"
-                onClick={() => fileRef.current?.click()}
-                aria-label="Change profile photo"
-                className="group relative size-28 shrink-0 overflow-hidden rounded-full bg-white ring-4 ring-teal-500/20 shadow-lg outline-none transition-transform duration-200 hover:scale-[1.02] focus-visible:ring-4 focus-visible:ring-teal-500/60 sm:size-36"
-              >
+              {/* Display only — the single photo uploader lives in the
+                  "Profile photo" section below, so there is one obvious place
+                  to change it rather than two competing controls. */}
+              <div className="relative size-28 shrink-0 overflow-hidden rounded-full bg-white ring-4 ring-teal-500/20 shadow-lg sm:size-36">
                 {currentAvatar ? (
                   <Image
                     src={currentAvatar}
@@ -193,11 +253,7 @@ export default function DoctorProfilePage() {
                     {initials}
                   </span>
                 )}
-                <span className="absolute inset-x-0 bottom-0 flex items-center justify-center gap-1 bg-slate-900/70 py-1.5 text-[11px] font-medium text-white opacity-0 backdrop-blur-sm transition-opacity duration-200 group-hover:opacity-100 group-focus-visible:opacity-100">
-                  <Camera className="size-3" />
-                  Change
-                </span>
-              </button>
+              </div>
 
               <div className="min-w-0 flex-1">
                 <h2 className="font-serif text-[1.7rem] leading-tight text-slate-900 sm:text-3xl">
@@ -406,6 +462,25 @@ export default function DoctorProfilePage() {
                 No clinic affiliation on file.
               </p>
             )}
+
+            {clinic && canManageLogo && (
+              // Clinic-wide branding — only clinic managers (admins / super
+              // admins) can change it, so a plain doctor never sees this and
+              // the logo stays display-only for them.
+              <div className="mt-5 border-t border-stone-100 pt-5">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-stone-500">
+                  Clinic logo
+                </p>
+                <p className="mb-3 mt-1 text-xs text-slate-500">
+                  Shown on reports, patient handoffs and the clinic landing page.
+                </p>
+                <LogoUploader
+                  value={clinic.logoUrl}
+                  onUpload={uploadClinicLogo}
+                  onRemove={removeClinicLogo}
+                />
+              </div>
+            )}
           </section>
 
           {/* Signature */}
@@ -416,22 +491,33 @@ export default function DoctorProfilePage() {
                 Signature
               </p>
             </div>
-            {signatureUrl ? (
+            {signatureUrl && (
               <div className="mt-4 rounded-xl border border-stone-200 bg-stone-50 p-3">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
                   src={signatureUrl}
                   alt="Doctor signature"
-                  className="mx-auto max-h-20 w-auto object-contain"
+                  className="mx-auto max-h-16 w-auto object-contain"
                 />
               </div>
-            ) : (
-              <p className="mt-3 text-sm text-slate-500">
-                No signature on file.
-              </p>
             )}
+            <div className="mt-4">
+              {/* Doctor owns their own signature, so this is a real upload —
+                  ImageUploader's built-in square preview is hidden because a
+                  signature reads better in the wide preview above. */}
+              <ImageUploader
+                value={signatureUrl}
+                onUpload={uploadSignature}
+                onRemove={removeSignature}
+                accept="image/png,image/jpeg,image/webp"
+                maxBytes={4 * 1024 * 1024}
+                label={signatureUrl ? "Replace signature" : "Upload signature"}
+                hint="PNG with a transparent background works best · Max 4 MB"
+                previewClassName="hidden"
+              />
+            </div>
             <p className="mt-3 text-[11px] text-stone-400">
-              Applied to approved reports. Managed by your clinic administrator.
+              Applied to your approved reports and PDFs.
             </p>
           </section>
         </div>
