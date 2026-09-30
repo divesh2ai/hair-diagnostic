@@ -56,8 +56,11 @@ export const KIT_PRICE_INR: Record<string, number> = {
   OXIDATIVE_STRESS: 5100,
   RWL_SHIELD: 4402,
   ALOPECIA_AREATA: 3054,
-  LACTIHEALTH: 1956,
-  LACTIHEALTH_VEG: 1956,
+  // Clinic-confirmed (drfact-mumbai) at ₹2,006, raised from ₹1,956 and approved
+  // for patient charging in APPROVED_KIT_PRICES_MINOR. Mirrors the approved
+  // value so the doctor estimate matches the charge.
+  LACTIHEALTH: 2006,
+  LACTIHEALTH_VEG: 2006,
   HEALTHY_9: 1292,
   HBR: 2854,
   EARLY_GREYING_CARE_GOLD: 3459,

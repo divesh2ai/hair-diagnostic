@@ -133,6 +133,15 @@ export const APPROVED_KIT_PRICES_MINOR: Readonly<Record<string, number>> =
     PERI_MENOPAUSE: rupeesToMinor(4196),
     PERI_MENOPAUSE_VEG: rupeesToMinor(3602),
     TE_GOLD_VEG: rupeesToMinor(3394),
+    // Lactihealth (base and veg) — clinic-confirmed (drfact-mumbai) at ₹2,006,
+    // raised from the prior repository placeholder of ₹1,956. Promotes
+    // LACTIHEALTH from PRICE_PRESENT to PRICE_APPROVED so the patient cart
+    // charges it and totals cleanly instead of showing "Pricing requires
+    // confirmation". The veg variant is priced the same as its base. Paired
+    // with the matching figures in KIT_PRICE_INR so the doctor estimate equals
+    // the patient charge.
+    LACTIHEALTH: rupeesToMinor(2006),
+    LACTIHEALTH_VEG: rupeesToMinor(2006),
   });
 
 /**
