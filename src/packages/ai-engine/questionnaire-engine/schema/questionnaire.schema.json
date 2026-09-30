@@ -2154,7 +2154,7 @@
             "sourceCodeReference": "locked clinical rule 2026-06-15"
           },
           "mutualExclusivityRules": {
-            "description": "Currently pregnant ↔ Peri-menopause ↔ Post-menopause are mutually contradictory reproductive states — a patient can only be in one of these at a time.",
+            "description": "Mutually contradictory reproductive states, enforced as explicit symmetric per-pair rules (latest-wins), NEVER merged into one transitive group. Exclusive pairs: Currently pregnant ↔ Peri-menopause; Currently pregnant ↔ Post-menopause; Peri-menopause ↔ Post-menopause; Currently pregnant ↔ Miscarriage; Currently pregnant ↔ Post-delivery or breastfeeding; Currently pregnant ↔ Post-hysterectomy; Miscarriage ↔ Post-delivery or breastfeeding. All other combinations stay allowed — e.g. Miscarriage with PCOS/Endometriosis/Heavy bleeding/Peri-menopause/Post-menopause/HRT/Post-hysterectomy, and Post-menopause with HRT. 'None of the above' remains globally exclusive via the renderer's exclusive-option handling (not listed here).",
             "toastMessage": "Selected the contradicting reproductive state — replacing the previous one.",
             "rules": [
               { "selecting": "Currently pregnant", "deselects": "Peri-menopause" },
@@ -2162,7 +2162,15 @@
               { "selecting": "Peri-menopause", "deselects": "Currently pregnant" },
               { "selecting": "Peri-menopause", "deselects": "Post-menopause" },
               { "selecting": "Post-menopause", "deselects": "Currently pregnant" },
-              { "selecting": "Post-menopause", "deselects": "Peri-menopause" }
+              { "selecting": "Post-menopause", "deselects": "Peri-menopause" },
+              { "selecting": "Currently pregnant", "deselects": "Miscarriage" },
+              { "selecting": "Miscarriage", "deselects": "Currently pregnant" },
+              { "selecting": "Currently pregnant", "deselects": "Post-delivery or breastfeeding" },
+              { "selecting": "Post-delivery or breastfeeding", "deselects": "Currently pregnant" },
+              { "selecting": "Currently pregnant", "deselects": "Post-hysterectomy" },
+              { "selecting": "Post-hysterectomy", "deselects": "Currently pregnant" },
+              { "selecting": "Miscarriage", "deselects": "Post-delivery or breastfeeding" },
+              { "selecting": "Post-delivery or breastfeeding", "deselects": "Miscarriage" }
             ]
           },
           "scoringSignals": [
@@ -2625,6 +2633,12 @@
           "visibilityRules": [],
           "skipLogic": [],
           "dependencies": [],
+          "mutualExclusivityRules": {
+            "description": "Diet is a single-choice question — a patient has one primary dietary pattern. allOptionsExclusive makes every option mutually exclusive so only one can be selected, while the answer stays a multi_select array (e.g. [\"Vegetarian\"]) to keep downstream array-based scoring (isVeg / metabolic / crash-diet detectors) unaffected.",
+            "toastMessage": "Only one diet type can be selected — replacing the previous one.",
+            "allOptionsExclusive": true,
+            "rules": []
+          },
           "validation": {
             "hint": null
           },
