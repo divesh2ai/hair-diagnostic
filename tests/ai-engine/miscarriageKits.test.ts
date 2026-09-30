@@ -142,15 +142,19 @@ describe('Miscarriage — condition detection', () => {
 // EXCLUSIVITY — Currently pregnant ↔ Miscarriage (symmetric, latest-wins).
 // ─────────────────────────────────────────────────────────────────────────────
 describe('Miscarriage ↔ Currently pregnant — mutual exclusivity', () => {
-  it('CASE 0 — Miscarriage is grouped ONLY with Currently pregnant', () => {
+  it('CASE 0 — Miscarriage is grouped only with Currently pregnant and Post-delivery/breastfeeding', () => {
     const q = hormonalQuestion();
     // The one-way disable mechanism is not reintroduced.
     expect((q as Record<string, unknown>).optionDisableRules).toBeUndefined();
-    const groupsWithMiscarriage = (q.mutualExclusivityGroups ?? []).filter((g) =>
-      g.includes(MISCARRIAGE),
-    );
-    expect(groupsWithMiscarriage.length).toBe(1);
-    expect(groupsWithMiscarriage[0].slice().sort()).toEqual([MISCARRIAGE, PREGNANT].sort());
+    const matesOfMiscarriage = new Set<string>();
+    for (const g of q.mutualExclusivityGroups ?? []) {
+      if (g.includes(MISCARRIAGE)) for (const id of g) if (id !== MISCARRIAGE) matesOfMiscarriage.add(id);
+    }
+    expect([...matesOfMiscarriage].sort()).toEqual([PREGNANT, POSTPARTUM].sort());
+    // per-pair, never merged: each group Miscarriage appears in has exactly 2 members
+    for (const g of q.mutualExclusivityGroups ?? []) {
+      if (g.includes(MISCARRIAGE)) expect(g.length).toBe(2);
+    }
   });
 
   it('ORDER 1 — Miscarriage then Currently pregnant → only Currently pregnant', () => {
@@ -177,19 +181,29 @@ describe('Miscarriage ↔ Currently pregnant — mutual exclusivity', () => {
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
-// COEXISTENCE — Miscarriage excludes ONLY Currently pregnant, nothing else.
+// COEXISTENCE — Miscarriage excludes only Currently pregnant and Post-delivery/
+// breastfeeding; every other combination stays allowed.
 // ─────────────────────────────────────────────────────────────────────────────
-describe('Miscarriage — coexists with every non-pregnancy option', () => {
+describe('Miscarriage — coexists with every option except pregnant & breastfeeding', () => {
   it('Miscarriage + PCOS both persist', () => {
     expect(tap([MISCARRIAGE], PCOS)).toEqual([MISCARRIAGE, PCOS]);
   });
 
-  it('Miscarriage + Post-delivery/breastfeeding both persist (pending review)', () => {
-    expect(tap([MISCARRIAGE], POSTPARTUM)).toEqual([MISCARRIAGE, POSTPARTUM]);
-  });
-
   it('Miscarriage + Peri-menopause both persist (no transitive exclusion)', () => {
     expect(tap([MISCARRIAGE], 'Peri-menopause')).toEqual([MISCARRIAGE, 'Peri-menopause']);
+  });
+
+  it('Miscarriage + Post-menopause both persist', () => {
+    expect(tap([MISCARRIAGE], 'Post-menopause')).toEqual([MISCARRIAGE, 'Post-menopause']);
+  });
+
+  it('Miscarriage + Post-hysterectomy both persist', () => {
+    expect(tap([MISCARRIAGE], 'Post-hysterectomy')).toEqual([MISCARRIAGE, 'Post-hysterectomy']);
+  });
+
+  it('Miscarriage + HRT both persist', () => {
+    expect(tap([MISCARRIAGE], 'Hormone Replacement Therapy (HRT)'))
+      .toEqual([MISCARRIAGE, 'Hormone Replacement Therapy (HRT)']);
   });
 
   it('CASE 8 — PCOS / Endometriosis / Heavy bleeding are unaffected by Miscarriage', () => {
@@ -198,16 +212,47 @@ describe('Miscarriage — coexists with every non-pregnancy option', () => {
   });
 
   it('toggling Miscarriage off leaves the coexisting options intact', () => {
-    const answer = tap([MISCARRIAGE, POSTPARTUM], MISCARRIAGE);
-    expect(answer).toEqual([POSTPARTUM]);
+    const answer = tap([MISCARRIAGE, PCOS], MISCARRIAGE);
+    expect(answer).toEqual([PCOS]);
   });
 
-  it('pregnant + breastfeeding stay co-selectable (untouched by this change)', () => {
-    expect(tap([PREGNANT], POSTPARTUM)).toEqual([PREGNANT, POSTPARTUM]);
+  it('Post-menopause + HRT stay co-selectable', () => {
+    expect(tap(['Post-menopause'], 'Hormone Replacement Therapy (HRT)'))
+      .toEqual(['Post-menopause', 'Hormone Replacement Therapy (HRT)']);
   });
 
   it('the existing menopause exclusivity still fires', () => {
     expect(tap([PREGNANT], 'Post-menopause')).toEqual(['Post-menopause']);
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// NEW EXCLUSIVE PAIRS (2026-09-30) — both selection orders, latest-wins.
+// ─────────────────────────────────────────────────────────────────────────────
+describe('Currently pregnant ↔ Post-delivery or breastfeeding — mutual exclusivity', () => {
+  it('ORDER 1 — breastfeeding then pregnant → only pregnant', () => {
+    expect(tap([POSTPARTUM], PREGNANT)).toEqual([PREGNANT]);
+  });
+  it('ORDER 2 — pregnant then breastfeeding → only breastfeeding', () => {
+    expect(tap([PREGNANT], POSTPARTUM)).toEqual([POSTPARTUM]);
+  });
+});
+
+describe('Currently pregnant ↔ Post-hysterectomy — mutual exclusivity', () => {
+  it('ORDER 1 — hysterectomy then pregnant → only pregnant', () => {
+    expect(tap(['Post-hysterectomy'], PREGNANT)).toEqual([PREGNANT]);
+  });
+  it('ORDER 2 — pregnant then hysterectomy → only hysterectomy', () => {
+    expect(tap([PREGNANT], 'Post-hysterectomy')).toEqual(['Post-hysterectomy']);
+  });
+});
+
+describe('Miscarriage ↔ Post-delivery or breastfeeding — mutual exclusivity', () => {
+  it('ORDER 1 — breastfeeding then miscarriage → only miscarriage', () => {
+    expect(tap([POSTPARTUM], MISCARRIAGE)).toEqual([MISCARRIAGE]);
+  });
+  it('ORDER 2 — miscarriage then breastfeeding → only breastfeeding', () => {
+    expect(tap([MISCARRIAGE], POSTPARTUM)).toEqual([POSTPARTUM]);
   });
 });
 
@@ -242,7 +287,7 @@ describe('Miscarriage exclusivity — pregnancy safety lock', () => {
 // PERSISTENCE — a reachable stored answer survives navigation, resume, submit.
 // ─────────────────────────────────────────────────────────────────────────────
 describe('Miscarriage — stored answer survives the round trip', () => {
-  const stored = [MISCARRIAGE, POSTPARTUM]; // reachable: miscarriage excludes only pregnant
+  const stored = [MISCARRIAGE, PCOS]; // reachable: miscarriage coexists with PCOS
 
   it('a JSON round trip (Next→Back, save→resume) preserves it', () => {
     expect(JSON.parse(JSON.stringify({ hormonal: stored })).hormonal).toEqual(stored);

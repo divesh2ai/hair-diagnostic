@@ -2154,7 +2154,7 @@
             "sourceCodeReference": "locked clinical rule 2026-06-15"
           },
           "mutualExclusivityRules": {
-            "description": "Currently pregnant ↔ Peri-menopause ↔ Post-menopause are mutually contradictory reproductive states — a patient can only be in one of these at a time. Currently pregnant ↔ Miscarriage is additionally mutually exclusive (symmetric, latest-wins): a patient cannot simultaneously declare an ongoing pregnancy and a miscarriage. Rules are applied per-pair, NOT transitively — Miscarriage stays freely combinable with Peri/Post-menopause, PCOS, Endometriosis and every other option; only Currently pregnant is exclusive with it. 'Post-delivery or breastfeeding' is intentionally left combinable pending separate clinical review.",
+            "description": "Mutually contradictory reproductive states, enforced as explicit symmetric per-pair rules (latest-wins), NEVER merged into one transitive group. Exclusive pairs: Currently pregnant ↔ Peri-menopause; Currently pregnant ↔ Post-menopause; Peri-menopause ↔ Post-menopause; Currently pregnant ↔ Miscarriage; Currently pregnant ↔ Post-delivery or breastfeeding; Currently pregnant ↔ Post-hysterectomy; Miscarriage ↔ Post-delivery or breastfeeding. All other combinations stay allowed — e.g. Miscarriage with PCOS/Endometriosis/Heavy bleeding/Peri-menopause/Post-menopause/HRT/Post-hysterectomy, and Post-menopause with HRT. 'None of the above' remains globally exclusive via the renderer's exclusive-option handling (not listed here).",
             "toastMessage": "Selected the contradicting reproductive state — replacing the previous one.",
             "rules": [
               { "selecting": "Currently pregnant", "deselects": "Peri-menopause" },
@@ -2164,7 +2164,13 @@
               { "selecting": "Post-menopause", "deselects": "Currently pregnant" },
               { "selecting": "Post-menopause", "deselects": "Peri-menopause" },
               { "selecting": "Currently pregnant", "deselects": "Miscarriage" },
-              { "selecting": "Miscarriage", "deselects": "Currently pregnant" }
+              { "selecting": "Miscarriage", "deselects": "Currently pregnant" },
+              { "selecting": "Currently pregnant", "deselects": "Post-delivery or breastfeeding" },
+              { "selecting": "Post-delivery or breastfeeding", "deselects": "Currently pregnant" },
+              { "selecting": "Currently pregnant", "deselects": "Post-hysterectomy" },
+              { "selecting": "Post-hysterectomy", "deselects": "Currently pregnant" },
+              { "selecting": "Miscarriage", "deselects": "Post-delivery or breastfeeding" },
+              { "selecting": "Post-delivery or breastfeeding", "deselects": "Miscarriage" }
             ]
           },
           "scoringSignals": [
