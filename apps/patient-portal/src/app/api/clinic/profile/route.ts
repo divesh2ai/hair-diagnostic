@@ -46,7 +46,14 @@ export async function GET(req: Request) {
 const patchSchema = z.object({
   name: z.string().min(2).max(120).optional(),
   tagline: z.string().max(200).nullish(),
-  logoUrl: z.string().url().nullish(),
+  // Accepts an absolute URL (pasted) OR a site-relative path such as
+  // `/api/avatar/clinic-logos/...` minted by the logo upload endpoint.
+  logoUrl: z
+    .string()
+    .refine((s) => s.startsWith("/") || /^https?:\/\//.test(s), {
+      message: "Must be an absolute URL or a site-relative path",
+    })
+    .nullish(),
   primaryColor: z.string().max(16).nullish(),
   secondaryColor: z.string().max(16).nullish(),
   accentColor: z.string().max(16).nullish(),

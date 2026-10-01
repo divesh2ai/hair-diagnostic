@@ -1,50 +1,103 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { toast } from "sonner";
-import {
-  Sparkles,
-  Languages,
-  ImageIcon,
-  Video,
-  Stethoscope,
-  Pill,
-  Upload,
-} from "lucide-react";
+import { Check, Loader2, LogOut, Languages, Palette, ShieldCheck } from "lucide-react";
 import { PageContainer } from "@/components/app-shell";
+import { SignOutForm } from "@/components/app-shell/SignOutForm";
+import { LanguageSelector } from "@/components/ui/language-selector";
+import {
+  BADGE_THEMES,
+  DEFAULT_BADGE_THEME,
+  getBadgeTheme,
+  readStoredBadgeTheme,
+  writeBadgeTheme,
+  type BadgeThemeId,
+} from "@/lib/doctor/badgeThemes";
 
-type AiModel = "drfact-1" | "drfact-1-mini" | "claude-sonnet" | "gpt-4o";
-type Lang = "en" | "hi" | "mr" | "ta" | "te" | "bn" | "gu";
+// Doctor Settings = operational utilities that are GENUINELY WIRED to a
+// backend. Every control here does something real:
+//
+//   • Account / Sign out → POST /auth/signout (the same endpoint the header
+//     UserMenu uses).
+//   • Workspace language → the app-shell locale cookie via <LanguageSelector>
+//     (useI18n().setLocale) — the same switch as the header, exposed here
+//     where users look for it.
+//   • Workspace accent → PATCH /api/doctor/me { badgeTheme }, persisted
+//     server-side so the pick survives across devices and preview origins.
+//
+// Deliberately NOT here: AI-model pickers, logo/avatar/video/signature
+// uploads, consultation-duration and prescription-refill fields, and the
+// old "Save preferences" button — none of those had a backend, so they were
+// preview-only mockups that saved nothing. Signature and registration are
+// authored on the Clinic Admin doctor editor and shown read-only on the
+// Doctor Profile. Adding a control here that persists nothing would be worse
+// than not having it, so they are gone rather than faked.
 
-const AI_MODELS: { id: AiModel; label: string; hint: string }[] = [
-  { id: "drfact-1",      label: "DrFACT v1",      hint: "Default clinical model" },
-  { id: "drfact-1-mini", label: "DrFACT v1 mini", hint: "Faster, lower cost" },
-  { id: "claude-sonnet", label: "Claude Sonnet",  hint: "Long-form reasoning" },
-  { id: "gpt-4o",        label: "GPT-4o",         hint: "External fallback" },
-];
+type DoctorMe = {
+  clinic: { name: string | null } | null;
+  doctor: { badgeTheme: string | null } | null;
+  role: string;
+  email: string | null;
+};
 
-const LANGS: { id: Lang; label: string }[] = [
-  { id: "en", label: "English" },
-  { id: "hi", label: "हिन्दी" },
-  { id: "mr", label: "मराठी" },
-  { id: "ta", label: "தமிழ்" },
-  { id: "te", label: "తెలుగు" },
-  { id: "bn", label: "বাংলা" },
-  { id: "gu", label: "ગુજરાતી" },
-];
+const ROLE_LABEL: Record<string, string> = {
+  DOCTOR: "Doctor",
+  SUPER_ADMIN: "Super Admin",
+  CLINIC_ADMIN: "Clinic Admin",
+};
 
 export default function DoctorSettingsPage() {
-  const [ai, setAi] = useState<AiModel>("drfact-1");
-  const [lang, setLang] = useState<Lang>("en");
-  const [consultDuration, setConsultDuration] = useState(20);
-  const [requireSig, setRequireSig] = useState(true);
-  const [avatarVideo, setAvatarVideo] = useState(false);
-  const [refillDays, setRefillDays] = useState(30);
+  const [me, setMe] = useState<DoctorMe | null>(null);
+  const [badgeThemeId, setBadgeThemeId] = useState<BadgeThemeId>(DEFAULT_BADGE_THEME);
+  const [savingAccent, setSavingAccent] = useState(false);
 
-  const handleUpload = (kind: string) => () =>
-    toast.message(`${kind} upload`, { description: "Arrives in Sprint 2" });
+  useEffect(() => {
+    setBadgeThemeId(readStoredBadgeTheme());
+    fetch("/api/doctor/me")
+      .then((r) => (r.ok ? r.json() : Promise.reject(r.statusText)))
+      .then((data: DoctorMe) => {
+        setMe(data);
+        const server = data.doctor?.badgeTheme;
+        if (server && server !== readStoredBadgeTheme()) {
+          setBadgeThemeId(server as BadgeThemeId);
+          writeBadgeTheme(server as BadgeThemeId);
+        }
+      })
+      .catch((e) => toast.error(`Could not load settings: ${e}`));
+  }, []);
 
-  const save = () => toast.success("Preferences saved");
+  const badgeTheme = getBadgeTheme(badgeThemeId);
+
+  const pickBadgeTheme = async (id: BadgeThemeId) => {
+    // Optimistic: local cache + UI first, then persist to server.
+    const previous = badgeThemeId;
+    setBadgeThemeId(id);
+    writeBadgeTheme(id);
+    setSavingAccent(true);
+    try {
+      const res = await fetch("/api/doctor/me", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ badgeTheme: id }),
+      });
+      if (!res.ok) throw new Error(await res.text());
+      toast.success("Workspace accent updated");
+    } catch (err) {
+      // Roll back on failure so the UI never claims a save that did not land.
+      setBadgeThemeId(previous);
+      writeBadgeTheme(previous);
+      toast.error(
+        err instanceof Error ? `Could not save: ${err.message}` : "Could not save accent",
+      );
+    } finally {
+      setSavingAccent(false);
+    }
+  };
+
+  const email = me?.email ?? null;
+  const roleLabel = me ? (ROLE_LABEL[me.role] ?? me.role) : null;
+  const clinicName = me?.clinic?.name ?? null;
 
   return (
     <PageContainer className="space-y-6 max-w-3xl">
@@ -53,123 +106,94 @@ export default function DoctorSettingsPage() {
           Dr FACT · Workspace
         </p>
         <h1 className="font-serif text-3xl font-medium tracking-tight text-slate-900">
-          Doctor customization
+          Settings
         </h1>
         <p className="text-sm text-slate-500">
-          Personal preferences for AI, language, branding, and consultations.
+          Account, language and workspace preferences. Your professional identity
+          lives in{" "}
+          <a href="/doctor/profile" className="font-medium text-teal-700 underline">
+            Profile
+          </a>
+          .
         </p>
       </div>
 
-      <div
-        role="note"
-        className="rounded-xl border border-amber-200 bg-amber-50/70 px-4 py-3 text-sm text-amber-900"
+      {/* ── Account & session ── */}
+      <Section id="account" icon={ShieldCheck} title="Account" hint="Your session and sign-in">
+        <dl className="space-y-2.5 text-sm">
+          <Row label="Signed in as" value={email ?? "—"} />
+          <Row label="Role" value={roleLabel ?? "—"} />
+          {clinicName && <Row label="Clinic" value={clinicName} />}
+        </dl>
+        <p className="mt-4 text-xs text-slate-500">
+          HairOS uses secure one-time-passcode / magic-link sign-in — there is no
+          password to manage. Sign out to end this session on this device.
+        </p>
+        <div className="mt-4">
+          <SignOutForm>
+            {({ submit }) => (
+              <button
+                type="button"
+                onClick={submit}
+                className="inline-flex items-center gap-2 rounded-lg border border-stone-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 shadow-sm transition-colors hover:bg-stone-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-500"
+              >
+                <LogOut className="size-4" />
+                Sign out
+              </button>
+            )}
+          </SignOutForm>
+        </div>
+      </Section>
+
+      {/* ── Language ── */}
+      <Section
+        id="language"
+        icon={Languages}
+        title="Workspace language"
+        hint="Display language for the doctor workspace"
       >
-        <span className="font-semibold">Preview only</span> — settings
-        persistence coming soon. Selections shown here do not save yet.
-      </div>
+        <LanguageSelector />
+        <p className="mt-3 text-xs text-slate-500">
+          Changes the language of the workspace interface immediately. This is the
+          same switch shown in the header.
+        </p>
+      </Section>
 
-      <Section id="ai" icon={Sparkles} title="Doctor AI" hint="Model used for narrative + insights">
-        <div className="grid sm:grid-cols-2 gap-2">
-          {AI_MODELS.map((m) => (
-            <label
-              key={m.id}
-              className={`flex items-start gap-3 rounded-xl border p-3 cursor-pointer transition-colors ${
-                ai === m.id ? "border-sky-400 bg-sky-50/40" : "border-stone-200 hover:bg-stone-50"
-              }`}
-            >
-              <input
-                type="radio"
-                name="ai"
-                checked={ai === m.id}
-                onChange={() => setAi(m.id)}
-                className="mt-1"
-              />
-              <div>
-                <p className="text-sm font-medium text-slate-800">{m.label}</p>
-                <p className="text-xs text-slate-500">{m.hint}</p>
-              </div>
-            </label>
-          ))}
+      {/* ── Workspace accent (moved from Profile — it is a preference, not identity) ── */}
+      <Section
+        id="accent"
+        icon={Palette}
+        title="Workspace accent"
+        hint="Colour used on your identity card and clinical workspace"
+      >
+        <div className="flex flex-wrap gap-2.5">
+          {BADGE_THEMES.map((t) => {
+            const active = t.id === badgeThemeId;
+            return (
+              <button
+                key={t.id}
+                type="button"
+                onClick={() => pickBadgeTheme(t.id)}
+                disabled={savingAccent}
+                aria-label={t.label}
+                aria-pressed={active}
+                title={t.label}
+                className={`relative inline-flex size-9 items-center justify-center rounded-full ring-2 transition-transform duration-200 focus-visible:outline-none focus-visible:ring-teal-500 disabled:opacity-60 ${
+                  active ? "ring-slate-900 scale-110" : "ring-stone-200 hover:scale-105"
+                }`}
+                style={{ backgroundColor: t.swatch }}
+              >
+                {active && <Check className="size-4 text-white drop-shadow" />}
+              </button>
+            );
+          })}
         </div>
+        <p className="mt-3 flex items-center gap-1.5 text-[11px] text-stone-500">
+          {savingAccent && <Loader2 className="size-3 animate-spin" />}
+          Selected:{" "}
+          <span className="font-medium text-slate-800">{badgeTheme.label}</span>
+        </p>
       </Section>
-
-      <Section id="language" icon={Languages} title="Preferred language" hint="Default for new reports and patient handoffs">
-        <select
-          value={lang}
-          onChange={(e) => setLang(e.target.value as Lang)}
-          className="w-full max-w-xs rounded-lg border border-stone-200 bg-white px-3 py-2 text-sm"
-        >
-          {LANGS.map((l) => (
-            <option key={l.id} value={l.id}>{l.label}</option>
-          ))}
-        </select>
-      </Section>
-
-      <Section id="logo" icon={ImageIcon} title="Brand logo" hint="Header chrome and PDF letterhead">
-        <UploadButton label="Upload logo" onClick={handleUpload("Logo")} />
-      </Section>
-
-      <Section id="avatar" icon={Video} title="Avatar & video" hint="Patient handoff intro video">
-        <div className="space-y-3">
-          <UploadButton label="Upload avatar" onClick={handleUpload("Avatar")} />
-          <label className="flex items-center gap-3 text-sm text-slate-700">
-            <input
-              type="checkbox"
-              checked={avatarVideo}
-              onChange={(e) => setAvatarVideo(e.target.checked)}
-            />
-            Auto-generate handoff video on report approval
-          </label>
-        </div>
-      </Section>
-
-      <Section id="consultation" icon={Stethoscope} title="Consultation" hint="Defaults for new sessions">
-        <div className="space-y-3">
-          <Field label="Default session duration (minutes)">
-            <input
-              type="number"
-              min={5}
-              max={180}
-              value={consultDuration}
-              onChange={(e) => setConsultDuration(Number(e.target.value))}
-              className="w-32 rounded-lg border border-stone-200 px-3 py-2 text-sm"
-            />
-          </Field>
-          <label className="flex items-center gap-3 text-sm text-slate-700">
-            <input
-              type="checkbox"
-              checked={requireSig}
-              onChange={(e) => setRequireSig(e.target.checked)}
-            />
-            Require my signature before report goes to patient
-          </label>
-        </div>
-      </Section>
-
-      <Section id="prescription" icon={Pill} title="Prescription defaults" hint="Refill window, signature, dosage style">
-        <div className="space-y-3">
-          <Field label="Default refill window (days)">
-            <input
-              type="number"
-              min={7}
-              max={180}
-              value={refillDays}
-              onChange={(e) => setRefillDays(Number(e.target.value))}
-              className="w-32 rounded-lg border border-stone-200 px-3 py-2 text-sm"
-            />
-          </Field>
-          <UploadButton label="Upload signature image" onClick={handleUpload("Signature")} />
-        </div>
-      </Section>
-
-      <div className="flex justify-end">
-        <button
-          onClick={save}
-          className="rounded-lg bg-slate-900 px-5 py-2 text-sm font-medium text-white hover:bg-slate-800"
-        >
-          Save preferences
-        </button>
-      </div>
 
       <footer className="pt-6 text-center text-[11px] text-stone-400">
         Dr FACT — powered by HairOS Intelligence
@@ -186,7 +210,7 @@ function Section({
   children,
 }: {
   id: string;
-  icon: typeof Sparkles;
+  icon: typeof ShieldCheck;
   title: string;
   hint: string;
   children: React.ReactNode;
@@ -207,23 +231,13 @@ function Section({
   );
 }
 
-function Field({ label, children }: { label: string; children: React.ReactNode }) {
+function Row({ label, value }: { label: string; value: string }) {
   return (
-    <label className="block space-y-1">
-      <span className="text-xs font-medium text-slate-600">{label}</span>
-      {children}
-    </label>
-  );
-}
-
-function UploadButton({ label, onClick }: { label: string; onClick: () => void }) {
-  return (
-    <button
-      onClick={onClick}
-      className="inline-flex items-center gap-2 rounded-lg border border-dashed border-stone-300 bg-stone-50 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-white hover:border-stone-400"
-    >
-      <Upload className="h-4 w-4" />
-      {label}
-    </button>
+    <div className="flex items-baseline justify-between gap-4">
+      <dt className="text-xs font-medium uppercase tracking-[0.1em] text-slate-500">
+        {label}
+      </dt>
+      <dd className="min-w-0 truncate text-sm font-medium text-slate-800">{value}</dd>
+    </div>
   );
 }

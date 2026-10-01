@@ -6,21 +6,30 @@ import { toast } from "sonner";
 import {
   Upload,
   Loader2,
-  Check,
   Camera,
   X,
   MapPin,
   ShieldCheck,
+  Mail,
+  Phone,
+  BadgeCheck,
+  PenLine,
 } from "lucide-react";
 import { PageContainer } from "@/components/app-shell";
-import {
-  BADGE_THEMES,
-  DEFAULT_BADGE_THEME,
-  getBadgeTheme,
-  readStoredBadgeTheme,
-  writeBadgeTheme,
-  type BadgeThemeId,
-} from "@/lib/doctor/badgeThemes";
+import { ImageUploader } from "@/components/ui/image-uploader";
+import { LogoUploader } from "@/components/ui/logo-uploader";
+import { canManageClinic, type SystemRole } from "@/lib/auth/roles";
+
+// The Doctor Profile is IDENTITY ONLY: who the clinician is and how they
+// appear on clinical surfaces. Operational preferences (workspace accent,
+// language, account/session) live on /doctor/settings, not here.
+//
+// The professional-identity fields below (qualification, registration
+// number, credentials, contact, signature) are authored on the Clinic Admin
+// doctor editor and are read-only on this surface — a doctor cannot silently
+// rewrite their own medical registration. The one thing a doctor owns here
+// is their workspace photo, which is genuinely wired to POST
+// /api/doctor/me/avatar.
 
 type DoctorMe = {
   clinic: {
@@ -35,6 +44,11 @@ type DoctorMe = {
     photoUrl: string | null;
     specialization: string | null;
     badgeTheme: string | null;
+    qualification: string | null;
+    registrationNumber: string | null;
+    credentials: string | null;
+    phone: string | null;
+    signatureUrl: string | null;
   } | null;
   role: string;
   email: string | null;
@@ -52,50 +66,16 @@ export default function DoctorProfilePage() {
   const [me, setMe] = useState<DoctorMe | null>(null);
   const [preview, setPreview] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
-  const [badgeThemeId, setBadgeThemeId] = useState<BadgeThemeId>(DEFAULT_BADGE_THEME);
   const fileRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    // localStorage is the immediate first-paint cache; the server value
-    // (loaded below) is the source of truth and overrides it once the
-    // /api/doctor/me response lands. This is the ONLY fetch on this page —
-    // name/photo/clinic/specialization all arrive in this single call.
-    setBadgeThemeId(readStoredBadgeTheme());
+    // The ONLY fetch on this page — name/photo/clinic/specialization plus the
+    // read-only professional-identity fields all arrive in this single call.
     fetch("/api/doctor/me")
       .then((r) => (r.ok ? r.json() : Promise.reject(r.statusText)))
-      .then((data: DoctorMe) => {
-        setMe(data);
-        const server = data.doctor?.badgeTheme;
-        if (server && server !== readStoredBadgeTheme()) {
-          setBadgeThemeId(server as BadgeThemeId);
-          writeBadgeTheme(server as BadgeThemeId);
-        }
-      })
+      .then((data: DoctorMe) => setMe(data))
       .catch((e) => toast.error(`Could not load profile: ${e}`));
   }, []);
-
-  const badgeTheme = getBadgeTheme(badgeThemeId);
-
-  const pickBadgeTheme = async (id: BadgeThemeId) => {
-    // Optimistic: local cache + UI update first, then persist to server.
-    setBadgeThemeId(id);
-    writeBadgeTheme(id);
-    try {
-      const res = await fetch("/api/doctor/me", {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ badgeTheme: id }),
-      });
-      if (!res.ok) throw new Error(await res.text());
-      toast.success("Profile accent updated");
-    } catch (err) {
-      toast.error(
-        err instanceof Error
-          ? `Could not save: ${err.message}`
-          : "Could not save profile accent",
-      );
-    }
-  };
 
   const onPick = (e: React.ChangeEvent<HTMLInputElement>) => {
     const f = e.target.files?.[0];
@@ -146,12 +126,82 @@ export default function DoctorProfilePage() {
     }
   };
 
+  // ── Signature (doctor-self) ──────────────────────────────────────────────
+  const uploadSignature = async (file: File): Promise<string> => {
+    const form = new FormData();
+    form.append("file", file);
+    const res = await fetch("/api/doctor/me/signature", { method: "POST", body: form });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data?.error ?? "Upload failed");
+    setMe((prev) =>
+      prev?.doctor
+        ? { ...prev, doctor: { ...prev.doctor, signatureUrl: data.signatureUrl } }
+        : prev,
+    );
+    toast.success("Signature updated");
+    return data.signatureUrl;
+  };
+
+  const removeSignature = async () => {
+    const res = await fetch("/api/doctor/me/signature", { method: "DELETE" });
+    if (!res.ok) {
+      toast.error("Could not remove signature");
+      return;
+    }
+    setMe((prev) =>
+      prev?.doctor ? { ...prev, doctor: { ...prev.doctor, signatureUrl: null } } : prev,
+    );
+    toast.success("Signature removed");
+  };
+
+  // ── Clinic logo (clinic-wide — managers only) ────────────────────────────
+  const uploadClinicLogo = async (file: File): Promise<string> => {
+    const form = new FormData();
+    form.append("file", file);
+    const res = await fetch("/api/clinic/logo", { method: "POST", body: form });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data?.error ?? "Upload failed");
+    setMe((prev) =>
+      prev?.clinic
+        ? { ...prev, clinic: { ...prev.clinic, logoUrl: data.logoUrl } }
+        : prev,
+    );
+    toast.success("Clinic logo updated");
+    return data.logoUrl;
+  };
+
+  const removeClinicLogo = async () => {
+    const res = await fetch("/api/clinic/logo", { method: "DELETE" });
+    if (!res.ok) {
+      toast.error("Could not remove logo");
+      return;
+    }
+    setMe((prev) =>
+      prev?.clinic ? { ...prev, clinic: { ...prev.clinic, logoUrl: null } } : prev,
+    );
+    toast.success("Clinic logo removed");
+  };
+
+  const role = (me?.role ?? null) as SystemRole | null;
+  const canManageLogo = canManageClinic(role);
+
   const savedAvatar = me?.doctor?.photoUrl ?? null;
   const currentAvatar = preview ?? savedAvatar;
   const displayName = me?.doctor?.name ?? me?.email ?? "Doctor";
   const initials = useMemo(() => initialsOf(displayName), [displayName]);
   const specialty = me?.doctor?.specialization ?? null;
   const clinic = me?.clinic ?? null;
+  const doctor = me?.doctor ?? null;
+  const contactEmail = me?.email ?? null;
+  const phone = doctor?.phone ?? null;
+  const signatureUrl = doctor?.signatureUrl ?? null;
+
+  const registrationRows: { label: string; value: string | null }[] = [
+    { label: "Qualification", value: doctor?.qualification ?? null },
+    { label: "Registration No.", value: doctor?.registrationNumber ?? null },
+    { label: "Credentials", value: doctor?.credentials ?? null },
+  ];
+  const hasRegistration = registrationRows.some((r) => r.value);
 
   return (
     <PageContainer className="max-w-6xl pb-28 space-y-8">
@@ -164,8 +214,12 @@ export default function DoctorProfilePage() {
           Your professional identity
         </h1>
         <p className="max-w-xl text-sm text-slate-500">
-          Manage how you appear across HairOS clinical reviews, patient handoffs
-          and clinic communications.
+          Your clinical identity as it appears across HairOS reviews, patient
+          handoffs and reports. Workspace preferences live in{" "}
+          <a href="/doctor/settings" className="font-medium text-teal-700 underline">
+            Settings
+          </a>
+          .
         </p>
       </header>
 
@@ -173,21 +227,15 @@ export default function DoctorProfilePage() {
         {/* ── LEFT column (~65%) ── */}
         <div className="space-y-6 lg:col-span-2">
           {/* Professional profile hero */}
-          <section
-            className={`relative overflow-hidden rounded-3xl border border-stone-200 bg-gradient-to-br ${badgeTheme.cardAccent} p-6 shadow-[0_1px_2px_rgba(15,23,42,0.04),0_18px_40px_-24px_rgba(15,23,42,0.25)] sm:p-8`}
-          >
+          <section className="relative overflow-hidden rounded-3xl border border-stone-200 bg-gradient-to-br from-stone-50 to-white p-6 shadow-[0_1px_2px_rgba(15,23,42,0.04),0_18px_40px_-24px_rgba(15,23,42,0.25)] sm:p-8">
             <p className="mb-5 text-[11px] font-semibold uppercase tracking-[0.16em] text-stone-500">
               Professional profile
             </p>
             <div className="flex flex-col items-center gap-6 text-center sm:flex-row sm:items-center sm:text-left">
-              {/* Portrait — the strongest element on the page. Clicking or
-                  keyboard-activating it opens the file picker. */}
-              <button
-                type="button"
-                onClick={() => fileRef.current?.click()}
-                aria-label="Change profile photo"
-                className={`group relative size-28 shrink-0 overflow-hidden rounded-full bg-white ring-4 ${badgeTheme.avatarRing} shadow-lg outline-none transition-transform duration-200 hover:scale-[1.02] focus-visible:ring-4 focus-visible:ring-teal-500/60 sm:size-36`}
-              >
+              {/* Display only — the single photo uploader lives in the
+                  "Profile photo" section below, so there is one obvious place
+                  to change it rather than two competing controls. */}
+              <div className="relative size-28 shrink-0 overflow-hidden rounded-full bg-white ring-4 ring-teal-500/20 shadow-lg sm:size-36">
                 {currentAvatar ? (
                   <Image
                     src={currentAvatar}
@@ -205,12 +253,7 @@ export default function DoctorProfilePage() {
                     {initials}
                   </span>
                 )}
-                {/* Hover overlay */}
-                <span className="absolute inset-x-0 bottom-0 flex items-center justify-center gap-1 bg-slate-900/70 py-1.5 text-[11px] font-medium text-white opacity-0 backdrop-blur-sm transition-opacity duration-200 group-hover:opacity-100 group-focus-visible:opacity-100">
-                  <Camera className="size-3" />
-                  Change
-                </span>
-              </button>
+              </div>
 
               <div className="min-w-0 flex-1">
                 <h2 className="font-serif text-[1.7rem] leading-tight text-slate-900 sm:text-3xl">
@@ -237,6 +280,39 @@ export default function DoctorProfilePage() {
                 </div>
               </div>
             </div>
+          </section>
+
+          {/* Registration details */}
+          <section className="rounded-3xl border border-stone-200 bg-white p-6 shadow-sm sm:p-7">
+            <div className="flex items-center gap-2">
+              <BadgeCheck className="size-4 text-teal-700" />
+              <h3 className="text-base font-semibold text-slate-900">
+                Registration & credentials
+              </h3>
+            </div>
+            {hasRegistration ? (
+              <dl className="mt-4 grid gap-x-8 gap-y-3 sm:grid-cols-2">
+                {registrationRows
+                  .filter((r) => r.value)
+                  .map((r) => (
+                    <div key={r.label}>
+                      <dt className="text-[11px] font-semibold uppercase tracking-[0.12em] text-stone-500">
+                        {r.label}
+                      </dt>
+                      <dd className="mt-0.5 text-sm text-slate-800">{r.value}</dd>
+                    </div>
+                  ))}
+              </dl>
+            ) : (
+              <p className="mt-3 text-sm text-slate-500">
+                No registration details on file yet. These are set by your clinic
+                administrator.
+              </p>
+            )}
+            <p className="mt-4 text-[11px] text-stone-400">
+              Managed by your clinic administrator. Appears on approved reports and
+              PDFs.
+            </p>
           </section>
 
           {/* Photo management */}
@@ -330,6 +406,29 @@ export default function DoctorProfilePage() {
 
         {/* ── RIGHT column (~35%) ── */}
         <div className="space-y-6">
+          {/* Contact information */}
+          <section className="rounded-3xl border border-stone-200 bg-white p-6 shadow-sm">
+            <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-stone-500">
+              Contact information
+            </p>
+            <ul className="mt-4 space-y-3 text-sm">
+              <li className="flex items-start gap-2.5">
+                <Mail className="mt-0.5 size-4 shrink-0 text-stone-400" />
+                <span className="min-w-0 break-words text-slate-700">
+                  {contactEmail ?? (
+                    <span className="text-slate-400">No email on file</span>
+                  )}
+                </span>
+              </li>
+              <li className="flex items-start gap-2.5">
+                <Phone className="mt-0.5 size-4 shrink-0 text-stone-400" />
+                <span className="min-w-0 break-words text-slate-700">
+                  {phone ?? <span className="text-slate-400">No phone on file</span>}
+                </span>
+              </li>
+            </ul>
+          </section>
+
           {/* Clinic affiliation */}
           <section className="rounded-3xl border border-stone-200 bg-white p-6 shadow-sm">
             <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-stone-500">
@@ -363,60 +462,63 @@ export default function DoctorProfilePage() {
                 No clinic affiliation on file.
               </p>
             )}
+
+            {clinic && canManageLogo && (
+              // Clinic-wide branding — only clinic managers (admins / super
+              // admins) can change it, so a plain doctor never sees this and
+              // the logo stays display-only for them.
+              <div className="mt-5 border-t border-stone-100 pt-5">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-stone-500">
+                  Clinic logo
+                </p>
+                <p className="mb-3 mt-1 text-xs text-slate-500">
+                  Shown on reports, patient handoffs and the clinic landing page.
+                </p>
+                <LogoUploader
+                  value={clinic.logoUrl}
+                  onUpload={uploadClinicLogo}
+                  onRemove={removeClinicLogo}
+                />
+              </div>
+            )}
           </section>
 
-          {/* Profile accent */}
+          {/* Signature */}
           <section className="rounded-3xl border border-stone-200 bg-white p-6 shadow-sm">
-            <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-stone-500">
-              Profile accent
-            </p>
-            <p className="mt-1.5 text-xs text-slate-500">
-              Used subtly on your doctor identity card and clinical workspace.
-            </p>
-            <div className="mt-4 flex flex-wrap gap-2.5">
-              {BADGE_THEMES.map((t) => {
-                const active = t.id === badgeThemeId;
-                return (
-                  <button
-                    key={t.id}
-                    type="button"
-                    onClick={() => pickBadgeTheme(t.id)}
-                    aria-label={t.label}
-                    aria-pressed={active}
-                    title={t.label}
-                    className={`relative inline-flex size-9 items-center justify-center rounded-full ring-2 transition-transform duration-200 focus-visible:outline-none focus-visible:ring-teal-500 ${
-                      active
-                        ? "ring-slate-900 scale-110"
-                        : "ring-stone-200 hover:scale-105"
-                    }`}
-                    style={{ backgroundColor: t.swatch }}
-                  >
-                    {active && <Check className="size-4 text-white drop-shadow" />}
-                  </button>
-                );
-              })}
+            <div className="flex items-center gap-2">
+              <PenLine className="size-4 text-stone-400" />
+              <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-stone-500">
+                Signature
+              </p>
             </div>
-            <p className="mt-3 text-[11px] text-stone-500">
-              Selected:{" "}
-              <span className="font-medium text-slate-800">{badgeTheme.label}</span>
+            {signatureUrl && (
+              <div className="mt-4 rounded-xl border border-stone-200 bg-stone-50 p-3">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={signatureUrl}
+                  alt="Doctor signature"
+                  className="mx-auto max-h-16 w-auto object-contain"
+                />
+              </div>
+            )}
+            <div className="mt-4">
+              {/* Doctor owns their own signature, so this is a real upload —
+                  ImageUploader's built-in square preview is hidden because a
+                  signature reads better in the wide preview above. */}
+              <ImageUploader
+                value={signatureUrl}
+                onUpload={uploadSignature}
+                onRemove={removeSignature}
+                accept="image/png,image/jpeg,image/webp"
+                maxBytes={4 * 1024 * 1024}
+                label={signatureUrl ? "Replace signature" : "Upload signature"}
+                hint="PNG with a transparent background works best · Max 4 MB"
+                previewClassName="hidden"
+              />
+            </div>
+            <p className="mt-3 text-[11px] text-stone-400">
+              Applied to your approved reports and PDFs.
             </p>
-          </section>
-
-          {/* Where this appears */}
-          <section className="rounded-3xl border border-stone-200 bg-stone-50/60 p-6">
-            <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-stone-500">
-              Where this appears
-            </p>
-            <ul className="mt-3 space-y-2 text-sm text-slate-600">
-              {["Workspace header", "Patient handoff", "Clinical report surfaces"].map(
-                (item) => (
-                  <li key={item} className="flex items-center gap-2">
-                    <span className="size-1.5 rounded-full bg-teal-500" />
-                    {item}
-                  </li>
-                ),
-              )}
-            </ul>
           </section>
         </div>
       </div>

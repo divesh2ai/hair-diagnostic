@@ -120,7 +120,11 @@ export async function loadShellData(): Promise<ShellData> {
 // Variant for routes that must be reached only by Super Admin.
 export async function loadSuperAdminShellData(): Promise<ShellData> {
   const data = await loadShellData();
-  if (data.role !== "SUPER_ADMIN") redirect("/");
+  // A non-super-admin who reaches here is sent to the forbidden login, NOT to
+  // "/": the root redirects to /q/<DEFAULT_CLINIC_SLUG>, so redirecting admins
+  // to "/" leaked them into the clinic questionnaire. The proxy already blocks
+  // non-super-admins at the edge; this is defence-in-depth for the same rule.
+  if (data.role !== "SUPER_ADMIN") redirect("/login?reason=forbidden");
   // Super Admin has no clinic of their own — always shows platform branding.
   return { ...data, branding: PLATFORM_BRANDING };
 }
