@@ -62,8 +62,11 @@ export async function proxy(req: NextRequest) {
 
   // Authenticated: decide per-path. An authenticated session whose role claim is
   // absent/unknown is passed as "" so it is treated as forbidden (never as the
-  // anonymous null case, which would send it back to login with ?next).
-  const outcome = guardOutcome(req.nextUrl.pathname, claims.user_role ?? "");
+  // anonymous null case, which would send it back to login with ?next). Holding
+  // the coalesced value in a `string` local also lets us forward exactly what
+  // was authorized below without re-narrowing `claims.user_role`.
+  const role = claims.user_role ?? "";
+  const outcome = guardOutcome(req.nextUrl.pathname, role);
   if (outcome === "login_forbidden") {
     const url = req.nextUrl.clone();
     url.pathname = "/login";
@@ -74,8 +77,9 @@ export async function proxy(req: NextRequest) {
 
   // Forward the role + clinic so downstream RSC / handlers can read them
   // without re-decoding. These are server-only headers; never trust client
-  // forwards of the same names.
-  res.headers.set("x-user-role", claims.user_role);
+  // forwards of the same names. Reaching here means the outcome was "allow",
+  // so `role` is a valid, non-empty system role.
+  res.headers.set("x-user-role", role);
   if (claims.clinic_id) res.headers.set("x-clinic-id", claims.clinic_id);
   if (claims.sub) res.headers.set("x-user-id", claims.sub);
 
