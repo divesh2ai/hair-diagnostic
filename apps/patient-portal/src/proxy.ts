@@ -1,5 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { createServerClient } from "@supabase/ssr";
+import { guardOutcome } from "@/lib/auth/routeGuard";
 
 // Next.js 16's `proxy` (formerly middleware) — gates /doctor and the
 // /api/doctor/* routes behind Supabase auth and the JWT `user_role` claim
@@ -7,20 +8,19 @@ import { createServerClient } from "@supabase/ssr";
 // project_jwt_custom_claims for the claim contract.
 //
 // Behaviour:
-//   • No session            → redirect to /login?next=<from>
-//   • Session, wrong role   → redirect to /login?reason=forbidden
-//   • Session, right role   → continue, refreshed cookies written back
+//   • No session                      → redirect to /login?next=<from>
+//   • Session, wrong role             → redirect to /login?reason=forbidden
+//   • Session, /admin, not SUPER_ADMIN → redirect to /login?reason=forbidden
+//   • Session, right role             → continue, refreshed cookies written back
+//
+// The admin console (/admin, /api/admin) is SUPER_ADMIN-only and enforced HERE,
+// at the edge — not left to the layout. A layout rejection redirected to "/",
+// which cascades through the root clinic redirect into /q/<DEFAULT_CLINIC_SLUG>;
+// blocking non-super-admins here keeps /admin/* off that path. The per-path rule
+// lives in @/lib/auth/routeGuard (guardOutcome) so it can be unit-tested.
 //
 // Anything outside the matcher is untouched — patient flow and the
 // /review/[token] doctor approval link remain open by design.
-
-const ALLOWED_ROLES = new Set([
-  "DOCTOR",
-  "CLINIC_ADMIN",
-  "ORG_ADMIN",
-  "SUPER_ADMIN",
-  "STAFF",
-]);
 
 export async function proxy(req: NextRequest) {
   // Bootstrap an outbound response we can mutate cookies on. The Supabase
@@ -55,13 +55,19 @@ export async function proxy(req: NextRequest) {
   if (error || !claims) {
     const url = req.nextUrl.clone();
     url.pathname = "/login";
+    url.search = "";
     url.searchParams.set("next", req.nextUrl.pathname + req.nextUrl.search);
     return NextResponse.redirect(url);
   }
 
-  if (!claims.user_role || !ALLOWED_ROLES.has(claims.user_role)) {
+  // Authenticated: decide per-path. An authenticated session whose role claim is
+  // absent/unknown is passed as "" so it is treated as forbidden (never as the
+  // anonymous null case, which would send it back to login with ?next).
+  const outcome = guardOutcome(req.nextUrl.pathname, claims.user_role ?? "");
+  if (outcome === "login_forbidden") {
     const url = req.nextUrl.clone();
     url.pathname = "/login";
+    url.search = "";
     url.searchParams.set("reason", "forbidden");
     return NextResponse.redirect(url);
   }
