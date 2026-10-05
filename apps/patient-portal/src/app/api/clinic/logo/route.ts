@@ -13,10 +13,11 @@ import { clinicCacheTag } from "@/lib/clinics/getClinicLandingData";
 // POST   /api/clinic/logo — upload the current clinic's logo file.
 // DELETE /api/clinic/logo — clear it.
 //
-// The clinic logo is CLINIC-WIDE branding, so this is gated by
-// canManageClinic (SUPER_ADMIN / ORG_ADMIN / CLINIC_ADMIN) — a plain doctor
-// cannot rewrite the whole clinic's identity. Super Admin may target another
-// clinic with ?clinicId=, matching /api/clinic/profile.
+// The clinic logo is CLINIC-WIDE branding. It is writable by the clinic's
+// managers (SUPER_ADMIN / ORG_ADMIN / CLINIC_ADMIN) AND by a DOCTOR acting on
+// THEIR OWN clinic — at launch the clinician is usually the clinic owner, so
+// the doctor profile exposes this. A doctor is always scoped to ctx.clinicId;
+// only a Super Admin may target another clinic with ?clinicId=.
 //
 // Storage mirrors /api/doctor/me/avatar: service-role upload into the PRIVATE
 // `doctor-avatars` bucket (a clinic-published, non-patient asset in the same
@@ -42,7 +43,7 @@ function resolveClinicId(ctxClinicId: string | null, override: string | null, is
 export async function POST(req: Request) {
   try {
     const ctx = await getClinicContext();
-    if (!canManageClinic(ctx.role)) throw new ForbiddenError();
+    if (!canManageClinic(ctx.role) && ctx.role !== "DOCTOR") throw new ForbiddenError();
     const isSA = ctx.role === "SUPER_ADMIN";
     const clinicId = resolveClinicId(
       ctx.clinicId,
@@ -113,7 +114,7 @@ export async function POST(req: Request) {
 export async function DELETE(req: Request) {
   try {
     const ctx = await getClinicContext();
-    if (!canManageClinic(ctx.role)) throw new ForbiddenError();
+    if (!canManageClinic(ctx.role) && ctx.role !== "DOCTOR") throw new ForbiddenError();
     const isSA = ctx.role === "SUPER_ADMIN";
     const clinicId = resolveClinicId(
       ctx.clinicId,

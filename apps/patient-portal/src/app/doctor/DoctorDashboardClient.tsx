@@ -114,11 +114,11 @@ export function DoctorDashboardClient({
   // not clinical values — no timestamp a doctor reads for a decision is
   // rendered this way (see PatientDeckCard, which withholds its tooltip until
   // hydration instead).
-  const greeting = useMemo(() => {
+  const greetingTime = useMemo(() => {
     const hour = new Date().getHours();
-    const part = hour < 12 ? "Good morning" : hour < 17 ? "Good afternoon" : "Good evening";
-    return firstName ? `${part}, Dr ${firstName}.` : `${part}.`;
-  }, [firstName]);
+    return hour < 12 ? "Good morning" : hour < 17 ? "Good afternoon" : "Good evening";
+  }, []);
+  const heroName = firstName ? `Dr ${firstName}` : "Doctor";
 
   const dateLabel = new Date().toLocaleDateString(undefined, {
     weekday: "short",
@@ -201,8 +201,8 @@ export function DoctorDashboardClient({
 
         {/* ── 1 · WHO AM I, WHERE AM I WORKING ──────────────────────────── */}
         {/* Identity (photo, clinic, settings) lives once in the app-shell
-            header and sidebar — this band is just the dated greeting. */}
-        <CommandBand greeting={greeting} dateLabel={dateLabel} />
+            header and sidebar — this band is just the dated welcome. */}
+        <CommandBand greetingTime={greetingTime} name={heroName} dateLabel={dateLabel} />
 
         {/* ── 2 · WHO NEEDS ME, AND WHAT ELSE IS IN FLIGHT ──────────────── */}
         <DashboardStatusFilters counts={statusCounts} />

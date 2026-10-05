@@ -18,7 +18,6 @@ import {
 import { PageContainer } from "@/components/app-shell";
 import { ImageUploader } from "@/components/ui/image-uploader";
 import { LogoUploader } from "@/components/ui/logo-uploader";
-import { canManageClinic, type SystemRole } from "@/lib/auth/roles";
 
 // The Doctor Profile is IDENTITY ONLY: who the clinician is and how they
 // appear on clinical surfaces. Operational preferences (workspace accent,
@@ -182,9 +181,6 @@ export default function DoctorProfilePage() {
     toast.success("Clinic logo removed");
   };
 
-  const role = (me?.role ?? null) as SystemRole | null;
-  const canManageLogo = canManageClinic(role);
-
   const savedAvatar = me?.doctor?.photoUrl ?? null;
   const currentAvatar = preview ?? savedAvatar;
   const displayName = me?.doctor?.name ?? me?.email ?? "Doctor";
@@ -235,14 +231,18 @@ export default function DoctorProfilePage() {
               {/* Display only — the single photo uploader lives in the
                   "Profile photo" section below, so there is one obvious place
                   to change it rather than two competing controls. */}
-              <div className="relative size-28 shrink-0 overflow-hidden rounded-full bg-white ring-4 ring-teal-500/20 shadow-lg sm:size-36">
+              {/* Portrait frame. A rounded rectangle (not a circle) with the
+                  image anchored to the top so a standing/upper-body clinic
+                  photo keeps the face and shoulders instead of being cropped
+                  into a disc. Larger, too, so it reads as a real portrait. */}
+              <div className="relative aspect-[4/5] w-36 shrink-0 overflow-hidden rounded-2xl bg-white ring-4 ring-teal-500/20 shadow-lg sm:w-44">
                 {currentAvatar ? (
                   <Image
                     src={currentAvatar}
                     alt={displayName}
                     fill
-                    sizes="144px"
-                    className="object-cover"
+                    sizes="176px"
+                    className="object-cover object-top"
                     unoptimized
                   />
                 ) : (
@@ -463,10 +463,11 @@ export default function DoctorProfilePage() {
               </p>
             )}
 
-            {clinic && canManageLogo && (
-              // Clinic-wide branding — only clinic managers (admins / super
-              // admins) can change it, so a plain doctor never sees this and
-              // the logo stays display-only for them.
+            {clinic && (
+              // Clinic-wide branding. A doctor may set their own clinic's logo
+              // here (the API scopes the write to their clinic); admins and
+              // super admins can too. Shown to every doctor because at launch
+              // the clinician is usually the clinic owner.
               <div className="mt-5 border-t border-stone-100 pt-5">
                 <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-stone-500">
                   Clinic logo

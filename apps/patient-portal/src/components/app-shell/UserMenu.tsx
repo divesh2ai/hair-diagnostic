@@ -38,18 +38,16 @@ export function UserMenu({
         method="post"
         className="hidden"
       />
-      {/* h-10 with a size-8 avatar, NOT h-11/size-10. The neighbouring
-          language chip and notification bell are both 32px; at 44px this
-          control was 12px taller than everything beside it and read as the
-          heaviest object in the bar. Worse, a 40px avatar plus its 2px ring
-          came to exactly 44px inside a 44px control — the ring sat flush on
-          the hover pill with zero clearance. 32px matches its neighbours and
-          leaves the ring room to read as a cutout. */}
-      <MenuPrimitive.Trigger className="inline-flex items-center gap-2.5 rounded-full pl-1 pr-2.5 h-10 hover:bg-muted transition-colors outline-none focus-visible:ring-2 focus-visible:ring-ring">
+      {/* A 40px avatar (size-10) so the doctor's photo reads as a portrait, not
+          a favicon — the one place their face appears in the chrome. The
+          trigger is h-12 so the 40px avatar plus its 2px ring (44px) keeps
+          clearance inside the hover pill; it centres in the 56px bar beside the
+          32px language chip and bell without sitting flush. */}
+      <MenuPrimitive.Trigger className="inline-flex items-center gap-2.5 rounded-full pl-1 pr-2.5 h-12 hover:bg-muted transition-colors outline-none focus-visible:ring-2 focus-visible:ring-ring">
         <Avatar
           name={name}
           src={b.doctorAvatarUrl}
-          size="sm"
+          size="md"
           className="ring-2 ring-background shadow-sm"
         />
         <span className="hidden sm:flex flex-col items-start leading-tight text-left">

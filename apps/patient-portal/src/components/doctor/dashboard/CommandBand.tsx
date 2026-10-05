@@ -1,35 +1,63 @@
 "use client";
 
 import Link from "next/link";
+import { FileText, CheckCircle2, Package, Share2 } from "lucide-react";
 
-// THE DOCTOR DASHBOARD GREETING.
+// THE DOCTOR DASHBOARD HERO + STATUS TILES.
 //
-// Identity lives ONCE, in the global app-shell header (the clinic/role label
-// and the user avatar menu, top-right) and in the sidebar brand lockup. This
-// band therefore carries only the thing that is unique to the dashboard: a
-// warm, dated greeting. It deliberately does NOT repeat the doctor photo, the
-// clinic name or a Settings link — those were duplicates of the header chrome
-// and the sidebar, and a doctor glancing at this page forty times a day does
-// not need their own face and clinic name a second and third time.
+// Identity (photo, clinic, settings) lives once — in the app-shell header and
+// the sidebar brand — so this surface carries only what is unique to the
+// dashboard: a warm, dated welcome and the four worklist counts the doctor
+// actually scans for.
+//
+// Colour follows the doctor token thesis (styles/doctor-tokens.css), not the
+// mockup literally: amber = the doctor's turn (needs review), green = decided
+// and saved (approved), plum = the order / treatment, teal = shared. Green is
+// never spent on anything but a completed decision.
 
 export function CommandBand({
-  greeting,
+  greetingTime,
+  name,
   dateLabel,
 }: {
-  greeting: string;
+  greetingTime: string;
+  name: string;
   dateLabel: string;
 }) {
   return (
-    <header className="min-w-0 pb-1">
-      <h1
-        suppressHydrationWarning
-        className="text-balance font-serif text-[26px] leading-tight text-[color:var(--ink-primary)] sm:text-[30px]"
-      >
-        {greeting}
-      </h1>
-      <p suppressHydrationWarning className="mt-0.5 text-sm text-[color:var(--ink-tertiary)]">
-        {dateLabel}
-      </p>
+    <header className="relative overflow-hidden rounded-2xl border border-[color:var(--hd-border)] bg-[color:var(--hd-surface)] px-6 py-6 shadow-[0_1px_2px_rgba(28,36,48,0.04)] sm:px-8 sm:py-7">
+      {/* Soft champagne wash on the right — a luxury hairline of warmth, never
+          a tinted block of meaning. */}
+      <div
+        aria-hidden
+        className="pointer-events-none absolute inset-y-0 right-0 w-2/3 bg-gradient-to-l from-[color:var(--hd-champagne-tint)] to-transparent"
+      />
+      <div className="relative flex flex-wrap items-end justify-between gap-x-8 gap-y-3">
+        <div className="min-w-0">
+          <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[color:var(--hd-eyebrow-ink)]">
+            {greetingTime}
+          </p>
+          <h1
+            suppressHydrationWarning
+            className="mt-1 font-serif text-[30px] leading-[1.05] text-[color:var(--hd-text)] sm:text-[40px]"
+          >
+            {name}.
+          </h1>
+          <span className="mt-2.5 block h-[3px] w-12 rounded-full bg-[color:var(--hd-champagne)]" />
+          <p
+            suppressHydrationWarning
+            className="mt-2.5 text-sm text-[color:var(--hd-text-muted)]"
+          >
+            {dateLabel}
+          </p>
+        </div>
+
+        <p className="hidden max-w-[15rem] text-right font-serif text-lg italic leading-snug text-[color:var(--hd-text-secondary)] sm:block">
+          Care today for
+          <br />
+          healthier tomorrows
+        </p>
+      </div>
     </header>
   );
 }
@@ -43,58 +71,79 @@ export interface StatusFilterCount {
   active?: boolean;
 }
 
+// Per-status icon + token colours. Keyed on the stable status key, never the
+// display label, so a rename cannot silently recolour a tile.
+const TILE_STYLE: Record<
+  string,
+  { icon: typeof FileText; ink: string; tint: string }
+> = {
+  "needs-review": { icon: FileText, ink: "var(--hd-st-action-ink)", tint: "var(--hd-st-action-tint)" },
+  approved: { icon: CheckCircle2, ink: "var(--hd-success-ink)", tint: "var(--hd-success-tint)" },
+  ordered: { icon: Package, ink: "var(--hd-primary)", tint: "var(--hd-primary-tint)" },
+  shared: { icon: Share2, ink: "var(--hd-scalp-ink)", tint: "var(--hd-scalp-tint)" },
+};
+
+const FALLBACK_TILE = { icon: FileText, ink: "var(--hd-text)", tint: "var(--hd-surface-sunken)" };
+
 /**
- * "Patients requiring your attention" + the quiet Needs review / Approved /
- * Ordered / Shared counts.
- *
- * Deliberately not four KPI cards: the brief is explicit that this is a
- * worklist, not analytics, and a doctor should tell these four numbers apart
- * on sight, not by reading a card each. `active` marks the deck's current
- * filter (Needs review, always — see the header note on the dashboard client
- * for why the others are informational links rather than live filters).
+ * "Patients requiring your attention" + the four worklist counts as scannable
+ * stat tiles — an icon that carries the status colour, the figure, and its
+ * label. Big-number tiles are warranted here because these figures ARE the
+ * point of the page (see the dashboard design rules). `active` marks the deck's
+ * current filter.
  */
 export function DashboardStatusFilters({ counts }: { counts: StatusFilterCount[] }) {
   return (
-    <div className="space-y-2.5">
-      <h2 className="text-[19px] font-medium text-[color:var(--ink-primary)]">
+    <section className="space-y-3">
+      <h2 className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[color:var(--hd-eyebrow-ink)]">
         Patients requiring your attention
       </h2>
-      <div
-        role="group"
-        aria-label="Patient status"
-        className="flex flex-wrap items-center gap-x-6 gap-y-2 border-b border-[color:var(--v2-border-subtle)] pb-3"
-      >
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
         {counts.map((c) => {
-          const inner = (
+          const style = TILE_STYLE[c.key] ?? FALLBACK_TILE;
+          const Icon = style.icon;
+          const tile = (
             <>
               <span
-                className="text-[15px] font-semibold tabular-nums"
-                style={{ color: c.active ? "var(--brand-primary)" : "var(--ink-primary)" }}
+                className="inline-flex size-10 shrink-0 items-center justify-center rounded-full"
+                style={{ backgroundColor: style.tint, color: style.ink }}
               >
-                {c.value}
+                <Icon className="size-5" />
               </span>
-              <span className="ml-1.5 text-[13px] text-[color:var(--ink-tertiary)]">{c.label}</span>
+              <span className="min-w-0">
+                <span className="block text-[26px] font-semibold leading-none tabular-nums text-[color:var(--hd-text)]">
+                  {c.value}
+                </span>
+                <span className="mt-1 block truncate text-[13px] text-[color:var(--hd-text-muted)]">
+                  {c.label}
+                </span>
+              </span>
             </>
           );
+          const base =
+            "flex items-center gap-3 rounded-2xl border bg-[color:var(--hd-surface)] px-4 py-3.5 transition-colors";
+          const edge = c.active
+            ? "border-[color:var(--hd-champagne)] shadow-[0_1px_2px_rgba(28,36,48,0.05)]"
+            : "border-[color:var(--hd-border)]";
           if (c.href) {
             return (
               <Link
                 key={c.key}
                 href={c.href}
-                className="inline-flex items-center rounded-full px-1 py-0.5 transition-colors hover:opacity-80"
                 aria-current={c.active ? "true" : undefined}
+                className={`${base} ${edge} hover:border-[color:var(--hd-border-strong)]`}
               >
-                {inner}
+                {tile}
               </Link>
             );
           }
           return (
-            <span key={c.key} className="inline-flex items-center px-1 py-0.5">
-              {inner}
-            </span>
+            <div key={c.key} className={`${base} ${edge}`}>
+              {tile}
+            </div>
           );
         })}
       </div>
-    </div>
+    </section>
   );
 }
