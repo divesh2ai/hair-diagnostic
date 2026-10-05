@@ -5,7 +5,6 @@ import { LanguageSelector } from "@/components/ui/language-selector";
 import { NotificationCenter } from "./NotificationCenter";
 import { UserMenu } from "./UserMenu";
 import { Breadcrumbs } from "./Breadcrumbs";
-import { useT } from "@/lib/i18n";
 
 export function Header({
   onMenuClick,
@@ -22,8 +21,6 @@ export function Header({
   roleLabel: string;
   unreadNotifications?: number;
 }) {
-  const t = useT();
-
   return (
     <header className="sticky top-0 z-30 border-b border-border bg-background/80 backdrop-blur-md">
       <div className="flex items-center gap-3 px-3 sm:px-5 h-14">
@@ -36,13 +33,12 @@ export function Header({
           <Menu className="size-4" />
         </button>
 
+        {/* Clinic / role context only — the warm, dated greeting lives once,
+            on the dashboard hero, so the top bar does not greet a second time. */}
         {greetingName && (
-          <div className="hidden sm:flex flex-col leading-tight pr-3 border-r border-border mr-1">
-            <span className="text-[10px] uppercase tracking-wider text-muted-foreground truncate max-w-[16rem]">
+          <div className="hidden sm:block pr-3 border-r border-border mr-1">
+            <span className="block max-w-[20rem] truncate text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
               {roleLabel}
-            </span>
-            <span className="text-sm font-semibold text-foreground truncate max-w-[14rem]">
-              {`${t("shell.greetingHi")}, ${greetingName}`}
             </span>
           </div>
         )}

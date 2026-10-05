@@ -49,8 +49,6 @@ interface DoctorDashboardClientProps {
   /** Server-rendered first frame. Null only when the first read failed. */
   initialStats: DashboardStats | null;
   doctorName: string | null;
-  photoUrl: string | null;
-  clinicName: string | null;
   role: string;
 }
 
@@ -67,8 +65,6 @@ const EMPTY_COUNTS: DashboardCounts = {
 export function DoctorDashboardClient({
   initialStats,
   doctorName,
-  photoUrl,
-  clinicName,
   role,
 }: DoctorDashboardClientProps) {
   const [stats, setStats] = useState<DashboardStats | null>(initialStats);
@@ -204,12 +200,9 @@ export function DoctorDashboardClient({
         )}
 
         {/* ── 1 · WHO AM I, WHERE AM I WORKING ──────────────────────────── */}
-        <CommandBand
-          greeting={greeting}
-          clinicName={clinicName}
-          dateLabel={dateLabel}
-          photoUrl={photoUrl}
-        />
+        {/* Identity (photo, clinic, settings) lives once in the app-shell
+            header and sidebar — this band is just the dated greeting. */}
+        <CommandBand greeting={greeting} dateLabel={dateLabel} />
 
         {/* ── 2 · WHO NEEDS ME, AND WHAT ELSE IS IN FLIGHT ──────────────── */}
         <DashboardStatusFilters counts={statusCounts} />

@@ -44,8 +44,6 @@ export default async function DoctorDashboardPage() {
     <DoctorDashboardClient
       initialStats={stats}
       doctorName={doctor.name}
-      photoUrl={doctor.photoUrl}
-      clinicName={doctor.clinic?.name ?? null}
       role={claims.user_role ?? "DOCTOR"}
     />
   );

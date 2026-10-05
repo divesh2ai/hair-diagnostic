@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Building2, Phone, MapPin } from "lucide-react";
+import { Building2 } from "lucide-react";
 import type { DoctorLocation } from "@/lib/doctor/locations";
 
 // Branch context for a clinician who works across more than one premises.
@@ -45,17 +45,11 @@ function writeStored(clinicId: string, id: string): void {
   }
 }
 
-function addressOf(l: DoctorLocation): string {
-  return [l.addressLine1, l.city, l.state, l.pincode].filter(Boolean).join(", ");
-}
-
 export function BranchContextBar({
   clinicId,
-  clinicName,
   locations,
 }: {
   clinicId: string;
-  clinicName: string;
   locations: DoctorLocation[];
 }) {
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -71,61 +65,40 @@ export function BranchContextBar({
   if (locations.length < 2) return null;
 
   const selected = locations.find((l) => l.id === selectedId) ?? locations[0]!;
-  const address = addressOf(selected);
 
+  // Branch SWITCHER only. Which premises the doctor is working from is useful;
+  // the clinic name (already in the header + sidebar), the postal address and
+  // the branch phone were clutter on a clinical worklist and are gone.
   return (
     <section
       aria-label="Clinic branch context"
-      className="rounded-xl border border-border bg-card px-4 py-3"
+      className="flex flex-wrap items-center gap-x-3 gap-y-1.5 rounded-xl border border-border bg-card px-4 py-2.5"
     >
-      <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
-        <div className="flex min-w-0 items-center gap-2">
-          <Building2 className="size-4 shrink-0 text-muted-foreground" />
-          <span className="truncate text-sm font-medium">{clinicName}</span>
-          <span className="rounded-md border border-border bg-muted px-1.5 py-0.5 text-[11px] font-medium text-muted-foreground">
-            {locations.length} branches
-          </span>
-        </div>
+      <label className="flex items-center gap-2 text-sm">
+        <Building2 className="size-4 shrink-0 text-muted-foreground" />
+        <span className="text-muted-foreground">Working from</span>
+        <select
+          value={selected.id}
+          onChange={(e) => {
+            setSelectedId(e.target.value);
+            writeStored(clinicId, e.target.value);
+          }}
+          className="h-9 max-w-[220px] rounded-lg border border-border bg-background px-2 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-ring/40"
+        >
+          {locations.map((l) => (
+            <option key={l.id} value={l.id}>
+              {l.branchName}
+              {l.status === "ONBOARDING" ? " (onboarding)" : ""}
+            </option>
+          ))}
+        </select>
+      </label>
 
-        <label className="flex items-center gap-2 text-sm">
-          <span className="text-muted-foreground">Working from</span>
-          <select
-            value={selected.id}
-            onChange={(e) => {
-              setSelectedId(e.target.value);
-              writeStored(clinicId, e.target.value);
-            }}
-            className="h-9 max-w-[220px] rounded-lg border border-border bg-background px-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring/40"
-          >
-            {locations.map((l) => (
-              <option key={l.id} value={l.id}>
-                {l.branchName}
-                {l.status === "ONBOARDING" ? " (onboarding)" : ""}
-              </option>
-            ))}
-          </select>
-        </label>
-
-        {address && (
-          <span className="flex min-w-0 items-center gap-1.5 text-xs text-muted-foreground">
-            <MapPin className="size-3.5 shrink-0" />
-            <span className="truncate">{address}</span>
-          </span>
-        )}
-        {selected.phone && (
-          <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
-            <Phone className="size-3.5 shrink-0" />
-            {selected.phone}
-          </span>
-        )}
-      </div>
-
-      {/* Said out loud, because a selector that changed nothing without saying
-          so would read as a filter that is broken. */}
-      <p className="mt-2 text-[11px] leading-relaxed text-muted-foreground">
-        Patients, assessments and orders below cover all {locations.length}{" "}
-        branches — records are held by the clinic, not by branch.
-      </p>
+      {/* Said out loud, because a selector that filtered nothing would read as
+          broken. */}
+      <span className="text-[11px] text-muted-foreground">
+        Records cover all {locations.length} branches.
+      </span>
     </section>
   );
 }

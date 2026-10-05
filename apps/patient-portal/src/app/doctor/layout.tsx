@@ -45,7 +45,6 @@ export default async function DoctorLayout({ children }: { children: ReactNode }
           <div className="mx-auto w-full max-w-7xl px-4 pt-6 sm:px-6">
             <BranchContextBar
               clinicId={branches.clinicId}
-              clinicName={clinicName ?? "Your clinic"}
               locations={branches.locations}
             />
           </div>
