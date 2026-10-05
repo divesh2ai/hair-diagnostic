@@ -157,7 +157,10 @@ function FrontFace({
     <>
       <div className="space-y-3.5">
         <div className="flex items-start justify-between gap-4">
-          <p className="min-w-0 truncate font-serif text-[22px] leading-tight text-[color:var(--ink-primary)]">
+          <p
+            style={{ fontFamily: "var(--hd-font-display)" }}
+            className="min-w-0 truncate text-[22px] leading-tight text-[color:var(--ink-primary)]"
+          >
             {card.name.toUpperCase()}
             {card.demographic && (
               <span className="text-[16px] text-[color:var(--ink-tertiary)]"> · {card.demographic}</span>
@@ -174,9 +177,24 @@ function FrontFace({
         </div>
 
         {card.chips.length > 0 && (
-          <p className="text-[13px] font-medium text-[color:var(--ink-secondary)]">
-            {card.chips.map((c) => c.label).join(" · ")}
-          </p>
+          <div className="flex flex-wrap items-center gap-1.5">
+            {card.chips.map((c) => {
+              const tone =
+                c.tone === "attention"
+                  ? "bg-[#fcecea] text-[#a63c34]"
+                  : c.tone === "severity"
+                    ? "bg-[#efece5] text-[#6b6356]"
+                    : "bg-[#e8efe4] text-[#4f6b54]";
+              return (
+                <span
+                  key={`${c.tone}-${c.label}`}
+                  className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-[12px] font-medium ${tone}`}
+                >
+                  {c.label}
+                </span>
+              );
+            })}
+          </div>
         )}
 
         <p className="text-[15px] leading-relaxed text-[color:var(--ink-secondary)]">

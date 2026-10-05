@@ -27,17 +27,18 @@ export function CommandBand({
   dateLabel: string;
 }) {
   return (
-    <header className="relative flex min-h-[188px] items-center overflow-hidden rounded-2xl border border-[color:var(--hd-border)] bg-gradient-to-br from-[color:var(--hd-champagne-tint)] via-[color:var(--hd-surface)] to-[color:var(--hd-surface)] px-6 py-7 shadow-[0_1px_2px_rgba(28,36,48,0.04)] sm:px-9">
+    <header className="relative flex min-h-[204px] items-center overflow-hidden rounded-2xl border border-[color:var(--hd-border)] bg-gradient-to-br from-[color:var(--hd-champagne-tint)] via-[color:var(--hd-surface)] to-[color:var(--hd-surface)] px-6 py-8 shadow-[0_1px_2px_rgba(28,36,48,0.04)] sm:px-9">
       <HeroArtwork />
 
       <div className="relative flex w-full flex-wrap items-center justify-between gap-x-8 gap-y-3">
         <div className="min-w-0">
-          <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-[color:var(--hd-eyebrow-ink)]">
+          <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-[#6e562d]">
             {greetingTime}
           </p>
           <h1
             suppressHydrationWarning
-            className="mt-1.5 font-serif text-[34px] leading-[1.02] tracking-tight text-[color:var(--hd-text)] sm:text-[46px]"
+            style={{ fontFamily: "var(--hd-font-display)" }}
+            className="mt-1.5 text-[34px] leading-[1.02] tracking-tight text-[color:var(--hd-text)] sm:text-[46px]"
           >
             {name}.
           </h1>
@@ -50,7 +51,10 @@ export function CommandBand({
           </p>
         </div>
 
-        <p className="hidden max-w-[15rem] text-right font-serif text-xl italic leading-snug text-[color:var(--hd-text-secondary)] sm:block">
+        <p
+          style={{ fontFamily: "var(--hd-font-display)" }}
+          className="hidden max-w-[15rem] text-right text-xl italic leading-snug text-[color:var(--hd-text-secondary)] sm:block"
+        >
           Care today
           <br />
           for healthier
