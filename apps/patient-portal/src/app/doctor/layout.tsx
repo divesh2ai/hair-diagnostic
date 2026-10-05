@@ -38,6 +38,7 @@ export default async function DoctorLayout({ children }: { children: ReactNode }
         greetingName={greetingName}
         roleLabel={roleLabel}
         productLabel="Dr FACT"
+        sidebarVariant="doctor"
       >
         {/* Renders nothing below two live branches, so eleven of the twelve
             launch clinics see no branch UI at all. */}
