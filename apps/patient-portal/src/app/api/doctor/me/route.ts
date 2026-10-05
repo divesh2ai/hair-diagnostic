@@ -16,9 +16,12 @@ export async function GET() {
       where: { id: docCtx.clinicId },
       select: { name: true, slug: true, logoUrl: true, tagline: true, region: true },
     }),
-    // Fetch the full render-only fields the profile card needs (photo,
-    // specialization, badgeTheme). Trust source is docCtx.id — never a
-    // supabaseUserId lookup that could match a stale email fallback row.
+    // Fetch the render-only fields the profile card needs. Trust source is
+    // docCtx.id — never a supabaseUserId lookup that could match a stale
+    // email fallback row. The professional-identity fields
+    // (qualification, registrationNumber, credentials, phone, signatureUrl)
+    // are read-only here: they are authored on the Clinic Admin doctor
+    // editor, and the Doctor Profile surface only displays them.
     prisma.doctor.findUnique({
       where: { id: docCtx.id },
       select: {
@@ -27,6 +30,11 @@ export async function GET() {
         photoUrl: true,
         specialization: true,
         badgeTheme: true,
+        qualification: true,
+        registrationNumber: true,
+        credentials: true,
+        phone: true,
+        signatureUrl: true,
       },
     }),
   ]);

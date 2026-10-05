@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Building2, Phone, MapPin } from "lucide-react";
+import { Building2 } from "lucide-react";
 import type { DoctorLocation } from "@/lib/doctor/locations";
 
 // Branch context for a clinician who works across more than one premises.
@@ -45,17 +45,11 @@ function writeStored(clinicId: string, id: string): void {
   }
 }
 
-function addressOf(l: DoctorLocation): string {
-  return [l.addressLine1, l.city, l.state, l.pincode].filter(Boolean).join(", ");
-}
-
 export function BranchContextBar({
   clinicId,
-  clinicName,
   locations,
 }: {
   clinicId: string;
-  clinicName: string;
   locations: DoctorLocation[];
 }) {
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -71,61 +65,78 @@ export function BranchContextBar({
   if (locations.length < 2) return null;
 
   const selected = locations.find((l) => l.id === selectedId) ?? locations[0]!;
-  const address = addressOf(selected);
 
+  // Branch SWITCHER only. Which premises the doctor is working from is useful;
+  // the clinic name (already in the header + sidebar), the postal address and
+  // the branch phone were clutter on a clinical worklist and are gone.
   return (
     <section
       aria-label="Clinic branch context"
-      className="rounded-xl border border-border bg-card px-4 py-3"
+      className="relative flex flex-wrap items-center gap-x-3 gap-y-1.5 overflow-hidden rounded-xl border border-border bg-card px-4 py-2.5"
     >
-      <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
-        <div className="flex min-w-0 items-center gap-2">
-          <Building2 className="size-4 shrink-0 text-muted-foreground" />
-          <span className="truncate text-sm font-medium">{clinicName}</span>
-          <span className="rounded-md border border-border bg-muted px-1.5 py-0.5 text-[11px] font-medium text-muted-foreground">
-            {locations.length} branches
-          </span>
-        </div>
+      {/* Faint sage wave + foliage on the right — controlled SVG paths, purely
+          decorative, echoing the hero band. */}
+      <svg
+        aria-hidden
+        className="pointer-events-none absolute inset-y-0 right-0 hidden h-full w-72 opacity-70 sm:block"
+        viewBox="0 0 280 60"
+        preserveAspectRatio="xMidYMid slice"
+        fill="none"
+      >
+        <path
+          d="M40 60 C 110 30, 160 58, 220 34 S 300 20, 320 40 L 320 70 L 40 70 Z"
+          fill="var(--hd-champagne-tint, #f8f2e7)"
+          opacity="0.8"
+        />
+        <path
+          d="M60 60 C 130 38, 190 60, 250 42 S 320 34, 340 50 L 340 70 L 60 70 Z"
+          fill="var(--hd-scalp-tint, #eaf5f4)"
+          opacity="0.6"
+        />
+        <path
+          d="M40 60 C 110 30, 165 58, 225 32"
+          stroke="var(--hd-champagne, #c6a86a)"
+          strokeWidth="0.8"
+          opacity="0.5"
+        />
+        <path d="M250 60 L246 40 L266 40 L262 60 Z" fill="var(--hd-scalp-edge, #7fbab6)" opacity="0.7" />
+        <path
+          d="M256 40 C 256 26, 248 20, 242 17 C 251 21, 256 30, 256 40"
+          fill="var(--hd-scalp-ink, #166b67)"
+          opacity="0.55"
+        />
+        <path
+          d="M256 40 C 256 24, 266 18, 274 16 C 265 22, 260 30, 256 40"
+          fill="var(--hd-scalp-ink, #166b67)"
+          opacity="0.55"
+        />
+      </svg>
 
-        <label className="flex items-center gap-2 text-sm">
-          <span className="text-muted-foreground">Working from</span>
-          <select
-            value={selected.id}
-            onChange={(e) => {
-              setSelectedId(e.target.value);
-              writeStored(clinicId, e.target.value);
-            }}
-            className="h-9 max-w-[220px] rounded-lg border border-border bg-background px-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring/40"
-          >
-            {locations.map((l) => (
-              <option key={l.id} value={l.id}>
-                {l.branchName}
-                {l.status === "ONBOARDING" ? " (onboarding)" : ""}
-              </option>
-            ))}
-          </select>
-        </label>
+      <label className="relative flex items-center gap-2 text-sm">
+        <Building2 className="size-4 shrink-0 text-muted-foreground" />
+        <span className="text-muted-foreground">Working from</span>
+        <select
+          value={selected.id}
+          onChange={(e) => {
+            setSelectedId(e.target.value);
+            writeStored(clinicId, e.target.value);
+          }}
+          className="h-9 max-w-[220px] rounded-lg border border-border bg-background px-2 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-ring/40"
+        >
+          {locations.map((l) => (
+            <option key={l.id} value={l.id}>
+              {l.branchName}
+              {l.status === "ONBOARDING" ? " (onboarding)" : ""}
+            </option>
+          ))}
+        </select>
+      </label>
 
-        {address && (
-          <span className="flex min-w-0 items-center gap-1.5 text-xs text-muted-foreground">
-            <MapPin className="size-3.5 shrink-0" />
-            <span className="truncate">{address}</span>
-          </span>
-        )}
-        {selected.phone && (
-          <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
-            <Phone className="size-3.5 shrink-0" />
-            {selected.phone}
-          </span>
-        )}
-      </div>
-
-      {/* Said out loud, because a selector that changed nothing without saying
-          so would read as a filter that is broken. */}
-      <p className="mt-2 text-[11px] leading-relaxed text-muted-foreground">
-        Patients, assessments and orders below cover all {locations.length}{" "}
-        branches — records are held by the clinic, not by branch.
-      </p>
+      {/* Said out loud, because a selector that filtered nothing would read as
+          broken. */}
+      <span className="relative text-[11px] text-muted-foreground">
+        Records cover all {locations.length} branches.
+      </span>
     </section>
   );
 }

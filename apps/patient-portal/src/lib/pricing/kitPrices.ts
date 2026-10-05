@@ -56,8 +56,12 @@ export const KIT_PRICE_INR: Record<string, number> = {
   OXIDATIVE_STRESS: 5100,
   RWL_SHIELD: 4402,
   ALOPECIA_AREATA: 3054,
-  LACTIHEALTH: 1956,
-  LACTIHEALTH_VEG: 1956,
+  // Clinic-confirmed (drfact-mumbai), approved for patient charging in
+  // APPROVED_KIT_PRICES_MINOR. Mirrors the approved values so the doctor
+  // estimate matches the charge. The veg variant is priced distinctly from
+  // its base (₹2,454 vs ₹2,006).
+  LACTIHEALTH: 2006,
+  LACTIHEALTH_VEG: 2454,
   HEALTHY_9: 1292,
   HBR: 2854,
   EARLY_GREYING_CARE_GOLD: 3459,

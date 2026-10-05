@@ -25,16 +25,20 @@ export function ClinicHeader({ subtitle }: { subtitle?: string }) {
   return (
     <div className="flex items-start gap-3">
       {b.logoUrl ? (
+        // object-CONTAIN, not cover: a clinic logo is usually not square (often
+        // a round mark with text), so it must fit whole rather than be cropped.
+        // A little padding and a white plate keep it legible on the tinted
+        // sidebar. Larger than before so a real logo actually reads.
         // eslint-disable-next-line @next/next/no-img-element
         <img
           src={b.logoUrl}
           alt={`${b.clinicName} logo`}
-          className="size-10 shrink-0 rounded-xl object-cover bg-white ring-1 ring-sidebar-border shadow-sm"
+          className="size-14 shrink-0 rounded-xl object-contain bg-white p-1 ring-1 ring-sidebar-border shadow-sm"
         />
       ) : (
         <span
           aria-hidden="true"
-          className="grid size-10 shrink-0 place-items-center rounded-xl bg-gradient-to-br from-sidebar-primary/90 to-sidebar-primary text-sidebar-primary-foreground text-[13px] font-semibold tracking-wide shadow-sm ring-1 ring-black/5"
+          className="grid size-14 shrink-0 place-items-center rounded-xl bg-gradient-to-br from-sidebar-primary/90 to-sidebar-primary text-sidebar-primary-foreground text-base font-semibold tracking-wide shadow-sm ring-1 ring-black/5"
         >
           {monogram(b.clinicName)}
         </span>

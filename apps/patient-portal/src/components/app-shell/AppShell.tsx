@@ -22,6 +22,7 @@ export function AppShell({
   productLabel,
   unreadNotifications,
   navBadges,
+  sidebarVariant = "default",
   children,
 }: {
   nav: NavSection[];
@@ -35,6 +36,9 @@ export function AppShell({
   productLabel?: string;
   unreadNotifications?: number;
   navBadges?: Record<string, number>;
+  // "doctor" opts the sidebar into the wider ivory lockup with botanical
+  // artwork. Every other surface keeps the default chrome.
+  sidebarVariant?: "default" | "doctor";
   children: ReactNode;
 }) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -47,6 +51,7 @@ export function AppShell({
         onClose={() => setSidebarOpen(false)}
         badges={navBadges}
         productLabel={productLabel}
+        variant={sidebarVariant}
       />
       <div className="flex-1 min-w-0 flex flex-col">
         <Header

@@ -130,7 +130,16 @@ export default function ClinicProfilePage() {
             <CardContent className="space-y-4">
               <LogoUploader
                 value={v.logoUrl || null}
-                onUpload={async () => { toast.message("Logo upload arrives in Sprint 2"); return v.logoUrl; }}
+                onUpload={async (file) => {
+                  const form = new FormData();
+                  form.append("file", file);
+                  const res = await fetch("/api/clinic/logo", { method: "POST", body: form });
+                  const data = await res.json();
+                  if (!res.ok) throw new Error(data?.error ?? "Upload failed");
+                  set("logoUrl", data.logoUrl);
+                  toast.success("Logo uploaded");
+                  return data.logoUrl;
+                }}
                 onRemove={() => set("logoUrl", "")}
               />
               <Field label="Logo URL">

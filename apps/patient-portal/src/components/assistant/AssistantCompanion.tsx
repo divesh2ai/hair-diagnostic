@@ -59,7 +59,7 @@ type CompanionEvent =
 const initialSnapshot: CompanionSnapshot = {
   state: "idle-perched",
   mode: "general",
-  anchorId: "bottom-right",
+  anchorId: "bottom-left",
   minimized: false,
   motionReduced: false,
   pinned: false,
@@ -201,7 +201,7 @@ export function AssistantCompanionProvider({ children }: { children: ReactNode }
 
   useEffect(() => {
     if (previousPathRef.current !== pathname) {
-      dispatch({ type: "TRANSITION", state: "page-transition", anchorId: "bottom-right" });
+      dispatch({ type: "TRANSITION", state: "page-transition", anchorId: "bottom-left" });
       transientRef.current = setTimeout(() => dispatch({ type: "TRANSITION", state: "idle-perched" }), 720);
       previousPathRef.current = pathname;
     }
