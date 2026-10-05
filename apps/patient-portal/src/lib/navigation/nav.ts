@@ -151,7 +151,6 @@ const NAV_DOCTOR: NavSection[] = [
       },
       { href: "/doctor/patients", labelKey: "nav.patients", icon: "patients" },
       { href: "/doctor/orders", labelKey: "nav.orders", icon: "reports" },
-      { href: "/doctor/profile", labelKey: "common.profile", icon: "profile" },
       { href: "/doctor/settings", labelKey: "common.settings", icon: "settings" },
       {
         href: "/doctor/support",
