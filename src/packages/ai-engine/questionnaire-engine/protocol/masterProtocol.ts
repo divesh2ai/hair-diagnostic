@@ -78,6 +78,15 @@ export interface SchemaMutualExclusivityRules {
   description: string;
   /** Optional short message shown to the user when an auto-deselection fires. */
   toastMessage?: string;
+  /**
+   * Single-choice emulation. When true, EVERY option in the question is treated
+   * as mutually exclusive with every other, so at most one can be selected — but
+   * the answer stays a multi_select array (e.g. ["Vegetarian"]) so downstream
+   * array-based scoring is unaffected. Use for questions that are logically
+   * single-select yet must keep the array storage shape. `rules` may be empty
+   * when this is set.
+   */
+  allOptionsExclusive?: boolean;
   rules: SchemaMutualExclusivityRule[];
   sourceCodeReference?: string;
 }
