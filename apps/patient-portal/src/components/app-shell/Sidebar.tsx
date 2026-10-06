@@ -48,7 +48,7 @@ export function Sidebar({
         className={cn(
           "fixed inset-y-0 left-0 z-40 flex flex-col text-sidebar-foreground border-r transition-transform duration-200 ease-out md:translate-x-0 md:static md:z-auto",
           isDoctor
-            ? "w-[320px] border-[#e7ddc9] bg-[#f5f2ea]"
+            ? "w-[320px] border-[#e7ddc9] bg-[#f2f5ef]"
             : "w-64 border-sidebar-border bg-sidebar",
           open ? "translate-x-0" : "-translate-x-full",
           isDoctor && "relative overflow-hidden",
@@ -56,9 +56,11 @@ export function Sidebar({
         aria-label="Primary"
       >
         {isDoctor && (
+          // Fixed to the viewport bottom-left (like the mascot) so the botanical
+          // always frames it at the visible fold, even when the page scrolls.
           <div
             aria-hidden
-            className="pointer-events-none absolute inset-x-0 bottom-0 z-0 h-[470px]"
+            className="pointer-events-none fixed bottom-0 left-0 z-0 hidden h-[472px] w-[320px] md:block"
             style={{
               backgroundImage: "url(/doctor-art/doctor-sidebar-botanical.png)",
               backgroundSize: "cover",
