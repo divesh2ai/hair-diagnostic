@@ -2,8 +2,6 @@
 
 import Link from "next/link";
 import { FileText, CheckCircle2, Package, Share2 } from "lucide-react";
-import DoctorDashboardWaves from "@/components/doctor/decor/DoctorDashboardWaves";
-import DoctorHeroComposition from "@/components/doctor/decor/DoctorHeroComposition";
 
 // THE DOCTOR DASHBOARD HERO + STATUS TILES.
 //
@@ -77,10 +75,16 @@ export function CommandBand({
 // mismatch vs. the reference (pass `src` once an asset is approved).
 function HeroArtwork() {
   return (
-    <div aria-hidden className="pointer-events-none absolute inset-0 overflow-hidden">
-      <DoctorDashboardWaves className="absolute inset-0 h-full w-full" />
-      <DoctorHeroComposition />
-    </div>
+    <div
+      aria-hidden
+      className="pointer-events-none absolute inset-0"
+      style={{
+        backgroundImage: "url(/doctor-art/doctor-hero-art.png)",
+        backgroundSize: "cover",
+        backgroundPosition: "right center",
+        backgroundRepeat: "no-repeat",
+      }}
+    />
   );
 }
 

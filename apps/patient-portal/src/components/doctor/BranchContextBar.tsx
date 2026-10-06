@@ -3,7 +3,6 @@
 import { useEffect, useState } from "react";
 import { Building2 } from "lucide-react";
 import type { DoctorLocation } from "@/lib/doctor/locations";
-import DoctorBranchBarArt from "@/components/doctor/decor/DoctorBranchBarArt";
 
 // Branch context for a clinician who works across more than one premises.
 //
@@ -75,10 +74,19 @@ export function BranchContextBar({
       aria-label="Clinic branch context"
       className="relative flex flex-wrap items-center gap-x-3 gap-y-1.5 overflow-hidden rounded-xl border border-border bg-card px-4 py-2.5"
     >
-      {/* Hand-traced branch-bar art (ivory ribbon + champagne contour, stepped
-          clinic building, two sage leaf clusters) on the right ~46%, fading
-          left behind the controls. Reused from the traced decor component. */}
-      <DoctorBranchBarArt className="pointer-events-none absolute inset-y-0 right-0 hidden h-full w-[46%] opacity-80 sm:block" />
+      {/* Branch-bar decorative art extracted from the approved reference
+          (cream/sage sweep, champagne line, building, leaf clusters) on the
+          right ~48%, feathered left behind the controls. */}
+      <div
+        aria-hidden
+        className="pointer-events-none absolute inset-y-0 right-0 hidden w-[48%] sm:block"
+        style={{
+          backgroundImage: "url(/doctor-art/doctor-branch-strip-art.png)",
+          backgroundSize: "cover",
+          backgroundPosition: "right center",
+          backgroundRepeat: "no-repeat",
+        }}
+      />
 
       <label className="relative flex items-center gap-2 text-sm">
         <Building2 className="size-4 shrink-0 text-muted-foreground" />

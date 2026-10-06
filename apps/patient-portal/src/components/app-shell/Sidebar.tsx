@@ -8,7 +8,6 @@ import { NAV_ICONS, type NavSection } from "@/lib/navigation";
 import { cn } from "@/lib/utils";
 import { ClinicHeader } from "@/components/ui/clinic-header";
 import { Avatar } from "@/components/ui/avatar";
-import DoctorSidebarBotanical from "@/components/doctor/decor/DoctorSidebarBotanical";
 
 // Sidebar — desktop persistent rail, mobile collapsed off-canvas. The
 // AppShell controls the open/close state; this is pure presentation.
@@ -57,7 +56,16 @@ export function Sidebar({
         aria-label="Primary"
       >
         {isDoctor && (
-          <DoctorSidebarBotanical className="pointer-events-none absolute inset-x-0 bottom-0 z-0 h-[460px] w-full" />
+          <div
+            aria-hidden
+            className="pointer-events-none absolute inset-x-0 bottom-0 z-0 h-[470px]"
+            style={{
+              backgroundImage: "url(/doctor-art/doctor-sidebar-botanical.png)",
+              backgroundSize: "cover",
+              backgroundPosition: "bottom center",
+              backgroundRepeat: "no-repeat",
+            }}
+          />
         )}
 
         <div
