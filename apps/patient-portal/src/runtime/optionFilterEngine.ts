@@ -59,32 +59,56 @@ export function applyMultiSelectRules(
 }
 
 /**
+ * Collects every group-mate of `selectedId` across ALL groups it belongs to.
+ * An option may appear in several 2-element groups (partially-connected
+ * clusters), so we union the other members of every matching group rather than
+ * only the first match.
+ */
+function collectGroupMates(selectedId: string, groups: string[][]): Set<string> {
+  const mates = new Set<string>();
+  for (const group of groups) {
+    if (group.includes(selectedId)) {
+      for (const id of group) {
+        if (id !== selectedId) mates.add(id);
+      }
+    }
+  }
+  return mates;
+}
+
+/**
  * Returns the option IDs that would be auto-deselected when group exclusivity fires.
  * Pure query — does not mutate state. Used by QuestionRenderer to detect when
  * to show the deselect hint without duplicating the group-lookup logic.
  *
- * Returns [] if:
- *   - selectedId belongs to no group, or
- *   - no current selections conflict with selectedId's group.
+ * Unions across every group `selectedId` belongs to, so partially-connected
+ * clusters report every conflicting selection. Toggling an already-selected
+ * option OFF deselects nothing else, so returns [].
  */
 export function computeGroupExclusivityDeselections(
   currentAnswer: string[],
   selectedId: string,
   groups: string[][]
 ): string[] {
-  const group = groups.find(g => g.includes(selectedId));
-  if (!group) return [];
-  return currentAnswer.filter(id => group.includes(id) && id !== selectedId);
+  if (currentAnswer.includes(selectedId)) return []; // toggling off clears nothing else
+  const mates = collectGroupMates(selectedId, groups);
+  if (mates.size === 0) return [];
+  return currentAnswer.filter(id => mates.has(id));
 }
 
 /**
  * Apply multi-select rules WITH pairwise mutual exclusion groups.
- * Groups come from Question.mutualExclusivityGroups.
+ * Groups come from Question.mutualExclusivityGroups — one 2-element group per
+ * schema rule pair. An option may belong to several groups.
  *
  * Example groups: [["Dry scalp", "Oily scalp"], ["Dandruff / white flakes", "Dandruff + Itching + White flakes"]]
  *
  * Selecting "Dry scalp" deselects "Oily scalp" (and vice versa), but neither
- * clears Dandruff options (different group).
+ * clears Dandruff options (different group). Selecting an option that sits in
+ * multiple groups (e.g. "Currently pregnant" in both {pregnant,peri} and
+ * {pregnant,miscarriage}) deselects the mates from every one of those groups
+ * — so the latest conflicting selection always wins. Toggling an already-
+ * selected option OFF removes only that option and leaves everything else.
  */
 export function applyGroupExclusivity(
   currentAnswer: string[],
@@ -97,31 +121,17 @@ export function applyGroupExclusivity(
     return [selectedId];
   }
 
-  // 2. Remove any global exclusive options from result
-  let result = currentAnswer.filter(id => !exclusiveIds.includes(id));
+  // 2. Remove any global exclusive options from the working set
+  const result = currentAnswer.filter(id => !exclusiveIds.includes(id));
 
-  // 3. Find which exclusivity group selectedId belongs to (if any)
-  const selectedGroup = groups.find(g => g.includes(selectedId));
-
-  if (selectedGroup) {
-    // Remove all OTHER members of this group (preserving selectedId if toggling)
-    result = result.filter(id => !selectedGroup.includes(id));
+  // 3. Toggle OFF: an already-selected option removes only itself. Its mates are
+  //    left untouched (they were cleared when it was first selected).
+  if (result.includes(selectedId)) {
+    return result.filter(id => id !== selectedId);
   }
 
-  // 4. Toggle the selected option
-  const wasAlreadySelected = currentAnswer.includes(selectedId);
-  if (wasAlreadySelected && !selectedGroup) {
-    // Toggle off (only when not replaced by group logic)
-    result = result.filter(id => id !== selectedId);
-  } else if (!wasAlreadySelected) {
-    result = [...result, selectedId];
-  }
-  // If selectedGroup exists and was already selected: result already has it removed → re-add
-  else if (selectedGroup && wasAlreadySelected) {
-    // deselect it (already removed above)
-  } else {
-    result = [...result, selectedId];
-  }
-
-  return result;
+  // 4. Toggle ON: clear every group-mate across all groups containing selectedId,
+  //    then add it — the newly selected option wins over its conflicts.
+  const mates = collectGroupMates(selectedId, groups);
+  return [...result.filter(id => !mates.has(id)), selectedId];
 }
