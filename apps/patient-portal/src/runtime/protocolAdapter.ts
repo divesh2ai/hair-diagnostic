@@ -262,7 +262,8 @@ function buildFilterOptions(
 // ─────────────────────────────────────────────────────────────────────────────
 // MUTUAL EXCLUSIVITY GROUPS
 // Converts pairwise deselect rules into 2-element groups of mutually exclusive
-// option IDs — one group per unordered rule pair, deduplicated.
+// option IDs — one group per unordered rule pair, deduplicated. Also supports
+// single-choice emulation via `allOptionsExclusive`.
 //
 // Pairs are NOT transitively merged into a single disjoint group. Merging would
 // over-reach on partially-connected clusters: e.g. "Currently pregnant ↔
@@ -277,9 +278,20 @@ function buildFilterOptions(
 // ─────────────────────────────────────────────────────────────────────────────
 
 function buildMutualExclusivityGroups(
-  rules: SchemaMutualExclusivityRules | undefined
+  rules: SchemaMutualExclusivityRules | undefined,
+  options: readonly SchemaOption[] | undefined
 ): string[][] | undefined {
-  if (!rules?.rules?.length) return undefined;
+  if (!rules) return undefined;
+
+  // Single-choice emulation: one group holding every option value, so selecting
+  // any one deselects all the others (radio behaviour) while the answer stays a
+  // multi_select array — keeping downstream array-based scoring untouched.
+  if (rules.allOptionsExclusive) {
+    const values = (options ?? []).map(o => o.value).filter(Boolean);
+    return values.length ? [values] : undefined;
+  }
+
+  if (!rules.rules?.length) return undefined;
 
   const seen = new Set<string>();
   const groups: string[][] = [];
@@ -374,7 +386,7 @@ function adaptType(schemaType: string): QuestionType {
 function adaptQuestion(q: SchemaQuestion, section: SchemaSection): Question {
   const skipIf = buildSkipConditions(q);
   const filterOptions = buildFilterOptions(q);
-  const mutualExclusivityGroups = buildMutualExclusivityGroups(q.mutualExclusivityRules);
+  const mutualExclusivityGroups = buildMutualExclusivityGroups(q.mutualExclusivityRules, q.options);
   const mutualExclusivityToast = q.mutualExclusivityRules?.toastMessage;
   const showIf =
     q.visibilityRules?.length === 1 && q.visibilityRules[0]?.operator === 'equals'
