@@ -187,7 +187,7 @@ export function DoctorDashboardClient({
       data-surface="doctor"
       className="v2-canvas min-h-full"
     >
-      <div className="mx-auto w-full max-w-6xl space-y-7 px-5 pb-20 pt-7 sm:px-6 lg:px-10">
+      <div className="mx-auto w-full max-w-7xl space-y-7 px-4 pb-20 pt-7 sm:px-6">
         {role === "SUPER_ADMIN" && (
           <div className="flex items-start gap-2 rounded-xl border border-[color:var(--hd-medical-edge)] bg-[color:var(--hd-medical-tint)] px-4 py-2.5 text-xs text-[color:var(--hd-medical-ink)]">
             <EyeIcon className="mt-0.5 size-3.5 shrink-0" />
