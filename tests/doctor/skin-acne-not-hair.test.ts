@@ -68,10 +68,14 @@ describe("skin_acne read path — barrier 2", () => {
   );
 
   it("refuses every skin_ concern before the engines run", () => {
-    expect(payload).toContain('target.concern?.startsWith("skin_")');
+    // The skin guard reads the shared vertical discriminator (isSkinFactConcern)
+    // rather than an inline `startsWith("skin_")`, so routing and the read path
+    // can never drift on what counts as a skin case.
+    expect(payload).toContain("isSkinFactConcern(target.concern)");
+    expect(payload).toContain('import { isSkinFactConcern } from "@/lib/verticals"');
     expect(payload).toContain("CONSULTATION_NOT_APPLICABLE");
     // The refusal must come BEFORE the consultation is loaded/composed.
-    expect(payload.indexOf('startsWith("skin_")')).toBeLessThan(
+    expect(payload.indexOf("isSkinFactConcern(target.concern)")).toBeLessThan(
       payload.indexOf("loadConsultationReview({"),
     );
   });

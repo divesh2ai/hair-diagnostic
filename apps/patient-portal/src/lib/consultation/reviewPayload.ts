@@ -24,6 +24,7 @@
 import type { SystemRole } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { requireDoctorContext, assertDoctorInClinic } from "@/lib/auth";
+import { isSkinFactConcern } from "@/lib/verticals";
 import { makeOrchestrator } from "@hairos/packages/consultation-orchestrator";
 import type { Consultation } from "@shared/types/consultation";
 import type {
@@ -231,7 +232,7 @@ export async function fetchReviewPayload(
   //
   // Gated on an explicit skin concern only: hair rows and older rows with no
   // `__meta.concern` are untouched.
-  if (target.concern?.startsWith("skin_")) {
+  if (isSkinFactConcern(target.concern)) {
     logLifecycleEvent({
       event: "consultation.load_failed",
       requestId,
