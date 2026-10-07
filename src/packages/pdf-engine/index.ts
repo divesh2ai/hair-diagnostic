@@ -2,6 +2,7 @@ import React from 'react';
 import { renderToStream } from '@react-pdf/renderer';
 import { PatientReportTemplate } from './templates/PatientReportTemplate';
 import { uploadReportToSupabase } from './storage';
+import { patientReportObjectName } from './objectName';
 import { ReportInputPayload } from './types';
 import { formatViolations } from '../ai-engine/clinical-facts';
 import type { GroundingViolation } from '../ai-engine/clinical-facts';
@@ -51,19 +52,10 @@ export class ReasoningCompletenessError extends Error {
   }
 }
 
-/**
- * Converts a patient name into a safe, lowercase filename slug.
- * e.g. "Rohini Sharma"  → "rohini-sharma"
- *      "Séraphin O'Neil" → "seraphin-oneil"
- */
-function toFilenameSlug(name: string): string {
-  return name
-    .normalize('NFD')                   // decompose accented characters
-    .replace(/[̀-ͯ]/g, '')    // strip accent marks
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, '-')       // non-alphanumeric → hyphen
-    .replace(/^-+|-+$/g, '');          // trim leading/trailing hyphens
-}
+// Report-PDF object naming lives in ./objectName (dependency-free so it is unit-
+// testable without the React/@react-pdf render stack). Re-exported here so the
+// package's public surface is unchanged.
+export { patientReportObjectName, toFilenameSlug } from './objectName';
 
 /**
  * Main orchestrator for the PDF Generation Engine.
@@ -108,14 +100,18 @@ export async function generateAndStoreReports(payload: ReportInputPayload) {
 
   console.log(`[PDF Engine] Generating reports for Assessment ${payload.assessmentId}...`);
 
-  // The object path must not carry patient identity.
-  //
-  // This was `${toFilenameSlug(payload.patient.name)}-report.pdf`, which put a
-  // real person's name into a storage key — visible in bucket listings, in
-  // signed URLs, and in any log line that records the path. The assessment id
-  // in the parent segment already makes the object unique, and the patient is
-  // resolvable from it by anyone actually authorised to do so.
-  const patientFilename = 'patient-report.pdf';
+  // The stored report is named after the patient (product decision: reports are
+  // saved under the patient name, including in Supabase storage). The assessment
+  // id in the PARENT path segment keeps every object unique — so two patients
+  // who share a name never collide — while this filename makes the object
+  // identifiable in a bucket listing. The bucket is private and read only
+  // through short-lived signed URLs. A name that sanitises to nothing (empty or
+  // all-punctuation) falls back to the assessment id so the file is never
+  // unnamed.
+  const patientFilename = patientReportObjectName(
+    payload.patient?.name,
+    payload.assessmentId,
+  );
 
   try {
     // 1. Render Patient Report to a Stream
