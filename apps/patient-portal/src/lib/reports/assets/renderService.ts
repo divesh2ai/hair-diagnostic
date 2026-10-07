@@ -22,6 +22,7 @@ import { createOnePagerRenderer, type OnePagerRenderer } from "./onePagerRendere
 import { putReportAsset } from "./storage";
 import { loadRenderSource } from "./source";
 import { resolveDeploymentOrigin } from "./origin";
+import { patientReportSlug } from "@/lib/reports/patientSlug";
 import { signRenderToken } from "./renderToken";
 
 export type RenderOutcome =
@@ -72,7 +73,10 @@ export async function renderNextDue(deps: RenderServiceDeps = {}): Promise<Rende
     // The row asked for this render in the past. Whether it may still happen
     // is a question about the present.
     const { snapshot } = await loadRenderSource(asset.id, prisma);
-    void snapshot; // Read here to fail fast; the page reads it again to render.
+    // Read here to fail fast; the page reads it again to render. The patient
+    // name travels on the snapshot, so naming the stored artefact needs no
+    // extra DB read.
+    const patientSlug = patientReportSlug(snapshot.report?.patient?.name);
 
     const origin = resolveDeploymentOrigin();
     if (!origin) {
@@ -109,6 +113,7 @@ export async function renderNextDue(deps: RenderServiceDeps = {}): Promise<Rende
       consultationVersionId: asset.consultationVersionId,
       assetId: asset.id,
       type: asset.type,
+      patientSlug,
     });
     const stored = await putReportAsset({
       path,

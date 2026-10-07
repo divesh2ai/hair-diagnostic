@@ -251,19 +251,30 @@ export const REPORT_ASSET_BUCKET = "report-assets";
  * Where one rendered artefact lives.
  *
  * Tenant-first so a listing is navigable per clinic, version-scoped so a
- * revision writes beside its predecessor, and named by ASSET ID rather than by
- * anything about the patient — an object path is quoted in logs, support
- * tickets and signed URLs, and none of those should carry a person's name.
+ * revision writes beside its predecessor.
+ *
+ * Per product decision, the filename carries the patient's name so a one-pager
+ * is identifiable in storage — but ALWAYS prefixed to the unique ASSET ID, kept
+ * as the last path segment's stable component, so two patients who share a name
+ * never collide and the object stays addressable. The bucket is private and
+ * only ever read through short-lived signed URLs. When no usable name is
+ * available (`patientSlug` empty/omitted) the path falls back to the asset id
+ * alone, exactly as before.
  */
 export function reportAssetPath(input: {
   clinicId: string;
   consultationVersionId: string;
   assetId: string;
   type: ReportAssetType;
+  /** Storage-key-safe patient slug (see lib/reports/patientSlug). Optional. */
+  patientSlug?: string;
 }): string {
   const folder = input.type === "ONE_PAGER_PNG" ? "one-pager" : input.type.toLowerCase();
   const extension = input.type.endsWith("_PNG") ? "png" : "pdf";
-  return `clinic/${input.clinicId}/consultation/${input.consultationVersionId}/${folder}/${input.assetId}.${extension}`;
+  const basename = input.patientSlug
+    ? `${input.patientSlug}-${input.assetId}`
+    : input.assetId;
+  return `clinic/${input.clinicId}/consultation/${input.consultationVersionId}/${folder}/${basename}.${extension}`;
 }
 
 // ── PNG validation (PHASE 12) ───────────────────────────────────────────────
