@@ -21,7 +21,8 @@ const BUCKET = 'clinical-reports';
  * that need to hand a URL to a browser mint one at read time with
  * `signReportUrl` below.
  *
- * `filename` deliberately carries NO patient identity — see the caller.
+ * `filename` carries the patient's name (see the caller); the assessment id in
+ * the parent segment keeps the object unique, and the bucket stays private.
  */
 export async function uploadReportToSupabase(buffer: Buffer, assessmentId: string, filename: string): Promise<string> {
   const path = `reports/${assessmentId}/${filename}`;
