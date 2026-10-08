@@ -3,7 +3,7 @@
 import { useState, useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { createBrowserClient } from "@supabase/ssr";
-import { Mail, KeyRound, Zap, Smartphone } from "lucide-react";
+import { Mail, KeyRound, Smartphone } from "lucide-react";
 import { toast } from "sonner";
 import { normaliseMobile, rejectionMessage, type E164 } from "@/lib/patient/phone";
 import {
@@ -220,33 +220,14 @@ function LoginInner() {
     setCode("");
   };
 
-  const devLoginEnabled = process.env.NEXT_PUBLIC_ALLOW_DEV_LOGIN === "1";
-  const devLoginSecret = process.env.NEXT_PUBLIC_DEV_LOGIN_SECRET ?? "";
-
-  const devLogin = async () => {
-    setSubmitting(true);
-    setErrorMsg(null);
-    try {
-      const res = await fetch("/api/dev/login", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "x-dev-login-secret": devLoginSecret,
-        },
-        body: JSON.stringify(email.trim() ? { email: email.trim() } : {}),
-      });
-      const json = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(json?.error ?? `HTTP ${res.status}`);
-      toast.success("Dev sign-in", { description: `Signed in as ${json.email}` });
-      router.replace(nextPath);
-    } catch (err) {
-      const message = err instanceof Error ? err.message : "Unknown error";
-      setErrorMsg(message);
-      toast.error("Dev sign-in failed", { description: message });
-    } finally {
-      setSubmitting(false);
-    }
-  };
+  // The Preview "skip OTP" dev-login button was removed: it read a dev-login
+  // secret from a NEXT_PUBLIC_* variable, which is inlined into the client
+  // bundle — so the "secret" shipped to every browser and anyone with the
+  // preview URL could mint a Super Admin session. No secret may be bundled
+  // client-side, and the browser no longer calls the dev-login endpoint. A
+  // hardened, user-entered-code Preview sign-in can be reintroduced server-side
+  // later; the server-side dev-login endpoint used by QA tooling is unchanged
+  // and its secret lives only in the environment.
 
   return (
     <main className="min-h-[100dvh] grid place-items-center bg-stone-50 px-6">
@@ -498,24 +479,6 @@ function LoginInner() {
           </form>
         )}
 
-        {devLoginEnabled && (
-          <div className="space-y-2 border-t border-dashed border-stone-300 pt-4">
-            <p className="text-center text-[10px] font-semibold uppercase tracking-[0.18em] text-amber-700">
-              Preview only · skip OTP
-            </p>
-            <button
-              type="button"
-              onClick={devLogin}
-              disabled={submitting}
-              className="inline-flex h-10 w-full items-center justify-center gap-2 rounded-lg border border-amber-300 bg-amber-50 text-xs font-semibold text-amber-900 hover:bg-amber-100 disabled:opacity-60"
-            >
-              <Zap className="h-3.5 w-3.5" />
-              {email.trim()
-                ? `Dev sign-in as ${email.trim()}`
-                : "Dev sign-in as divesh2ai@gmail.com"}
-            </button>
-          </div>
-        )}
       </div>
     </main>
   );

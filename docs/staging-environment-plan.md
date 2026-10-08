@@ -71,8 +71,8 @@ to the **Preview** environment only. Production keeps its current values.
 | `NEXT_PUBLIC_APP_URL` | production domain | preview deployment URL | Used for invitation links. A staging invite pointing at production would walk a tester into real data. |
 | `NEXT_PUBLIC_SITE_URL` | production domain | preview deployment URL | Same reasoning (`lib/invitations.ts`). |
 | `REVIEW_TOKEN_SECRET` | prod secret | **different** staging secret | Signs review tokens *and* the D1 intake session token. Sharing it would let a staging-issued token authenticate against production. |
-| `DEV_LOGIN_SECRET` / `NEXT_PUBLIC_DEV_LOGIN_SECRET` | unset | staging-only value | Dev login already refuses to run when `VERCEL_ENV === "production"` (`api/dev/login/route.ts`), so this is safe to enable on Preview and is what makes a staging walk-through possible without real accounts. |
-| `ALLOW_DEV_LOGIN` / `NEXT_PUBLIC_ALLOW_DEV_LOGIN` | unset | `1` | Same. |
+| `DEV_LOGIN_SECRET` | unset | staging-only value | Server-side only. `/api/dev/login` refuses to run when `VERCEL_ENV === "production"`; it is now used only by QA/tooling that holds this secret in its own env. **Never** set a `NEXT_PUBLIC_DEV_LOGIN_SECRET` — a `NEXT_PUBLIC_*` value is inlined into the client bundle and would make the secret public. |
+| `ALLOW_DEV_LOGIN` | unset | `1` | Server-side flag for `/api/dev/login`. The browser "skip OTP" button has been removed, so no `NEXT_PUBLIC_ALLOW_DEV_LOGIN` is needed. |
 
 ### Audit: what can actually reach a real person
 
