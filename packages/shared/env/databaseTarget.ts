@@ -29,8 +29,8 @@
  * scripts at the repo root, and from tests.
  */
 
-/** Live patient data. Supabase project "Dr Fact Project", ap-southeast-1. */
-export const PRODUCTION_SUPABASE_REF = "gwkgopbscdftpitppgwe";
+/** Live patient data. Supabase project "drfact-hairos-production", ap-south-1. */
+export const PRODUCTION_SUPABASE_REF = "pykoyxbleowxwechotth";
 
 /** Synthetic data only. Supabase project "hairos-staging", ap-south-1. */
 export const STAGING_SUPABASE_REF = "vbkoupvduadmcxggtnsb";
