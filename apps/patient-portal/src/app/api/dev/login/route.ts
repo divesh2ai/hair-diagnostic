@@ -1,62 +1,52 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
+import {
+  devLoginSecretMatches,
+  isDevLoginEnabled,
+  isDevLoginForbidden,
+  resolveDevLoginEmail,
+} from "@/lib/auth/devBypass";
 
-// Dev-only OTP bypass. Only enabled when ALLOW_DEV_LOGIN=1 in the environment
-// (must be set on preview but never on production). Uses the service-role key
-// to mint a fresh email OTP via admin.generateLink, then verifies it server-
-// side so the SSR session cookies are set on this response. The plaintext OTP
-// never leaves the server.
+// Dev-only OTP bypass for QA tooling. Uses the service-role key to mint a fresh
+// email OTP via admin.generateLink, then verifies it server-side so the SSR
+// session cookies are set on this response. The plaintext OTP never leaves the
+// server.
 //
-// Default target is the sole Supabase auth user linked to both a Doctor row
-// and an OrganizationMember(SUPER_ADMIN) row — one click and you land in
-// /admin (SUPER_ADMIN precedence in the JWT hook) with access to /doctor,
-// /clinic, and /admin. Callers can override with { email } once more auth
-// users are seeded.
-const DEFAULT_EMAIL = "divesh2ai@gmail.com";
-
-function isEnabled(): boolean {
-  return process.env.ALLOW_DEV_LOGIN === "1";
-}
-
-// Hard production block. Runs regardless of ALLOW_DEV_LOGIN so an accidental
-// env-var leak on a production deploy cannot enable the OTP bypass. Vercel
-// sets NODE_ENV=production on preview builds too, so we key on VERCEL_ENV
-// which correctly distinguishes production from preview. Non-Vercel envs
-// (local dev, CI) fall through to the ALLOW_DEV_LOGIN check.
-function isForbiddenInProduction(): boolean {
-  return process.env.VERCEL_ENV === "production";
-}
-
-// Constant-time string compare — avoids leaking the shared secret via timing.
-function safeEqual(a: string, b: string): boolean {
-  if (a.length !== b.length) return false;
-  let diff = 0;
-  for (let i = 0; i < a.length; i++) diff |= a.charCodeAt(i) ^ b.charCodeAt(i);
-  return diff === 0;
-}
+// Authorization is centralised in @/lib/auth/devBypass (shared with the
+// one-page report export bypass so the two cannot drift): preview-or-local
+// runtime only, ALLOW_DEV_LOGIN opt-in, and a constant-time-matched
+// DEV_LOGIN_SECRET. Production (VERCEL_ENV === "production") is refused before
+// any of those are even consulted.
+//
+// The session's ROLE is never chosen by the caller — it is derived from the
+// target email's DB rows by the JWT custom_access_token_hook. The default
+// target is the sole Supabase auth user linked to both a Doctor row and an
+// OrganizationMember(SUPER_ADMIN) row, so it lands in /admin. Callers may only
+// request an email on the dev-login allowlist (see resolveDevLoginEmail); an
+// arbitrary email cannot be used to mint — let alone escalate to — a session.
 
 export async function POST(req: Request) {
-  if (isForbiddenInProduction()) {
+  if (isDevLoginForbidden()) {
     return NextResponse.json({ error: "not found" }, { status: 404 });
   }
-  if (!isEnabled()) {
+  if (!isDevLoginEnabled()) {
     return NextResponse.json({ error: "dev login disabled" }, { status: 404 });
   }
 
-  // Shared-secret guard. The endpoint mints a full session as the seeded
-  // doctor, so we require a secret both env-side and client-side. Anyone
-  // finding the preview URL cannot exploit it without the secret.
-  const expected = process.env.DEV_LOGIN_SECRET ?? "";
-  const provided = req.headers.get("x-dev-login-secret") ?? "";
-  if (!expected || !provided || !safeEqual(expected, provided)) {
+  // Shared-secret guard. The endpoint mints a full session, so we require a
+  // secret. Anyone finding the preview URL cannot exploit it without the secret.
+  if (!devLoginSecretMatches(req.headers.get("x-dev-login-secret"))) {
     return NextResponse.json({ error: "not found" }, { status: 404 });
   }
 
   const body = await req.json().catch(() => ({}));
-  const email: string = typeof body?.email === "string" && body.email.trim()
-    ? body.email.trim()
-    : DEFAULT_EMAIL;
+  const email = resolveDevLoginEmail(body?.email);
+  if (!email) {
+    // Requested identity is not on the dev-login allowlist. 404 rather than 403
+    // so the endpoint reveals nothing about which emails exist or are seeded.
+    return NextResponse.json({ error: "not found" }, { status: 404 });
+  }
 
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;

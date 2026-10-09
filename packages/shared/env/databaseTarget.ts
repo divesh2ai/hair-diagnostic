@@ -91,6 +91,42 @@ export function isProductionRuntime(env: EnvLike): boolean {
   return env.VERCEL_ENV === "production";
 }
 
+/**
+ * True only when this process is a Vercel *preview* deployment.
+ *
+ * The positive counterpart to `isProductionRuntime`: where that proves "this is
+ * production", this proves "this is preview". Neither is true for local dev or
+ * CI (where `VERCEL_ENV` is undefined) — that is deliberate.
+ */
+export function isPreviewRuntime(env: EnvLike): boolean {
+  return env.VERCEL_ENV === "preview";
+}
+
+/**
+ * May the developer sign-in / report-export bypass run in this environment?
+ *
+ * The bypass mints a privileged session (Super Admin, service-role OTP), so the
+ * gate is a strict *allowlist* of runtimes, never the weaker "anything that is
+ * not production":
+ *
+ *   • On Vercel  → ONLY when `VERCEL_ENV === "preview"`. A production deploy
+ *     (`"production"`) and any other Vercel value (e.g. `"development"`) are
+ *     refused.
+ *   • Off Vercel (local dev, CI, a `tsx` script) → `VERCEL_ENV` is undefined, so
+ *     we fall back to `NODE_ENV !== "production"`. A local
+ *     `next build && next start` (`NODE_ENV === "production"`) is refused too.
+ *
+ * This is ONLY the environment gate. Callers must still require their own
+ * explicit opt-in flag (`ALLOW_DEV_LOGIN`) and a shared secret on top of it.
+ */
+export function isDevBypassRuntimeAllowed(env: EnvLike): boolean {
+  if (isProductionRuntime(env)) return false;
+  if (typeof env.VERCEL_ENV === "string" && env.VERCEL_ENV.length > 0) {
+    return isPreviewRuntime(env);
+  }
+  return env.NODE_ENV !== "production";
+}
+
 export type DatabaseTargetVerdict =
   | { allowed: true; refs: string[]; note?: string }
   | { allowed: false; refs: string[]; reason: string; message: string };

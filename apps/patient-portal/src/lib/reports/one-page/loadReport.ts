@@ -2,6 +2,7 @@ import { ArtifactType } from "@prisma/client";
 import { headers } from "next/headers";
 import { prisma } from "@/lib/prisma";
 import { getClinicContext, handleAuthError, isSuperAdmin } from "@/lib/auth";
+import { devLoginSecretMatches, isDevLoginEnabled } from "@/lib/auth/devBypass";
 import { signReviewToken, verifyReviewToken } from "@/lib/reviewToken";
 import { isConferenceMode } from "@/lib/conferenceMode";
 import type { ClinicContext } from "@/lib/auth";
@@ -69,16 +70,17 @@ async function getReportAuthContext(
   try {
     return { kind: "clinic", ctx: await getClinicContext() };
   } catch (err) {
-    const secret = process.env.DEV_LOGIN_SECRET;
-    const localExportAllowed =
-      process.env.ALLOW_DEV_LOGIN === "1" &&
-      process.env.NODE_ENV !== "production" &&
-      typeof secret === "string" &&
-      secret.length > 0;
-
-    if (localExportAllowed) {
+    // Developer one-page-report export bypass. Gated by the SAME shared
+    // authorization as /api/dev/login (see @/lib/auth/devBypass): preview-or-
+    // local runtime only, ALLOW_DEV_LOGIN opt-in, and a constant-time-matched
+    // DEV_LOGIN_SECRET. Production (VERCEL_ENV === "production") is refused by
+    // isDevLoginEnabled, so this bypass can never grant access there.
+    //
+    // It returns a FIXED Super Admin export context — the role is hard-coded,
+    // never read from the request — so there is no arbitrary role selection.
+    if (isDevLoginEnabled()) {
       const h = await headers();
-      if (h.get("x-dev-login-secret") === secret) {
+      if (devLoginSecretMatches(h.get("x-dev-login-secret"))) {
         return {
           kind: "clinic",
           ctx: {
