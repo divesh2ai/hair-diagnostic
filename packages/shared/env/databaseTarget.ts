@@ -127,6 +127,25 @@ export function isDevBypassRuntimeAllowed(env: EnvLike): boolean {
   return env.NODE_ENV !== "production";
 }
 
+/**
+ * Is this process configured to talk to the PRODUCTION Supabase project,
+ * whatever its runtime claims to be?
+ *
+ * Checks every Supabase-bearing env var the app uses. A preview (or local)
+ * deployment that has been pointed — by accident or otherwise — at the
+ * production project returns true here, which the dev-bypass gates below use to
+ * refuse regardless of `VERCEL_ENV`. This is the "a deployed Preview must never
+ * mint a privileged session against production data" guard: the bypass keys off
+ * the *data target*, not just the deployment tier.
+ */
+export function isPointingAtProductionDb(env: EnvLike): boolean {
+  return [
+    extractSupabaseRef(env.DATABASE_URL),
+    extractSupabaseRef(env.DIRECT_URL),
+    extractSupabaseRef(env.NEXT_PUBLIC_SUPABASE_URL),
+  ].some((ref) => ref === PRODUCTION_SUPABASE_REF);
+}
+
 export type DatabaseTargetVerdict =
   | { allowed: true; refs: string[]; note?: string }
   | { allowed: false; refs: string[]; reason: string; message: string };

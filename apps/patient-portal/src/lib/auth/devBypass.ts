@@ -1,5 +1,6 @@
 import {
   isDevBypassRuntimeAllowed,
+  isPointingAtProductionDb,
   isProductionRuntime,
 } from "@shared/env/databaseTarget";
 
@@ -37,14 +38,28 @@ export function safeEqual(a: string, b: string): boolean {
   return diff === 0;
 }
 
-/** Hard production block, independent of the opt-in flag or secret. */
+/**
+ * Hard block, independent of the opt-in flag or secret. Refuses on a production
+ * runtime AND on any runtime (preview/local included) whose Supabase target is
+ * the production project — so a deployed Preview pointed at production data can
+ * never mint a privileged session.
+ */
 export function isDevLoginForbidden(env: NodeJS.ProcessEnv = process.env): boolean {
-  return isProductionRuntime(env);
+  return isProductionRuntime(env) || isPointingAtProductionDb(env);
 }
 
-/** Runtime gate + explicit opt-in flag. */
+/**
+ * Runtime gate + explicit opt-in flag, AND never while pointed at the
+ * production Supabase project. The production-DB guard is repeated here (not
+ * only in isDevLoginForbidden) so a caller that checks only the enabled-gate is
+ * still protected.
+ */
 export function isDevLoginEnabled(env: NodeJS.ProcessEnv = process.env): boolean {
-  return isDevBypassRuntimeAllowed(env) && env.ALLOW_DEV_LOGIN === "1";
+  return (
+    isDevBypassRuntimeAllowed(env) &&
+    !isPointingAtProductionDb(env) &&
+    env.ALLOW_DEV_LOGIN === "1"
+  );
 }
 
 /**

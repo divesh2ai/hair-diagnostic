@@ -1,6 +1,9 @@
 import { describe, expect, it } from "vitest";
 import {
+  PRODUCTION_SUPABASE_REF,
+  STAGING_SUPABASE_REF,
   isDevBypassRuntimeAllowed,
+  isPointingAtProductionDb,
   isPreviewRuntime,
   isProductionRuntime,
 } from "@shared/env/databaseTarget";
@@ -129,6 +132,60 @@ describe("resolveDevLoginEmail (no arbitrary email escalation)", () => {
   it("rejects non-string input", () => {
     expect(resolveDevLoginEmail(42, env({}))).toBeNull();
     expect(resolveDevLoginEmail({ email: "x" }, env({}))).toBeNull();
+  });
+});
+
+const prodUrl = `https://${PRODUCTION_SUPABASE_REF}.supabase.co`;
+const prodDbUrl = `postgresql://postgres.${PRODUCTION_SUPABASE_REF}:pw@aws-1-ap-south-1.pooler.supabase.com:6543/postgres`;
+const stagingUrl = `https://${STAGING_SUPABASE_REF}.supabase.co`;
+
+describe("isPointingAtProductionDb (data-target guard)", () => {
+  it("detects the production ref in NEXT_PUBLIC_SUPABASE_URL", () => {
+    expect(isPointingAtProductionDb(env({ NEXT_PUBLIC_SUPABASE_URL: prodUrl }))).toBe(true);
+  });
+  it("detects the production ref in a pooled DATABASE_URL", () => {
+    expect(isPointingAtProductionDb(env({ DATABASE_URL: prodDbUrl }))).toBe(true);
+  });
+  it("is false for the staging project", () => {
+    expect(isPointingAtProductionDb(env({ NEXT_PUBLIC_SUPABASE_URL: stagingUrl }))).toBe(false);
+  });
+  it("is false when no Supabase env is set", () => {
+    expect(isPointingAtProductionDb(env({}))).toBe(false);
+  });
+});
+
+describe("preview deploy pointed at the PRODUCTION database is refused", () => {
+  // The core new guarantee: a deployed Preview (VERCEL_ENV=preview) that is
+  // misconfigured to the production Supabase project must NOT be able to run
+  // the bypass, even with the opt-in flag and correct secret.
+  it("forbids and disables when a preview targets production data", () => {
+    const previewOnProd = env({
+      VERCEL_ENV: "preview",
+      ALLOW_DEV_LOGIN: "1",
+      DEV_LOGIN_SECRET: "s3cr3t",
+      NEXT_PUBLIC_SUPABASE_URL: prodUrl,
+    });
+    expect(isDevLoginForbidden(previewOnProd)).toBe(true);
+    expect(isDevLoginEnabled(previewOnProd)).toBe(false);
+  });
+  it("still allows a preview targeting the staging database", () => {
+    const previewOnStaging = env({
+      VERCEL_ENV: "preview",
+      ALLOW_DEV_LOGIN: "1",
+      DEV_LOGIN_SECRET: "s3cr3t",
+      NEXT_PUBLIC_SUPABASE_URL: stagingUrl,
+    });
+    expect(isDevLoginForbidden(previewOnStaging)).toBe(false);
+    expect(isDevLoginEnabled(previewOnStaging)).toBe(true);
+  });
+  it("forbids even a local runtime pointed at production data", () => {
+    const localOnProd = env({
+      ALLOW_DEV_LOGIN: "1",
+      DEV_LOGIN_SECRET: "s3cr3t",
+      DATABASE_URL: prodDbUrl,
+    });
+    expect(isDevLoginForbidden(localOnProd)).toBe(true);
+    expect(isDevLoginEnabled(localOnProd)).toBe(false);
   });
 });
 
