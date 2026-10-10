@@ -17,7 +17,7 @@ writes, no migration resolution, no seeding, no deployment were performed.
 | B2 | **Migration ledger drift — prod built by `prisma db push`, not `migrate deploy`** | Ledger: 18 rows, 12 finished, last finished `20260626_identity_alignment`; `20260626_phase3_admin` `finished_at=NULL`. Repo has **38** migrations — 26 never recorded. | Reconcile with `prisma migrate resolve` + `migrate deploy` in a controlled window (explicitly out of scope for this task). |
 | B3 | **All RLS policies & most SQL functions missing in prod** | Prod `pg_policies` = **0**; repo migrations define **89** `CREATE POLICY`. Prod public functions = **1**; repo defines **12** (`jwt_is_super_admin` missing — defined in `20260626_platform_foundation`). 67 tables have RLS **enabled with zero policies** (default-deny for `anon`/`authenticated`). | Apply the migration-only SQL (policies + functions) via B2's `migrate deploy`. Until then any direct Supabase-client/RLS path is denied; app works only via Prisma owner connection. |
 | B4 | **Production has no configuration data** | 0 Organizations, 0 Clinics, 0 OrganizationMembers, 0 Doctors, 0 auth users, 0 Kit/Product/Price, `PlatformSettings` singleton missing. | Run the reviewed bootstrap (§Bootstrap) + load the approved catalog — after B1–B3. |
-| B5 | **`report-assets` storage bucket missing** | Prod `storage.buckets` = `clinical-images`, `clinical-reports`, `doctor-avatars` (all private). `report-assets` (required by the one-page report asset/PDF pipeline) absent. | `npx tsx scripts/provision-storage.ts` against prod. |
+| B5 | **TWO storage buckets missing** | `scripts/provision-storage.ts` declares **5** private buckets: `clinical-reports`, `clinical-images`, `doctor-avatars`, `one-pagers`, `report-assets`. Prod has only the first three → **`one-pagers` AND `report-assets` missing**. `one-pagers` holds the immutable approved-snapshot JSON (source of truth for renders); `report-assets` holds rendered PNG/PDF. | `npx tsx scripts/provision-storage.ts --allow-production` against prod. |
 | B6 | **Vercel env wiring + Auth providers unverified** | Env values are policy-blocked from this session; Auth/GoTrue config is not in SQL. | Confirm in dashboards per §Preflight. The whole login is OTP — if prod Auth email/SMS is unconfigured, nobody can sign in. |
 
 Security hardening for the dev-login / report-export bypass is **done** in PR #23
@@ -113,9 +113,12 @@ via the repo's reviewed catalog seed or the Super Admin UI, after steps 1–6.
 - [ ] `ALLOW_DEV_LOGIN` **unset** (and `DEV_LOGIN_SECRET` unset) in Production
 - [ ] `VERCEL_AUTOMATION_BYPASS_SECRET` only where intended
 
-**Report storage**
-- [ ] Buckets `clinical-images`, `clinical-reports`, `doctor-avatars` present ✅ (verified)
+**Report storage** (5 private buckets required by `scripts/provision-storage.ts`)
+- [ ] `clinical-images`, `clinical-reports`, `doctor-avatars` present ✅ (verified)
+- [ ] `one-pagers` present (currently **missing** — B5) and private.
 - [ ] `report-assets` present (currently **missing** — B5) and private.
+
+**Migrations** — see `docs/launch/MIGRATION_RECONCILIATION.md` for the full 38-migration matrix, the `phase3_admin`→`jwt_is_super_admin` ordering defect, and the fake-checksum `_prisma_migrations` self-inserts. Repo Prisma version: **5.22.0** (pin all commands to `npx --no-install prisma`).
 
 **PDF generation**
 - [ ] Serverless Chromium path works (`@sparticuz/chromium` + `playwright-core`); Node runtime, sufficient memory; a render produces a non-empty PDF.
