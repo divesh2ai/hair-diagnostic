@@ -209,12 +209,22 @@ export function DoctorDashboardClient({
 
         {/* ── 3 · WHO DO I REVIEW NEXT? ─────────────────────────────────── */}
         <section aria-label="Patient deck" className="space-y-3">
-          {/* Only when the deck is actually holding back a backlog. */}
-          {counts.pending > shownInDeck && (
-            <p className="text-[11px] tabular-nums text-[color:var(--ink-tertiary)]">
-              Showing {shownInDeck} of {counts.pending}
-            </p>
-          )}
+          <div className="flex items-end justify-between gap-4">
+            <div>
+              <h2 className="text-[13px] font-semibold uppercase tracking-[0.12em] text-[color:var(--ink-secondary)]">
+                Your patient deck
+              </h2>
+              <p className="mt-0.5 text-sm text-[color:var(--ink-tertiary)]">
+                Priority patients ready for your clinical review
+              </p>
+            </div>
+            {/* Only when the deck is actually holding back a backlog. */}
+            {counts.pending > shownInDeck && (
+              <p className="shrink-0 text-[11px] tabular-nums text-[color:var(--ink-tertiary)]">
+                Showing {shownInDeck} of {counts.pending}
+              </p>
+            )}
+          </div>
           <PatientDeck
             rows={queue}
             tick={minuteTick}

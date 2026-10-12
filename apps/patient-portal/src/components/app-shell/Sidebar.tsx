@@ -131,21 +131,26 @@ export function Sidebar({
                         onClick={onClose}
                         aria-current={active ? "page" : undefined}
                         className={cn(
-                          "group relative flex items-center gap-2.5 rounded-md px-3 py-2 text-sm transition-colors",
+                          "group relative flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm transition-colors",
                           active
-                            ? "bg-sidebar-accent font-medium text-sidebar-accent-foreground"
+                            ? cn(
+                                "bg-sidebar-accent font-semibold",
+                                // Teal icon + text on the doctor surface; the icon
+                                // inherits currentColor so no separate icon colour
+                                // is needed.
+                                isDoctor ? "text-[#164c46]" : "text-sidebar-accent-foreground",
+                              )
                             : "text-sidebar-foreground/80 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground",
                         )}
                       >
-                        {/* Angled teal active marker — a slim wedge tapered top
-                            and bottom, sitting inside the row's left edge rather
-                            than floating beside it. Route-agnostic: shown for
-                            whichever item is active. */}
+                        {/* Active marker — a slim, soft, rounded mint/teal accent
+                            tucked against the tile's left edge (NOT a wedge or
+                            triangle). Route-agnostic: shown for whichever single
+                            item is active. */}
                         {active && (
                           <span
                             aria-hidden
-                            className="pointer-events-none absolute inset-y-1.5 left-0 w-1.5 rounded-r-sm bg-[#164c46]"
-                            style={{ clipPath: "polygon(0 0, 100% 20%, 100% 80%, 0 100%)" }}
+                            className="pointer-events-none absolute inset-y-1.5 left-0 w-1 rounded-full bg-[#3f8e7a]"
                           />
                         )}
                         <Icon className="size-4 shrink-0" />
