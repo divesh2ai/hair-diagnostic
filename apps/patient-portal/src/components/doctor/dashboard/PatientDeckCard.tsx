@@ -62,7 +62,7 @@ export function PatientDeckCard({
       className="v2-flip-scene relative h-full"
       aria-hidden={interactive ? undefined : true}
     >
-      <div className="v2-flip-inner" data-flipped={interactive && flipped ? "true" : "false"}>
+      <div className="v2-flip-inner h-full" data-flipped={interactive && flipped ? "true" : "false"}>
         <CardFace side="front">
           <FrontFace card={card} recommendedKits={recommendedKits} waitLabel={waitLabel} interactive={interactive} actionLabel={actionLabel} />
         </CardFace>
@@ -92,7 +92,7 @@ export function PatientDeckCard({
 function CardFace({ side, children }: { side: "front" | "back"; children: React.ReactNode }) {
   return (
     <div
-      className={`v2-flip-face ${side === "back" ? "v2-flip-face-back" : "v2-flip-face-front"} flex h-full flex-col justify-between overflow-hidden rounded-[20px] border border-[color:var(--v2-border-default)] bg-[color:var(--surface-elevated)] p-6 shadow-[0_1px_2px_rgba(20,35,31,0.04),0_18px_36px_-28px_rgba(20,35,31,0.22)] sm:p-7`}
+      className={`v2-flip-face ${side === "back" ? "v2-flip-face-back" : "v2-flip-face-front"} flex h-full flex-col justify-between overflow-hidden rounded-[20px] border border-[color:var(--v2-border-default)] bg-[color:var(--surface-elevated)] p-6 shadow-[0_1px_2px_rgba(20,35,31,0.04),0_18px_36px_-28px_rgba(20,35,31,0.22)] before:pointer-events-none before:absolute before:inset-y-0 before:left-0 before:w-[3px] before:bg-[color:var(--brand-primary)] before:content-[''] sm:p-7`}
     >
       {children}
     </div>

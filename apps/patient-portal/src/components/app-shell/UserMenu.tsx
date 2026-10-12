@@ -38,16 +38,16 @@ export function UserMenu({
         method="post"
         className="hidden"
       />
-      {/* A 48px avatar (size-lg) so the doctor's photo reads clearly as a
+      {/* A 52px avatar (size-xl) so the doctor's photo reads clearly as a
           portrait — the one place their face appears in the chrome. The trigger
-          is h-14, the full height of the bar, so the 48px avatar plus its 2px
-          ring (52px) keeps clearance inside the hover pill. */}
+          is h-14 (56px), so the 52px avatar plus its 1px ring (54px) keeps a
+          little clearance inside the hover pill without changing the bar height. */}
       <MenuPrimitive.Trigger className="inline-flex items-center gap-2.5 rounded-full pl-1 pr-2.5 h-14 hover:bg-muted transition-colors outline-none focus-visible:ring-2 focus-visible:ring-ring">
         <Avatar
           name={name}
           src={b.doctorAvatarUrl}
-          size="lg"
-          className="ring-2 ring-background shadow-sm"
+          size="xl"
+          className="ring-1 ring-background shadow-sm"
         />
         <span className="hidden sm:flex flex-col items-start leading-tight text-left">
           <span className="text-sm font-semibold text-foreground truncate max-w-[11rem]">

@@ -10,6 +10,9 @@ const SIZES = {
   sm: "size-8 text-xs",
   md: "size-10 text-sm",
   lg: "size-12 text-base",
+  // Slightly larger than lg (52px) for the one place a real portrait appears
+  // prominently — the header account control.
+  xl: "size-[52px] text-lg",
 } as const;
 
 export type AvatarSize = keyof typeof SIZES;
