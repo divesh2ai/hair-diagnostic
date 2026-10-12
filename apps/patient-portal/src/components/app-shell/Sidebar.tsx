@@ -19,6 +19,7 @@ export function Sidebar({
   badges,
   productLabel,
   variant = "default",
+  activePath,
 }: {
   sections: NavSection[];
   open: boolean;
@@ -28,8 +29,25 @@ export function Sidebar({
   productLabel?: string;
   // "doctor" opts into the wider ivory lockup with botanical artwork.
   variant?: "default" | "doctor";
+  // Override the path used to resolve the active item. Production omits it and
+  // the live route (usePathname) decides; a visual-test harness can pass a
+  // fixed path to render a given route as active without navigating. Pure
+  // presentation — no behaviour change when omitted.
+  activePath?: string;
 }) {
   const pathname = usePathname();
+  const currentPath = activePath ?? pathname;
+
+  // Most-specific match wins: a nav item is active only when its href is the
+  // LONGEST one that prefixes the current path. Without this, an index route
+  // ("/doctor") stays active on every one of its sub-routes ("/doctor/queue",
+  // …) and two items highlight at once. Computed once per render over all
+  // items so the rule is global, not per-section.
+  const activeHref =
+    sections
+      .flatMap((s) => s.items.map((i) => i.href))
+      .filter((h) => currentPath === h || currentPath.startsWith(h + "/"))
+      .sort((a, b) => b.length - a.length)[0] ?? null;
   const t = useT();
   const b = useBranding();
   const isDoctor = variant === "doctor";
@@ -51,7 +69,12 @@ export function Sidebar({
             ? "w-[320px] border-[#e7ddc9] bg-[#f2f5ef]"
             : "w-64 border-sidebar-border bg-sidebar",
           open ? "translate-x-0" : "-translate-x-full",
-          isDoctor && "relative overflow-hidden",
+          // `relative` (for the botanical art's positioning context) must apply
+          // only from md up. On mobile the rail is an off-canvas overlay
+          // (`fixed` + `-translate-x-full`, opened by the Header's hamburger);
+          // making it `relative` there put it back in flow and squeezed `main`
+          // to a sliver. Scope it to md+ so mobile keeps the intended overlay.
+          isDoctor && "md:relative md:overflow-hidden",
         )}
         aria-label="Primary"
       >
@@ -97,9 +120,7 @@ export function Sidebar({
               <ul className="space-y-0.5">
                 {section.items.map((item) => {
                   const Icon = NAV_ICONS[item.icon];
-                  const active =
-                    pathname === item.href ||
-                    pathname.startsWith(item.href + "/");
+                  const active = item.href === activeHref;
                   const badge = item.badgeChannel
                     ? badges?.[item.badgeChannel]
                     : undefined;
