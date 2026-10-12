@@ -23,6 +23,7 @@ export function AppShell({
   unreadNotifications,
   navBadges,
   sidebarVariant = "default",
+  activePath,
   children,
 }: {
   nav: NavSection[];
@@ -39,6 +40,9 @@ export function AppShell({
   // "doctor" opts the sidebar into the wider ivory lockup with botanical
   // artwork. Every other surface keeps the default chrome.
   sidebarVariant?: "default" | "doctor";
+  // Forwarded to Sidebar for visual-test harnesses only; production omits it so
+  // the live route decides the active item. No behaviour change when omitted.
+  activePath?: string;
   children: ReactNode;
 }) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -52,6 +56,7 @@ export function AppShell({
         badges={navBadges}
         productLabel={productLabel}
         variant={sidebarVariant}
+        activePath={activePath}
       />
       <div className="flex-1 min-w-0 flex flex-col">
         <Header

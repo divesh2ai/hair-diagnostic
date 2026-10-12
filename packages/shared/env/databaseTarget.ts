@@ -29,8 +29,8 @@
  * scripts at the repo root, and from tests.
  */
 
-/** Live patient data. Supabase project "Dr Fact Project", ap-southeast-1. */
-export const PRODUCTION_SUPABASE_REF = "gwkgopbscdftpitppgwe";
+/** Live patient data. Supabase project "drfact-hairos-production", ap-south-1. */
+export const PRODUCTION_SUPABASE_REF = "pykoyxbleowxwechotth";
 
 /** Synthetic data only. Supabase project "hairos-staging", ap-south-1. */
 export const STAGING_SUPABASE_REF = "vbkoupvduadmcxggtnsb";
@@ -89,6 +89,61 @@ export function extractSupabaseRef(value: string | undefined | null): string | n
  */
 export function isProductionRuntime(env: EnvLike): boolean {
   return env.VERCEL_ENV === "production";
+}
+
+/**
+ * True only when this process is a Vercel *preview* deployment.
+ *
+ * The positive counterpart to `isProductionRuntime`: where that proves "this is
+ * production", this proves "this is preview". Neither is true for local dev or
+ * CI (where `VERCEL_ENV` is undefined) — that is deliberate.
+ */
+export function isPreviewRuntime(env: EnvLike): boolean {
+  return env.VERCEL_ENV === "preview";
+}
+
+/**
+ * May the developer sign-in / report-export bypass run in this environment?
+ *
+ * The bypass mints a privileged session (Super Admin, service-role OTP), so the
+ * gate is a strict *allowlist* of runtimes, never the weaker "anything that is
+ * not production":
+ *
+ *   • On Vercel  → ONLY when `VERCEL_ENV === "preview"`. A production deploy
+ *     (`"production"`) and any other Vercel value (e.g. `"development"`) are
+ *     refused.
+ *   • Off Vercel (local dev, CI, a `tsx` script) → `VERCEL_ENV` is undefined, so
+ *     we fall back to `NODE_ENV !== "production"`. A local
+ *     `next build && next start` (`NODE_ENV === "production"`) is refused too.
+ *
+ * This is ONLY the environment gate. Callers must still require their own
+ * explicit opt-in flag (`ALLOW_DEV_LOGIN`) and a shared secret on top of it.
+ */
+export function isDevBypassRuntimeAllowed(env: EnvLike): boolean {
+  if (isProductionRuntime(env)) return false;
+  if (typeof env.VERCEL_ENV === "string" && env.VERCEL_ENV.length > 0) {
+    return isPreviewRuntime(env);
+  }
+  return env.NODE_ENV !== "production";
+}
+
+/**
+ * Is this process configured to talk to the PRODUCTION Supabase project,
+ * whatever its runtime claims to be?
+ *
+ * Checks every Supabase-bearing env var the app uses. A preview (or local)
+ * deployment that has been pointed — by accident or otherwise — at the
+ * production project returns true here, which the dev-bypass gates below use to
+ * refuse regardless of `VERCEL_ENV`. This is the "a deployed Preview must never
+ * mint a privileged session against production data" guard: the bypass keys off
+ * the *data target*, not just the deployment tier.
+ */
+export function isPointingAtProductionDb(env: EnvLike): boolean {
+  return [
+    extractSupabaseRef(env.DATABASE_URL),
+    extractSupabaseRef(env.DIRECT_URL),
+    extractSupabaseRef(env.NEXT_PUBLIC_SUPABASE_URL),
+  ].some((ref) => ref === PRODUCTION_SUPABASE_REF);
 }
 
 export type DatabaseTargetVerdict =
