@@ -23,13 +23,91 @@ function slugifyName(name: string): string {
     .slice(0, 60);
 }
 
+/**
+ * Authorization for POST (report generation), mirroring the GET release gate's
+ * caller model.
+ *
+ * Generation is a privileged write: it (re)creates the REPORT artifact, writes
+ * an audit row, and returns the stored report locations. Before this guard the
+ * handler ran all of that for anyone who could name an assessment id — no
+ * session, no token, no clinic check — so a caller who knew (or guessed) an id
+ * from another clinic could drive generation and read back the report's
+ * storage locations. That is the same cross-clinic exposure the GET gate and
+ * every /api/doctor and /api/consultation route already close; the POST was the
+ * one hole left open.
+ *
+ * Two callers, and only two, may generate — exactly the GET gate's model minus
+ * the super-admin peek having no meaning for a write it does not need:
+ *   • CLINIC SESSION — an authenticated caller whose clinic OWNS the
+ *     assessment (Super Admin excepted). Never a silent fall-back to a default
+ *     clinic: a session with no clinic, or the wrong clinic, is refused.
+ *   • PATIENT TOKEN  — a signed review token bound to THIS assessment id,
+ *     supplied as `?t=` or `{ token }` in the body.
+ *
+ * Cross-clinic and unauthenticated callers are denied. The caller is resolved
+ * BEFORE the assessment is looked up, so an unauthorized caller cannot use the
+ * response code as an existence oracle: an anonymous caller (no session, no
+ * token) and a token bound to a different assessment are both refused with the
+ * SAME 401 whether or not the id exists, and neither triggers a lookup. The
+ * only callers who can tell a real id from a missing one (404) are those
+ * already entitled to that assessment — an owning-clinic session, a Super
+ * Admin, or the holder of a token minted for exactly this id — which is the
+ * same disclosure boundary the GET gate draws.
+ */
+type PdfPostCaller =
+  | { kind: 'clinic'; clinicId: string }
+  | { kind: 'super_admin' }
+  | { kind: 'patient_token' };
+
+async function resolvePdfPostCaller(
+  req: Request,
+  bodyToken: string | null,
+  assessmentId: string,
+): Promise<PdfPostCaller | NextResponse> {
+  try {
+    const ctx = await getClinicContext();
+    if (isSuperAdmin(ctx.role)) return { kind: 'super_admin' };
+    // A clinic session authorizes only through its OWN clinic membership —
+    // never a client-supplied id and never a default. A session that carries
+    // no clinic is refused rather than falling through.
+    if (!ctx.clinicId) {
+      return NextResponse.json({ error: 'forbidden' }, { status: 403 });
+    }
+    return { kind: 'clinic', clinicId: ctx.clinicId };
+  } catch (err) {
+    const token = new URL(req.url).searchParams.get('t') ?? bodyToken;
+    if (token) {
+      const result = verifyReviewToken(token);
+      // Bound to THIS assessment id, or nothing. A token for another
+      // assessment is refused here, before the id is ever looked up.
+      if (result.ok && result.assessmentId === assessmentId) {
+        return { kind: 'patient_token' };
+      }
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+    const resp = handleAuthError(err);
+    if (resp) return resp;
+    throw err;
+  }
+}
+
 export async function POST(req: Request) {
   try {
-    const { assessmentId } = await req.json();
+    const body = (await req.json().catch(() => null)) as
+      | { assessmentId?: unknown; token?: unknown }
+      | null;
+    const assessmentId =
+      typeof body?.assessmentId === 'string' ? body.assessmentId : '';
+    const bodyToken = typeof body?.token === 'string' ? body.token : null;
 
     if (!assessmentId) {
       return NextResponse.json({ error: 'Missing assessmentId' }, { status: 400 });
     }
+
+    // Resolve + authorize the caller BEFORE any DB lookup, so no existence
+    // signal leaks to an unauthorized caller. See resolvePdfPostCaller.
+    const caller = await resolvePdfPostCaller(req, bodyToken, assessmentId);
+    if (caller instanceof NextResponse) return caller;
 
     const assessment = await prisma.assessment.findUnique({
       where: { id: assessmentId },
@@ -38,6 +116,12 @@ export async function POST(req: Request) {
 
     if (!assessment) {
       return NextResponse.json({ error: 'Assessment not found' }, { status: 404 });
+    }
+
+    // A clinic session may generate only for its own clinic's assessment.
+    // (Super Admin and a token bound to this id are already scoped.)
+    if (caller.kind === 'clinic' && assessment.clinicId !== caller.clinicId) {
+      return NextResponse.json({ error: 'Cross-clinic access denied' }, { status: 403 });
     }
 
     if (!assessment.patient || !assessment.clinic) {
