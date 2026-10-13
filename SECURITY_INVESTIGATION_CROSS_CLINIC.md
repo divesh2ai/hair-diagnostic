@@ -139,3 +139,55 @@ Commit: see fix branch `claude/awesome-johnson-y7nwy2`.
 7. **SECURITY VERDICT** — see PR summary. The cross-clinic authorization boundary is intact on
    the traced surfaces; the PDF-POST gap is closed by this change. (Note: pre-existing
    clinical-engine and staging-E2E gates from PR #24 are unchanged and out of scope here.)
+
+---
+
+## 6. Release verification round (PR #26)
+
+**Deployed commit SHAs (Vercel project `hairos`, previews; production project
+`pykoyxbleowxwechotth` untouched):**
+
+| Branch | Commit | Vercel |
+|---|---|---|
+| `claude/awesome-johnson-y7nwy2` (PR #26 head) | `cce213c` → `7e…` after this round | READY |
+| `claude/admiring-wright-v5lmck` (PR #24 head / RC) | `ac54ba0` | READY — **no PDF-POST fix** |
+| `claude/gallant-darwin-cdltmd` (RC base) | `8efd636` | READY |
+| `claude/acube-aesthetics-p0-0odx3g` | `6e330162` | **ERROR** |
+
+There is **no stable staging alias** in the project — every deployment is a
+per-commit preview. No preview earlier than PR #26 contains the PDF-POST
+authorization, so if Dr Avinash viewed the symptom on a deployed preview it was
+a build predating this fix (and, for the dashboard itself, predating the
+launch-gate clinic-scoping on `8efd636`).
+
+**Disputed assessment ownership (staging DB):** the latest `drfact-mumbai-test`
+submission `cmv6hg0kf002ofqcupxdrl72f` (2026‑10‑13 09:32) is stored under
+`clinicId = cmsuip5jk0000u6hz3hqduv8y` (DrFACT Mumbai Test); patient clinic
+matches; `reviewingDoctorId = null`; status COMPLETED / PENDING review. It is
+**not** owned by Acube (`cdfc6cf3c33d1776b06c3f66e`) and **not** assigned to Dr
+Avinash (`c056d02455aa7cf698195d8d2`, clinic Acube). The stored record contradicts
+the "appeared in Acube" symptom → the symptom was navigation/stale-build, not
+ownership.
+
+**Original symptom — explained:** yes. Thank-you URL is navigation-only; stored
+ownership is correct; dashboards are clinic-scoped on current code. No stored
+record places a DrFACT-Mumbai-Test assessment under Acube/Dr Avinash.
+
+**PDF-POST patch review outcome:** `reviewToken.ts` is sound (HMAC-SHA256,
+payload bound to `assessmentId` + expiry, constant-time compare, secret required
+in prod). One real issue found **and fixed** in this round: the first patch
+looked up the assessment (and returned 404 for a miss) *before* authorizing,
+giving an anonymous caller a 404-vs-401 existence oracle. The caller is now
+resolved **before** any DB lookup — anonymous and wrong-assessment-token callers
+get a uniform 401 with no lookup — matching the GET gate's disclosure boundary.
+
+**Deployed two-clinic browser/API tests — NOT executed here.** This cloud
+environment's network policy denies outbound HTTPS to `*.vercel.app` (egress
+proxy `connect_rejected` / 403), so the preview app cannot be driven from this
+sandbox. A runnable script is provided at
+`scripts/verify-cross-clinic-isolation.sh` (API-level anonymous + cross-clinic
+denial on `/api/assessment/pdf`, `/api/doctor/reports`, patient detail) plus the
+manual two-clinic browser checklist, to run from a network-allowed host against
+each preview. Isolation is otherwise evidenced by code review (every surface
+scoped) and the unit suites (pdf-release-gate 15/15, doctor-authz 11/11,
+doctor-route-scope 72/72).

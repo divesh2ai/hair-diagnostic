@@ -298,12 +298,15 @@ describe("POST /api/assessment/pdf — generation authorization", () => {
     expect(generateAndStoreReports).not.toHaveBeenCalled();
   });
 
-  it("401 for an anonymous caller with no token", async () => {
+  it("401 for an anonymous caller with no token — and no existence lookup (no oracle)", async () => {
     getClinicContext.mockRejectedValueOnce(new UnauthorizedError());
     assessmentFindUnique.mockResolvedValueOnce(postAssessment(POST_CLINIC));
     const res = await POST(postReq({ assessmentId: "abc" }));
     expect(res.status).toBe(401);
     expect(generateAndStoreReports).not.toHaveBeenCalled();
+    // The caller is refused before the id is looked up, so the same 401 is
+    // returned whether or not the assessment exists — no existence oracle.
+    expect(assessmentFindUnique).not.toHaveBeenCalled();
   });
 
   it("403 for a clinic session from a DIFFERENT clinic (no default fallback)", async () => {
@@ -321,6 +324,8 @@ describe("POST /api/assessment/pdf — generation authorization", () => {
     const res = await POST(postReq({ assessmentId: "abc", token: "t" }));
     expect(res.status).toBe(401);
     expect(generateAndStoreReports).not.toHaveBeenCalled();
+    // Token bound to another assessment is refused before the lookup too.
+    expect(assessmentFindUnique).not.toHaveBeenCalled();
   });
 
   it("allows a clinic session that OWNS the assessment's clinic", async () => {

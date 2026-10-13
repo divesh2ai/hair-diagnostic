@@ -44,30 +44,45 @@ function slugifyName(name: string): string {
  *   • PATIENT TOKEN  — a signed review token bound to THIS assessment id,
  *     supplied as `?t=` or `{ token }` in the body.
  *
- * Cross-clinic and unauthenticated callers are denied; a cross-clinic clinic
- * session gets 403, an anonymous caller 401. Existence is not confirmed to an
- * unauthorized caller beyond the 404 the handler already returns for a genuine
- * miss, which is checked before this runs.
+ * Cross-clinic and unauthenticated callers are denied. The caller is resolved
+ * BEFORE the assessment is looked up, so an unauthorized caller cannot use the
+ * response code as an existence oracle: an anonymous caller (no session, no
+ * token) and a token bound to a different assessment are both refused with the
+ * SAME 401 whether or not the id exists, and neither triggers a lookup. The
+ * only callers who can tell a real id from a missing one (404) are those
+ * already entitled to that assessment — an owning-clinic session, a Super
+ * Admin, or the holder of a token minted for exactly this id — which is the
+ * same disclosure boundary the GET gate draws.
  */
-async function authorizePdfGeneration(
+type PdfPostCaller =
+  | { kind: 'clinic'; clinicId: string }
+  | { kind: 'super_admin' }
+  | { kind: 'patient_token' };
+
+async function resolvePdfPostCaller(
   req: Request,
   bodyToken: string | null,
-  assessmentClinicId: string,
   assessmentId: string,
-): Promise<NextResponse | null> {
+): Promise<PdfPostCaller | NextResponse> {
   try {
     const ctx = await getClinicContext();
-    if (isSuperAdmin(ctx.role)) return null;
-    // Strict equality only. A null/empty clinic context, or any other clinic,
-    // is a denial — authorization comes from the caller's own clinic
-    // membership, never from a client-supplied id and never from a default.
-    if (ctx.clinicId && ctx.clinicId === assessmentClinicId) return null;
-    return NextResponse.json({ error: 'Cross-clinic access denied' }, { status: 403 });
+    if (isSuperAdmin(ctx.role)) return { kind: 'super_admin' };
+    // A clinic session authorizes only through its OWN clinic membership —
+    // never a client-supplied id and never a default. A session that carries
+    // no clinic is refused rather than falling through.
+    if (!ctx.clinicId) {
+      return NextResponse.json({ error: 'forbidden' }, { status: 403 });
+    }
+    return { kind: 'clinic', clinicId: ctx.clinicId };
   } catch (err) {
     const token = new URL(req.url).searchParams.get('t') ?? bodyToken;
     if (token) {
       const result = verifyReviewToken(token);
-      if (result.ok && result.assessmentId === assessmentId) return null;
+      // Bound to THIS assessment id, or nothing. A token for another
+      // assessment is refused here, before the id is ever looked up.
+      if (result.ok && result.assessmentId === assessmentId) {
+        return { kind: 'patient_token' };
+      }
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
     const resp = handleAuthError(err);
@@ -89,6 +104,11 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Missing assessmentId' }, { status: 400 });
     }
 
+    // Resolve + authorize the caller BEFORE any DB lookup, so no existence
+    // signal leaks to an unauthorized caller. See resolvePdfPostCaller.
+    const caller = await resolvePdfPostCaller(req, bodyToken, assessmentId);
+    if (caller instanceof NextResponse) return caller;
+
     const assessment = await prisma.assessment.findUnique({
       where: { id: assessmentId },
       include: { patient: true, clinic: true, reviewingDoctor: true },
@@ -98,15 +118,11 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Assessment not found' }, { status: 404 });
     }
 
-    // Authorize BEFORE any generation, write, or disclosure of report
-    // locations. See authorizePdfGeneration.
-    const denied = await authorizePdfGeneration(
-      req,
-      bodyToken,
-      assessment.clinicId,
-      assessmentId,
-    );
-    if (denied) return denied;
+    // A clinic session may generate only for its own clinic's assessment.
+    // (Super Admin and a token bound to this id are already scoped.)
+    if (caller.kind === 'clinic' && assessment.clinicId !== caller.clinicId) {
+      return NextResponse.json({ error: 'Cross-clinic access denied' }, { status: 403 });
+    }
 
     if (!assessment.patient || !assessment.clinic) {
       return NextResponse.json(
