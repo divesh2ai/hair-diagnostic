@@ -71,15 +71,33 @@ jest.mock("@prisma/client", () => ({
   },
 }));
 
+const generateAndStoreReports = jest.fn<() => Promise<Record<string, unknown>>>();
 jest.mock("@hairos/packages/pdf-engine", () => ({
-  generateAndStoreReports: jest.fn(),
+  generateAndStoreReports: () => generateAndStoreReports(),
+}));
+
+// POST authorizes via the signed review token when there is no clinic session,
+// exactly as the GET download gate does. Mock it so the token branch is
+// exercised without minting real HMACs.
+const verifyReviewToken =
+  jest.fn<(t: string) => { ok: boolean; assessmentId?: string }>();
+jest.mock("@/lib/reviewToken", () => ({
+  verifyReviewToken: (t: string) => verifyReviewToken(t),
 }));
 
 // eslint-disable-next-line @typescript-eslint/no-var-requires
-const { GET } = require("../../apps/patient-portal/src/app/api/assessment/pdf/route");
+const { GET, POST } = require("../../apps/patient-portal/src/app/api/assessment/pdf/route");
 
 function getReq(id: string): Request {
   return new Request(`http://localhost/api/assessment/pdf?id=${id}`, { method: "GET" });
+}
+
+function postReq(payload: Record<string, unknown>, query = ""): Request {
+  return new Request(`http://localhost/api/assessment/pdf${query}`, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify(payload),
+  });
 }
 
 beforeEach(() => {
@@ -88,6 +106,8 @@ beforeEach(() => {
   artifactFindUnique.mockReset();
   assessmentFindUnique.mockReset();
   consultationFindUnique.mockReset();
+  generateAndStoreReports.mockReset();
+  verifyReviewToken.mockReset();
 
   isSuperAdmin.mockImplementation((r) => r === "SUPER_ADMIN");
 });
@@ -240,5 +260,94 @@ describe("GET /api/assessment/pdf — release gate", () => {
     const res = await GET(getReq("abc"));
     expect(res.status).toBe(200);
     (global as { fetch: unknown }).fetch = originalFetch;
+  });
+});
+
+// ── POST /api/assessment/pdf — generation authorization ──────────────────────
+// Report GENERATION is a privileged write (it (re)creates the REPORT artifact,
+// writes an audit row and returns the stored report locations). It used to run
+// for anyone who could name an assessment id — no session, no token, no clinic
+// check — so a caller could drive generation for another clinic's assessment
+// and read back its storage locations. These lock the gate: a clinic session
+// must OWN the assessment's clinic, or the caller must present a review token
+// bound to THIS assessment; everyone else is denied and no default clinic is
+// ever assumed.
+const POST_CLINIC = "clinic-owner";
+
+function postAssessment(clinicId: string) {
+  return {
+    patient: { name: "P", age: 30, gender: "female" },
+    clinic: { name: "Owner Clinic" },
+    clinicId,
+    reviewingDoctor: null,
+  };
+}
+
+describe("POST /api/assessment/pdf — generation authorization", () => {
+  it("400 without an assessment id", async () => {
+    const res = await POST(postReq({}));
+    expect(res.status).toBe(400);
+    expect(generateAndStoreReports).not.toHaveBeenCalled();
+  });
+
+  it("404 when the assessment does not exist", async () => {
+    getClinicContext.mockResolvedValueOnce({ userId: "u", role: "DOCTOR", clinicId: POST_CLINIC });
+    assessmentFindUnique.mockResolvedValueOnce(null);
+    const res = await POST(postReq({ assessmentId: "missing" }));
+    expect(res.status).toBe(404);
+    expect(generateAndStoreReports).not.toHaveBeenCalled();
+  });
+
+  it("401 for an anonymous caller with no token", async () => {
+    getClinicContext.mockRejectedValueOnce(new UnauthorizedError());
+    assessmentFindUnique.mockResolvedValueOnce(postAssessment(POST_CLINIC));
+    const res = await POST(postReq({ assessmentId: "abc" }));
+    expect(res.status).toBe(401);
+    expect(generateAndStoreReports).not.toHaveBeenCalled();
+  });
+
+  it("403 for a clinic session from a DIFFERENT clinic (no default fallback)", async () => {
+    getClinicContext.mockResolvedValueOnce({ userId: "u", role: "DOCTOR", clinicId: "other-clinic" });
+    assessmentFindUnique.mockResolvedValueOnce(postAssessment(POST_CLINIC));
+    const res = await POST(postReq({ assessmentId: "abc" }));
+    expect(res.status).toBe(403);
+    expect(generateAndStoreReports).not.toHaveBeenCalled();
+  });
+
+  it("401 when the token is valid but bound to a DIFFERENT assessment", async () => {
+    getClinicContext.mockRejectedValueOnce(new UnauthorizedError());
+    assessmentFindUnique.mockResolvedValueOnce(postAssessment(POST_CLINIC));
+    verifyReviewToken.mockReturnValueOnce({ ok: true, assessmentId: "someone-else" });
+    const res = await POST(postReq({ assessmentId: "abc", token: "t" }));
+    expect(res.status).toBe(401);
+    expect(generateAndStoreReports).not.toHaveBeenCalled();
+  });
+
+  it("allows a clinic session that OWNS the assessment's clinic", async () => {
+    getClinicContext.mockResolvedValueOnce({ userId: "u", role: "DOCTOR", clinicId: POST_CLINIC });
+    assessmentFindUnique.mockResolvedValueOnce(postAssessment(POST_CLINIC));
+    generateAndStoreReports.mockResolvedValueOnce({ patientPdfUrl: "reports/p.pdf" });
+    const res = await POST(postReq({ assessmentId: "abc" }));
+    expect(res.status).toBe(200);
+    expect(generateAndStoreReports).toHaveBeenCalledTimes(1);
+  });
+
+  it("allows a review token bound to THIS assessment", async () => {
+    getClinicContext.mockRejectedValueOnce(new UnauthorizedError());
+    assessmentFindUnique.mockResolvedValueOnce(postAssessment(POST_CLINIC));
+    verifyReviewToken.mockReturnValueOnce({ ok: true, assessmentId: "abc" });
+    generateAndStoreReports.mockResolvedValueOnce({ patientPdfUrl: "reports/p.pdf" });
+    const res = await POST(postReq({ assessmentId: "abc", token: "t" }));
+    expect(res.status).toBe(200);
+    expect(generateAndStoreReports).toHaveBeenCalledTimes(1);
+  });
+
+  it("Super Admin may generate across clinics", async () => {
+    getClinicContext.mockResolvedValueOnce({ userId: "sa", role: "SUPER_ADMIN", clinicId: null });
+    assessmentFindUnique.mockResolvedValueOnce(postAssessment("any-other-clinic"));
+    generateAndStoreReports.mockResolvedValueOnce({ patientPdfUrl: "reports/p.pdf" });
+    const res = await POST(postReq({ assessmentId: "abc" }));
+    expect(res.status).toBe(200);
+    expect(generateAndStoreReports).toHaveBeenCalledTimes(1);
   });
 });
