@@ -77,23 +77,7 @@ export class StaticApprovedKnowledgeRetriever implements KnowledgeRetriever {
       .filter((entry) => metadataMatches(entry, query))
       .filter((entry) => !query.topics?.length || query.topics.includes(entry.topic))
       .filter((entry) => !query.systems?.length || query.systems.includes(entry.knowledgeSystem))
-      .filter((entry) => {
-        if (!requiredEntity) return true;
-        const mentions = `${entry.title} ${entry.content} ${entry.keywords.join(" ")}`.toLowerCase().includes(requiredEntity);
-        if (!mentions) return false;
-        // A kit-controlled record, or a five-kit controlled supporting-topics
-        // record, that merely names a causation-gap condition (e.g. a Meta-B
-        // variant listing PCOS / thyroid / menopause as a target, or the
-        // "iron, thyroid and insulin-resistance supporting topics" doctor note)
-        // is NOT approved evidence for how that condition causes hair loss.
-        // Requiring a genuine patient-education condition source makes the
-        // assistant abstain on such a gap rather than pass off kit-oriented copy
-        // as medical causation. Non-gap topics (e.g. iron deficiency, gut health)
-        // never reach this branch, so they still answer from those records.
-        const isKitControlled = !!entry.metadata?.canonicalEntity && entry.metadata.canonicalEntity.startsWith("KIT_");
-        const isFiveKitControlled = entry.id.startsWith("FIVEKIT_");
-        return !isKitControlled && !isFiveKitControlled;
-      })
+      .filter((entry) => !requiredEntity || `${entry.title} ${entry.content} ${entry.keywords.join(" ")}`.toLowerCase().includes(requiredEntity))
       .filter((entry) => directlyRelevant(entry, query, queryWords))
       .map((entry) => {
         const hay = words(`${entry.title} ${entry.content} ${entry.keywords.join(" ")}`);

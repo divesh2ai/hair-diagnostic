@@ -61,19 +61,6 @@ function intentFor(text: string, domain: PlatformDomain, entities: ReturnType<ty
   if (/what pathways|which pathways|pathways? does|pathways?.*target/.test(text)) return "KIT_PATHWAYS";
   if (/clinical factors|clinically relevant|clinical relevance|factors.*assess/.test(text)) return "KIT_CLINICAL_RELEVANCE";
   if (/(?:explain|summari[sz]e).*(?:kit|phenotype).*(?:bullet|points)|(?:kit|phenotype).*(?:in )?\d+ bullets?/.test(text)) return "KIT_SUMMARY";
-  // A question naming a hair CONDITION itself (not a kit SKU) and asking what it
-  // is / how it behaves is condition education — even when a kit shares the
-  // condition's name (e.g. the "Hair Fact Alopecia Areata" kit vs the disease).
-  // Route it to general education so the approved condition source is used,
-  // rather than a kit overview that holds no such knowledge. Kit-qualifier words
-  // keep genuine kit questions (e.g. "what is TE Gold") on the kit path.
-  // Scoped to alopecia areata: it is the one hair condition whose name collides
-  // with a catalogue KIT ("Hair Fact Alopecia Areata"), which otherwise forces a
-  // KIT_OVERVIEW that holds no knowledge. Other conditions (e.g. telogen
-  // effluvium) keep their existing CONDITION_EXPLANATION routing.
-  const namesAlopeciaAreata = /\balopecia areata\b/.test(text);
-  const hasKitQualifier = /\bkit\b|\bgold\b|\bfact\b|\bpro\b|\bmeta[\s-]?b\b|\bimmune\b|\bphenotype\b/.test(text);
-  if (namesAlopeciaAreata && !hasKitQualifier && /what is|explain|how does|why does|tell me about/.test(text)) return "HAIR_EDUCATION";
   if (hasKitEntity && /ingredient|ingredients|formulation/.test(text) && /explain|work together|how|why|mechanism|rationale|role|roles/.test(text)) return "MIXED_KIT_INFORMATION";
   if (/(price|mrp|cost|how much|composition|contains|inside kit|products in|what comes in)/.test(text) && /(why|purpose|used for|addresses|mechanism|objective)/.test(text)) return "MIXED_KIT_INFORMATION";
   if (/price|mrp|cost|how much/.test(text)) return "CATALOGUE_PRICE";
