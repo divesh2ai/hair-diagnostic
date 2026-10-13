@@ -126,7 +126,11 @@ export default function PreviewSandboxPage() {
         const response = await fetch("/api/assessment/pdf", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ assessmentId }),
+          // Generation is now authorized exactly like the download (GET) gate:
+          // the patient's signed review token travels with the request so the
+          // server can bind it to this assessment. Without it an anonymous
+          // caller can no longer trigger generation for an arbitrary id.
+          body: JSON.stringify({ assessmentId, token: previewToken ?? undefined }),
         });
 
         if (!response.ok) {

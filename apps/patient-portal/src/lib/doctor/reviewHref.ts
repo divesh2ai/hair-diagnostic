@@ -18,6 +18,8 @@
 // `skin_` either has a surface listed below or goes to the holding page. A new
 // skin track added tomorrow cannot inherit the hair route by omission.
 
+import { isSkinFactConcern } from "@/lib/verticals";
+
 /** Skin concerns with a real doctor review surface. */
 const SKIN_ROUTES: Record<string, string> = {
   skin_pigmentation: "skin/pigmentation",
@@ -44,7 +46,7 @@ export function reviewHref(row: {
   if (known) return `/doctor/reports/${row.id}/${known}`;
   // Every skin concern is accounted for: either it has a surface above, or it
   // goes to the holding page. Neither branch can reach the hair consultation.
-  if (concern?.startsWith("skin_")) {
+  if (isSkinFactConcern(concern)) {
     return `/doctor/reports/${row.id}/${SKIN_REVIEW_UNAVAILABLE}`;
   }
   return `/doctor/reports/${row.id}`;
@@ -59,5 +61,5 @@ export function reviewHref(row: {
  * never disagree about which tracks are reviewable.
  */
 export function isReviewUnavailable(concern: string | null | undefined): boolean {
-  return Boolean(concern?.startsWith("skin_")) && !SKIN_ROUTES[concern as string];
+  return isSkinFactConcern(concern) && !SKIN_ROUTES[concern as string];
 }

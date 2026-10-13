@@ -1,8 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireDoctorContext } from "@/lib/auth";
-import { getKitInfo } from "@hairos/packages/registries/kits/info";
-import { priceForKit, formatInr, totalRevenueInr } from "@/lib/pricing/kitPrices";
+import { buildDoctorOrderPricing } from "@/lib/doctor/orderPricing";
 
 // GET /api/doctor/orders — recent KitOrderIntent rows for the caller's own
 // clinic. Feeds the /doctor/orders table.
@@ -31,11 +30,14 @@ import { priceForKit, formatInr, totalRevenueInr } from "@/lib/pricing/kitPrices
 // not show. A doctor chasing "did Meera get the right kits?" had to open the
 // clinical review and read the protocol.
 //
-// Names and prices are resolved server-side against the same registry and
-// price table the patient's cart uses (`getKitInfo` + `priceForKit`), so the
-// doctor's order list and the patient's cart cannot disagree about what was
-// ordered or what it costs. Resolving them in the client would be a second
-// source of truth for money.
+// Names and prices are resolved server-side through the SAME governance
+// authority the patient's cart bills against (`buildDoctorOrderPricing` →
+// `evaluateOrderForPatientCharge`), so the doctor's order list and the patient's
+// cart cannot disagree about what was ordered or what it costs. A kit that is
+// not resolved to an approved catalogue price shows the cart's own review /
+// pending state rather than an invented ₹5,500 placeholder, and a part-priced
+// order carries no total. Resolving this in the client would be a second source
+// of truth for money. (See lib/doctor/orderPricing for the full rationale.)
 //
 // An id with no registry entry keeps its raw id as the name rather than being
 // dropped: a historic order may reference a kit that is no longer offerable,
@@ -68,24 +70,23 @@ export async function GET() {
   });
 
   return NextResponse.json({
-    items: rows.map((r) => ({
-      id: r.id,
-      status: r.status,
-      kitCount: r.kitIds.length,
-      kitIds: r.kitIds,
-      lineItems: r.kitIds.map((kitId) => ({
-        kitId,
-        displayName: getKitInfo(kitId)?.displayName ?? kitId,
-        priceInr: priceForKit(kitId),
-        priceLabel: formatInr(priceForKit(kitId)),
-      })),
-      totalInr: totalRevenueInr(r.kitIds),
-      totalLabel: formatInr(totalRevenueInr(r.kitIds)),
-      patientName: r.assessment?.patient?.name ?? "—",
-      assessmentId: r.assessment?.id ?? null,
-      doctorName: r.doctor?.name ?? "—",
-      clinicName: r.clinic?.name ?? "—",
-      createdAt: r.createdAt.toISOString(),
-    })),
+    items: rows.map((r) => {
+      const pricing = buildDoctorOrderPricing(r.kitIds);
+      return {
+        id: r.id,
+        status: r.status,
+        kitCount: r.kitIds.length,
+        kitIds: r.kitIds,
+        lineItems: pricing.lineItems,
+        chargeable: pricing.chargeable,
+        totalInr: pricing.totalInr,
+        totalLabel: pricing.totalLabel,
+        patientName: r.assessment?.patient?.name ?? "—",
+        assessmentId: r.assessment?.id ?? null,
+        doctorName: r.doctor?.name ?? "—",
+        clinicName: r.clinic?.name ?? "—",
+        createdAt: r.createdAt.toISOString(),
+      };
+    }),
   });
 }
