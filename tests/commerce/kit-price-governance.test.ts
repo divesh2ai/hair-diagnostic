@@ -228,11 +228,18 @@ describe("kit pricing authority", () => {
     "TE_GOLD_VEG",
   ];
 
+  // LACTIHEALTH approved for patient sale at ₹2,006 (commit 145a22a); its veg
+  // variant LACTIHEALTH_VEG priced distinctly at ₹2,454 (commit a83de11). Both
+  // are present in APPROVED_KIT_PRICES_MINOR and resolve to PRICE_APPROVED; this
+  // list keeps the test's expected union in step with those approved records.
+  const APPROVED_LACTIHEALTH = ["LACTIHEALTH", "LACTIHEALTH_VEG"];
+
   it("7. approves exactly the reconciled + patient-sale kits — nothing else", () => {
     const approved = [
       ...RECONCILED_2026_09_08,
       ...APPROVED_2026_09_19,
       ...APPROVED_2026_09_28,
+      ...APPROVED_LACTIHEALTH,
     ];
     expect(Object.keys(APPROVED_KIT_PRICES_MINOR).sort()).toEqual(
       [...approved].sort(),
@@ -252,15 +259,15 @@ describe("kit pricing authority", () => {
     // is deliberately absent from this list now — it was approved for patient
     // sale on 2026-09-19 (see APPROVED_2026_09_19) — as were FH_WELL_3, PCOS,
     // HBR, PERI_MENOPAUSE, PERI_MENOPAUSE_VEG and TE_GOLD_VEG on 2026-09-28
-    // (APPROVED_2026_09_28); every kit that remains here must still be unable to
-    // charge a patient.
+    // (APPROVED_2026_09_28), and LACTIHEALTH (+ its veg variant) subsequently
+    // (see APPROVED_LACTIHEALTH); every kit that remains here must still be
+    // unable to charge a patient.
     for (const kitId of [
       "PRO_FACT_THYROID_CARE",
       "POST_MENOPAUSE",
       "EARLY_GREYING_CARE_GOLD",
       "HEALTHY_9",
       "ALOPECIA_AREATA",
-      "LACTIHEALTH",
     ]) {
       expect(getKitPrice(kitId).status).not.toBe("PRICE_APPROVED");
     }
