@@ -26,7 +26,6 @@ import { signals } from '../../clinical-engine/signals';
 const PERI_KIT: KitId = 'HAIR FACT PERI MENOPAUSE';
 const MENO_KIT: KitId = 'PRO FACT META B MENOPAUSE';
 const POST_KIT: KitId = 'PRO FACT META B POSTMENOPAUSE';
-const META_B_PCOS: KitId = 'PRO FACT META B PCOS';
 
 const ALL_MENOPAUSE_KITS: KitId[] = [PERI_KIT, MENO_KIT, POST_KIT, 'HAIR FACT PERI MENOPAUSE VEG'];
 
@@ -75,26 +74,19 @@ export function applyMenopauseContinuumInjectionRule(
   // Note: Peri selected but age < 40 → no PERI kit; PCOS path applies if PCOS present.
   // Note: Peri selected at age ≥ 50 → patient is past peri; do not inject PERI.
 
-  // ── PCOS vs menopause mutex (locked age gates).
-  if (pcos && demandedKit !== null) {
-    // Patient is in menopause age window → strip META B PCOS, menopause wins.
-    if (phases.includes(META_B_PCOS)) {
-      phases = phases.filter((k) => k !== META_B_PCOS);
-      rules.push(
-        `MENOPAUSE_VS_PCOS: age ${age} — menopause continuum wins. PRO FACT META B PCOS stripped to avoid hormonal-axis kit duplication.`,
-      );
-    }
-  } else if (pcos && demandedKit === null && age < 40) {
-    // Patient is in PCOS age window → strip any menopause kit that may have
-    // leaked in from base sequences; PCOS path applies.
-    const before = phases.length;
-    phases = phases.filter((k) => !ALL_MENOPAUSE_KITS.includes(k));
-    if (phases.length < before) {
-      rules.push(
-        `PCOS_VS_MENOPAUSE: age ${age} (< 40) — PCOS wins. Menopause-continuum kits stripped.`,
-      );
-    }
-  }
+  // ── PCOS ↔ menopause overlap — age-only suppression REMOVED (2026-10).
+  //
+  // ⚠️ SUPERSEDED. This legacy injection rule has no caller in src/ (the live
+  // path is resolveKitInteractions). Its former age-only MENO_PCOS mutex —
+  // which stripped META B PCOS, or stripped the menopause kits when age < 40 —
+  // is deleted here so the file cannot reintroduce the Rohini defect if it is
+  // ever re-wired. Co-occurring PCOS + menopause is now handled by
+  // assessHormonalAxisOverlap: both conditions recognised, the non-primary kit
+  // held for doctor approval, never discarded on age. Do NOT re-add an
+  // age-based strip here without the same clinical sign-off.
+  //
+  // (No kit stripping performed. The demanded menopause kit is still injected
+  // below when the patient declared the signal, which remains correct.)
 
   // ── Inject demanded menopause kit when not already present.
   if (demandedKit !== null && !phases.includes(demandedKit)) {

@@ -102,11 +102,50 @@ export function buildKitSequence(
     });
   }
 
+  // ── Hormonal-axis overlap: hold the non-primary kit for doctor approval ────
+  //
+  // ⚠️ CLINICAL CHANGE — REQUIRES CLINICAL SIGN-OFF BEFORE DEPLOY.
+  //
+  // When PCOS co-occurs with a menopause-continuum condition, BOTH stay
+  // recognised (resolveKitInteractions no longer age-discards either), but the
+  // two hormonal-axis kits must not be auto-co-dispensed. The overlap records a
+  // non-binding default primary; we auto-dispense that kit and HOLD the other
+  // for the treating doctor. The held condition still appears in the protocol
+  // label and the trace, so diagnosis / doctor-review / PDF all show both
+  // conditions plus the pending approval. A held kit is only withheld when no
+  // other (independent) condition also requires it.
+  const nonHeldKits = new Set(
+    conditionKits
+      .filter(
+        (ck) =>
+          !resolution.overlaps.some(
+            (o) => o.verdict === 'REQUIRES_DOCTOR_REVIEW' && o.heldCondition === ck.condition,
+          ),
+      )
+      .map((ck) => ck.kit),
+  );
+  const heldForDoctorReview: { condition: ConditionId; kit: KitId }[] = [];
+  const retainedConditionKits = conditionKits.filter((ck) => {
+    const held = resolution.overlaps.some(
+      (o) => o.verdict === 'REQUIRES_DOCTOR_REVIEW' && o.heldCondition === ck.condition,
+    );
+    if (held && !nonHeldKits.has(ck.kit)) {
+      heldForDoctorReview.push({ condition: ck.condition, kit: ck.kit });
+      return false;
+    }
+    return true;
+  });
+  for (const { condition, kit } of heldForDoctorReview) {
+    appliedRules.push(
+      `HORMONAL_AXIS_HOLD: ${kit} (${condition}) withheld from auto-dispense — overlapping hormonal-axis protocol requires doctor approval before co-prescription. Condition remains recognised and on the doctor's review.`,
+    );
+  }
+
   // ── Dedup (same kit reachable from multiple conditions) ────────────────────
   const dedupKits: KitId[] = [];
   const dedupRationales = new Map<KitId, string[]>();
   const dedupConditions = new Map<KitId, ConditionId[]>();
-  for (const { condition, kit, rationale } of conditionKits) {
+  for (const { condition, kit, rationale } of retainedConditionKits) {
     if (!dedupKits.includes(kit)) dedupKits.push(kit);
     const r = dedupRationales.get(kit) ?? [];
     r.push(rationale);
