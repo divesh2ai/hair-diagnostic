@@ -40,11 +40,20 @@ import "@/styles/doctor-tokens.css";
 // review task. A table optimises for scanning fifty rows, and nobody scans
 // fifty kit orders.
 
+type LineCommercialState =
+  | "CHARGEABLE"
+  | "IDENTITY_REVIEW"
+  | "UNAVAILABLE"
+  | "PRICE_PENDING";
+
 type LineItem = {
   kitId: string;
   displayName: string;
-  priceInr: number;
-  priceLabel: string;
+  commercialState: LineCommercialState;
+  // Null when the line has no approved, chargeable price — the view then shows
+  // the cart's own review/pending state instead of an invented number.
+  priceInr: number | null;
+  priceLabel: string | null;
 };
 
 type Order = {
@@ -53,14 +62,30 @@ type Order = {
   kitCount: number;
   kitIds: string[];
   lineItems: LineItem[];
-  totalInr: number;
-  totalLabel: string;
+  // True only when every line is sellable at an approved price; a part-priced
+  // order carries a null total rather than an invented one.
+  chargeable: boolean;
+  totalInr: number | null;
+  totalLabel: string | null;
   patientName: string;
   assessmentId: string | null;
   doctorName: string;
   clinicName: string;
   createdAt: string;
 };
+
+// What a non-chargeable line shows instead of a price — identical wording to the
+// patient cart (ClinicOrderView), so the two surfaces read the same.
+function lineStatusLabel(state: LineCommercialState): string {
+  switch (state) {
+    case "PRICE_PENDING":
+      return "Pricing requires confirmation";
+    case "IDENTITY_REVIEW":
+      return "Catalog match required";
+    default:
+      return "Not available to order";
+  }
+}
 
 export default function DoctorOrdersPage() {
   const [items, setItems] = useState<Order[] | null>(null);
@@ -202,7 +227,7 @@ export default function DoctorOrdersPage() {
                         : "Cancelled"}
                     </span>
                     <span className="hd-value font-semibold tabular-nums">
-                      {o.totalLabel}
+                      {o.totalLabel ?? "Pending review"}
                     </span>
                   </div>
                 </div>
@@ -307,7 +332,21 @@ function OrderDialog({ order, onClose }: { order: Order; onClose: () => void }) 
                   {protocolMonthsLabel(DEFAULT_KIT_QUANTITY)} · Qty {DEFAULT_KIT_QUANTITY}
                 </p>
               </div>
-              <span className="hd-value tabular-nums">{li.priceLabel}</span>
+              {li.commercialState === "CHARGEABLE" && li.priceLabel ? (
+                <span className="hd-value tabular-nums">{li.priceLabel}</span>
+              ) : (
+                <span
+                  className="max-w-[9rem] text-right text-[11px] font-medium leading-snug"
+                  style={{
+                    color:
+                      li.commercialState === "PRICE_PENDING"
+                        ? "var(--status-attention, #b45309)"
+                        : "var(--hd-text-muted)",
+                  }}
+                >
+                  {lineStatusLabel(li.commercialState)}
+                </span>
+              )}
             </li>
           ))}
         </ul>
@@ -317,12 +356,14 @@ function OrderDialog({ order, onClose }: { order: Order; onClose: () => void }) 
             Total · {order.kitCount}-month plan
           </span>
           <span className="hd-value text-xl font-semibold tabular-nums">
-            {order.totalLabel}
+            {order.totalLabel ?? "Pending review"}
           </span>
         </div>
 
         <p className="hd-label mt-1 text-xs">
-          Prices indicative — the final invoice comes from the clinic.
+          {order.chargeable
+            ? "Prices indicative — the final invoice comes from the clinic."
+            : "Some kits need a catalogue price before this order can be totalled — the patient is not shown a price for those lines."}
         </p>
 
         {order.assessmentId && (
