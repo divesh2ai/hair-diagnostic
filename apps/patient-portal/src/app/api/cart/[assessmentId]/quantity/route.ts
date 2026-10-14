@@ -4,6 +4,11 @@ import { requireDoctorContext, assertDoctorInClinic } from "@/lib/auth";
 import { resolveApprovedOrder } from "@/lib/consultation/approvedOrder";
 import { newRequestId } from "@/lib/consultation/loadReview";
 import { writeAuditLog } from "@/lib/audit/writeAuditLog";
+import {
+  isPurchasingEnabled,
+  PURCHASING_DISABLED_CODE,
+  PURCHASING_DISABLED_MESSAGE,
+} from "@/lib/commerce/purchasingGate";
 
 // PATCH /api/cart/[assessmentId]/quantity — doctor-only.
 //
@@ -30,6 +35,11 @@ export async function PATCH(
   ctx: { params: Promise<{ assessmentId: string }> },
 ) {
   const requestId = newRequestId();
+  // Purchasing kill-switch — clinical-only launch. Order-quantity mutations
+  // are part of the disabled ordering surface.
+  if (!isPurchasingEnabled()) {
+    return errorResponse(403, PURCHASING_DISABLED_CODE, PURCHASING_DISABLED_MESSAGE, requestId);
+  }
   const authResult = await requireDoctorContext();
   if (authResult instanceof NextResponse) {
     const code = authResult.status === 401 ? "UNAUTHENTICATED" : "FORBIDDEN";

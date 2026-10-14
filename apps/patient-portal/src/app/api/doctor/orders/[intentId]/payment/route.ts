@@ -9,6 +9,11 @@ import {
   FULFILMENT_NOT_PROVISIONED,
   FulfilmentNotProvisionedError,
 } from "@/lib/fulfilment/fulfilmentStore";
+import {
+  isPurchasingEnabled,
+  PURCHASING_DISABLED_CODE,
+  PURCHASING_DISABLED_MESSAGE,
+} from "@/lib/commerce/purchasingGate";
 
 // POST /api/doctor/orders/[intentId]/payment
 //
@@ -45,6 +50,14 @@ export async function POST(
   const authResult = await requireDoctorContext();
   if (authResult instanceof NextResponse) return authResult;
   const { doctor, authUserId, mode } = authResult;
+
+  // Purchasing kill-switch — clinical-only launch. No payment may be recorded.
+  if (!isPurchasingEnabled()) {
+    return NextResponse.json(
+      { error: PURCHASING_DISABLED_CODE, message: PURCHASING_DISABLED_MESSAGE },
+      { status: 403 },
+    );
+  }
 
   const { intentId } = await ctx.params;
 

@@ -4,6 +4,11 @@ import { requireDoctorContext, assertDoctorInClinic } from "@/lib/auth";
 import { resolveApprovedOrder } from "@/lib/consultation/approvedOrder";
 import { newRequestId } from "@/lib/consultation/loadReview";
 import { writeAuditLog } from "@/lib/audit/writeAuditLog";
+import {
+  isPurchasingEnabled,
+  PURCHASING_DISABLED_CODE,
+  PURCHASING_DISABLED_MESSAGE,
+} from "@/lib/commerce/purchasingGate";
 
 // POST /api/cart/[assessmentId]/confirm — doctor-only.
 //
@@ -28,6 +33,11 @@ export async function POST(
   ctx: { params: Promise<{ assessmentId: string }> },
 ) {
   const requestId = newRequestId();
+  // Purchasing kill-switch — clinical-only launch. No chargeable order
+  // confirmation. Clinical approval (approveAndCreateOrder) is unaffected.
+  if (!isPurchasingEnabled()) {
+    return errorResponse(403, PURCHASING_DISABLED_CODE, PURCHASING_DISABLED_MESSAGE, requestId);
+  }
   const authResult = await requireDoctorContext();
   if (authResult instanceof NextResponse) {
     const code = authResult.status === 401 ? "UNAUTHENTICATED" : "FORBIDDEN";

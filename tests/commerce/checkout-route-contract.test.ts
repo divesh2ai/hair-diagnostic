@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 
 // ══ WHY THIS SUITE EXISTS IN-PROCESS ════════════════════════════════════════
 //
@@ -76,8 +76,13 @@ const blocked = (reasons: string[]) => ({
 
 const STARTED_AT = new Date("2026-09-03T10:00:00.000Z");
 
+const ORIG_PURCHASING = process.env.PURCHASING_ENABLED;
 beforeEach(() => {
   vi.clearAllMocks();
+  // This suite asserts the CHARGEABLE checkout contract, which now lives behind
+  // the PURCHASING_ENABLED kill-switch (default off for the clinical launch).
+  // Opt in so the token/commercial/idempotency behaviour under test is reached.
+  process.env.PURCHASING_ENABLED = "true";
   verifyCartToken.mockReturnValue({ ok: true });
   resolveApprovedOrder.mockResolvedValue({
     intentId: "koi_1",
@@ -93,6 +98,11 @@ beforeEach(() => {
     amountMinor: null,
     source: null,
   });
+});
+
+afterEach(() => {
+  if (ORIG_PURCHASING === undefined) delete process.env.PURCHASING_ENABLED;
+  else process.env.PURCHASING_ENABLED = ORIG_PURCHASING;
 });
 
 describe("chargeable cart — the contract preserved for when prices land", () => {
