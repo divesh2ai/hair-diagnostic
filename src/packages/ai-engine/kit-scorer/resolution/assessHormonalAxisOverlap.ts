@@ -45,13 +45,13 @@ export interface HormonalAxisOverlap {
   readonly kits: readonly [KitId, KitId];
   readonly verdict: OverlapVerdict;
   /**
-   * The engine's NON-BINDING default: which condition's kit is auto-dispensed
-   * when the verdict holds the other for review. A clinical convenience so the
-   * queue is not empty-handed — the doctor may override to the other kit, both,
-   * or neither. Derived from stage/age heuristics, never used to DISCARD.
+   * ADVISORY ONLY — the suggested starting point the doctor sees first. Under
+   * REQUIRES_DOCTOR_REVIEW BOTH hormonal kits are held (neither auto-dispensed);
+   * this never auto-selects a kit and is never used to DISCARD a condition.
+   * Derived from stage/age heuristics purely to order the doctor's review.
    */
   readonly primaryCondition: ConditionId;
-  /** The condition whose kit is held pending doctor approval (null when CO_ELIGIBLE). */
+  /** The non-suggested condition of the pair (advisory). Both kits are held. */
   readonly heldCondition: ConditionId | null;
   /** Ingredients / therapeutic axes the two kits share. */
   readonly sharedAxes: readonly string[];
@@ -119,7 +119,7 @@ export function assessHormonalAxisOverlap(
     sharedAxes.length > 0
       ? `${pcosKit} and ${menoKit} share the ${sharedAxes.join(' + ')} axis — overlapping ingredients/dose make co-administration a clinical decision.`
       : `${pcosKit} and ${menoKit} are distinct axes, but two concurrent hormonal protocols still require review.`,
-    `Default auto-dispense: ${primaryCondition} kit. ${heldCondition} kit held for doctor approval; the doctor may approve both, swap, or choose one.`,
+    `Both hormonal kits are HELD for the treating doctor — neither is auto-dispensed and a dual-kit combination is never auto-released. Advisory suggested starting point for the doctor: ${primaryCondition} (age ${age}); the doctor may choose one, both, or an alternative.`,
   ];
 
   return {
@@ -130,6 +130,6 @@ export function assessHormonalAxisOverlap(
     heldCondition,
     sharedAxes,
     reasons,
-    auditLine: `HORMONAL_AXIS_OVERLAP: ${pcos}+${meno} both recognised (age ${age}, no age-discard). Shared axis [${sharedAxes.join(', ') || 'none'}]. Co-prescription REQUIRES_DOCTOR_REVIEW — auto-dispense ${primaryCondition} kit, hold ${heldCondition} kit for approval.`,
+    auditLine: `HORMONAL_AXIS_OVERLAP: ${pcos}+${meno} both recognised (age ${age}, no age-discard). Shared axis [${sharedAxes.join(', ') || 'none'}]. Both hormonal kits HELD for doctor decision (REQUIRES_DOCTOR_REVIEW); advisory suggested start: ${primaryCondition}. No auto dual-kit release.`,
   };
 }

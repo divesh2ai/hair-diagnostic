@@ -171,3 +171,49 @@ describe("Rohini (39, PCOS + peri-menopause) — corrected draft", () => {
     expect(res.applied.join(" ")).not.toContain("MENO_PCOS_MUTEX");
   });
 });
+
+// ── holdOverlappingKits — BOTH hormonal kits held; other kits preserved ─────
+import { holdOverlappingKits } from "../../src/packages/ai-engine/kit-scorer/resolution/holdOverlappingKits";
+
+describe("holdOverlappingKits — kit decision deferred to doctor", () => {
+  const overlap = assessHormonalAxisOverlap("PCOS", "PERI_MENOPAUSE", flagsAtAge(39));
+  const conditionKits = [
+    { condition: "PCOS" as ConditionId, kit: "PRO FACT META B PCOS" as const },
+    { condition: "PERI_MENOPAUSE" as ConditionId, kit: "HAIR FACT PERI MENOPAUSE" as const },
+    { condition: "AGA_PATTERN_FEMALE" as ConditionId, kit: "FPHL" as const },
+    { condition: "SCALP_INFLAMMATION" as ConditionId, kit: "PHENOTYPE INFLAMATION" as const },
+  ];
+
+  it("holds BOTH hormonal-axis kits (neither auto-dispensed)", () => {
+    const { heldKits } = holdOverlappingKits(conditionKits, [overlap]);
+    expect(heldKits).toEqual(
+      expect.arrayContaining(["PRO FACT META B PCOS", "HAIR FACT PERI MENOPAUSE"]),
+    );
+    expect(heldKits).toHaveLength(2);
+  });
+
+  it("preserves every other safely-supported kit (FPHL, scalp)", () => {
+    const { retained } = holdOverlappingKits(conditionKits, [overlap]);
+    const retainedKits = retained.map((r) => r.kit);
+    expect(retainedKits).toEqual(expect.arrayContaining(["FPHL", "PHENOTYPE INFLAMATION"]));
+    expect(retainedKits).not.toContain("PRO FACT META B PCOS");
+    expect(retainedKits).not.toContain("HAIR FACT PERI MENOPAUSE");
+  });
+
+  it("never withholds a hormonal kit an independent condition also needs", () => {
+    // Contrived: METABOLIC (not in the overlap) also maps to the PCOS kit.
+    const withIndependent = [
+      ...conditionKits,
+      { condition: "METABOLIC" as ConditionId, kit: "PRO FACT META B PCOS" as const },
+    ];
+    const { heldKits } = holdOverlappingKits(withIndependent, [overlap]);
+    expect(heldKits).not.toContain("PRO FACT META B PCOS");
+    expect(heldKits).toContain("HAIR FACT PERI MENOPAUSE");
+  });
+
+  it("no overlap → nothing held, everything retained", () => {
+    const { heldKits, retained } = holdOverlappingKits(conditionKits, []);
+    expect(heldKits).toHaveLength(0);
+    expect(retained).toHaveLength(conditionKits.length);
+  });
+});

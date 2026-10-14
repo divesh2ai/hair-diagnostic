@@ -15,6 +15,7 @@ import {
   type ConditionId,
 } from '../registry/conditionKitRegistry';
 import { resolveKitInteractions } from '../resolution/resolveKitInteractions';
+import { holdOverlappingKits } from '../resolution/holdOverlappingKits';
 import { resolveKit } from '../resolveKit';
 import { prioritizeKits, getPriorityDiagnostics, isPatternKit } from '../ranking/kitPrioritizer';
 import { signals } from '../../clinical-engine/signals';
@@ -102,44 +103,20 @@ export function buildKitSequence(
     });
   }
 
-  // ── Hormonal-axis overlap: hold the non-primary kit for doctor approval ────
+  // ── Hormonal-axis overlap: hold BOTH hormonal kits for the doctor ──────────
   //
   // ⚠️ CLINICAL CHANGE — REQUIRES CLINICAL SIGN-OFF BEFORE DEPLOY.
   //
   // When PCOS co-occurs with a menopause-continuum condition, BOTH stay
-  // recognised (resolveKitInteractions no longer age-discards either), but the
-  // two hormonal-axis kits must not be auto-co-dispensed. The overlap records a
-  // non-binding default primary; we auto-dispense that kit and HOLD the other
-  // for the treating doctor. The held condition still appears in the protocol
-  // label and the trace, so diagnosis / doctor-review / PDF all show both
-  // conditions plus the pending approval. A held kit is only withheld when no
-  // other (independent) condition also requires it.
-  const nonHeldKits = new Set(
-    conditionKits
-      .filter(
-        (ck) =>
-          !resolution.overlaps.some(
-            (o) => o.verdict === 'REQUIRES_DOCTOR_REVIEW' && o.heldCondition === ck.condition,
-          ),
-      )
-      .map((ck) => ck.kit),
-  );
-  const heldForDoctorReview: { condition: ConditionId; kit: KitId }[] = [];
-  const retainedConditionKits = conditionKits.filter((ck) => {
-    const held = resolution.overlaps.some(
-      (o) => o.verdict === 'REQUIRES_DOCTOR_REVIEW' && o.heldCondition === ck.condition,
-    );
-    if (held && !nonHeldKits.has(ck.kit)) {
-      heldForDoctorReview.push({ condition: ck.condition, kit: ck.kit });
-      return false;
-    }
-    return true;
-  });
-  for (const { condition, kit } of heldForDoctorReview) {
-    appliedRules.push(
-      `HORMONAL_AXIS_HOLD: ${kit} (${condition}) withheld from auto-dispense — overlapping hormonal-axis protocol requires doctor approval before co-prescription. Condition remains recognised and on the doctor's review.`,
-    );
-  }
+  // recognised (resolveKitInteractions no longer age-discards either). The kit
+  // decision for the overlapping pair is NOT made on age: both hormonal-axis
+  // kits are withheld from auto-dispense and the choice (one, both, or an
+  // alternative) is the treating doctor's. Every other safely-supported kit is
+  // preserved. Both conditions remain in the protocol label + trace, so
+  // diagnosis / doctor-review / PDF show both plus the pending decision.
+  const { retained: retainedConditionKits, audit: holdAudit } =
+    holdOverlappingKits(conditionKits, resolution.overlaps);
+  appliedRules.push(...holdAudit);
 
   // ── Dedup (same kit reachable from multiple conditions) ────────────────────
   const dedupKits: KitId[] = [];
