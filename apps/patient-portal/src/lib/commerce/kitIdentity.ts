@@ -97,7 +97,10 @@ export const CANONICAL_KIT_IDS = Object.freeze([
   "F4_PLUS",
   "HYPOTHYROID_2",
   "SHED_CONTROL",
-  "IRON_UP_1",
+  // IRON_UP_1 retired from the active catalogue 2026-10-14 (final pricing
+  // decision). Its clinical-registry entry and image asset are kept so
+  // historical orders still resolve for rendering; it is no longer a sellable
+  // canonical kit, an approved price, or a budget alternative.
   "GI_HEALTH_1",
   "STRESS_BUST_3",
   // "Pro Immune 5" veg variant — approved 2026-09-19, doctor-confirmed

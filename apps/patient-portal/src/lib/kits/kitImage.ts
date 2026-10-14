@@ -38,7 +38,7 @@ import {
   TOPICAL_ASSET_REGISTRY,
   type ProductAsset,
 } from "@/lib/reports/one-page/productAssets";
-import { APPROVED_SUBSTITUTIONS } from "@/lib/commerce/budgetSubstitution";
+import { APPROVED_SUBSTITUTIONS, RETIRED_ALTERNATIVE_KIT_IDS } from "@/lib/commerce/budgetSubstitution";
 
 export type ProductCategory = "kit" | "topical";
 
@@ -224,9 +224,13 @@ function fromRegistry(
  * A governed id with no exact registry hit returns null (labelled
  * placeholder) in preference to resolving to something wrong.
  */
-const GOVERNED_ALTERNATIVE_KIT_IDS: ReadonlySet<string> = new Set(
-  APPROVED_SUBSTITUTIONS.map((entry) => entry.alternativeKitId as string),
-);
+const GOVERNED_ALTERNATIVE_KIT_IDS: ReadonlySet<string> = new Set([
+  ...APPROVED_SUBSTITUTIONS.map((entry) => entry.alternativeKitId as string),
+  // Retired alternatives still in historical orders keep their own image
+  // resolution (exact registry hit or labelled placeholder), never a fuzzy
+  // collapse onto the canonical they replaced. IRON_UP_1 retired 2026-10-14.
+  ...RETIRED_ALTERNATIVE_KIT_IDS,
+]);
 
 export function resolveKitImage(kitId: string | null | undefined): ResolvedProductImage | null {
   if (!kitId) return null;

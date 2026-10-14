@@ -21,19 +21,28 @@ describe("the approved pair table is well-formed", () => {
     expect(() => assertSubstitutionTableIsWellFormed()).not.toThrow();
   });
 
-  it("has exactly 12 approved pairs", () => {
-    expect(APPROVED_SUBSTITUTIONS).toHaveLength(12);
+  it("has exactly 11 approved pairs", () => {
+    expect(APPROVED_SUBSTITUTIONS).toHaveLength(11);
   });
 });
 
-describe("PASS — the 12 approved pairs", () => {
+describe("IRON_UP_1 retired from the active catalogue (2026-10-14)", () => {
+  it("IRON_UP_GOLD has no approved alternative and the old pair is rejected", () => {
+    expect(getApprovedAlternative("IRON_UP_GOLD")).toBeNull();
+    expect(isApprovedSubstitutionPair("IRON_UP_GOLD", "IRON_UP_1")).toBe(false);
+  });
+  it("IRON_UP_1 is no longer a canonical catalogue kit", () => {
+    expect(CANONICAL_KIT_IDS).not.toContain("IRON_UP_1");
+  });
+});
+
+describe("PASS — the 11 approved pairs", () => {
   const cases: Array<[string, string]> = [
     ["PHENOTYPE_INFLAMMATION", "PRO_IMMUNE_1"],
     ["MPHL", "M4_PLUS"],
     ["FPHL", "F4_PLUS"],
     ["META_B_HYPOTHYROID", "HYPOTHYROID_2"],
     ["TE_GOLD", "SHED_CONTROL"],
-    ["IRON_UP_GOLD", "IRON_UP_1"],
     ["GI_GOLD", "GI_HEALTH_1"],
     ["PRO_IMMUNE_GOLD", "PRO_IMMUNE_1"],
     ["RWL_SHIELD", "SHED_CONTROL"],

@@ -114,10 +114,8 @@ export const APPROVED_KIT_PRICES_MINOR: Readonly<Record<string, number>> =
     F4_PLUS: rupeesToMinor(1677),
     HYPOTHYROID_2: rupeesToMinor(1844),
     SHED_CONTROL: rupeesToMinor(1552),
-    // NOTE: the sheet prices the IRON_DEFICIENCY alternative (IRON_UP_1, 2284)
-    // ABOVE its canonical (IRON_UP_GOLD, 2042) — the alternative is no longer a
-    // saving. Applied verbatim from the authoritative sheet; flagged for review.
-    IRON_UP_1: rupeesToMinor(2284),
+    // IRON_UP_1 removed from the active catalogue 2026-10-14 (final pricing
+    // decision). IRON_UP_GOLD stays approved at ₹2,042 with no alternative.
     GI_HEALTH_1: rupeesToMinor(2021),
     STRESS_BUST_3: rupeesToMinor(1558),
     META_B: rupeesToMinor(3156),

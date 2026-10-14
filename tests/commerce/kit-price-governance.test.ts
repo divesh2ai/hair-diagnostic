@@ -198,7 +198,8 @@ describe("kit pricing authority", () => {
     "F4_PLUS",
     "HYPOTHYROID_2",
     "SHED_CONTROL",
-    "IRON_UP_1",
+    // IRON_UP_1 retired from the active catalogue 2026-10-14 (final pricing
+    // decision) — no longer an approved price.
     "GI_HEALTH_1",
     "STRESS_BUST_3",
   ];

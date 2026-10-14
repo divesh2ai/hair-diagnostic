@@ -9,7 +9,7 @@ import type { PatientImageResolution, ProductAsset } from "./productAssets";
 import { conditionCodeForText, getConditionAsset, getProductAsset, getRecoveryStageIllustration, getTopicalAsset, resolvePatientImageAsset } from "./productAssets";
 import type { ClinicalOptionAssetStatus } from "./clinicalOptionAssets";
 import { isClinicalOptionExcluded, resolveClinicalOptionAsset } from "./clinicalOptionAssets";
-import { APPROVED_SUBSTITUTIONS } from "@/lib/commerce/budgetSubstitution";
+import { APPROVED_SUBSTITUTIONS, RETIRED_ALTERNATIVE_KIT_IDS } from "@/lib/commerce/budgetSubstitution";
 
 export type PrintClinicalSnapshotItem = {
   optionCode: string;
@@ -538,9 +538,12 @@ function illustrationFor(text: string): IllustrationKey {
  * Derived from the approved-substitution table rather than listed here, so a
  * future alternative is covered the day it is approved.
  */
-const GOVERNED_ALTERNATIVE_KIT_IDS: ReadonlySet<string> = new Set(
-  APPROVED_SUBSTITUTIONS.map((entry) => entry.alternativeKitId as string),
-);
+const GOVERNED_ALTERNATIVE_KIT_IDS: ReadonlySet<string> = new Set([
+  ...APPROVED_SUBSTITUTIONS.map((entry) => entry.alternativeKitId as string),
+  // Retired alternatives still carried by historical orders keep their own
+  // identity here so a past IRON_UP_1 line renders "Iron Up 1", not "Iron Up Gold".
+  ...RETIRED_ALTERNATIVE_KIT_IDS,
+]);
 
 function kitAssetCode(raw: string): string {
   const text = cleanText(raw).toUpperCase();
