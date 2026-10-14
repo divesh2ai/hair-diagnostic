@@ -170,7 +170,7 @@ describe("kit pricing authority", () => {
     // placeholder, not an approved price: this kit stays PRICE_PRESENT.
     const p = getKitPrice("ALOPECIA_AREATA");
     expect(p.status).toBe("PRICE_PRESENT");
-    expect(p.amountMinor).toBe(rupeesToMinor(3054));
+    expect(p.amountMinor).toBe(rupeesToMinor(3295));
     expect(Number.isInteger(p.amountMinor)).toBe(true);
     expect(p.source).toBe("REPOSITORY_PLACEHOLDER");
   });
@@ -276,14 +276,14 @@ describe("kit pricing authority", () => {
   it("7c. approves the TTM pair now that its workbook price was re-verified as present", () => {
     // Corrected 2026-09-09: the 2026-09-08 pass misread this cell as empty.
     expect(getKitPrice("TTM_SUPPORT").status).toBe("PRICE_APPROVED");
-    expect(getKitPrice("TTM_SUPPORT").amountMinor).toBe(rupeesToMinor(2858));
+    expect(getKitPrice("TTM_SUPPORT").amountMinor).toBe(rupeesToMinor(2942));
     expect(getKitPrice("STRESS_BUST_3").status).toBe("PRICE_APPROVED");
-    expect(getKitPrice("STRESS_BUST_3").amountMinor).toBe(rupeesToMinor(1457));
+    expect(getKitPrice("STRESS_BUST_3").amountMinor).toBe(rupeesToMinor(1558));
     expect(CANONICAL_KIT_IDS).toContain("STRESS_BUST_3");
   });
 
-  it("7d. GI_GOLD's approved price matches the workbook exactly (corrected 2026-09-09)", () => {
-    expect(getKitPrice("GI_GOLD").amountMinor).toBe(rupeesToMinor(3455));
+  it("7d. GI_GOLD's approved price matches the workbook exactly (2026-10-14 sheet)", () => {
+    expect(getKitPrice("GI_GOLD").amountMinor).toBe(rupeesToMinor(3655));
   });
 });
 
@@ -374,17 +374,17 @@ describe("patient charging boundary", () => {
     // map has entries, but that the sellability gate honours them.
     const canonical = evaluateKitForPatientSale("MPHL");
     expect(canonical.sellable).toBe(true);
-    expect(canonical.chargeableAmountMinor).toBe(363700);
+    expect(canonical.chargeableAmountMinor).toBe(365500);
 
     const alternative = evaluateKitForPatientSale("M4_PLUS");
     expect(alternative.sellable).toBe(true);
-    expect(alternative.chargeableAmountMinor).toBe(165500);
+    expect(alternative.chargeableAmountMinor).toBe(169500);
   });
 
   it("13d. an order mixing reconciled kits totals correctly", () => {
     const order = evaluateOrderForPatientCharge(["MPHL", "M4_PLUS"]);
     expect(order.chargeable).toBe(true);
-    expect(order.totalAmountMinor).toBe(363700 + 165500);
+    expect(order.totalAmountMinor).toBe(365500 + 169500);
   });
 
   it("14. an unresolved identity cannot enter patient checkout", () => {

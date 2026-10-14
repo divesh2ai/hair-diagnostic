@@ -24,7 +24,7 @@ import { DEFAULT_KIT_QUANTITY } from "@/lib/commerce/kitQuantity";
 // UNRESOLVED and pricing was never reached. Fixed by adding the approved alias
 // (kitIdentity.ts) and the approved price (kitPricing.ts).
 
-const FH_WELL_3_MINOR = rupeesToMinor(3394); // 339400 paise, doctor-confirmed 2026-09-28
+const FH_WELL_3_MINOR = rupeesToMinor(3412); // 341200 paise, 2026-10-14 approved sheet
 
 // The exact kitIds persisted on that cart's KitOrderIntent, in order.
 const CART_KIT_IDS = [
@@ -52,7 +52,7 @@ describe('"FH WELL 3" identity resolution', () => {
 });
 
 describe("FH_WELL_3 pricing and sellability", () => {
-  it("is PRICE_APPROVED at the doctor-confirmed ₹3,394", () => {
+  it("is PRICE_APPROVED at the approved ₹3,412", () => {
     const price = getKitPrice("FH_WELL_3");
     expect(price.status).toBe("PRICE_APPROVED");
     expect(price.amountMinor).toBe(FH_WELL_3_MINOR);
@@ -76,25 +76,25 @@ describe("the whole cart now totals correctly", () => {
     expect(order.lines.every((l) => l.sellable)).toBe(true);
   });
 
-  it("produces a per-unit subtotal of ₹15,550 and a qty-2 total of ₹31,100", () => {
+  it("produces a per-unit subtotal of ₹15,807 and a qty-2 total of ₹31,614", () => {
     const order = evaluateOrderForPatientCharge(CART_KIT_IDS);
-    // 3394 + 3410 + 3018 + 2145 + 3583 = 15,550 rupees per unit set.
-    expect(order.totalAmountMinor).toBe(rupeesToMinor(15550));
+    // 3412 + 3493 + 3156 + 2145 + 3601 = 15,807 rupees per unit set (2026-10-14 sheet).
+    expect(order.totalAmountMinor).toBe(rupeesToMinor(15807));
     // The cart applies the default two-month (qty 2) supply to each line, so
     // the patient-facing order total is twice the per-unit subtotal.
     expect(DEFAULT_KIT_QUANTITY).toBe(2);
     expect((order.totalAmountMinor ?? 0) * DEFAULT_KIT_QUANTITY).toBe(
-      rupeesToMinor(31100),
+      rupeesToMinor(31614),
     );
   });
 });
 
 describe("other approved kits in this cart are untouched", () => {
   it.each([
-    ["PHENOTYPE INFLAMATION", "PHENOTYPE_INFLAMMATION", 3410],
-    ["PRO FACT META B", "META_B", 3018],
+    ["PHENOTYPE INFLAMATION", "PHENOTYPE_INFLAMMATION", 3493],
+    ["PRO FACT META B", "META_B", 3156],
     ["PRO_IMMUNE_1", "PRO_IMMUNE_1", 2145],
-    ["FPHL", "FPHL", 3583],
+    ["FPHL", "FPHL", 3601],
   ])("%s stays approved at ₹%d", (rawLabel, canonical, rupees) => {
     const decision = evaluateKitForPatientSale(rawLabel);
     expect(decision.canonicalKitId).toBe(canonical);

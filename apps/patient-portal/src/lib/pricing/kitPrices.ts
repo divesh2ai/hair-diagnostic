@@ -26,52 +26,46 @@
 //     appears in neither the sheet nor the approved table, so there is no
 //     authoritative figure to refresh it to and none is invented here.
 
+// Refreshed 2026-10-14 from the clinic's approved sheet
+// "Kitss alternative mrp - divesh sir (future).xlsx" (a Condition ID → Canonical
+// Kit price table). Each figure is that sheet's canonical-kit price for the
+// condition which selects this kit, matched to the canonical id by Condition ID
+// (conditionKitRegistry) + the approved aliases in kitIdentity.ts — never by an
+// approximate name. The same figures are mirrored into APPROVED_KIT_PRICES_MINOR
+// so the doctor estimate equals any approved patient charge. Keys the sheet does
+// not price one-per-row — veg variants and OXIDATIVE_STRESS — keep their prior
+// figures (the sheet lists no veg/VEG V1/V2 rows). POST_MENOPAUSE's sheet
+// "…POSTMENOPAUSE 2" alternative is deliberately NOT added as a new key.
 export const KIT_PRICE_INR: Record<string, number> = {
-  MPHL: 3637,
-  FPHL: 3583,
-  META_B: 3018,
-  META_B_HYPOTHYROID: 2316,
-  META_B_HYPOTHYROID_VEG: 2316,
-  // Raised from ₹2,291 to ₹3,009 on 2026-09-28, doctor-confirmed (drfact-mumbai),
-  // and approved for patient charging in APPROVED_KIT_PRICES_MINOR. This map
-  // mirrors the approved rupee value so the doctor estimate matches the charge.
+  MPHL: 3655,
+  FPHL: 3601,
+  META_B: 3156,
+  META_B_HYPOTHYROID: 2413,
+  META_B_HYPOTHYROID_VEG: 2316, // not priced in sheet — prior figure retained
   PCOS: 3009,
-  PERI_MENOPAUSE: 4196,
-  // Veg variants priced distinctly from their base kits; revised 2026-09-28 and
-  // approved for patient charging in APPROVED_KIT_PRICES_MINOR.
-  PERI_MENOPAUSE_VEG: 3602,
-  POST_MENOPAUSE: 2142,
-  POST_MENOPAUSE_VEG: 2142,
-  TE_GOLD: 2996,
-  TE_GOLD_VEG: 3394,
-  // IRON_UP_1 and IRON_UP_4_VEG were removed: both are superseded by
-  // IRON_UP_GOLD ("PRO FACT IRON UP"). Neither resolved to a documented kit,
-  // so the lineup editor listed them by their raw id — a doctor picking from
-  // that dropdown saw three Iron Up entries, two of them internal codes for a
-  // product that no longer ships.
-  IRON_UP_GOLD: 2527,
-  GI_GOLD: 3455,
-  PHENOTYPE_INFLAMMATION: 3410,
-  // No sheet or approved figure — prior placeholder retained on purpose.
-  OXIDATIVE_STRESS: 5100,
-  RWL_SHIELD: 4402,
-  ALOPECIA_AREATA: 3054,
-  // Clinic-confirmed (drfact-mumbai), approved for patient charging in
-  // APPROVED_KIT_PRICES_MINOR. Mirrors the approved values so the doctor
-  // estimate matches the charge. The veg variant is priced distinctly from
-  // its base (₹2,454 vs ₹2,006).
+  PERI_MENOPAUSE: 4238,
+  PERI_MENOPAUSE_VEG: 3602, // not priced in sheet — prior figure retained
+  POST_MENOPAUSE: 3347,
+  POST_MENOPAUSE_VEG: 2142, // not priced in sheet — prior figure retained
+  TE_GOLD: 3114,
+  TE_GOLD_VEG: 3394, // not priced in sheet — prior figure retained
+  IRON_UP_GOLD: 2042,
+  GI_GOLD: 3655,
+  PHENOTYPE_INFLAMMATION: 3493,
+  OXIDATIVE_STRESS: 5100, // not in sheet or approved table — prior placeholder retained
+  RWL_SHIELD: 4536,
+  ALOPECIA_AREATA: 3295,
   LACTIHEALTH: 2006,
-  LACTIHEALTH_VEG: 2454,
-  HEALTHY_9: 1292,
-  HBR: 2854,
-  EARLY_GREYING_CARE_GOLD: 3459,
-  FH_WELL_3: 3394,
-  NIGHT_SHIFT: 2518,
-  FREQUENT_FLYERS: 3429,
-  TTM_SUPPORT: 2858,
-  // ₹2,638 approved (docs/kit-price-reconciliation), above the sheet's ₹2,518.
-  PRO_IMMUNE_GOLD: 2638,
-  PRO_FACT_THYROID_CARE: 1518,
+  LACTIHEALTH_VEG: 2454, // not priced in sheet — prior figure retained
+  HEALTHY_9: 1351,
+  HBR: 2893,
+  EARLY_GREYING_CARE_GOLD: 3647,
+  FH_WELL_3: 3412,
+  NIGHT_SHIFT: 2608,
+  FREQUENT_FLYERS: 3540,
+  TTM_SUPPORT: 2942,
+  PRO_IMMUNE_GOLD: 2636,
+  PRO_FACT_THYROID_CARE: 1605,
 };
 
 const DEFAULT_PRICE_INR = 5500;

@@ -147,7 +147,7 @@ describe("raw phase kitId resolution — verified against a real staging consult
   it("resolves the priced comparison from the raw spelling", () => {
     const c = resolveSubstitutionPriceComparisonForKitId("HAIR FACT TE GOLD", "SHED_CONTROL");
     expect(c?.bothPricesApproved).toBe(true);
-    expect(c?.canonicalPriceMinor).toBe(299600);
+    expect(c?.canonicalPriceMinor).toBe(311400);
     expect(c?.alternativePriceMinor).toBe(155200);
   });
 
@@ -164,18 +164,18 @@ describe("price comparison — always resolved server-side, never invented", () 
     const c = resolveSubstitutionPriceComparison("MPHL", "M4_PLUS");
     expect(c).not.toBeNull();
     expect(c!.bothPricesApproved).toBe(true);
-    expect(c!.canonicalPriceMinor).toBe(363700);
-    expect(c!.alternativePriceMinor).toBe(165500);
-    expect(c!.savingMinor).toBe(363700 - 165500);
+    expect(c!.canonicalPriceMinor).toBe(365500);
+    expect(c!.alternativePriceMinor).toBe(169500);
+    expect(c!.savingMinor).toBe(365500 - 169500);
   });
 
   it("TTM_SUPPORT -> STRESS_BUST_3 resolves the exact governed prices and saving (12th pair, corrected 2026-09-09)", () => {
     const c = resolveSubstitutionPriceComparison("TTM_SUPPORT", "STRESS_BUST_3");
     expect(c).not.toBeNull();
     expect(c!.bothPricesApproved).toBe(true);
-    expect(c!.canonicalPriceMinor).toBe(285800);
-    expect(c!.alternativePriceMinor).toBe(145700);
-    expect(c!.savingMinor).toBe(285800 - 145700);
+    expect(c!.canonicalPriceMinor).toBe(294200);
+    expect(c!.alternativePriceMinor).toBe(155800);
+    expect(c!.savingMinor).toBe(294200 - 155800);
   });
 
   it("returns null for a pair that is not approved, rather than a zero/default comparison", () => {

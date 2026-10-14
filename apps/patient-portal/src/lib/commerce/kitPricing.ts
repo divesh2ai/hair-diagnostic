@@ -84,64 +84,52 @@ export function formatInrFromMinor(amountMinor: number): string {
  */
 export const APPROVED_KIT_PRICES_MINOR: Readonly<Record<string, number>> =
   Object.freeze({
+    // ── Refreshed 2026-10-14 from the approved sheet ─────────────────────────
+    // "Kitss alternative mrp - divesh sir (future).xlsx" (Condition ID →
+    // Canonical Kit + Alternative Kit price table). Every figure below is the
+    // sheet's price for that kit, matched to the canonical id by Condition ID
+    // (conditionKitRegistry) and the approved aliases in kitIdentity.ts — never
+    // by an approximate name. Kept aligned with KIT_PRICE_INR so the doctor
+    // estimate equals the approved charge. Keys the sheet does not price
+    // (PRO_IMMUNE_5_VEG and the veg variants) keep their prior approved figure;
+    // the sheet's "…POSTMENOPAUSE 2" alternative is deliberately not added.
+    // Purchasing is disabled at launch (commerce/purchasingGate), so these
+    // govern display parity and any FUTURE charge, not a live charge today.
     // ── Canonical kits that carry an approved budget alternative ──────────
-    PHENOTYPE_INFLAMMATION: rupeesToMinor(3410),
-    MPHL: rupeesToMinor(3637),
-    FPHL: rupeesToMinor(3583),
-    META_B_HYPOTHYROID: rupeesToMinor(2316),
-    TE_GOLD: rupeesToMinor(2996),
-    IRON_UP_GOLD: rupeesToMinor(2527),
-    GI_GOLD: rupeesToMinor(3455),
-    PRO_IMMUNE_GOLD: rupeesToMinor(2638),
-    RWL_SHIELD: rupeesToMinor(4402),
-    NIGHT_SHIFT: rupeesToMinor(2518),
-    FREQUENT_FLYERS: rupeesToMinor(3429),
-    TTM_SUPPORT: rupeesToMinor(2858),
+    PHENOTYPE_INFLAMMATION: rupeesToMinor(3493),
+    MPHL: rupeesToMinor(3655),
+    FPHL: rupeesToMinor(3601),
+    META_B_HYPOTHYROID: rupeesToMinor(2413),
+    TE_GOLD: rupeesToMinor(3114),
+    IRON_UP_GOLD: rupeesToMinor(2042),
+    GI_GOLD: rupeesToMinor(3655),
+    PRO_IMMUNE_GOLD: rupeesToMinor(2636),
+    RWL_SHIELD: rupeesToMinor(4536),
+    NIGHT_SHIFT: rupeesToMinor(2608),
+    FREQUENT_FLYERS: rupeesToMinor(3540),
+    TTM_SUPPORT: rupeesToMinor(2942),
     // ── Governed budget alternatives ───────────────────────────────────────
     PRO_IMMUNE_1: rupeesToMinor(2145),
-    M4_PLUS: rupeesToMinor(1655),
-    F4_PLUS: rupeesToMinor(1639),
-    HYPOTHYROID_2: rupeesToMinor(1701),
+    M4_PLUS: rupeesToMinor(1695),
+    F4_PLUS: rupeesToMinor(1677),
+    HYPOTHYROID_2: rupeesToMinor(1844),
     SHED_CONTROL: rupeesToMinor(1552),
+    // NOTE: the sheet prices the IRON_DEFICIENCY alternative (IRON_UP_1, 2284)
+    // ABOVE its canonical (IRON_UP_GOLD, 2042) — the alternative is no longer a
+    // saving. Applied verbatim from the authoritative sheet; flagged for review.
     IRON_UP_1: rupeesToMinor(2284),
-    GI_HEALTH_1: rupeesToMinor(1967),
-    STRESS_BUST_3: rupeesToMinor(1457),
-    // ── Approved 2026-09-19, doctor-confirmed (drfact-mumbai) ──────────────
-    META_B: rupeesToMinor(3018),
-    PRO_IMMUNE_5_VEG: rupeesToMinor(2692),
-    // ── Approved 2026-09-28, doctor-confirmed (drfact-mumbai) ──────────────
-    // ₹3,394 is the figure the 2026-09-21 governed price-sheet refresh loaded
-    // into KIT_PRICE_INR (REPOSITORY_PLACEHOLDER); the clinic confirmed it as
-    // the patient charge, promoting FH_WELL_3 from PRICE_PRESENT to
-    // PRICE_APPROVED. Paired with the "FH WELL 3" alias in kitIdentity.ts.
-    FH_WELL_3: rupeesToMinor(3394),
-    // PCOS 6 (veg) — the single product "PRO FACT META B PCOS" was confirmed to
-    // name (see kitIdentity.ts). Clinic-confirmed patient price raised from the
-    // sheet's ₹2,291 to ₹3,009; KIT_PRICE_INR mirrors the new figure.
+    GI_HEALTH_1: rupeesToMinor(2021),
+    STRESS_BUST_3: rupeesToMinor(1558),
+    META_B: rupeesToMinor(3156),
+    PRO_IMMUNE_5_VEG: rupeesToMinor(2692), // not priced in sheet — prior approved figure retained
+    FH_WELL_3: rupeesToMinor(3412),
     PCOS: rupeesToMinor(3009),
-    // Hair Breakage Repair — clinic-confirmed at the sheet figure ₹2,854 (the
-    // same value already in KIT_PRICE_INR), promoting HBR from PRICE_PRESENT to
-    // PRICE_APPROVED. Paired with the "HAIR FACT HAIR BREAKAGE REPAIR (HBR)"
-    // alias in kitIdentity.ts.
-    HBR: rupeesToMinor(2854),
-    // Peri-menopause (base and veg) and TE Gold veg — doctor-confirmed. Veg
-    // variants are priced as their own SKUs (the veg labels are aliased to the
-    // veg canonicals in kitIdentity.ts, not collapsed onto the base). The veg
-    // figures were revised 2026-09-28 to prices distinct from their base kits
-    // (PERI_MENOPAUSE_VEG 4196 → 3602, TE_GOLD_VEG 2996 → 3394); KIT_PRICE_INR
-    // mirrors them.
-    PERI_MENOPAUSE: rupeesToMinor(4196),
-    PERI_MENOPAUSE_VEG: rupeesToMinor(3602),
-    TE_GOLD_VEG: rupeesToMinor(3394),
-    // Lactihealth — clinic-confirmed (drfact-mumbai), raised from the prior
-    // repository placeholder of ₹1,956. Promotes LACTIHEALTH from PRICE_PRESENT
-    // to PRICE_APPROVED so the patient cart charges it and totals cleanly
-    // instead of showing "Pricing requires confirmation". The veg variant is
-    // priced distinctly (₹2,454), not mirrored onto the base. Paired with the
-    // matching figures in KIT_PRICE_INR so the doctor estimate equals the
-    // patient charge.
+    HBR: rupeesToMinor(2893),
+    PERI_MENOPAUSE: rupeesToMinor(4238),
+    PERI_MENOPAUSE_VEG: rupeesToMinor(3602), // not priced in sheet — prior approved figure retained
+    TE_GOLD_VEG: rupeesToMinor(3394), // not priced in sheet — prior approved figure retained
     LACTIHEALTH: rupeesToMinor(2006),
-    LACTIHEALTH_VEG: rupeesToMinor(2454),
+    LACTIHEALTH_VEG: rupeesToMinor(2454), // not priced in sheet — prior approved figure retained
   });
 
 /**

@@ -211,7 +211,7 @@ describe("PRO FACT META B PCOS resolves to PCOS (veg) by approved alias", () => 
     // both now approved, so this identifier is genuinely chargeable.
     expect(d.priceStatus).toBe("PRICE_APPROVED");
     expect(d.sellable).toBe(true);
-    expect(d.chargeableAmountMinor).toBe(341000);
+    expect(d.chargeableAmountMinor).toBe(349300);
     expect(d.sourceIdentifierSnapshot).toBe("PHENOTYPE INFLAMATION");
   });
 
@@ -253,7 +253,7 @@ describe("no misleading total, no monetary progression", () => {
     // (not the others) resolve.
     const order = evaluateOrderForPatientCharge(["FPHL", "MPHL"]);
     expect(order.chargeable).toBe(true);
-    expect(order.totalAmountMinor).toBe(358300 + 363700);
+    expect(order.totalAmountMinor).toBe(360100 + 365500);
   });
 
   it("real prescriptions that resolved-but-were-blocked (on identity or price) are now chargeable", () => {
@@ -263,13 +263,12 @@ describe("no misleading total, no monetary progression", () => {
     // both the new alias AND the new price to become chargeable.
     const fphlOnly = evaluateOrderForPatientCharge(["FPHL"]);
     expect(fphlOnly.chargeable).toBe(true);
-    expect(fphlOnly.totalAmountMinor).toBe(358300);
+    expect(fphlOnly.totalAmountMinor).toBe(360100);
 
-    // PRO_IMMUNE_GOLD was repriced 2026-09-19 (₹2,518 → ₹2,638) as part of the
-    // doctor-confirmed Pro Immune price-sheet correction.
+    // PRO_IMMUNE_GOLD is ₹2,636 on the 2026-10-14 approved sheet.
     const mphlProImmune = evaluateOrderForPatientCharge(["MPHL", "PRO IMMUNE GOLD"]);
     expect(mphlProImmune.chargeable).toBe(true);
-    expect(mphlProImmune.totalAmountMinor).toBe(363700 + 263800);
+    expect(mphlProImmune.totalAmountMinor).toBe(365500 + 263600);
   });
 
   it("every other real prescription on file remains non-chargeable", () => {
