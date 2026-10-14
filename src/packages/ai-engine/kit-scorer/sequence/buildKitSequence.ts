@@ -15,6 +15,7 @@ import {
   type ConditionId,
 } from '../registry/conditionKitRegistry';
 import { resolveKitInteractions } from '../resolution/resolveKitInteractions';
+import { holdOverlappingKits } from '../resolution/holdOverlappingKits';
 import { resolveKit } from '../resolveKit';
 import { prioritizeKits, getPriorityDiagnostics, isPatternKit } from '../ranking/kitPrioritizer';
 import { signals } from '../../clinical-engine/signals';
@@ -102,11 +103,26 @@ export function buildKitSequence(
     });
   }
 
+  // ── Hormonal-axis overlap: hold BOTH hormonal kits for the doctor ──────────
+  //
+  // ⚠️ CLINICAL CHANGE — REQUIRES CLINICAL SIGN-OFF BEFORE DEPLOY.
+  //
+  // When PCOS co-occurs with a menopause-continuum condition, BOTH stay
+  // recognised (resolveKitInteractions no longer age-discards either). The kit
+  // decision for the overlapping pair is NOT made on age: both hormonal-axis
+  // kits are withheld from auto-dispense and the choice (one, both, or an
+  // alternative) is the treating doctor's. Every other safely-supported kit is
+  // preserved. Both conditions remain in the protocol label + trace, so
+  // diagnosis / doctor-review / PDF show both plus the pending decision.
+  const { retained: retainedConditionKits, audit: holdAudit } =
+    holdOverlappingKits(conditionKits, resolution.overlaps);
+  appliedRules.push(...holdAudit);
+
   // ── Dedup (same kit reachable from multiple conditions) ────────────────────
   const dedupKits: KitId[] = [];
   const dedupRationales = new Map<KitId, string[]>();
   const dedupConditions = new Map<KitId, ConditionId[]>();
-  for (const { condition, kit, rationale } of conditionKits) {
+  for (const { condition, kit, rationale } of retainedConditionKits) {
     if (!dedupKits.includes(kit)) dedupKits.push(kit);
     const r = dedupRationales.get(kit) ?? [];
     r.push(rationale);

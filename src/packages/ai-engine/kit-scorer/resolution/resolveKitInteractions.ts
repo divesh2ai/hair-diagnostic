@@ -1,6 +1,10 @@
 import type { KitId } from '../../../types';
 import type { ClinicalFlags } from '../../clinical-engine/types';
 import type { ConditionId } from '../registry/conditionKitRegistry';
+import {
+  assessHormonalAxisOverlap,
+  type HormonalAxisOverlap,
+} from './assessHormonalAxisOverlap';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // RESOLVE KIT INTERACTIONS  (Layer ③)
@@ -23,6 +27,16 @@ export interface ResolutionResult {
   readonly conditions: ConditionId[];
   readonly kitOverride: Partial<Record<ConditionId, KitId>>;
   readonly applied: string[];
+  /**
+   * Hormonal-axis overlaps (PCOS ↔ menopause-continuum) that were RECOGNISED
+   * rather than age-discarded. Each carries a doctor-review verdict and the
+   * non-binding default primary. buildKitSequence holds the non-primary kit
+   * out of the auto-dispensed sequence; the doctor-review + PDF layers read
+   * these to show both conditions and the pending approval. Empty for every
+   * assessment with no such co-occurrence. Additive — existing consumers that
+   * ignore it are unaffected.
+   */
+  readonly overlaps: HormonalAxisOverlap[];
 }
 
 export function resolveKitInteractions(
@@ -32,6 +46,7 @@ export function resolveKitInteractions(
   const c = new Set(detected);
   const kitOverride: Partial<Record<ConditionId, KitId>> = {};
   const applied: string[] = [];
+  const overlaps: HormonalAxisOverlap[] = [];
 
   const has = (id: ConditionId) => c.has(id);
   const drop = (id: ConditionId, why: string) => {
@@ -41,28 +56,36 @@ export function resolveKitInteractions(
   // ── PREGNANCY — exclusive. Strip everything else (safety lock). ─────────────
   if (has('PREGNANCY')) {
     applied.push('PREGNANCY_LOCK: pregnancy is exclusive — all other kits suppressed.');
-    return { conditions: ['PREGNANCY'], kitOverride, applied };
+    return { conditions: ['PREGNANCY'], kitOverride, applied, overlaps };
   }
 
-  // ── PERI/POST-MENOPAUSE vs PCOS — age-gated mutex (Rule 6, locked) ──────────
-  //   age < 40   → PCOS wins, menopause continuum stripped
-  //   age 40–49  → PERI wins, PCOS stripped
-  //   age ≥ 50   → POST/MENO wins, PCOS stripped
-  if (has('PCOS') && (has('PERI_MENOPAUSE') || has('POST_MENOPAUSE'))) {
-    if (flags.age < 40) {
-      drop('PERI_MENOPAUSE', 'MENO_PCOS_MUTEX: age < 40 → PCOS wins, peri-menopause kit stripped.');
-      drop('POST_MENOPAUSE', 'MENO_PCOS_MUTEX: age < 40 → PCOS wins, post-menopause kit stripped.');
-    } else if (flags.age < 50) {
-      drop('PCOS', 'MENO_PCOS_MUTEX: age 40–49 → peri-menopause wins, PCOS kit stripped.');
-      drop('POST_MENOPAUSE', 'MENO_PCOS_MUTEX: age 40–49 → peri-menopause wins, post-menopause stripped.');
-    } else {
-      drop('PCOS', 'MENO_PCOS_MUTEX: age ≥ 50 → menopause continuum wins, PCOS kit stripped.');
-    }
-  }
-
-  // ── POST supersedes PERI when both present (later stage governs) ────────────
+  // ── PERI/POST-MENOPAUSE + PCOS — hormonal-axis overlap (clinical policy 2026-10)
+  //
+  // ⚠️ CLINICAL CHANGE — REQUIRES CLINICAL SIGN-OFF BEFORE DEPLOY.
+  //
+  // REPLACES the age-only MENO_PCOS_MUTEX (removed), which discarded one
+  // condition purely by age — so a 39-year-old with PCOS + peri-menopause lost
+  // peri entirely and received a PCOS-only kit/diagnosis/PDF (the Rohini case).
+  //
+  // Both reported conditions are now RETAINED. The two hormonal-axis kits are
+  // NOT auto-co-dispensed: the pair is assessed for ingredient/axis overlap and
+  // routed to the doctor, who approves co-prescription, a swap, or one kit.
+  // buildKitSequence holds the non-primary kit out of the auto sequence on the
+  // strength of the overlap recorded here. Age informs only the non-binding
+  // default primary (see assessHormonalAxisOverlap) — it never discards.
+  //
+  // POST supersedes PERI within the continuum first (below), so at most one
+  // menopause-continuum condition pairs with PCOS here.
   if (has('PERI_MENOPAUSE') && has('POST_MENOPAUSE')) {
     drop('PERI_MENOPAUSE', 'MENO_STAGE: post-menopause supersedes peri-menopause.');
+  }
+  if (has('PCOS') && (has('PERI_MENOPAUSE') || has('POST_MENOPAUSE'))) {
+    const meno: ConditionId = has('POST_MENOPAUSE') ? 'POST_MENOPAUSE' : 'PERI_MENOPAUSE';
+    const overlap = assessHormonalAxisOverlap('PCOS', meno, flags);
+    overlaps.push(overlap);
+    applied.push(overlap.auditLine);
+    // Deliberately NO drop() — both conditions survive into the diagnosis,
+    // protocol label, doctor-review payload and PDF.
   }
 
   // ── PCOS + HYPOTHYROID → single plain META B (Rule 3b, locked) ─────────────
@@ -123,5 +146,5 @@ export function resolveKitInteractions(
   // ── ALOPECIA AREATA is root-cause: it does not strip others, but it leads ──
   // (sequencing handled by kitPrioritizer ROOT_CAUSE_HEAD).
 
-  return { conditions: [...c], kitOverride, applied };
+  return { conditions: [...c], kitOverride, applied, overlaps };
 }
