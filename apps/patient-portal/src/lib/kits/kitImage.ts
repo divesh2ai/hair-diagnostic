@@ -109,6 +109,12 @@ const KIT_ALIASES: ReadonlyArray<readonly [RegExp, string]> = [
   [/MPHL.*PLUS/, "MPHL_PLUS"],
   [/\bMPHL\b|MALE PATTERN/, "MPHL"],
   [/ALOPECIA AREATA/, "HAIR_FACT_ALOPECIA_AREATA"],
+  // Post-menopause before the generic MENOPAUSE catch-all below. The canonical
+  // id ("POST_MENOPAUSE" / "POSTMENOPAUSE"), which the doctor-added lineup
+  // stores, carries no "META B" and so missed the META-B-POST rule above and
+  // fell through to the peri packshot. This routes the post-menopause SKU to
+  // its OWN carton, never the peri kit's.
+  [/POST[-\s_]?MENOPAUSE/, "PRO_FACT_META_B_POSTMENOPAUSE"],
   [/PERI[-\s_]?MENOPAUSE|MENOPAUSE/, "HAIR_FACT_PERI_MENOPAUSE"],
   [/GI GOLD/, "PRO_FACT_GI_GOLD"],
   [/THYROID CARE|THYROID/, "PRO_FACT_THYROID_CARE"],

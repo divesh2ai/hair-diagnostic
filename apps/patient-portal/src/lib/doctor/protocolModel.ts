@@ -26,7 +26,23 @@
 // about the rest — see `ProtocolSummary`.
 
 import type { Consultation, TreatmentPhase } from "@shared/types/consultation";
+import { getKitInfo } from "@hairos/packages/registries/kits/info";
 import type { KitCatalogItem } from "./kitCatalog";
+
+/**
+ * The display name for a phase's kit, canonicalised through the authored kit
+ * registry rather than trusting the name baked onto the stored phase.
+ *
+ * The stored `displayName` is itself registry-derived at generation time, so a
+ * consultation generated before a registry label fix carries a STALE name — e.g.
+ * a post-menopause phase persisted as "HAIR FACT PERI MENOPAUSE". Re-resolving
+ * from `kitId` (the selection, which is never re-decided here) keeps this view
+ * in step with the one-pager, which already recomputes from `kitId`. Falls back
+ * to the stored name, then the raw id, for a kit the registry does not know.
+ */
+export function kitDisplayNameForPhase(phase: Pick<TreatmentPhase, "kitId" | "displayName">): string {
+  return getKitInfo(phase.kitId)?.displayName ?? phase.displayName ?? phase.kitId;
+}
 
 export interface ProtocolItem {
   /** 1..N, as ordered by the engine or the reviewing doctor. */
@@ -79,7 +95,7 @@ export function buildProtocolItems(
       // save, but a lineup rendered mid-edit should still read 1..N.
       phase: i + 1,
       kitId: p.kitId,
-      name: p.displayName || p.kitId,
+      name: kitDisplayNameForPhase(p),
       drivers: (p.supportingConditions ?? []).filter(Boolean),
       objective: info?.treatmentObjective?.trim() || null,
       rationale: p.whySelected?.trim() || null,

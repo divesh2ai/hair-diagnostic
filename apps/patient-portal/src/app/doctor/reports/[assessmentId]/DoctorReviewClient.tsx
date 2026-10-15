@@ -19,7 +19,7 @@ import type {
 } from "@/lib/consultation/reviewPayload";
 import { ReportActions } from "@/components/ui/ReportActions";
 import { extractSafetyFlags } from "@/lib/doctor/clinicalAttention";
-import { summarizeProtocol } from "@/lib/doctor/protocolModel";
+import { summarizeProtocol, kitDisplayNameForPhase } from "@/lib/doctor/protocolModel";
 import { cartHref } from "@/lib/doctor/cartHref";
 import { PatientJourney } from "@/components/doctor/PatientJourney";
 import { ReviewHeader } from "./sections/ReviewHeader";
@@ -863,7 +863,7 @@ export function DoctorReviewClient({
     return phases.map((p) => {
       const meta = (p as { meta?: { addedByDoctor?: boolean; substitution?: unknown } }).meta;
       return {
-        name: p.displayName || p.kitId,
+        name: kitDisplayNameForPhase(p),
         changed: meta?.substitution
           ? "substituted"
           : meta?.addedByDoctor

@@ -562,6 +562,10 @@ function kitAssetCode(raw: string): string {
   if (/META[-\s]?B.*HYPOTHYROID/.test(text)) return "PRO_FACT_META_B_HYPOTHYROID";
   if (/META[-\s]?B.*PCOS/.test(text)) return "PRO_FACT_META_B_PCOS";
   if (/META[-\s]?B.*POST/.test(text)) return "PRO_FACT_META_B_POSTMENOPAUSE";
+  // Bare canonical ("POST_MENOPAUSE" / "POSTMENOPAUSE") carries no "META B",
+  // so it must be caught here — before the peri rule below — or it resolves to
+  // the peri packshot. The post-menopause SKU keeps its own carton.
+  if (/POST[-\s_]?MENOPAUSE/.test(text)) return "PRO_FACT_META_B_POSTMENOPAUSE";
   if (/META[-\s]?B/.test(text)) return "PRO_FACT_META_B";
   if (/RAPID WEIGHT|RWL/.test(text)) return "RAPID_WEIGHT_LOSS_SHIELD";
   if (/FPHL.*PLUS/.test(text)) return "FPHL_PLUS";
