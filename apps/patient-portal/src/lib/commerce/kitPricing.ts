@@ -100,6 +100,13 @@ export const APPROVED_KIT_PRICES_MINOR: Readonly<Record<string, number>> =
     MPHL: rupeesToMinor(3655),
     FPHL: rupeesToMinor(3601),
     META_B_HYPOTHYROID: rupeesToMinor(2413),
+    // The veg variant was omitted here though its non-veg sibling is approved
+    // and every other veg variant below carries its prior approved figure (see
+    // the "veg variants keep their prior approved figure" note above). Without
+    // it, a vegetarian hypothyroid order could not be totalled ("Pricing
+    // requires confirmation"). 2316 = its KIT_PRICE_INR figure, same retained
+    // treatment as the other veg variants. Purchasing stays disabled.
+    META_B_HYPOTHYROID_VEG: rupeesToMinor(2316), // not priced in sheet — prior approved figure retained
     TE_GOLD: rupeesToMinor(3114),
     IRON_UP_GOLD: rupeesToMinor(2042),
     GI_GOLD: rupeesToMinor(3655),

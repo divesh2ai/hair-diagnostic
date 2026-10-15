@@ -235,12 +235,20 @@ describe("kit pricing authority", () => {
   // list keeps the test's expected union in step with those approved records.
   const APPROVED_LACTIHEALTH = ["LACTIHEALTH", "LACTIHEALTH_VEG"];
 
+  // 2026-10-15: META_B_HYPOTHYROID_VEG was the one veg variant missing from the
+  // approved list though its non-veg sibling (META_B_HYPOTHYROID) and every
+  // other veg variant were approved — a vegetarian hypothyroid order could not
+  // be totalled ("Pricing requires confirmation"). Added at its retained
+  // ₹2,316 figure, same treatment as the other veg variants.
+  const APPROVED_2026_10_15 = ["META_B_HYPOTHYROID_VEG"];
+
   it("7. approves exactly the reconciled + patient-sale kits — nothing else", () => {
     const approved = [
       ...RECONCILED_2026_09_08,
       ...APPROVED_2026_09_19,
       ...APPROVED_2026_09_28,
       ...APPROVED_LACTIHEALTH,
+      ...APPROVED_2026_10_15,
     ];
     expect(Object.keys(APPROVED_KIT_PRICES_MINOR).sort()).toEqual(
       [...approved].sort(),
