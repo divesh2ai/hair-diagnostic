@@ -4,6 +4,7 @@ import { OnePagerReadyMarker } from "@/components/reports/one-page/OnePagerReady
 import { ONE_PAGER_READY_ATTRIBUTE } from "@/lib/reports/assets/contract";
 import { ruchiFixture } from "@/lib/reports/one-page/fixtures/ruchi";
 import { ruchiRuntimeFixture } from "@/lib/reports/one-page/fixtures/ruchi-runtime";
+import { postmenoRuntimeFixture } from "@/lib/reports/one-page/fixtures/postmeno-runtime";
 import { raviFixture } from "@/lib/reports/one-page/fixtures/ravi";
 import { harshFixture } from "@/lib/reports/one-page/fixtures/harsh";
 import { bhavnaFixture } from "@/lib/reports/one-page/fixtures/bhavna";
@@ -30,6 +31,8 @@ const FIXTURES: Record<string, OnePageReportViewModel> = {
   // hand-baked view model for pixel-baseline comparisons.
   ruchi: ruchiRuntimeFixture,
   "ruchi-legacy": ruchiFixture,
+  // Post-menopause + Obesity acceptance preview — engine-driven (see fixture).
+  postmeno: postmenoRuntimeFixture,
   ravi: raviFixture,
   bhavna: bhavnaFixture,
   harsh: harshFixture,

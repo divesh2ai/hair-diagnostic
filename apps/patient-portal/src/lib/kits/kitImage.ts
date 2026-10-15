@@ -38,7 +38,7 @@ import {
   TOPICAL_ASSET_REGISTRY,
   type ProductAsset,
 } from "@/lib/reports/one-page/productAssets";
-import { APPROVED_SUBSTITUTIONS } from "@/lib/commerce/budgetSubstitution";
+import { APPROVED_SUBSTITUTIONS, RETIRED_ALTERNATIVE_KIT_IDS } from "@/lib/commerce/budgetSubstitution";
 
 export type ProductCategory = "kit" | "topical";
 
@@ -109,6 +109,12 @@ const KIT_ALIASES: ReadonlyArray<readonly [RegExp, string]> = [
   [/MPHL.*PLUS/, "MPHL_PLUS"],
   [/\bMPHL\b|MALE PATTERN/, "MPHL"],
   [/ALOPECIA AREATA/, "HAIR_FACT_ALOPECIA_AREATA"],
+  // Post-menopause before the generic MENOPAUSE catch-all below. The canonical
+  // id ("POST_MENOPAUSE" / "POSTMENOPAUSE"), which the doctor-added lineup
+  // stores, carries no "META B" and so missed the META-B-POST rule above and
+  // fell through to the peri packshot. This routes the post-menopause SKU to
+  // its OWN carton, never the peri kit's.
+  [/POST[-\s_]?MENOPAUSE/, "PRO_FACT_META_B_POSTMENOPAUSE"],
   [/PERI[-\s_]?MENOPAUSE|MENOPAUSE/, "HAIR_FACT_PERI_MENOPAUSE"],
   [/GI GOLD/, "PRO_FACT_GI_GOLD"],
   [/THYROID CARE|THYROID/, "PRO_FACT_THYROID_CARE"],
@@ -224,9 +230,13 @@ function fromRegistry(
  * A governed id with no exact registry hit returns null (labelled
  * placeholder) in preference to resolving to something wrong.
  */
-const GOVERNED_ALTERNATIVE_KIT_IDS: ReadonlySet<string> = new Set(
-  APPROVED_SUBSTITUTIONS.map((entry) => entry.alternativeKitId as string),
-);
+const GOVERNED_ALTERNATIVE_KIT_IDS: ReadonlySet<string> = new Set([
+  ...APPROVED_SUBSTITUTIONS.map((entry) => entry.alternativeKitId as string),
+  // Retired alternatives still in historical orders keep their own image
+  // resolution (exact registry hit or labelled placeholder), never a fuzzy
+  // collapse onto the canonical they replaced. IRON_UP_1 retired 2026-10-14.
+  ...RETIRED_ALTERNATIVE_KIT_IDS,
+]);
 
 export function resolveKitImage(kitId: string | null | undefined): ResolvedProductImage | null {
   if (!kitId) return null;

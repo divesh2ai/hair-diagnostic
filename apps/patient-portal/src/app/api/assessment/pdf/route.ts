@@ -11,7 +11,7 @@ import {
 } from '@shared/clinical-readiness/evaluator';
 import type { Consultation } from '@shared/types/consultation';
 import { prisma } from '@/lib/prisma';
-type PdfPayload = Parameters<typeof generateAndStoreReports>[0];
+import { approvedPdfPayload, findApprovedPdf, recordApprovedPdf } from '@/lib/reports/approvedPdf';
 
 function slugifyName(name: string): string {
   return name
@@ -94,7 +94,7 @@ async function resolvePdfPostCaller(
 export async function POST(req: Request) {
   try {
     const body = (await req.json().catch(() => null)) as
-      | { assessmentId?: unknown; token?: unknown }
+      | { assessmentId?: unknown; token?: unknown; contentVersion?: unknown }
       | null;
     const assessmentId =
       typeof body?.assessmentId === 'string' ? body.assessmentId : '';
@@ -107,7 +107,7 @@ export async function POST(req: Request) {
     // Resolve + authorize the caller BEFORE any DB lookup, so no existence
     // signal leaks to an unauthorized caller. See resolvePdfPostCaller.
     const caller = await resolvePdfPostCaller(req, bodyToken, assessmentId);
-    if (caller instanceof NextResponse) return caller;
+    if (caller instanceof Response) return caller;
 
     const assessment = await prisma.assessment.findUnique({
       where: { id: assessmentId },
@@ -131,82 +131,33 @@ export async function POST(req: Request) {
       );
     }
 
-    // Resolve clinical profile artifact for report context
-    const clinicalArtifact = await prisma.aIArtifact.findFirst({
-      where: { assessmentId, type: ArtifactType.CLINICAL_REASONING },
-      orderBy: { createdAt: 'desc' },
+    const consultation = await prisma.consultation.findUnique({
+      where: { assessmentId }, include: { currentVersion: true },
     });
+    const version = consultation?.currentVersion;
+    if (body?.contentVersion !== undefined && body.contentVersion !== version?.contentVersion) {
+      return NextResponse.json({ error: 'Consultation version changed' }, { status: 409 });
+    }
+    if (!version || version.approvalStatus !== 'APPROVED') {
+      return NextResponse.json({ error: 'Consultation is not approved', code: 'not_approved' }, { status: 403 });
+    }
+    if (consultation.clinicId !== assessment.clinicId || consultation.patientId !== assessment.patientId) {
+      return NextResponse.json({ error: 'Consultation identity mismatch' }, { status: 422 });
+    }
+    const readiness = evaluateClinicalReadinessForApproval(version.content as unknown as Consultation);
+    if (isHardBlocked(readiness)) {
+      return NextResponse.json({ error: 'readiness_blocked', blockingCodes: readiness.blockingCodes }, { status: 422 });
+    }
+    const subject = { id: assessmentId, clinicId: assessment.clinicId, patientId: assessment.patientId };
+    const existing = await findApprovedPdf(subject, version);
+    if (existing) return NextResponse.json({ success: true, patientPdfUrl: existing.storagePath,
+      consultationVersionId: version.id, contentVersion: version.contentVersion });
+    const payload = approvedPdfPayload(subject, version, assessment.clinic.name, assessment.reviewingDoctor?.name ?? 'Reviewing doctor');
+    const reportUrls = await generateAndStoreReports(payload);
+    const asset = await recordApprovedPdf(subject, consultation.id, version, reportUrls.patientPdfUrl);
+    return NextResponse.json({ success: true, patientPdfUrl: asset.storagePath,
+      consultationVersionId: version.id, contentVersion: version.contentVersion });
 
-    const visualArtifact = await prisma.aIArtifact.findFirst({
-      where: { assessmentId, type: ArtifactType.VISUAL_JOURNEY },
-      orderBy: { createdAt: 'desc' },
-    });
-
-    // NARRATIVES holds the rich clinical_report (Phase A / Phase B payload).
-    // Pass it through so the PDF engine takes the Dossier template branch
-    // instead of falling back to the legacy light layout.
-    const narrativesArtifact = await prisma.aIArtifact.findFirst({
-      where: { assessmentId, type: ArtifactType.NARRATIVES },
-      orderBy: { createdAt: 'desc' },
-    });
-    const narrativesContent =
-      narrativesArtifact?.content && typeof narrativesArtifact.content === 'object' && !Array.isArray(narrativesArtifact.content)
-        ? (narrativesArtifact.content as Record<string, unknown>)
-        : {};
-    const clinicalReport = narrativesContent.clinical_report as PdfPayload['clinicalReport'] | undefined;
-
-    const reportUrls = await generateAndStoreReports({
-      assessmentId,
-      patient: {
-        name: assessment.patient.name,
-        age: assessment.patient.age ?? 30,
-        gender: assessment.patient.gender ?? 'unknown',
-      },
-      clinic: { name: assessment.clinic.name },
-      doctor: { name: assessment.reviewingDoctor?.name ?? 'Reviewing doctor' },
-      clinicalProfile: (clinicalArtifact?.content ?? {}) as unknown as PdfPayload['clinicalProfile'],
-      visualJourney: (visualArtifact?.content ?? {}) as unknown as PdfPayload['visualJourney'],
-      kitRecommendation: (await prisma.aIArtifact.findFirst({
-        where: { assessmentId, type: ArtifactType.RECOMMENDATIONS },
-        orderBy: { createdAt: 'desc' },
-      }))?.content as unknown as PdfPayload['kitRecommendation'],
-      therapyPlan: (await prisma.aIArtifact.findFirst({
-        where: { assessmentId, type: ArtifactType.THERAPY_PLAN },
-        orderBy: { createdAt: 'desc' },
-      }))?.content,
-      clinicalReport,
-      createdAt: new Date(),
-    });
-
-    // Persist the URL artifact
-    await prisma.aIArtifact.upsert({
-      where: {
-        assessmentId_type: {
-          assessmentId,
-          type: ArtifactType.REPORT,
-        },
-      },
-      create: {
-        assessmentId,
-        type: ArtifactType.REPORT,
-        content: reportUrls as object,
-      },
-      update: {
-        content: reportUrls as object,
-      },
-    });
-
-    await prisma.auditLog.create({
-      data: {
-        assessmentId,
-        action: 'PDF_GENERATED',
-        entityType: 'Assessment',
-        entityId: assessmentId,
-        metadata: reportUrls as object,
-      },
-    });
-
-    return NextResponse.json({ success: true, ...reportUrls });
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     console.error('[pdf] Generation failed:', message);
@@ -217,6 +168,11 @@ export async function POST(req: Request) {
 export async function GET(req: Request) {
   const { searchParams } = new URL(req.url);
   const assessmentId = searchParams.get('id');
+  const requestedVersion = searchParams.get('contentVersion');
+  const legacyReference = searchParams.get('legacy') === '1';
+  if (requestedVersion !== null && (!/^[1-9][0-9]*$/.test(requestedVersion) || !Number.isSafeInteger(Number(requestedVersion)))) {
+    return NextResponse.json({ error: 'Invalid contentVersion' }, { status: 400 });
+  }
   const download = searchParams.get('download') === '1';
 
   if (!assessmentId) {
@@ -265,13 +221,20 @@ export async function GET(req: Request) {
     }),
     prisma.assessment.findUnique({
       where: { id: assessmentId },
-      select: { patient: { select: { name: true } }, clinicId: true },
+      select: { patient: { select: { name: true } }, clinicId: true, patientId: true,
+        clinic: { select: { name: true } }, reviewingDoctor: { select: { name: true } } },
     }),
     prisma.consultation.findUnique({
       where: { assessmentId },
-      include: { currentVersion: { select: { approvalStatus: true, content: true } } },
+      include: { currentVersion: true, ...(requestedVersion ? { versions: { where: { contentVersion: Number(requestedVersion) }, take: 1 } } : {}) },
     }),
   ]);
+
+  // Historical legacy references were not version-bound. Retain their original
+  // authorization gate; never label them as a particular approved version.
+  if (legacyReference && audience === 'patient_token') {
+    return NextResponse.json({ error: 'Clinic session required' }, { status: 403 });
+  }
 
   if (!assessment) {
     logLifecycleEvent({
@@ -304,7 +267,8 @@ export async function GET(req: Request) {
   // and for a missing consultation, and tests/api/pdf-readiness-gate.test.ts
   // still asserts 422 for a blocked or missing snapshot. Restoring the route
   // to what those tests already demand is the whole of this change.
-  const approvalStatus = consultation?.currentVersion?.approvalStatus ?? null;
+  const selectedVersion = requestedVersion ? consultation?.versions?.[0] : consultation?.currentVersion;
+  const approvalStatus = selectedVersion?.approvalStatus ?? null;
   if (approvalStatus !== 'APPROVED') {
     logLifecycleEvent({
       event: 'pdf.release_denied',
@@ -324,7 +288,7 @@ export async function GET(req: Request) {
   // migration or a future engine change could leave an APPROVED row whose
   // snapshot went stale. The evaluator fails closed for missing/malformed
   // snapshots so pre-D historical rows are refused here too.
-  const consultationContent = consultation?.currentVersion?.content as
+  const consultationContent = selectedVersion?.content as
     | Consultation
     | null
     | undefined;
@@ -367,7 +331,32 @@ export async function GET(req: Request) {
     report?.content && typeof report.content === 'object' && !Array.isArray(report.content)
       ? (report.content as Record<string, unknown>)
       : {};
-  const patientPdfUrl = content.patientPdfUrl;
+  let patientPdfUrl = content.patientPdfUrl;
+  if (legacyReference) {
+    const legacy = await prisma.auditLog.findFirst({ where: { assessmentId, clinicId: assessment.clinicId,
+      action: 'PDF_REFERENCE_PRESERVED' }, orderBy: { createdAt: 'asc' }, select: { metadata: true } });
+    const metadata = legacy?.metadata as Record<string, unknown> | undefined;
+    patientPdfUrl = metadata?.patientPdfUrl ?? patientPdfUrl;
+  } else if (selectedVersion?.id) {
+    const subject = { id: assessmentId, clinicId: assessment.clinicId, patientId: assessment.patientId };
+    try {
+      let asset = await findApprovedPdf(subject, selectedVersion);
+      // Existing download links are GETs, including on the doctor dashboard.
+      // Recover a missing approved PDF from that exact snapshot; never serve
+      // the draft or a different version while waiting for a patient POST.
+      if (!asset && consultation &&
+          consultation.clinicId === assessment.clinicId && consultation.patientId === assessment.patientId) {
+        const payload = approvedPdfPayload(subject, selectedVersion, assessment.clinic.name,
+          assessment.reviewingDoctor?.name ?? 'Reviewing doctor');
+        const generated = await generateAndStoreReports(payload);
+        asset = await recordApprovedPdf(subject, consultation.id, selectedVersion, generated.patientPdfUrl);
+      }
+      patientPdfUrl = asset?.storagePath;
+    } catch (error) {
+      console.error('[pdf] Approved PDF retrieval failed:', error instanceof Error ? error.message : 'unknown');
+      return NextResponse.json({ error: 'Failed to prepare approved PDF' }, { status: 500 });
+    }
+  }
 
   if (typeof patientPdfUrl !== 'string') {
     return NextResponse.json({ error: 'PDF not ready yet' }, { status: 202 });

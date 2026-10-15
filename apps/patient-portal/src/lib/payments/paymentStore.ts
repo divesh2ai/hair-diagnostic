@@ -1,6 +1,7 @@
 import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { isSchemaDriftError } from "@/lib/prismaErrors";
+import { assertPurchasingEnabled } from "@/lib/commerce/purchasingGate";
 
 // Kit order payment persistence, over raw SQL.
 //
@@ -167,6 +168,9 @@ export async function startCheckout(input: {
   assessmentId: string;
   amountMinor: number | null;
 }): Promise<PaymentRecord> {
+  // Purchasing kill-switch: no checkout row may be created when purchasing is
+  // disabled, even if an HTTP guard is ever bypassed. Fails closed.
+  assertPurchasingEnabled();
   const id = newId();
   return guardedPayment(async () => {
     const rows = await prisma.$queryRaw<RawRow[]>(Prisma.sql`
@@ -236,6 +240,9 @@ export type MarkPaidResult =
  * fulfilment request only on the former; see confirmPayment.
  */
 export async function markPaid(input: MarkPaidInput): Promise<MarkPaidResult> {
+  // Purchasing kill-switch: no order may be marked PAID when purchasing is
+  // disabled, from any source (gateway webhook or clinic counter). Fails closed.
+  assertPurchasingEnabled();
   const id = newId();
   // The explicit type argument matters: without it TypeScript infers the inner
   // async function's return as `{ outcome: string; … }` — the two literal

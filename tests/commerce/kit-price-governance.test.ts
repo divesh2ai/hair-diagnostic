@@ -163,14 +163,13 @@ describe("kit pricing authority", () => {
   });
 
   it("6. reports repository figures as PRICE_PRESENT in minor units", () => {
-    // ALOPECIA_AREATA, not TE_GOLD — TE_GOLD was reconciled to PRICE_APPROVED
-    // by the 2026-09-08 budget-substitution reconciliation (see below).
-    // ₹3,054 is its KIT_PRICE_INR placeholder after the 2026-09-21 refresh of
-    // that map to the governed sheet MRP (was ₹6,800). It is still a
-    // placeholder, not an approved price: this kit stays PRICE_PRESENT.
-    const p = getKitPrice("ALOPECIA_AREATA");
+    // POST_MENOPAUSE: ₹3,347 is its KIT_PRICE_INR MRP, deliberately kept as an
+    // MRP distinct from an approved charge — a placeholder, not an approved
+    // price, so this kit stays PRICE_PRESENT. (ALOPECIA_AREATA was the prior
+    // example here until it was approved for patient sale on 2026-10-15.)
+    const p = getKitPrice("POST_MENOPAUSE");
     expect(p.status).toBe("PRICE_PRESENT");
-    expect(p.amountMinor).toBe(rupeesToMinor(3054));
+    expect(p.amountMinor).toBe(rupeesToMinor(3347));
     expect(Number.isInteger(p.amountMinor)).toBe(true);
     expect(p.source).toBe("REPOSITORY_PLACEHOLDER");
   });
@@ -198,7 +197,8 @@ describe("kit pricing authority", () => {
     "F4_PLUS",
     "HYPOTHYROID_2",
     "SHED_CONTROL",
-    "IRON_UP_1",
+    // IRON_UP_1 retired from the active catalogue 2026-10-14 (final pricing
+    // decision) — no longer an approved price.
     "GI_HEALTH_1",
     "STRESS_BUST_3",
   ];
@@ -234,12 +234,31 @@ describe("kit pricing authority", () => {
   // list keeps the test's expected union in step with those approved records.
   const APPROVED_LACTIHEALTH = ["LACTIHEALTH", "LACTIHEALTH_VEG"];
 
+  // 2026-10-15: META_B_HYPOTHYROID_VEG was the one veg variant missing from the
+  // approved list though its non-veg sibling (META_B_HYPOTHYROID) and every
+  // other veg variant were approved — a vegetarian hypothyroid order could not
+  // be totalled ("Pricing requires confirmation"). Added at its retained
+  // ₹2,316 figure, same treatment as the other veg variants.
+  // Plus five kits that were orderable with a displayed MRP but no approved
+  // charge (so their orders could not total); clinic-confirmed for patient sale
+  // at their MRP. POST_MENOPAUSE / POST_MENOPAUSE_VEG intentionally excluded —
+  // their MRP stays distinct from an approved charge.
+  const APPROVED_2026_10_15 = [
+    "META_B_HYPOTHYROID_VEG",
+    "OXIDATIVE_STRESS",
+    "ALOPECIA_AREATA",
+    "HEALTHY_9",
+    "EARLY_GREYING_CARE_GOLD",
+    "PRO_FACT_THYROID_CARE",
+  ];
+
   it("7. approves exactly the reconciled + patient-sale kits — nothing else", () => {
     const approved = [
       ...RECONCILED_2026_09_08,
       ...APPROVED_2026_09_19,
       ...APPROVED_2026_09_28,
       ...APPROVED_LACTIHEALTH,
+      ...APPROVED_2026_10_15,
     ];
     expect(Object.keys(APPROVED_KIT_PRICES_MINOR).sort()).toEqual(
       [...approved].sort(),
@@ -254,21 +273,16 @@ describe("kit pricing authority", () => {
   });
 
   it("7b. never approves a protected UNCHANGED kit's price as a side effect", () => {
-    // These kits carry no budget alternative and were NOT among the
-    // doctor-confirmed patient-sale approvals; they must stay unpriced. META_B
-    // is deliberately absent from this list now — it was approved for patient
-    // sale on 2026-09-19 (see APPROVED_2026_09_19) — as were FH_WELL_3, PCOS,
-    // HBR, PERI_MENOPAUSE, PERI_MENOPAUSE_VEG and TE_GOLD_VEG on 2026-09-28
-    // (APPROVED_2026_09_28), and LACTIHEALTH (+ its veg variant) subsequently
-    // (see APPROVED_LACTIHEALTH); every kit that remains here must still be
-    // unable to charge a patient.
-    for (const kitId of [
-      "PRO_FACT_THYROID_CARE",
-      "POST_MENOPAUSE",
-      "EARLY_GREYING_CARE_GOLD",
-      "HEALTHY_9",
-      "ALOPECIA_AREATA",
-    ]) {
+    // These kits were NOT among the doctor-confirmed patient-sale approvals;
+    // they must stay unpriced. META_B is deliberately absent — approved
+    // 2026-09-19 (APPROVED_2026_09_19); FH_WELL_3, PCOS, HBR, PERI_MENOPAUSE,
+    // PERI_MENOPAUSE_VEG and TE_GOLD_VEG on 2026-09-28 (APPROVED_2026_09_28);
+    // LACTIHEALTH (+ veg) subsequently (APPROVED_LACTIHEALTH); and
+    // PRO_FACT_THYROID_CARE, EARLY_GREYING_CARE_GOLD, HEALTHY_9, ALOPECIA_AREATA
+    // and OXIDATIVE_STRESS on 2026-10-15 (APPROVED_2026_10_15). Only the
+    // POST_MENOPAUSE pair remains deliberately MRP-only, so every kit that
+    // remains here must still be unable to charge a patient.
+    for (const kitId of ["POST_MENOPAUSE", "POST_MENOPAUSE_VEG"]) {
       expect(getKitPrice(kitId).status).not.toBe("PRICE_APPROVED");
     }
   });
@@ -276,14 +290,14 @@ describe("kit pricing authority", () => {
   it("7c. approves the TTM pair now that its workbook price was re-verified as present", () => {
     // Corrected 2026-09-09: the 2026-09-08 pass misread this cell as empty.
     expect(getKitPrice("TTM_SUPPORT").status).toBe("PRICE_APPROVED");
-    expect(getKitPrice("TTM_SUPPORT").amountMinor).toBe(rupeesToMinor(2858));
+    expect(getKitPrice("TTM_SUPPORT").amountMinor).toBe(rupeesToMinor(2942));
     expect(getKitPrice("STRESS_BUST_3").status).toBe("PRICE_APPROVED");
-    expect(getKitPrice("STRESS_BUST_3").amountMinor).toBe(rupeesToMinor(1457));
+    expect(getKitPrice("STRESS_BUST_3").amountMinor).toBe(rupeesToMinor(1558));
     expect(CANONICAL_KIT_IDS).toContain("STRESS_BUST_3");
   });
 
-  it("7d. GI_GOLD's approved price matches the workbook exactly (corrected 2026-09-09)", () => {
-    expect(getKitPrice("GI_GOLD").amountMinor).toBe(rupeesToMinor(3455));
+  it("7d. GI_GOLD's approved price matches the workbook exactly (2026-10-14 sheet)", () => {
+    expect(getKitPrice("GI_GOLD").amountMinor).toBe(rupeesToMinor(3655));
   });
 });
 
@@ -352,7 +366,7 @@ describe("patient charging boundary", () => {
   // reconciled for budget substitution on 2026-09-08 (see the reconciliation
   // block above). These still cannot be charged; TE_GOLD/MPHL/FPHL etc. are
   // deliberately NOT used here any more, since reconciliation approved them.
-  const STILL_UNAPPROVED = ["ALOPECIA_AREATA", "HEALTHY_9"];
+  const STILL_UNAPPROVED = ["POST_MENOPAUSE", "POST_MENOPAUSE_VEG"];
 
   it("13. a kit with no approved price still cannot produce a chargeable amount", () => {
     for (const kitId of STILL_UNAPPROVED) {
@@ -374,17 +388,17 @@ describe("patient charging boundary", () => {
     // map has entries, but that the sellability gate honours them.
     const canonical = evaluateKitForPatientSale("MPHL");
     expect(canonical.sellable).toBe(true);
-    expect(canonical.chargeableAmountMinor).toBe(363700);
+    expect(canonical.chargeableAmountMinor).toBe(365500);
 
     const alternative = evaluateKitForPatientSale("M4_PLUS");
     expect(alternative.sellable).toBe(true);
-    expect(alternative.chargeableAmountMinor).toBe(165500);
+    expect(alternative.chargeableAmountMinor).toBe(169500);
   });
 
   it("13d. an order mixing reconciled kits totals correctly", () => {
     const order = evaluateOrderForPatientCharge(["MPHL", "M4_PLUS"]);
     expect(order.chargeable).toBe(true);
-    expect(order.totalAmountMinor).toBe(363700 + 165500);
+    expect(order.totalAmountMinor).toBe(365500 + 169500);
   });
 
   it("14. an unresolved identity cannot enter patient checkout", () => {
@@ -418,7 +432,7 @@ describe("patient charging boundary", () => {
 
     // A present-but-unapproved price stays visible to internal review as a
     // price STATUS, while remaining unchargeable.
-    const priced = evaluateKitForPatientSale("ALOPECIA_AREATA");
+    const priced = evaluateKitForPatientSale("POST_MENOPAUSE");
     expect(priced.priceStatus).toBe("PRICE_PRESENT");
     expect(priced.chargeableAmountMinor).toBeNull();
   });

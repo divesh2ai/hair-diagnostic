@@ -183,7 +183,10 @@ async function persistStageOutput(
       content: content as Prisma.InputJsonValue,
       generationMs: durationMs,
     },
-    update: {
+    // Phase B produces a draft, not a doctor-approved version. It must not
+    // replace an existing report reference (including legacy metadata).
+    // The approved PDF route alone advances that pointer and records history.
+    update: type === ArtifactType.REPORT ? {} : {
       content: content as Prisma.InputJsonValue,
       generationMs: durationMs,
     },

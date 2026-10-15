@@ -1429,6 +1429,21 @@ const KIT_ID_VARIANTS: Record<string, { entry: keyof typeof ENTRIES; displayName
     entry: "PERI_MENOPAUSE",
     displayName: "PRO FACT META B POST-MENOPAUSE (Veg)",
   },
+  // The engine and KitOrderIntent snapshots carry the LONG product spelling
+  // ("PRO FACT META B POSTMENOPAUSE"), which normalises to the keys below.
+  // Without these it fell through to resolveEntryKey -> PERI_MENOPAUSE and
+  // took the peri entry's display name ("HAIR FACT PERI MENOPAUSE"), so the
+  // doctor-review rail and any getKitInfo caller mislabelled the post-menopause
+  // kit as the peri kit while the one-pager (which recomputes from kitId) did
+  // not. Same clinical entry, correct post-menopause name.
+  PRO_FACT_META_B_POSTMENOPAUSE: {
+    entry: "PERI_MENOPAUSE",
+    displayName: "PRO FACT META B POST-MENOPAUSE",
+  },
+  PRO_FACT_META_B_POSTMENOPAUSE_VEG: {
+    entry: "PERI_MENOPAUSE",
+    displayName: "PRO FACT META B POST-MENOPAUSE (Veg)",
+  },
 };
 
 export function getKitInfo(kitId: string): KitInfo | null {

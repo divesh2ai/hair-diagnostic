@@ -11,7 +11,8 @@
 //
 // Both the doctor UI (to decide whether to show "Budget alternative" at all,
 // and what to show) and the server route that persists a substitution import
-// this module. There is exactly one place the 12 approved pairs are listed.
+// this module. There is exactly one place the approved pairs are listed
+// (11 as of 2026-10-14, after the IRON_UP_GOLD→IRON_UP_1 pair was retired).
 //
 // Source: "KIT ALTERNATE PRICE.xlsx" (clinic governance sheet), reconciled
 // 2026-09-08 — see docs/kit-price-reconciliation-2026-09-08.md for the full
@@ -49,7 +50,12 @@ export const APPROVED_SUBSTITUTIONS: readonly ApprovedSubstitution[] = Object.fr
   { canonicalKitId: "FPHL", alternativeKitId: "F4_PLUS", conditionId: "AGA_PATTERN_FEMALE" },
   { canonicalKitId: "META_B_HYPOTHYROID", alternativeKitId: "HYPOTHYROID_2", conditionId: "HYPOTHYROID" },
   { canonicalKitId: "TE_GOLD", alternativeKitId: "SHED_CONTROL", conditionId: "ACUTE_SHEDDING" },
-  { canonicalKitId: "IRON_UP_GOLD", alternativeKitId: "IRON_UP_1", conditionId: "IRON_DEFICIENCY" },
+  // IRON_UP_GOLD's alternative IRON_UP_1 was retired from the active catalogue
+  // 2026-10-14 (final pricing decision): IRON_UP_1 is removed as a canonical
+  // kit, an approved price and a budget alternative. IRON_UP_GOLD now has no
+  // approved alternative and is priced at ₹2,042. Historical references in the
+  // clinical registry (registries/kits/info.ts) and image assets are retained
+  // so past orders still render.
   { canonicalKitId: "GI_GOLD", alternativeKitId: "GI_HEALTH_1", conditionId: "GUT_DYSFUNCTION" },
   { canonicalKitId: "PRO_IMMUNE_GOLD", alternativeKitId: "PRO_IMMUNE_1", conditionId: "IMMUNE_DEPLETION" },
   { canonicalKitId: "RWL_SHIELD", alternativeKitId: "SHED_CONTROL", conditionId: "RAPID_WEIGHT_LOSS" },
@@ -57,6 +63,17 @@ export const APPROVED_SUBSTITUTIONS: readonly ApprovedSubstitution[] = Object.fr
   { canonicalKitId: "FREQUENT_FLYERS", alternativeKitId: "SHED_CONTROL", conditionId: "FREQUENT_FLYING" },
   { canonicalKitId: "TTM_SUPPORT", alternativeKitId: "STRESS_BUST_3", conditionId: "TRICHOTILLOMANIA" },
 ] as const);
+
+/**
+ * Alternatives retired from the active table but still present in historical
+ * orders. They are NOT offerable (absent from APPROVED_SUBSTITUTIONS and from
+ * CANONICAL_KIT_IDS), but report rendering must still resolve them to their
+ * OWN product name and image — never fuzzy-collapse them onto the canonical
+ * they once replaced. IRON_UP_1 retired 2026-10-14 (final pricing decision).
+ */
+export const RETIRED_ALTERNATIVE_KIT_IDS: readonly string[] = Object.freeze([
+  "IRON_UP_1",
+]);
 
 const BY_CANONICAL: ReadonlyMap<string, ApprovedSubstitution> = new Map(
   APPROVED_SUBSTITUTIONS.map((s) => [s.canonicalKitId, s]),

@@ -10,6 +10,7 @@ import {
 } from '@/components/questionnaire/v2/insightRules';
 import {
   ChapterTransitionV3,
+  ChapterArtworkPrefetch,
   LanguageGateV3,
   QuestionnaireShellV3,
   QuestionRendererV3,
@@ -422,7 +423,11 @@ export function AssessmentV3Journey({
   const selectedCount = Array.isArray(currentAnswer) ? currentAnswer.length : 0;
 
   return (
-    <QuestionnaireShellV3
+    <>
+      {/* Warm the chapter artwork cache during the questions so each chapter
+          transition appears instantly instead of loading on screen. */}
+      <ChapterArtworkPrefetch />
+      <QuestionnaireShellV3
       clinicName={clinicData?.name}
       // Section title in the progress band uses the same localised chapter name
       // the patient just read on the chapter card, so the two never disagree.
@@ -454,6 +459,7 @@ export function AssessmentV3Journey({
         clinicSlug={effectiveClinicSlug}
         onAnswer={(answer) => setAnswer(question.id, answer)}
       />
-    </QuestionnaireShellV3>
+      </QuestionnaireShellV3>
+    </>
   );
 }

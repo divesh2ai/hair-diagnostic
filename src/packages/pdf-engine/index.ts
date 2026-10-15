@@ -56,6 +56,7 @@ export class ReasoningCompletenessError extends Error {
 // testable without the React/@react-pdf render stack). Re-exported here so the
 // package's public surface is unchanged.
 export { patientReportObjectName, toFilenameSlug } from './objectName';
+export { approvedReportPath } from './version';
 
 /**
  * Main orchestrator for the PDF Generation Engine.
@@ -100,14 +101,8 @@ export async function generateAndStoreReports(payload: ReportInputPayload) {
 
   console.log(`[PDF Engine] Generating reports for Assessment ${payload.assessmentId}...`);
 
-  // The stored report is named after the patient (product decision: reports are
-  // saved under the patient name, including in Supabase storage). The assessment
-  // id in the PARENT path segment keeps every object unique — so two patients
-  // who share a name never collide — while this filename makes the object
-  // identifiable in a bucket listing. The bucket is private and read only
-  // through short-lived signed URLs. A name that sanitises to nothing (empty or
-  // all-punctuation) falls back to the assessment id so the file is never
-  // unnamed.
+  // Names are display filenames only. Approved storage identity comes from
+  // the clinic/patient/assessment/version tuple passed to the upload below.
   const patientFilename = patientReportObjectName(
     payload.patient?.name,
     payload.assessmentId,
@@ -135,7 +130,8 @@ export async function generateAndStoreReports(payload: ReportInputPayload) {
     const patientPdfUrl = await uploadReportToSupabase(
       patientBuffer,
       payload.assessmentId,
-      patientFilename
+      patientFilename,
+      payload.approvedVersion
     );
     console.log(`[PDF Engine] Patient Report stored at: ${patientPdfUrl}`);
 
@@ -143,6 +139,8 @@ export async function generateAndStoreReports(payload: ReportInputPayload) {
 
     return {
       patientPdfUrl,
+      reportKind: payload.approvedVersion ? 'approved' : 'draft',
+      ...(payload.approvedVersion ?? {}),
       // doctorPdfUrl: '...'
     };
   } catch (error) {

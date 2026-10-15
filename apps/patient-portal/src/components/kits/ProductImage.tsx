@@ -104,10 +104,14 @@ export function ProductImage({
         // `object-contain` is the whole contract: preserve the product's own
         // proportions, fit it to the frame, crop nothing.
         className="h-full w-full object-contain"
-        // The packshots are local static files served from /public. The
-        // optimizer adds a round trip per image on a page that renders several
-        // of them, for artwork already sized for this use.
-        unoptimized
+        // Let the image optimizer resize these down. The source packshots are
+        // 250–720 KB at ~500×667, but they render in a 44–176 px frame — serving
+        // them raw ("unoptimized") downloaded the full file for a thumbnail, and
+        // a protocol page paints several at once, which is the "images load
+        // slowly" the clinic saw. The optimizer emits a frame-sized WebP (a few
+        // KB), CDN-cached after first paint. `sizes` tells it the render width so
+        // it picks the smallest sufficient candidate.
+        sizes={`${px}px`}
       />
     </div>
   );

@@ -8,6 +8,10 @@ import {
   isKnownProvider,
   verifyWebhookSignature,
 } from "@/lib/payments/webhookVerifier";
+import {
+  isPurchasingEnabled,
+  PURCHASING_DISABLED_CODE,
+} from "@/lib/commerce/purchasingGate";
 
 // POST /api/payments/webhook/[provider]
 //
@@ -64,6 +68,12 @@ export async function POST(
   ctx: { params: Promise<{ provider: string }> },
 ) {
   const { provider } = await ctx.params;
+
+  // Purchasing kill-switch — clinical-only launch. No external payment
+  // notification may mark an order paid. Nothing is read or written.
+  if (!isPurchasingEnabled()) {
+    return NextResponse.json({ error: PURCHASING_DISABLED_CODE }, { status: 403 });
+  }
 
   if (!isKnownProvider(provider)) {
     return NextResponse.json({ error: "unknown_provider" }, { status: 404 });

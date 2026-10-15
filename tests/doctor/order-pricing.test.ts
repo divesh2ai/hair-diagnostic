@@ -34,16 +34,16 @@ describe("buildDoctorOrderPricing — approved kits price like the cart", () => 
   });
 
   it("prices each resolved kit at its approved patient charge", () => {
-    expect(byKit(RAW.phenotype)).toMatchObject({ commercialState: "CHARGEABLE", priceInr: 3410 });
+    expect(byKit(RAW.phenotype)).toMatchObject({ commercialState: "CHARGEABLE", priceInr: 3493 });
     expect(byKit(RAW.pcosVeg)).toMatchObject({ commercialState: "CHARGEABLE", priceInr: 3009 });
     expect(byKit(RAW.proImmuneVeg)).toMatchObject({ commercialState: "CHARGEABLE", priceInr: 2692 });
-    expect(byKit(RAW.fphl)).toMatchObject({ commercialState: "CHARGEABLE", priceInr: 3583 });
+    expect(byKit(RAW.fphl)).toMatchObject({ commercialState: "CHARGEABLE", priceInr: 3601 });
   });
 
   it("totals a fully-approved order", () => {
     const pricing = buildDoctorOrderPricing([RAW.proImmuneVeg, RAW.fphl]);
     expect(pricing.chargeable).toBe(true);
-    expect(pricing.totalInr).toBe(2692 + 3583);
+    expect(pricing.totalInr).toBe(2692 + 3601);
     expect(pricing.totalLabel).toBeTypeOf("string");
   });
 });
@@ -65,7 +65,7 @@ describe("buildDoctorOrderPricing — unresolved/unapproved kits mirror the cart
     // The resolvable line still prices correctly alongside the blocked one.
     expect(pricing.lineItems.find((l) => l.kitId === RAW.fphl)).toMatchObject({
       commercialState: "CHARGEABLE",
-      priceInr: 3583,
+      priceInr: 3601,
     });
   });
 

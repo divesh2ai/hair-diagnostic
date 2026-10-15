@@ -8,6 +8,11 @@ import {
   PaymentNotProvisionedError,
   startCheckout,
 } from "@/lib/payments/paymentStore";
+import {
+  isPurchasingEnabled,
+  PURCHASING_DISABLED_CODE,
+  PURCHASING_DISABLED_MESSAGE,
+} from "@/lib/commerce/purchasingGate";
 
 // POST /api/cart/[assessmentId]/checkout?t=<cart token>
 //
@@ -52,6 +57,14 @@ export async function POST(
   ctx: { params: Promise<{ assessmentId: string }> },
 ) {
   const { assessmentId } = await ctx.params;
+
+  // Purchasing kill-switch — clinical-only launch. No checkout may start.
+  if (!isPurchasingEnabled()) {
+    return NextResponse.json(
+      { error: PURCHASING_DISABLED_CODE, message: PURCHASING_DISABLED_MESSAGE },
+      { status: 403 },
+    );
+  }
 
   const token = new URL(req.url).searchParams.get("t");
   if (!token) return NextResponse.json(NOT_FOUND_BODY, { status: 404 });

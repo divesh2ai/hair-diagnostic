@@ -1,4 +1,4 @@
-export { ChapterTransitionV3 } from './ChapterTransitionV3';
+export { ChapterTransitionV3, ChapterArtworkPrefetch } from './ChapterTransitionV3';
 export { HairProgressV3 } from './HairProgressV3';
 export {
   BiologicalBridgeProgressV3,

@@ -211,15 +211,16 @@ describe("PRO FACT META B PCOS resolves to PCOS (veg) by approved alias", () => 
     // both now approved, so this identifier is genuinely chargeable.
     expect(d.priceStatus).toBe("PRICE_APPROVED");
     expect(d.sellable).toBe(true);
-    expect(d.chargeableAmountMinor).toBe(341000);
+    expect(d.chargeableAmountMinor).toBe(349300);
     expect(d.sourceIdentifierSnapshot).toBe("PHENOTYPE INFLAMATION");
   });
 
   it("an identity that resolves but has no approved price is still blocked", () => {
-    // ALOPECIA_AREATA: a real canonical kit, exact-match resolvable, but not
-    // touched by the 2026-09-08 reconciliation (it has no budget alternative
-    // and was not in the approved sheet for this feature).
-    const d = evaluateKitForPatientSale("ALOPECIA_AREATA");
+    // POST_MENOPAUSE: a real canonical kit, exact-match resolvable, whose MRP is
+    // deliberately kept distinct from an approved charge — so it resolves but
+    // carries no APPROVED price. (ALOPECIA_AREATA was the prior example until it
+    // was approved for patient sale on 2026-10-15.)
+    const d = evaluateKitForPatientSale("POST_MENOPAUSE");
     expect(d.identityStatus).toBe("RESOLVED");
     expect(d.priceStatus).toBe("PRICE_PRESENT");
     expect(d.sellable).toBe(false);
@@ -238,10 +239,11 @@ describe("no misleading total, no monetary progression", () => {
   });
 
   it("a cart of resolved-but-unapproved lines still has no total", () => {
-    // ALOPECIA_AREATA + HEALTHY_9: both resolve, neither has an approved price.
-    // (HBR is deliberately NOT used here any more — it was approved for patient
-    // sale on 2026-09-28.)
-    const order = evaluateOrderForPatientCharge(["ALOPECIA_AREATA", "HEALTHY_9"]);
+    // POST_MENOPAUSE + POST_MENOPAUSE_VEG: both resolve, neither has an approved
+    // price (their MRP is kept distinct from an approved charge). ALOPECIA_AREATA
+    // / HEALTHY_9 are deliberately NOT used here any more — approved for patient
+    // sale on 2026-10-15.
+    const order = evaluateOrderForPatientCharge(["POST_MENOPAUSE", "POST_MENOPAUSE_VEG"]);
     expect(order.chargeable).toBe(false);
     expect(order.totalAmountMinor).toBeNull();
     expect(order.blockingReasons).toContain("PRICE_NOT_APPROVED");
@@ -253,7 +255,7 @@ describe("no misleading total, no monetary progression", () => {
     // (not the others) resolve.
     const order = evaluateOrderForPatientCharge(["FPHL", "MPHL"]);
     expect(order.chargeable).toBe(true);
-    expect(order.totalAmountMinor).toBe(358300 + 363700);
+    expect(order.totalAmountMinor).toBe(360100 + 365500);
   });
 
   it("real prescriptions that resolved-but-were-blocked (on identity or price) are now chargeable", () => {
@@ -263,13 +265,12 @@ describe("no misleading total, no monetary progression", () => {
     // both the new alias AND the new price to become chargeable.
     const fphlOnly = evaluateOrderForPatientCharge(["FPHL"]);
     expect(fphlOnly.chargeable).toBe(true);
-    expect(fphlOnly.totalAmountMinor).toBe(358300);
+    expect(fphlOnly.totalAmountMinor).toBe(360100);
 
-    // PRO_IMMUNE_GOLD was repriced 2026-09-19 (₹2,518 → ₹2,638) as part of the
-    // doctor-confirmed Pro Immune price-sheet correction.
+    // PRO_IMMUNE_GOLD is ₹2,636 on the 2026-10-14 approved sheet.
     const mphlProImmune = evaluateOrderForPatientCharge(["MPHL", "PRO IMMUNE GOLD"]);
     expect(mphlProImmune.chargeable).toBe(true);
-    expect(mphlProImmune.totalAmountMinor).toBe(363700 + 263800);
+    expect(mphlProImmune.totalAmountMinor).toBe(365500 + 263600);
   });
 
   it("every other real prescription on file remains non-chargeable", () => {
@@ -282,10 +283,12 @@ describe("no misleading total, no monetary progression", () => {
     // genuinely still cannot charge: "HAIR FACT POST MENOPAUSE VEG" (a clinical
     // spelling with no approved alias, unresolved) and ALOPECIA_AREATA /
     // HEALTHY_9 (resolve, but were never price-approved).
+    // ALOPECIA_AREATA / HEALTHY_9 were approved for patient sale 2026-10-15, so
+    // these now lean on POST_MENOPAUSE / POST_MENOPAUSE_VEG (resolve, MRP-only).
     const realOrders = [
       ["HAIR FACT POST MENOPAUSE VEG", "IRON UP GOLD"],
-      ["HAIR FACT TE GOLD", "ALOPECIA_AREATA"],
-      ["HEALTHY_9"],
+      ["HAIR FACT TE GOLD", "POST_MENOPAUSE"],
+      ["POST_MENOPAUSE_VEG"],
     ];
     for (const kits of realOrders) {
       const order = evaluateOrderForPatientCharge(kits);
