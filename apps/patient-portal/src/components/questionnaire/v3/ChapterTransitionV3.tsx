@@ -1,6 +1,6 @@
 'use client';
 
-import type { CSSProperties } from 'react';
+import { useEffect, useState, type CSSProperties } from 'react';
 import { ArrowRight } from 'lucide-react';
 
 import type { SectionIntroContent } from '@/components/questionnaire/v2/insightRules';
@@ -199,5 +199,88 @@ export function ChapterTransitionV3({
       </div>
       <span className={styles.chapterIndex} aria-hidden="true">{indexLabel}</span>
     </section>
+  );
+}
+
+// Unique chapter artwork slugs (nutrition appears under two keys).
+const CHAPTER_SLUGS: readonly string[] = Array.from(
+  new Set(Object.values(CHAPTER_ARTWORK).map((a) => a.slug)),
+);
+
+/**
+ * Warm the chapter artwork cache while the patient is answering questions.
+ *
+ * Each chapter transition is a full-screen image. Rendered cold, it starts
+ * downloading only when the transition mounts, so the patient watches it load —
+ * the "chapter image loads slowly" the clinic saw. This mounts hidden <picture>
+ * elements that request the EXACT same sources the real transition will (same
+ * media + type, so avif/webp and mobile/desktop all match, no wasted bytes and
+ * no 404s), so by the time each transition appears its image is already cached.
+ *
+ * Deferred to idle time so it never competes with the question the patient is
+ * actually looking at, and it fetches nothing until after first paint.
+ */
+export function ChapterArtworkPrefetch() {
+  const [warm, setWarm] = useState(false);
+
+  useEffect(() => {
+    const w = window as typeof window & {
+      requestIdleCallback?: (cb: () => void, opts?: { timeout: number }) => number;
+      cancelIdleCallback?: (handle: number) => void;
+    };
+    let handle: number;
+    let idle = false;
+    if (w.requestIdleCallback) {
+      idle = true;
+      handle = w.requestIdleCallback(() => setWarm(true), { timeout: 2500 });
+    } else {
+      handle = window.setTimeout(() => setWarm(true), 1200);
+    }
+    return () => {
+      if (idle && w.cancelIdleCallback) w.cancelIdleCallback(handle);
+      else window.clearTimeout(handle);
+    };
+  }, []);
+
+  if (!warm) return null;
+
+  return (
+    <div
+      aria-hidden="true"
+      style={{
+        position: 'absolute',
+        width: 1,
+        height: 1,
+        left: -9999,
+        top: 0,
+        overflow: 'hidden',
+        opacity: 0,
+        pointerEvents: 'none',
+      }}
+    >
+      {CHAPTER_SLUGS.map((slug) => (
+        <picture key={slug}>
+          <source
+            media="(max-width: 700px)"
+            type="image/avif"
+            srcSet={`${ASSET_ROOT}/chapters/${slug}-mobile.avif`}
+          />
+          <source
+            media="(max-width: 700px)"
+            type="image/webp"
+            srcSet={`${ASSET_ROOT}/chapters/${slug}-mobile.webp`}
+          />
+          <source type="image/avif" srcSet={`${ASSET_ROOT}/chapters/${slug}-desktop.avif`} />
+          <img
+            src={`${ASSET_ROOT}/chapters/${slug}-desktop.webp`}
+            alt=""
+            width={1}
+            height={1}
+            loading="eager"
+            decoding="async"
+          />
+        </picture>
+      ))}
+    </div>
   );
 }
