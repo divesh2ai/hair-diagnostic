@@ -216,10 +216,11 @@ describe("PRO FACT META B PCOS resolves to PCOS (veg) by approved alias", () => 
   });
 
   it("an identity that resolves but has no approved price is still blocked", () => {
-    // ALOPECIA_AREATA: a real canonical kit, exact-match resolvable, but not
-    // touched by the 2026-09-08 reconciliation (it has no budget alternative
-    // and was not in the approved sheet for this feature).
-    const d = evaluateKitForPatientSale("ALOPECIA_AREATA");
+    // POST_MENOPAUSE: a real canonical kit, exact-match resolvable, whose MRP is
+    // deliberately kept distinct from an approved charge — so it resolves but
+    // carries no APPROVED price. (ALOPECIA_AREATA was the prior example until it
+    // was approved for patient sale on 2026-10-15.)
+    const d = evaluateKitForPatientSale("POST_MENOPAUSE");
     expect(d.identityStatus).toBe("RESOLVED");
     expect(d.priceStatus).toBe("PRICE_PRESENT");
     expect(d.sellable).toBe(false);
@@ -238,10 +239,11 @@ describe("no misleading total, no monetary progression", () => {
   });
 
   it("a cart of resolved-but-unapproved lines still has no total", () => {
-    // ALOPECIA_AREATA + HEALTHY_9: both resolve, neither has an approved price.
-    // (HBR is deliberately NOT used here any more — it was approved for patient
-    // sale on 2026-09-28.)
-    const order = evaluateOrderForPatientCharge(["ALOPECIA_AREATA", "HEALTHY_9"]);
+    // POST_MENOPAUSE + POST_MENOPAUSE_VEG: both resolve, neither has an approved
+    // price (their MRP is kept distinct from an approved charge). ALOPECIA_AREATA
+    // / HEALTHY_9 are deliberately NOT used here any more — approved for patient
+    // sale on 2026-10-15.
+    const order = evaluateOrderForPatientCharge(["POST_MENOPAUSE", "POST_MENOPAUSE_VEG"]);
     expect(order.chargeable).toBe(false);
     expect(order.totalAmountMinor).toBeNull();
     expect(order.blockingReasons).toContain("PRICE_NOT_APPROVED");
@@ -281,10 +283,12 @@ describe("no misleading total, no monetary progression", () => {
     // genuinely still cannot charge: "HAIR FACT POST MENOPAUSE VEG" (a clinical
     // spelling with no approved alias, unresolved) and ALOPECIA_AREATA /
     // HEALTHY_9 (resolve, but were never price-approved).
+    // ALOPECIA_AREATA / HEALTHY_9 were approved for patient sale 2026-10-15, so
+    // these now lean on POST_MENOPAUSE / POST_MENOPAUSE_VEG (resolve, MRP-only).
     const realOrders = [
       ["HAIR FACT POST MENOPAUSE VEG", "IRON UP GOLD"],
-      ["HAIR FACT TE GOLD", "ALOPECIA_AREATA"],
-      ["HEALTHY_9"],
+      ["HAIR FACT TE GOLD", "POST_MENOPAUSE"],
+      ["POST_MENOPAUSE_VEG"],
     ];
     for (const kits of realOrders) {
       const order = evaluateOrderForPatientCharge(kits);

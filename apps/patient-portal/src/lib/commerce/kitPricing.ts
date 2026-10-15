@@ -135,6 +135,17 @@ export const APPROVED_KIT_PRICES_MINOR: Readonly<Record<string, number>> =
     TE_GOLD_VEG: rupeesToMinor(3394), // not priced in sheet — prior approved figure retained
     LACTIHEALTH: rupeesToMinor(2006),
     LACTIHEALTH_VEG: rupeesToMinor(2454), // not priced in sheet — prior approved figure retained
+    // ── Approved 2026-10-15 (clinic-confirmed) ───────────────────────────────
+    // These kits were orderable with a displayed MRP but no approved charge, so
+    // any order containing them could not be totalled. Approved for patient sale
+    // at their displayed MRP. POST_MENOPAUSE / POST_MENOPAUSE_VEG are
+    // deliberately NOT here — their MRP stays distinct from an approved charge
+    // pending a separate decision. Purchasing stays disabled at launch.
+    OXIDATIVE_STRESS: rupeesToMinor(5100),
+    ALOPECIA_AREATA: rupeesToMinor(3295),
+    HEALTHY_9: rupeesToMinor(1351),
+    EARLY_GREYING_CARE_GOLD: rupeesToMinor(3647),
+    PRO_FACT_THYROID_CARE: rupeesToMinor(1605),
   });
 
 /**
