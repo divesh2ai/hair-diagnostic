@@ -327,7 +327,7 @@
           "type": "single_select",
           "label": "How long have you been experiencing hair loss?",
           "subtitle": null,
-          "required": false,
+          "required": true,
           "multiSelect": false,
           "options": [
             {
@@ -454,7 +454,7 @@
           "type": "single_select",
           "label": "How much hair do you lose per day?",
           "subtitle": null,
-          "required": false,
+          "required": true,
           "multiSelect": false,
           "options": [
             {
@@ -577,7 +577,7 @@
           "type": "multi_select",
           "label": "What type of hair fall are you seeing?",
           "subtitle": null,
-          "required": false,
+          "required": true,
           "multiSelect": true,
           "options": [
             {
@@ -1878,7 +1878,7 @@
           "type": "text",
           "label": "Please tell us which condition(s) you are being treated for and any medications you are currently taking:",
           "subtitle": null,
-          "required": false,
+          "required": true,
           "multiSelect": false,
           "options": [],
           "visibilityRules": [
@@ -2770,7 +2770,7 @@
           "type": "image_select",
           "label": "Which image best describes your hair loss right now?",
           "subtitle": null,
-          "required": false,
+          "required": true,
           "multiSelect": false,
           "options": [
             {
