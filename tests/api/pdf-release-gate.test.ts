@@ -86,6 +86,12 @@ jest.mock("@/lib/reviewToken", () => ({
 }));
 
 // eslint-disable-next-line @typescript-eslint/no-var-requires
+// These tests isolate authorization. Version persistence is covered separately.
+jest.mock('@/lib/reports/approvedPdf', () => ({
+  findApprovedPdf: async () => null,
+  approvedPdfPayload: () => ({}),
+  recordApprovedPdf: async (_subject: unknown, _id: unknown, _version: unknown, path: string) => ({ storagePath: path }),
+}));
 const { GET, POST } = require("../../apps/patient-portal/src/app/api/assessment/pdf/route");
 
 function getReq(id: string): Request {
@@ -276,10 +282,23 @@ const POST_CLINIC = "clinic-owner";
 
 function postAssessment(clinicId: string) {
   return {
+    patientId: "patient",
     patient: { name: "P", age: 30, gender: "female" },
     clinic: { name: "Owner Clinic" },
     clinicId,
     reviewingDoctor: null,
+  };
+}
+
+function approvedPostConsultation(clinicId: string) {
+  return {
+    id: 'consultation', clinicId, patientId: 'patient',
+    currentVersion: { id: 'cv1', contentVersion: 1, approvalStatus: 'APPROVED', content: {
+      clinicalReadiness: { schemaVersion: 1, evaluatedAt: '2026-10-15T00:00:00Z',
+        sourceClinicalArtifactVersion: 'v4', isReadyForApproval: true,
+        groundingViolations: [], reasoningGaps: [], blockingCodes: [],
+        summary: { groundingViolationCount: 0, reasoningGapCount: 0 } },
+    } },
   };
 }
 
@@ -331,6 +350,7 @@ describe("POST /api/assessment/pdf — generation authorization", () => {
   it("allows a clinic session that OWNS the assessment's clinic", async () => {
     getClinicContext.mockResolvedValueOnce({ userId: "u", role: "DOCTOR", clinicId: POST_CLINIC });
     assessmentFindUnique.mockResolvedValueOnce(postAssessment(POST_CLINIC));
+    consultationFindUnique.mockResolvedValueOnce(approvedPostConsultation(POST_CLINIC));
     generateAndStoreReports.mockResolvedValueOnce({ patientPdfUrl: "reports/p.pdf" });
     const res = await POST(postReq({ assessmentId: "abc" }));
     expect(res.status).toBe(200);
@@ -341,6 +361,7 @@ describe("POST /api/assessment/pdf — generation authorization", () => {
     getClinicContext.mockRejectedValueOnce(new UnauthorizedError());
     assessmentFindUnique.mockResolvedValueOnce(postAssessment(POST_CLINIC));
     verifyReviewToken.mockReturnValueOnce({ ok: true, assessmentId: "abc" });
+    consultationFindUnique.mockResolvedValueOnce(approvedPostConsultation(POST_CLINIC));
     generateAndStoreReports.mockResolvedValueOnce({ patientPdfUrl: "reports/p.pdf" });
     const res = await POST(postReq({ assessmentId: "abc", token: "t" }));
     expect(res.status).toBe(200);
@@ -350,6 +371,7 @@ describe("POST /api/assessment/pdf — generation authorization", () => {
   it("Super Admin may generate across clinics", async () => {
     getClinicContext.mockResolvedValueOnce({ userId: "sa", role: "SUPER_ADMIN", clinicId: null });
     assessmentFindUnique.mockResolvedValueOnce(postAssessment("any-other-clinic"));
+    consultationFindUnique.mockResolvedValueOnce(approvedPostConsultation("any-other-clinic"));
     generateAndStoreReports.mockResolvedValueOnce({ patientPdfUrl: "reports/p.pdf" });
     const res = await POST(postReq({ assessmentId: "abc" }));
     expect(res.status).toBe(200);

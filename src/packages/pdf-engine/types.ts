@@ -21,6 +21,8 @@ export interface DoctorInfo {
 }
 
 export interface ReportInputPayload {
+  /** Present only for doctor-approved, immutable clinical reports. */
+  approvedVersion?: import('./version').ApprovedReportIdentity;
   assessmentId: string;
   patient: PatientInfo;
   clinic: ClinicInfo;

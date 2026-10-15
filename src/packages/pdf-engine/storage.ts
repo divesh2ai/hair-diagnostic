@@ -1,4 +1,5 @@
 import { createClient } from '@supabase/supabase-js';
+import { approvedReportPath, type ApprovedReportIdentity } from './version';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://mock.supabase.co';
 const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || 'mock-service-key';
@@ -21,17 +22,19 @@ const BUCKET = 'clinical-reports';
  * that need to hand a URL to a browser mint one at read time with
  * `signReportUrl` below.
  *
- * `filename` carries the patient's name (see the caller); the assessment id in
- * the parent segment keeps the object unique, and the bucket stays private.
+ * Approved reports use immutable identity/version paths. Draft filenames may
+ * carry display names, but live under drafts/ so legacy reports are untouched.
  */
-export async function uploadReportToSupabase(buffer: Buffer, assessmentId: string, filename: string): Promise<string> {
-  const path = `reports/${assessmentId}/${filename}`;
+export async function uploadReportToSupabase(buffer: Buffer, assessmentId: string, filename: string, approvedVersion?: ApprovedReportIdentity): Promise<string> {
+  if (approvedVersion && approvedVersion.assessmentId !== assessmentId) throw new Error('Report assessment mismatch');
+  // Draft pipeline output stays separate from every approved object.
+  const path = approvedVersion ? approvedReportPath(approvedVersion) : `drafts/${assessmentId}/${filename}`;
 
   const { error } = await supabase.storage
     .from(BUCKET)
     .upload(path, buffer, {
       contentType: 'application/pdf',
-      upsert: true,
+      upsert: !approvedVersion,
       // A regenerated PDF (dossier template fix, re-run) must not be served
       // from cache. Signed URLs are per-request anyway, but this keeps any
       // intermediary from holding a stale clinical document.
@@ -39,6 +42,13 @@ export async function uploadReportToSupabase(buffer: Buffer, assessmentId: strin
     });
 
   if (error) {
+    // A retry (including upload-success / DB-failure recovery) must use the
+    // first committed bytes. Confirm that object is readable before success.
+    const code = (error as { statusCode?: string; error?: string }).statusCode;
+    if (approvedVersion && (code === '409' || error.message === 'The resource already exists' || (error as { error?: string }).error === 'Duplicate')) {
+      const existing = await supabase.storage.from(BUCKET).download(path);
+      if (!existing.error && existing.data && existing.data.size > 0) return path;
+    }
     console.error(`[PDF Storage] Supabase upload failed for ${filename}:`, error);
     throw new Error(`Failed to store PDF artifact: ${error.message}`);
   }
