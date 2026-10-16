@@ -54,6 +54,7 @@ on:
       - main
       - master
       - 'release/**'
+      - 'claude/acube-launch-fix'
 
 jobs:
   # ── BLOCKING ───────────────────────────────────────────────────────────────
@@ -76,6 +77,10 @@ jobs:
 
       - name: Install dependencies
         run: npm ci
+
+      # Rendered report regressions import the real portal components.
+      - name: Install patient portal dependencies
+        run: npm ci --prefix apps/patient-portal
 
       # postinstall already runs this; kept explicit so a generate failure is
       # named rather than buried in the install log. Needs no DATABASE_URL —
