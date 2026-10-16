@@ -1931,7 +1931,6 @@ function resolveDoctorState(status: string | null | undefined, wasModified?: boo
   const normalized = cleanText(status).toUpperCase();
   if (normalized === "APPROVED") return "APPROVED";
   if (wasModified || normalized === "REVISION_REQUESTED" || normalized === "EDITS_REQUESTED") return "MODIFIED";
-  if (normalized === "REJECTED" || normalized === "PENDING" || normalized === "PENDING_REVIEW") return "REVIEWED";
   return "DRAFT";
 }
 
@@ -2330,7 +2329,7 @@ export function mapClinicalReportToPrintPresentation(clinicalReport: ClinicalRep
         primary,
         supportingLine: buildSupportingLine(clinicalReport, drivers),
         conclusion: built.text,
-        reviewedBy: `Reviewed by ${approvedBy}`,
+        reviewedBy: state === "APPROVED" ? `Reviewed by ${approvedBy}` : "Draft — awaiting doctor review",
       },
       narrative: built.narrative,
     };
@@ -2397,9 +2396,11 @@ export function mapClinicalReportToPrintPresentation(clinicalReport: ClinicalRep
       approvedAt: state === "APPROVED" ? formatDate(context.approval?.approvedAt, "Date pending") : "Awaiting final sign-off",
       approvedBy,
       nextReviewDate: formatDate(context.approval?.nextReviewDate),
-      signatureUrl: context.clinician?.signatureUrl ?? null,
+      signatureUrl: state === "APPROVED" ? context.clinician?.signatureUrl ?? null : null,
     },
-    disclaimer: "Based on your submitted assessment and clinician review. This report supports, but does not replace, medical advice.",
+    disclaimer: state === "APPROVED"
+      ? "Based on your submitted assessment and clinician review. This report supports, but does not replace, medical advice."
+      : "Draft based on your submitted assessment. Awaiting doctor review; not approved for patient release.",
   };
 
   const data = { ...dataWithoutMode, layoutMode: chooseLayoutMode(dataWithoutMode) };
