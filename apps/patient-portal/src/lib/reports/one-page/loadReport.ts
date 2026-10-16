@@ -244,6 +244,29 @@ export async function composeOnePageReportViewModel(
     throw new ReportAccessError(403, "Consultation is not approved");
   }
 
+  // approvedBy is the approval actor's auth ID, not a display name. Resolve
+  // the signer independently of the assigned reviewer, who may be different.
+  // Keep historical records readable even if the signer later becomes inactive.
+  const approverId = consultationVersion?.approvedBy;
+  const approvingDoctor = isDoctorApproved
+    ? await prisma.doctor.findFirst({
+        where: {
+          clinicId: assessment.clinicId,
+          ...(consultationVersion
+            ? { OR: [
+                { supabaseUserId: approverId ?? "__missing_approver__" },
+                { supabasePhoneUserId: approverId ?? "__missing_approver__" },
+                { id: approverId ?? "__missing_approver__" },
+              ] }
+            : { id: assessment.reviewingDoctorId ?? "__missing_approver__" }),
+        },
+        select: { name: true, signatureUrl: true },
+      })
+    : null;
+  if (isDoctorApproved && !approvingDoctor?.name?.trim()) {
+    throw new ReportAccessError(500, "Approving doctor identity is unavailable");
+  }
+
   const versionContent = jsonObject(consultationVersion?.content);
   const nextReviewDate =
     versionContent.nextReviewDate ??
@@ -279,26 +302,20 @@ export async function composeOnePageReportViewModel(
       logoUrl: assessment.clinic.logoUrl,
     },
     clinician: {
-      name:
-        assessment.reviewingDoctor?.name ??
-        assessment.reviewerName ??
-        (typeof consultationVersion?.approvedBy === "string" ? consultationVersion.approvedBy : null),
+      name: approvingDoctor?.name ?? assessment.reviewingDoctor?.name ?? null,
       // Never claim approval that has not happened. Only a clinic or Super
       // Admin session can reach this branch unapproved (both patient-equivalent
       // paths are refused above), and they must not be shown a draft dressed as
       // a signed plan either — the same document is what gets printed.
       title: isDoctorApproved ? "Doctor approved plan" : "Draft — pending doctor review",
       signatureUrl: isDoctorApproved
-        ? assessment.reviewingDoctor?.signatureUrl ?? null
+        ? approvingDoctor?.signatureUrl ?? null
         : null,
     },
     approval: {
       status: approvalState,
-      approvedAt: consultationVersion?.approvedAt ?? assessment.reviewedAt,
-      approvedBy:
-        assessment.reviewingDoctor?.name ??
-        assessment.reviewerName ??
-        consultationVersion?.approvedBy,
+      approvedAt: consultationVersion ? consultationVersion.approvedAt : assessment.reviewedAt,
+      approvedBy: approvingDoctor?.name ?? null,
       nextReviewDate: typeof nextReviewDate === "string" ? nextReviewDate : null,
       wasModified:
         consultationVersion?.approvalStatus === "REVISION_REQUESTED" ||

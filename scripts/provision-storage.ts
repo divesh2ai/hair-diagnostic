@@ -13,8 +13,21 @@
  * touched — this script only ever changes bucket metadata.
  *
  * Usage:
- *   npx tsx scripts/provision-storage.ts            # apply
- *   npx tsx scripts/provision-storage.ts --dry-run  # report only
+ *   npx tsx scripts/provision-storage.ts                # apply (create + converge all)
+ *   npx tsx scripts/provision-storage.ts --dry-run      # report only
+ *   npx tsx scripts/provision-storage.ts --only-missing # CREATE absent buckets only;
+ *                                                        # never updateBucket() an existing one
+ *   npx tsx scripts/provision-storage.ts --only one-pagers,report-assets
+ *                                                        # restrict the run to a named subset
+ *
+ * `--only-missing` is the PRODUCTION-SAFE mode: it creates buckets that do not
+ * yet exist and leaves every pre-existing bucket's configuration (public flag,
+ * size limit, MIME list) EXACTLY as it is — no updateBucket() call is issued for
+ * one. Combine with `--only <names>` so the run cannot reach beyond the intended
+ * buckets. The Acube launch provisions ONLY the two missing private buckets:
+ *   npx tsx scripts/provision-storage.ts --allow-production --only-missing \
+ *     --only one-pagers,report-assets
+ * and cannot touch clinical-reports / clinical-images / doctor-avatars.
  *
  * Targets whatever NEXT_PUBLIC_SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY point
  * at. It refuses to run without an explicit --allow-production flag when the
@@ -104,6 +117,14 @@ function projectRef(url: string): string {
 async function main() {
   const dryRun = process.argv.includes("--dry-run");
   const allowProduction = process.argv.includes("--allow-production");
+  // Production-safe scoping. `--only-missing` never updates an existing bucket;
+  // `--only a,b` restricts the whole run (create AND verify) to a named subset.
+  const onlyMissing = process.argv.includes("--only-missing");
+  const onlyIdx = process.argv.indexOf("--only");
+  const onlyNames =
+    onlyIdx !== -1 && process.argv[onlyIdx + 1]
+      ? new Set(process.argv[onlyIdx + 1].split(",").map((s) => s.trim()).filter(Boolean))
+      : null;
 
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -137,14 +158,27 @@ async function main() {
 
   let created = 0;
   let updated = 0;
+  let skipped = 0;
 
   for (const spec of BUCKETS) {
+    // `--only a,b` restricts the whole run to a named subset.
+    if (onlyNames && !onlyNames.has(spec.name)) continue;
+
     const options = {
       public: spec.public,
       fileSizeLimit: spec.fileSizeLimit,
       allowedMimeTypes: spec.allowedMimeTypes,
     };
     const present = byName.get(spec.name);
+
+    // `--only-missing`: an existing bucket is left EXACTLY as it is. No
+    // updateBucket() call is ever issued for it, so its public flag, size limit
+    // and MIME list cannot be changed by this run.
+    if (present && onlyMissing) {
+      console.log(`  SKIP(exists)  ${spec.name} — left unchanged (--only-missing)`);
+      skipped++;
+      continue;
+    }
 
     if (!present) {
       if (dryRun) {
@@ -159,6 +193,13 @@ async function main() {
         throw new Error(`Failed to create '${spec.name}': ${error.message}`);
       }
       if (error) {
+        // Lost the create race: the bucket now exists. In --only-missing we
+        // still must not touch it, so skip the update fall-through.
+        if (onlyMissing) {
+          console.log(`  SKIP(exists)  ${spec.name} — left unchanged (--only-missing, race)`);
+          skipped++;
+          continue;
+        }
         console.log(`  EXISTS(race)  ${spec.name} — updating instead`);
       } else {
         console.log(`  CREATED       ${spec.name} (private)`);
@@ -191,6 +232,8 @@ async function main() {
   console.log("\n[provision-storage] final state:");
   let bad = 0;
   for (const spec of BUCKETS) {
+    // Only verify what this run was scoped to touch.
+    if (onlyNames && !onlyNames.has(spec.name)) continue;
     const b = after?.find((x) => x.name === spec.name);
     if (!b) {
       console.log(`  MISSING  ${spec.name}`);
@@ -208,7 +251,7 @@ async function main() {
   }
 
   console.log(
-    `\n[provision-storage] created=${created} updated=${updated} problems=${bad}`,
+    `\n[provision-storage] created=${created} updated=${updated} skipped=${skipped} problems=${bad}`,
   );
   if (bad > 0 && !dryRun) process.exitCode = 1;
 }

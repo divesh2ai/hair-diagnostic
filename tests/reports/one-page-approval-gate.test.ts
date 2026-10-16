@@ -24,12 +24,14 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const findUniqueAssessment = vi.fn();
 const findFirstArtifact = vi.fn();
+const findApprovingDoctor = vi.fn();
 const getClinicContext = vi.fn();
 const isConferenceMode = vi.fn();
 const verifyReviewToken = vi.fn();
 
 vi.mock("@/lib/prisma", () => ({
   prisma: {
+    doctor: { findFirst: (...a: unknown[]) => findApprovingDoctor(...a) },
     assessment: { findUnique: (...a: unknown[]) => findUniqueAssessment(...a) },
     aIArtifact: { findFirst: (...a: unknown[]) => findFirstArtifact(...a) },
   },
@@ -58,7 +60,7 @@ vi.mock("@/lib/reports/one-page/viewModel", () => ({
   buildOnePageReportViewModel: (_report: unknown, context: unknown) => context,
 }));
 
-const { loadOnePageReportData, ReportAccessError } = await import(
+const { loadOnePageReportData, composeOnePageReportViewModel, ReportAccessError } = await import(
   "@/lib/reports/one-page/loadReport"
 );
 
@@ -92,6 +94,7 @@ function assessmentRow(
     rawResponses: {},
     patient: { name: "P", age: 30, gender: "female", phone: null },
     clinic: { name: "C", address: null, phone: null, logoUrl: null },
+    reviewingDoctorId: "doctor-a",
     reviewingDoctor: { name: "Dr A", signatureUrl: "https://example.com/sig.png" },
     consultations: [
       {
@@ -101,7 +104,7 @@ function assessmentRow(
             : {
                 approvalStatus,
                 approvedAt: null,
-                approvedBy: "Dr A",
+                approvedBy: "auth-doctor-a",
                 content: content ?? { treatmentPlan: { kitPhases: REALISTIC_KIT_PHASES } },
               },
       },
@@ -111,6 +114,7 @@ function assessmentRow(
 
 beforeEach(() => {
   vi.clearAllMocks();
+  findApprovingDoctor.mockResolvedValue({ name: "Dr A", signatureUrl: "https://example.com/sig.png" });
   // The loader has a local-export escape hatch keyed on ALLOW_DEV_LOGIN, which
   // a developer's .env commonly sets. It reads `next/headers`, which throws
   // outside a request scope. That path is not what this suite is about, so it
@@ -160,6 +164,24 @@ describe("one-page report — access for patient-equivalent callers", () => {
     findUniqueAssessment.mockResolvedValue(assessmentRow("APPROVED"));
     const data = await loadOnePageReportData(ASSESSMENT_ID, { reviewToken: "t" });
     expect(data).toBeTruthy();
+  });
+
+  it.each(["PENDING_REVIEW", "REVISION_REQUESTED", "REJECTED"])("refuses a patient share token for %s even when the assessment was previously approved", async status => {
+    findUniqueAssessment.mockResolvedValue(assessmentRow(status, "APPROVED"));
+    await expect(composeOnePageReportViewModel(ASSESSMENT_ID, { kind: "patient_share_token" }))
+      .rejects.toMatchObject({ status: 403 });
+  });
+
+  it("allows an approved patient share token with a resolved doctor identity", async () => {
+    findUniqueAssessment.mockResolvedValue(assessmentRow("APPROVED"));
+    await expect(composeOnePageReportViewModel(ASSESSMENT_ID, { kind: "patient_share_token" })).resolves.toBeTruthy();
+  });
+
+  it("refuses an internal snapshot caller naming the wrong clinic", async () => {
+    findUniqueAssessment.mockResolvedValue(assessmentRow("APPROVED"));
+    await expect(composeOnePageReportViewModel(ASSESSMENT_ID, { kind: "server_internal", clinicId: "other-clinic" }))
+      .rejects.toMatchObject({ status: 403 });
+    expect(findApprovingDoctor).not.toHaveBeenCalled();
   });
 });
 
@@ -218,6 +240,36 @@ describe("one-page report — labelling for internal callers", () => {
     });
     findUniqueAssessment.mockResolvedValue(assessmentRow("APPROVED"));
     await expect(loadOnePageReportData(ASSESSMENT_ID)).rejects.toMatchObject({ status: 403 });
+  });
+
+  it("uses the actual approving doctor, not the assigned reviewer or raw auth ID", async () => {
+    findUniqueAssessment.mockResolvedValue(assessmentRow("APPROVED"));
+    findApprovingDoctor.mockResolvedValue({ name: "Dr. Meha Mhatre", signatureUrl: "https://example.com/meha.png" });
+    const data = await loadOnePageReportData(ASSESSMENT_ID) as any;
+    expect(findApprovingDoctor).toHaveBeenCalledWith({
+      where: { clinicId: "clinic-1", OR: [
+        { supabaseUserId: "auth-doctor-a" },
+        { supabasePhoneUserId: "auth-doctor-a" },
+        { id: "auth-doctor-a" },
+      ] },
+      select: { name: true, signatureUrl: true },
+    });
+    expect(data.approval.approvedBy).toBe("Dr. Meha Mhatre");
+    expect(data.clinician.signatureUrl).toBe("https://example.com/meha.png");
+  });
+
+  it("fails closed when the approval actor has no doctor in this clinic", async () => {
+    findUniqueAssessment.mockResolvedValue(assessmentRow("APPROVED"));
+    findApprovingDoctor.mockResolvedValue(null);
+    await expect(loadOnePageReportData(ASSESSMENT_ID)).rejects.toMatchObject({ status: 500 });
+  });
+
+  it("does not inherit approval from the assessment when the current version is revised", async () => {
+    findUniqueAssessment.mockResolvedValue(assessmentRow("REVISION_REQUESTED", "APPROVED"));
+    const data = await loadOnePageReportData(ASSESSMENT_ID) as any;
+    expect(data.approval.status).toBe("REVISION_REQUESTED");
+    expect(data.clinician.signatureUrl).toBeNull();
+    expect(findApprovingDoctor).not.toHaveBeenCalled();
   });
 });
 
