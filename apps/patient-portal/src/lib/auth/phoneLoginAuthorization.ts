@@ -39,14 +39,23 @@ export function decidePhoneLogin(
 
 export type PhoneLoginHttp = { status: number; body: Record<string, unknown> };
 
+export type VerifiedClaims = {
+  /** The role from the JWKS-verified JWT, or null when absent/unrecognised. */
+  role: SystemRole | null;
+  /** The JWT subject (`sub`) — the user the verified token was minted for. */
+  sub: string | null;
+};
+
 export type PhoneLoginDeps = {
   /** The caller's OWN verified identity from the Supabase session, or null. */
   getUser: () => Promise<{ id: string; phone: string | null } | null>;
   /**
-   * The caller's role from the JWKS-verified JWT claims — the only trusted
-   * source. Returns null when there is no valid role claim.
+   * The role AND subject from the JWKS-verified JWT claims — the only trusted
+   * source. `sub` is returned alongside `role` so the caller can confirm the
+   * token belongs to the same authenticated user before honouring a
+   * privileged role.
    */
-  getRole: () => Promise<SystemRole | null>;
+  getVerifiedClaims: () => Promise<VerifiedClaims>;
   /** Clinical resolution for the non-admin path (behaviour unchanged). */
   resolveDoctor: (input: {
     supabaseUserId: string;
@@ -77,9 +86,17 @@ export async function resolvePhoneLogin(
     return { status: 401, body: { error: "unauthorized" } };
   }
 
-  const decision = decidePhoneLogin(await deps.getRole());
+  const { role, sub } = await deps.getVerifiedClaims();
+  const decision = decidePhoneLogin(role);
 
-  if (decision.action === "skip_doctor_link") {
+  // The privileged branch is honoured ONLY when the verified JWT's subject is
+  // the very user we just authenticated. getUser() and the claims come from the
+  // same session here, so this is belt-and-suspenders — but a SUPER_ADMIN claim
+  // whose `sub` does not match the resolved user never grants the skip; it
+  // falls through to Doctor resolution, which fails closed.
+  const subjectMatchesUser = sub != null && sub === user.id;
+
+  if (decision.action === "skip_doctor_link" && subjectMatchesUser) {
     // Never let an audit hiccup block a legitimate admin sign-in — /admin
     // re-checks the role server-side, so the audit row is a record, not a gate.
     try {

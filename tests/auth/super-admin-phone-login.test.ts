@@ -61,10 +61,12 @@ describe("decidePhoneLogin", () => {
 });
 
 // ── resolvePhoneLogin — the HTTP contract per role ──────────────────────────
-// Only getUser/getRole vary per test; resolveDoctor and the audit sink are the
-// exposed spies so every test asserts on the exact function the code called.
-// Tests shape their return values with mockResolvedValue(...).
-type DepOverrides = Partial<Pick<PhoneLoginDeps, "getUser" | "getRole">>;
+// Only getUser/getVerifiedClaims vary per test; resolveDoctor and the audit
+// sink are the exposed spies so every test asserts on the exact function the
+// code called. Tests shape their return values with mockResolvedValue(...).
+type DepOverrides = Partial<
+  Pick<PhoneLoginDeps, "getUser" | "getVerifiedClaims">
+>;
 
 function makeDeps(over: DepOverrides = {}): {
   deps: PhoneLoginDeps;
@@ -82,7 +84,7 @@ function makeDeps(over: DepOverrides = {}): {
   const audit = vi.fn(async () => {});
   const deps: PhoneLoginDeps = {
     getUser: async () => ({ id: DOCTOR_UID, phone: PHONE }),
-    getRole: async () => "DOCTOR",
+    getVerifiedClaims: async () => ({ role: "DOCTOR", sub: DOCTOR_UID }),
     resolveDoctor: resolveDoctor as unknown as PhoneLoginDeps["resolveDoctor"],
     auditSuperAdminLogin: audit as unknown as PhoneLoginDeps["auditSuperAdminLogin"],
     ...over,
@@ -94,7 +96,7 @@ describe("resolvePhoneLogin — SUPER_ADMIN", () => {
   it("allows the login, skips Doctor resolution, and audits it", async () => {
     const { deps, resolveDoctor, audit } = makeDeps({
       getUser: async () => ({ id: SUPER_ADMIN_UID, phone: PHONE }),
-      getRole: async () => "SUPER_ADMIN",
+      getVerifiedClaims: async () => ({ role: "SUPER_ADMIN", sub: SUPER_ADMIN_UID }),
     });
 
     const res = await resolvePhoneLogin(deps);
@@ -110,7 +112,7 @@ describe("resolvePhoneLogin — SUPER_ADMIN", () => {
   it("still allows the login when the audit write fails (audit is best-effort)", async () => {
     const { deps, resolveDoctor, audit } = makeDeps({
       getUser: async () => ({ id: SUPER_ADMIN_UID, phone: PHONE }),
-      getRole: async () => "SUPER_ADMIN",
+      getVerifiedClaims: async () => ({ role: "SUPER_ADMIN", sub: SUPER_ADMIN_UID }),
     });
     audit.mockRejectedValue(new Error("audit sink down"));
 
@@ -120,13 +122,36 @@ describe("resolvePhoneLogin — SUPER_ADMIN", () => {
     expect(res.body).toMatchObject({ ok: true, role: "SUPER_ADMIN" });
     expect(resolveDoctor).not.toHaveBeenCalled();
   });
+
+  it("does NOT grant the skip when the JWT subject is a different user", async () => {
+    // Defense-in-depth: a SUPER_ADMIN role claim whose `sub` is not the
+    // authenticated user must never skip Doctor linking. It falls through to
+    // Doctor resolution (fails closed) and is not audited as an admin login.
+    const { deps, resolveDoctor, audit } = makeDeps({
+      getUser: async () => ({ id: SUPER_ADMIN_UID, phone: PHONE }),
+      getVerifiedClaims: async () => ({ role: "SUPER_ADMIN", sub: "a-different-user" }),
+    });
+    resolveDoctor.mockResolvedValue({ ok: false, reason: "unregistered" });
+
+    const res = await resolvePhoneLogin(deps);
+
+    expect(audit).not.toHaveBeenCalled();
+    expect(resolveDoctor).toHaveBeenCalledWith({
+      supabaseUserId: SUPER_ADMIN_UID,
+      verifiedPhone: PHONE,
+    });
+    expect(res).toEqual({
+      status: 403,
+      body: { ok: false, reason: "unregistered" },
+    });
+  });
 });
 
 describe("resolvePhoneLogin — DOCTOR", () => {
   it("resolves the Doctor row and passes its result through unchanged", async () => {
     const { deps, resolveDoctor, audit } = makeDeps({
       getUser: async () => ({ id: DOCTOR_UID, phone: PHONE }),
-      getRole: async () => "DOCTOR",
+      getVerifiedClaims: async () => ({ role: "DOCTOR", sub: DOCTOR_UID }),
     });
 
     const res = await resolvePhoneLogin(deps);
@@ -168,7 +193,7 @@ describe("resolvePhoneLogin — roleless (no valid role claim)", () => {
   it("does NOT bypass authorization: it is resolved and refused as unregistered", async () => {
     const { deps, resolveDoctor, audit } = makeDeps({
       getUser: async () => ({ id: "stranger-uid", phone: PHONE }),
-      getRole: async () => null,
+      getVerifiedClaims: async () => ({ role: null, sub: "stranger-uid" }),
     });
     resolveDoctor.mockResolvedValue({ ok: false, reason: "unregistered" });
 
@@ -187,7 +212,7 @@ describe("resolvePhoneLogin — unauthorized", () => {
   it("returns 401 and touches nothing when there is no session", async () => {
     const { deps, resolveDoctor, audit } = makeDeps({
       getUser: async () => null,
-      getRole: async () => null,
+      getVerifiedClaims: async () => ({ role: null, sub: null }),
     });
 
     const res = await resolvePhoneLogin(deps);
@@ -200,7 +225,7 @@ describe("resolvePhoneLogin — unauthorized", () => {
   it("returns 401 when the session has no verified phone", async () => {
     const { deps, resolveDoctor } = makeDeps({
       getUser: async () => ({ id: SUPER_ADMIN_UID, phone: null }),
-      getRole: async () => "SUPER_ADMIN",
+      getVerifiedClaims: async () => ({ role: "SUPER_ADMIN", sub: SUPER_ADMIN_UID }),
     });
 
     const res = await resolvePhoneLogin(deps);

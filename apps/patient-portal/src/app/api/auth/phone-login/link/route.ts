@@ -37,11 +37,15 @@ export async function POST() {
       if (error || !user) return null;
       return { id: user.id, phone: user.phone ?? null };
     },
-    getRole: async () => {
+    getVerifiedClaims: async () => {
       const { data } = await supabase.auth.getClaims();
-      const role = (data?.claims as { user_role?: string } | undefined)
-        ?.user_role;
-      return isSystemRole(role) ? role : null;
+      const claims = data?.claims as
+        | { user_role?: string; sub?: string }
+        | undefined;
+      return {
+        role: isSystemRole(claims?.user_role) ? claims.user_role : null,
+        sub: claims?.sub ?? null,
+      };
     },
     resolveDoctor: resolveOrLinkDoctorByPhone,
     auditSuperAdminLogin: (supabaseUserId) =>
