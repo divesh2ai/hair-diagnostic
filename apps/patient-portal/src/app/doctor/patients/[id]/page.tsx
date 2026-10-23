@@ -6,6 +6,7 @@ import Link from "next/link";
 import { ArrowLeft, User, Phone, Mail, Stethoscope, Building2 } from "lucide-react";
 import { SeverityBadge } from "@/components/ui/StatusBadges";
 import { standingOf } from "@/lib/doctor/clinicalStanding";
+import { ConsultationNotesPanel } from "@/components/doctor/ConsultationNotesPanel";
 
 interface PatientDetail {
   id: string;
@@ -92,6 +93,8 @@ export default function PatientTimelinePage() {
           </div>
         </div>
       </section>
+
+      <ConsultationNotesPanel patientId={patient.id} />
 
       <section className="rounded-2xl bg-white border shadow-sm overflow-hidden">
         <div className="px-5 py-4 border-b">
