@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { useAssessmentStore } from '@/stores/useAssessmentStore';
@@ -88,6 +88,47 @@ function MetricChip({
   );
 }
 
+/**
+ * Professional placeholder shown when a clinic has no doctor photo configured,
+ * or when the configured photo URL fails to load. Never a broken image.
+ */
+function DoctorPhotoFallback() {
+  return (
+    <div
+      className="relative flex aspect-[4/5] w-full items-center justify-center rounded-[1.5rem] border"
+      style={{ borderColor: 'rgba(219,197,140,0.4)', background: 'rgba(8,18,9,0.5)' }}
+    >
+      <Stethoscope className="h-16 w-16" style={{ color: MUTED }} aria-hidden="true" />
+    </div>
+  );
+}
+
+/**
+ * Doctor photograph with a safe loading fallback. The src is an arbitrary
+ * stored URL (Supabase storage); if it is invalid, deleted, or unreachable the
+ * `onError` handler swaps in the professional placeholder instead of leaving a
+ * broken image. Mounted with a `key` of its src by the parent, so each clinic's
+ * photo gets its own fresh attempt.
+ */
+function DoctorPhoto({ src, alt }: { src: string; alt: string }) {
+  const [failed, setFailed] = useState(false);
+
+  if (failed) {
+    return <DoctorPhotoFallback />;
+  }
+
+  return (
+    /* eslint-disable-next-line @next/next/no-img-element */
+    <img
+      src={src}
+      alt={alt}
+      onError={() => setFailed(true)}
+      className="relative aspect-[4/5] w-full rounded-[1.5rem] border object-cover object-top"
+      style={{ borderColor: 'rgba(219,197,140,0.4)' }}
+    />
+  );
+}
+
 interface ClinicLandingClientProps {
   clinic: ClinicLandingData;
 }
@@ -117,6 +158,8 @@ export default function ClinicLandingClient({ clinic }: ClinicLandingClientProps
     setClinicData,
     reset,
   ]);
+
+  const doctorPhotoUrl = clinic.leadDoctor?.photoUrl ?? null;
 
   const startAssessment = () => router.push(`/q/${clinic.slug}/assessment-v3`);
   const openScience = () => router.push(`/q/${clinic.slug}/science`);
@@ -332,21 +375,19 @@ export default function ClinicLandingClient({ clinic }: ClinicLandingClientProps
                 style={{ background: 'rgba(217,188,122,0.12)' }}
                 aria-hidden="true"
               />
-              {clinic.leadDoctor?.photoUrl ? (
-                /* eslint-disable-next-line @next/next/no-img-element */
-                <img
-                  src={clinic.leadDoctor.photoUrl}
-                  alt={clinic.leadDoctor.name}
-                  className="relative aspect-[4/5] w-full rounded-[1.5rem] border object-cover object-top"
-                  style={{ borderColor: 'rgba(219,197,140,0.4)' }}
+              {doctorPhotoUrl ? (
+                /*
+                  Keyed by the URL so a client-side navigation to another
+                  clinic remounts the photo and re-attempts its own image
+                  rather than inheriting the previous clinic's failure state.
+                */
+                <DoctorPhoto
+                  key={doctorPhotoUrl}
+                  src={doctorPhotoUrl}
+                  alt={clinic.leadDoctor?.name ?? clinic.name}
                 />
               ) : (
-                <div
-                  className="relative flex aspect-[4/5] w-full items-center justify-center rounded-[1.5rem] border"
-                  style={{ borderColor: 'rgba(219,197,140,0.4)', background: 'rgba(8,18,9,0.5)' }}
-                >
-                  <Stethoscope className="h-16 w-16" style={{ color: MUTED }} aria-hidden="true" />
-                </div>
+                <DoctorPhotoFallback />
               )}
             </div>
 
