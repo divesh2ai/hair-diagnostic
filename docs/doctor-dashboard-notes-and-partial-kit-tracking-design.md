@@ -1,310 +1,197 @@
 # HAIROS — Doctor Dashboard: Consultation Notes & Partial Kit Tracking
 
-**Status:** AUDIT + DESIGN ONLY — awaiting approval. No production writes, migrations, merges or deploys performed.
-**Date:** 2026-10-23
-**Scope:** `apps/patient-portal` (production: `https://hairos-ashen.vercel.app`, Vercel project `hairos`)
-**Backends inspected (read-only):** Supabase `hairos-staging` (`vbkoupvduadmcxggtnsb`). Production (`drfact-hairos-production`) shares the same Prisma schema and was **not** modified or deeply read.
+**Status:** AUDIT + DESIGN ONLY — awaiting approval. No production writes, migrations, merges, or deploys. Clinical engine untouched.
+**Date:** 2026-10-23 (revised against real source)
+**Audited source:** `apps/patient-portal` on branch **`claude/acube-launch-fix`** (HEAD `0227041`) — the actual HairOS Next.js app. Prisma schema `prisma/schema.prisma`.
+**Correction:** the first revision of this doc was written against the wrong branch (an HTML demo) and the staging DB alone. It is superseded. Everything below is grounded in the real TypeScript with file:line references.
+
+### Settled decisions (from the product owner)
+1. Same repository — no separate repo needed.
+2. Staging RLS remediation handled **separately** from these features (tracked in `prisma/staging-security-repair.generated.sql`; out of scope here).
+3. Preserve existing kit IDs and governed pricing; **do not invent prices**.
+4. Doctor-controlled mic dictation with editable text, typed fallback, **no stored raw audio** by default.
 
 ---
 
-## 0. Audit method, confidence, and a blocking gap
+## 1. What already exists (so we don't rebuild it)
 
-### What was inspected
-The live staging database schema was read in full (read-only): all 83 `public` tables with columns, foreign keys, enums, and row counts, plus the structure of `ConsultationVersion.content` and `KitOrderIntent.quantities`. This is authoritative for the **data model, authorization surface, and schema-change** deliverables (1, 3, 4, 5, 7).
+### Feature A — notes & dictation
+- **Doctor notes today** are a typed-only textarea in `DoctorReviewClient` → `DoctorNotesBlock` (`app/doctor/reports/[assessmentId]/DoctorReviewClient.tsx:1098‑1175`). Saving calls `addNote()` (`:487‑536`), which PATCHes `app/api/consultation/[assessmentId]/route.ts`. That route **appends a new immutable `ConsultationVersion`** and emits `DOCTOR_REVIEW_COMPLETED` + `CONSULTATION_UPDATED` (`route.ts:1‑12`). The note itself is a `DoctorNote` `{ id, doctorId, body, createdAt, visibleToPatient }` appended to `consultation.doctorNotes` inside the version `content` (`:495‑509`).
+- **Dictation is already built and reusable**: `components/shared/VoiceDictateButton.tsx` — Web Speech API (`SpeechRecognition`/`webkitSpeechRecognition`), continuous + interim results, appends recognised text to a bound value, **silently hidden when unsupported**, and **stores no audio** (transcription is client-side only). A sibling `components/skin-fact/VoiceTextField.tsx` wraps a textarea + mic with a "Listening…" status and an error-to-typed fallback.
+- **Author identity** is available server-side via `requireDoctorContext()` / `lib/auth` (`doctor.id`, `doctor.clinicId`, name).
 
-### Blocking gap — application source code is not in the provided repository
-The GitHub repo in scope for this session, `divesh2ai/hair-diagnostic`, contains **only** a static HTML demo (`Dr. FACT`, `index.html`) and the `next-saas-stripe-starter` boilerplate zip. It does **not** contain `apps/patient-portal`, `DoctorReviewClient.tsx`, `approveAndCreateOrder`, the doctor orders/pricing API routes, or any of the named TypeScript. The production Next.js app is deployed on Vercel from a different git repository that was not made available to this session.
-
-**Consequence:** the file-level items in the brief's "Audit existing functionality first" list (the exact code in `DoctorReviewClient.tsx`, how `approveAndCreateOrder` writes `KitOrderIntent`, the pricing API shape, the current notes UI) are inferred from the database schema and the data they produce, not read directly. Everything stated about *tables, columns, enums, and data* is verified. Everything stated about *code wiring* is a well-grounded inference and is marked **[inferred from schema]** where it matters. To finalize the Phase 1 file list (deliverable 8) with exact paths and function names, point this session at the application repository (grant access, or `add_repo`).
-
----
-
-## 1. Current-versus-required capability matrix
-
-### Feature A — Microphone consultation notes
-
-| # | Requirement | Current state (from schema/data) | Gap | Verdict |
-|---|---|---|---|---|
-| A1 | Save a brief consultation summary against the correct patient and dated visit | `doctorNotes` exists **only as a key inside `ConsultationVersion.content` (jsonb)** — the immutable AI snapshot. `ClinicVisit` (100 rows) anchors a dated encounter (`startedAt`, `assessmentId`, `clinicId`, `displayName`). | No standalone, dated, per-visit note entity. Notes are welded to a specific approved/version snapshot. | **Partial / wrong home** |
-| A2 | Mic start/stop with status + live transcription preview | No audio/transcription fields, tables, or (observable) pipeline anywhere in schema. | Entire capture + preview layer missing. | **Missing** |
-| A3 | Manual editing before saving | N/A — no note editor entity distinct from the snapshot. | Needs an editable draft note. | **Missing** |
-| A4 | Typed-note fallback when speech recognition unavailable | N/A | Needs an `inputMode` concept; note body must accept typed text. | **Missing** |
-| A5 | Date-wise note history for future consultations | `ConsultationVersion` is versioned, but that is snapshot history, not visit-note history; `ClinicVisit.startedAt` gives dates. | No queryable per-patient dated note timeline. | **Missing** |
-| A6 | Author attribution + secure clinic scoping | `ConsultationVersion.createdBy/approvedBy` exist; `Doctor`, `ClinicMember`, clinic-scoped RLS exist on consultation tables. | Author exists only at snapshot granularity; a note needs its own author snapshot. | **Partial (reusable)** |
-| A7 | Avoid permanent raw-audio storage by default | No audio stored today (no capability exists). | Must be an explicit non-goal / default-off design choice. | **Met by absence; must stay explicit** |
-| A8 | No AI diagnosis / auto kit changes / clinical decisions from transcript | Clinical engine writes `ConsultationVersion`/`KitOrderIntent`; notes are inert text today. | Keep the new note strictly non-clinical: never feeds the engine, never mutates kits. | **Design constraint** |
-| A9 | Keep routine visit notes separate from approved `ConsultationVersion` snapshots | **Violated today** — notes live inside `ConsultationVersion.content`. | Needs a separate table outside the snapshot/approval lifecycle. | **Missing (core ask)** |
-
-### Feature B — Partial kit purchase & longitudinal tracking
-
-| # | Requirement | Current state (from schema/data) | Gap | Verdict |
-|---|---|---|---|---|
-| B1 | Preserve the full approved treatment recommendation | `KitOrderIntent` captures the whole recommendation: `kitIds` (text[]), `quantities` (jsonb), bound to `consultationVersionId`. One intent per consultation (81 intents / 81 assessments; 78 multi-kit). | None — this is the durable recommendation record. **Keep unchanged.** | **Met** |
-| B2 | Separately record item-level purchased quantities | Purchased quantity is **not represented at all**. `quantities` holds *recommended* amounts only. | No per-kit purchased-quantity store. | **Missing** |
-| B3 | Record payment, purchase, dispensing, delivery, treatment-start **independently** | `KitOrderPayment` (order-level), `ClinicKitFulfilment` (order-level lifecycle: requested→confirmed→packed→dispatched→delivered→acknowledged), `KitOrderIntent.treatmentStartedAt/By/Source` (order-level). | All events are **whole-order**, not per item; cannot say "kit 1 delivered, kit 3 not purchased." | **Partial (order-level only)** |
-| B4 | Keep unpurchased kits visible without treating them as paid/delivered/outstanding | A kit is either in the intent or not; no "recommended-but-not-purchased" state. | Needs an explicit per-kit status that is neither paid nor an open invoice. | **Missing** |
-| B5 | Support later purchases on new dates without duplicate orders or double counting | Only order-level status `READY_FOR_FULFILMENT`/`CANCELLED`. A second purchase would require a second intent (duplicate) or overwrite. | Needs an append-only, dated purchase ledger keyed per item. | **Missing** |
-| B6 | Track deferred / declined / substituted / discontinued with clinical controls | No such states exist. `RecommendationFeedback` (0 rows) captures doctor disagreement with the engine, not purchase outcomes. | Needs per-item lifecycle states + controlled transitions. | **Missing** |
-| B7 | Display date-wise patient treatment history | `AuditLog` (5,481 rows) records events but is an audit store, not a patient-facing timeline; `ClinicVisit`, `ConsultationEvent` are dated. | No consolidated per-patient, date-ordered purchase/treatment timeline. | **Missing (derivable once B2/B5 exist)** |
-| B8 | Actual amounts via governed catalog prices + recorded sale values | Governed pricing modeled in `KitPrice` (`mrp`, `gstPercent`, `doctorPrice`, `effectiveFrom/Until`, `provenance`, versioned) and `ProductPrice` — but **0 rows** (unpopulated). `KitOrderPayment.amountMinor` holds an order-level actual (2 rows). | Price catalog not yet populated; no per-line price snapshot or recorded sale value per item. | **Infra exists, unpopulated** |
-| B9 | Keep kit-priority & treatment-plan rules unchanged | Rules are produced by the clinical engine into `ConsultationVersion`/`KitOrderIntent`. | None — this is a hard "do not touch." | **Constraint** |
-| B10 | Never assume all recommended kits were bought/started | Nothing currently asserts purchase, so no false assumption exists — but there is also no place to record the truth. | Default every item to `RECOMMENDED`; purchase/start only via explicit events. | **Design constraint** |
-
-**Headline:** the *recommendation* side (B1, B9) and the *order-level* commerce scaffolding (B3 partial) already exist and are good. Both features' real gap is **granularity and separation**: Feature A needs notes lifted *out of* the approved snapshot into a dated, authored entity; Feature B needs tracking lifted *down from* the order to the **individual kit item**, as an append-only dated ledger.
+### Feature B — kit recommendation & post-approval ops
+- **`KitOrderIntent`** (`schema.prisma:1621‑1680`) is the **immutable clinical authorization** — its own comment says it is "NOT billing, inventory, payments, or fulfilment." `kitIds` is the approved prescription; `quantities` is a `{ kitId: number }` map (dispense **boxes**, default `2` = two-month protocol, `lib/commerce/kitQuantity.ts`). Idempotent per `@@unique([consultationId, consultationVersionId])`. Created by `lib/consultation/approveAndCreateOrder.ts`. Quantity edits go through `api/cart/[assessmentId]/quantity/route.ts` and **never touch `kitIds`**.
+- **Order-level treatment start** lives on the intent: `treatmentStartedAt/By/Source` (`schema.prisma:1662‑1667`), recorded **write-once** by `POST /api/doctor/orders/[intentId]/treatment-start` → `recordTreatmentStart()` (`lib/fulfilment/fulfilmentStore.ts:428`). Its contract (`treatment-start/route.ts:14‑37`) is explicit: the start date is **stated by a human**, never derived from approval/payment/delivery — it is THE follow-up anchor.
+- **Payment & fulfilment** (`KitOrderPayment`, `ClinicKitFulfilment`, `schema.prisma:1749‑1847`) are **order-level**, modeled but in the **unapplied** migration `prisma/migrations/20260829_post_approval_workflow`. They are read via **raw-SQL stores** (`lib/payments/paymentStore.ts`, `lib/fulfilment/fulfilmentStore.ts`) that catch "relation/column does not exist" and throw `*NotProvisionedError` → routes return **503 + a stable reason code** until the migration is applied. Tenant scope (`clinicId`) is always in the SQL `WHERE`, not a prior read.
+- **Purchasing is OFF by default** (`lib/commerce/purchasingGate.ts`): HairOS launches as a doctor-supervised **clinical-recommendation** platform. `assertPurchasingEnabled()` fails closed on every money-moving write. Approval + `KitOrderIntent` are explicitly *not* a sale; `CLINIC_COUNTER` is the Wave-0 "paid at the desk" source. Prices/names/packshots stay visible regardless.
+- **Patient history surface**: `app/doctor/patients/[id]/page.tsx` shows only an **Assessment timeline** (from `GET /api/doctor/patients/[id]`). This is the natural home for a date-wise notes + treatment/purchase history.
+- **Audit**: `lib/audit/writeAuditLog.ts` (`writeAuditLog`) is used by every write path; reuse it.
 
 ---
 
-## 2. Proposed Doctor Dashboard UI
+## 2. Current-versus-required matrix (corrected)
 
-Both features attach to the existing doctor patient-profile / assessment-timeline view. No change to the clinical review (`DoctorReviewClient`) approval flow itself.
+### Feature A — date-wise consultation notes, voice dictation, attribution, follow-up history
 
-### A. Consultation Notes panel (per patient, per visit)
-```
-┌─ Patient: <name> · <clinic> ──────────────────────────── Visit: 23 Oct 2026 ─┐
-│ Consultation Notes                                   [ Dictate ●] [ Type ⌨ ] │
-│                                                                              │
-│  ● Recording 00:14   (waveform)      [Stop ■]   status: listening…          │
-│  ┌────────────────────────────────────────────────────────────────────┐    │
-│  │ live transcript preview … (editable textarea)                       │    │
-│  └────────────────────────────────────────────────────────────────────┘    │
-│  Language: [EN ▾]   Input: Dictation · editable before save                  │
-│                                              [ Discard ]   [ Save note ]     │
-├──────────────────────────────────────────────────────────────────────────── │
-│ Note history (date-wise)                                                     │
-│  • 23 Oct 2026 · Dr. A. Rao · typed      "Patient reports reduced shedding…" │
-│  • 12 Sep 2026 · Dr. A. Rao · dictated   "Started HAIR FACT TE GOLD…"        │
-└──────────────────────────────────────────────────────────────────────────────┘
-```
-- **Dictate**: uses the browser Web Speech API (client-side, no server audio). Shows start/stop, elapsed time, and a live interim transcript. On stop, the transcript lands in the editable textarea.
-- **Type**: identical textarea, skips the mic. Shown as default when `SpeechRecognition` is unavailable (Safari/iOS, denied permission).
-- **Save** persists edited text + metadata (author, date, inputMode, language). Raw audio is **never uploaded** by default.
-- **Note history** lists prior notes for the patient, newest first, with date, author, and input mode. Read-only; a note is editable only by its author within a short window, otherwise append-a-correction.
-- Clear separator and copy: *"Visit notes are private clinic documentation and are not part of the patient's AI report."*
+| Requirement | Current | Gap |
+|---|---|---|
+| Voice dictation with editable text | Dictation exists (`VoiceDictateButton`) but is **not wired** into the doctor-notes textarea | Wire existing component into the notes field |
+| Typed fallback | Notes are typed-only today; dictation hides itself when unsupported | Already satisfied by reuse |
+| No stored raw audio | Web Speech API stores none | Keep; make it an explicit invariant |
+| Date-wise history for future consultations | Notes are per-assessment, inside the version `content`; no cross-visit timeline | New dated, patient-scoped note store + history surface |
+| Author attribution | Only `doctorId` is stored; no name; UI shows just a timestamp | Store author id + **name snapshot**; show author |
+| Separate from approved `ConsultationVersion` snapshots | **Violated** — every note creates a new `ConsultationVersion` + fires consultation events | Move notes to a dedicated store off the version/approval/event path |
+| Secure clinic scoping | Consultation routes are clinic-scoped via `requireDoctorContext` | Apply the same scoping to the new store (tenant in `WHERE`) |
+| No AI/clinical inference from notes | Notes are inert text today | Keep inert: never read by the engine, never emits a `ConsultationEvent` |
 
-### B. Partial Kit Tracking panel (per approved recommendation)
-```
-┌─ Recommended treatment (approved 12 Sep 2026, v3) ──────── 4 kits recommended ┐
-│ Kit                         Rec. qty  Purchased  Status        Actions       │
-│ HAIR FACT TE GOLD              1          1       ✅ Purchased  [+ event ▾]   │
-│ IRON UP GOLD                   1          1       🚚 Delivered  [+ event ▾]   │
-│ PRO FACT META B                1          0       ⏸ Deferred    [+ event ▾]   │
-│ HAIR FACT HBR                  1          0       ✖ Declined    [reason…]     │
-│                                                                              │
-│ Purchased 2 of 4 · ₹X,XXX recorded · 2 deferred/declined · not an invoice    │
-├─ Timeline ────────────────────────────────────────────────────────────────  │
-│  23 Oct 2026  Purchased IRON UP GOLD ×1  ₹___ (catalog ₹___) · counter · Dr.A│
-│  23 Oct 2026  Treatment started: HAIR FACT TE GOLD                           │
-│  12 Sep 2026  Deferred PRO FACT META B (cost) · Dr. A                        │
-│  12 Sep 2026  Purchased HAIR FACT TE GOLD ×1  ₹___ · counter · Dr. A         │
-│                                              [ Record a later purchase + ]    │
-└──────────────────────────────────────────────────────────────────────────────┘
-```
-- Row per **recommended** kit (always shows all 4 — unpurchased stay visible).
-- "Purchased" column = sum of purchase events, never assumed. Status badge reflects per-item lifecycle.
-- **[+ event]** opens a small dated form: event type (Payment / Purchase / Dispense / Deliver / Start treatment / Defer / Decline / Substitute / Discontinue), quantity, recorded sale amount (prefilled from governed catalog price when available), payment linkage, note.
-- **Record a later purchase** adds a new dated event to the *same* recommendation — no new order, no duplicate.
-- Deferred/declined/substituted/discontinued require a reason; substituted asks for the replacement kit; discontinued is a controlled (clinical) action.
-- Footer never phrases unpurchased items as money owed.
+### Feature B — partial kit purchase & longitudinal tracking
+
+| Requirement | Current | Gap |
+|---|---|---|
+| Preserve full approved plan | `KitOrderIntent.kitIds` + `quantities` (immutable) | None — keep unchanged |
+| Record actual purchased quantities (item-level) | Only *recommended/dispense* `quantities`; no purchased qty | New per-kit purchase line + dated event ledger |
+| Deferred / declined / substituted / discontinued per item | No such states | Per-line lifecycle status + controlled transitions |
+| Purchase dates, repeat purchases on new dates, no double counting | Order-level only; a repeat would need a 2nd intent | Append-only dated events; purchased/remaining **derived** |
+| Treatment-start dates | Order-level, write-once (`treatmentStartedAt`) | Keep as THE anchor; add per-kit `TREATMENT_STARTED` events where a kit starts on its own date |
+| Remaining items visible, not treated as paid/owed | A kit is in the intent or not | Lines default `RECOMMENDED`; remaining = recommended − purchased |
+| Governed prices + recorded sale values | `KitPrice` (versioned: `mrp`, `gstPercent`, `doctorPrice`); `KitOrderPayment.amountMinor` (order-level) | Reference governed price per line; record actual sale on the event; **invent nothing** |
+| Keep kit-priority / plan rules unchanged | Produced by the engine into the intent | None — do not touch the engine |
+| Never assume all kits bought/started | Nothing asserts purchase today | Default `RECOMMENDED`; purchase/start only via explicit events |
+
+**Headline:** Feature A is mostly *wiring + relocation* of things that exist (dictation component, author context, audit) plus a small dated store. Feature B adds **item-level** granularity beneath the untouched order-level recommendation, following the repo's existing "unapplied migration + raw store that degrades to not-provisioned" pattern.
 
 ---
 
-## 3. Exact minimal schema and API changes
+## 3. Exact schema, migration, API, and file changes
 
-Guiding principle: **additive only.** No column is altered or dropped on `Consultation`, `ConsultationVersion`, `KitOrderIntent`, `KitOrderPayment`, `ClinicKitFulfilment`, or any pricing/catalog table. The clinical engine and kit-selection path are untouched.
+Additive only. No change to `KitOrderIntent`, `ConsultationVersion`, pricing/catalog tables, or the orchestrator. One new migration, shipped **unapplied**, consistent with the repo's freeze convention; new raw stores degrade to "not provisioned" until it is applied.
 
-### 3.1 Feature A — new table `ConsultationNote` (routine visit notes, separate from snapshots)
+### 3.1 Prisma (`prisma/schema.prisma`) + new migration `prisma/migrations/<date>_doctor_notes_and_partial_kit/`
 
+```prisma
+model ConsultationNote {                 // Feature A — dated, authored, off the version lifecycle
+  id             String   @id @default(cuid())
+  clinicId       String                              // tenant scope (WHERE, not a prior read)
+  patientId      String
+  assessmentId   String?                             // the visit this note belongs to
+  consultationId String?                             // soft link, NOT written into any version
+  authorDoctorId String
+  authorName     String                              // attribution survives later doctor edits
+  noteDate       DateTime @default(now())            // the clinical date; editable within policy
+  body           String   @db.Text
+  inputMode      String                              // "DICTATION" | "TYPED" (writer-constrained, no enum churn)
+  language       String   @default("en")
+  status         String   @default("SAVED")          // "SAVED" | "AMENDED" | "DELETED"
+  supersedesId   String?                             // corrections append, never overwrite
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  @@index([clinicId, patientId, noteDate])
+  @@index([assessmentId])
+}
+
+model KitPurchaseLine {                   // Feature B — one per recommended kit; preserves the plan
+  id               String   @id @default(cuid())
+  kitOrderIntentId String
+  clinicId         String
+  assessmentId     String
+  patientId        String
+  kitId            String                            // matches a value in KitOrderIntent.kitIds (unchanged)
+  kitLabel         String                            // display snapshot at approval
+  recommendedQty   Int                               // from quantities / DEFAULT_KIT_QUANTITY
+  lineStatus       String   @default("RECOMMENDED")  // RECOMMENDED|PARTIALLY_PURCHASED|PURCHASED|DEFERRED|DECLINED|SUBSTITUTED|DISCONTINUED
+  substituteKitId  String?
+  controlReason    String?                           // required for DEFERRED/DECLINED/SUBSTITUTED/DISCONTINUED
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+  @@unique([kitOrderIntentId, kitId])
+  @@index([clinicId, patientId])
+  @@index([assessmentId])
+}
+
+model KitPurchaseEvent {                  // Feature B — append-only, dated ledger
+  id                 String   @id @default(cuid())
+  kitPurchaseLineId  String
+  clinicId           String
+  assessmentId       String
+  eventType          String                          // PURCHASED|DISPENSED|DEFERRED|DECLINED|SUBSTITUTED|DISCONTINUED|TREATMENT_STARTED|REFUNDED
+  quantity           Int?
+  catalogUnitMinor   Int?                             // governed price snapshot from KitPrice (minor units); null if none
+  saleValueMinor     Int?                             // actual recorded sale; null if not a sale
+  currency           String   @default("INR")
+  kitPriceId         String?                          // provenance → KitPrice row used
+  occurredAt         DateTime                         // the event DATE (supports later purchases)
+  recordedByDoctorId String
+  note               String?
+  createdAt          DateTime @default(now())
+  @@index([kitPurchaseLineId, occurredAt])
+  @@index([assessmentId, occurredAt])
+}
 ```
-ConsultationNote
-  id                text PK
-  clinicId          text  NOT NULL  -> Clinic.id        (clinic isolation)
-  patientId         text  NOT NULL  -> Patient.id
-  assessmentId      text  NULL      -> Assessment.id     (ties note to the visit)
-  clinicVisitId     text  NULL      -> ClinicVisit.id    (preferred dated anchor)
-  consultationId    text  NULL      -> Consultation.id   (optional soft link, NOT into the version)
-  authorDoctorId    text  NOT NULL  -> Doctor.id
-  authorNameSnapshot text NOT NULL                      (attribution survives doctor edits)
-  noteDate          timestamptz NOT NULL                (the visit date; defaults to now)
-  body              text  NOT NULL                      (edited transcript or typed text)
-  inputMode         enum  NoteInputMode{ DICTATION, TYPED }
-  language          text  NOT NULL default 'en'
-  status            enum  NoteStatus{ DRAFT, SAVED, AMENDED, DELETED }
-  supersedesNoteId  text  NULL  -> ConsultationNote.id   (corrections = append, not overwrite)
-  audioRetained     boolean NOT NULL default false       (always false by default; no raw audio)
-  audioRef          text  NULL                            (reserved; unused unless clinic opts in)
-  createdAt         timestamptz default now()
-  updatedAt         timestamptz
-  deletedAt         timestamptz NULL                      (soft delete)
-  -- RLS ENABLED, clinic-scoped policy mirroring Consultation
-  -- indexes: (patientId, noteDate desc), (clinicId, noteDate desc), (assessmentId)
-```
-Notes are **never** written into `ConsultationVersion.content`. The existing `content.doctorNotes` key is left as-is for historical snapshots (read-only legacy); the new panel reads/writes `ConsultationNote`.
+Derivations (never stored as mutable totals): `purchasedQty(line) = Σ PURCHASED.quantity − Σ REFUNDED.quantity`, clamped `[0, recommendedQty]`; `remaining = recommendedQty − purchasedQty`. One `KitOrderIntent` still exists per approval; repeat purchases are new dated events — no second intent, no double count.
 
-### 3.2 Feature B — two new tables: per-item line + append-only event ledger
+### 3.2 New raw-SQL stores (mirror `paymentStore.ts` / `fulfilmentStore.ts`)
+- `apps/patient-portal/src/lib/notes/noteStore.ts` — `guardedNotes()`, `NOTES_NOT_PROVISIONED`, `createNote`, `listNotesForPatient`, `listNotesForAssessment`, `amendNote`. Tenant `clinicId` in every `WHERE`. Degrades to 503 before the migration is applied.
+- `apps/patient-portal/src/lib/commerce/purchaseStore.ts` — `guardedPurchase()`, `PURCHASE_NOT_PROVISIONED`, `ensurePurchaseLines(intentId)` (backfill one line per `kitIds`), `appendPurchaseEvent`, `setLineStatus`, `readPurchaseState(assessmentId)` (lines + events + derived). `assertPurchasingEnabled()` is called **only** when an event records money (`saleValueMinor` set); recording quantity/date/clinical status is a dispensing record and does not require purchasing to be on.
 
-`KitPurchaseLine` — one row per **recommended** kit, created from the approved `KitOrderIntent`. Preserves the recommendation and carries per-item lifecycle state.
-```
-KitPurchaseLine
-  id                 text PK
-  kitOrderIntentId   text NOT NULL -> KitOrderIntent.id
-  clinicId           text NOT NULL -> Clinic.id
-  assessmentId       text NOT NULL -> Assessment.id
-  patientId          text NOT NULL -> Patient.id
-  kitId              text NOT NULL        (matches a value in KitOrderIntent.kitIds; free-form today)
-  kitLabelSnapshot   text NOT NULL        (display name captured at approval)
-  recommendedQty     integer NOT NULL     (from KitOrderIntent.quantities)
-  lineStatus         enum KitLineStatus{ RECOMMENDED, PARTIALLY_PURCHASED, PURCHASED,
-                                         DEFERRED, DECLINED, SUBSTITUTED, DISCONTINUED }
-                                         default RECOMMENDED
-  substituteKitId    text NULL
-  controlReason      text NULL            (required for DEFERRED/DECLINED/SUBSTITUTED/DISCONTINUED)
-  createdAt/updatedAt timestamptz
-  UNIQUE (kitOrderIntentId, kitId)
-  -- RLS ENABLED, clinic-scoped
-```
-
-`KitPurchaseEvent` — immutable, dated ledger. Every purchase/payment/dispense/delivery/start/defer is one row. "Purchased qty" and "what remains" are **derived** from this, never stored as a mutable total.
-```
-KitPurchaseEvent
-  id                 text PK
-  kitPurchaseLineId  text NOT NULL -> KitPurchaseLine.id
-  clinicId           text NOT NULL -> Clinic.id
-  assessmentId       text NOT NULL -> Assessment.id
-  eventType          enum KitPurchaseEventType{ PAYMENT_RECORDED, PURCHASED, DISPENSED,
-                                                DELIVERED, TREATMENT_STARTED, DEFERRED,
-                                                DECLINED, SUBSTITUTED, DISCONTINUED, REFUNDED }
-  quantity           integer NULL          (for PURCHASED/DISPENSED/REFUNDED)
-  catalogUnitMinor   integer NULL          (governed price snapshot from KitPrice at event time)
-  saleValueMinor     integer NULL          (actual recorded sale)
-  currency           text default 'INR'
-  kitPriceVersionId  text NULL -> KitPrice.id   (provenance of the governed price used)
-  kitOrderPaymentId  text NULL -> KitOrderPayment.id  (links to existing order-level payment if any)
-  occurredAt         timestamptz NOT NULL  (the event DATE — supports later purchases)
-  recordedByDoctorId text NOT NULL -> Doctor.id
-  note               text NULL
-  createdAt          timestamptz default now()
-  -- append-only (no updates/deletes; corrections = compensating event, e.g. REFUNDED)
-  -- RLS ENABLED, clinic-scoped; index (kitPurchaseLineId, occurredAt), (assessmentId, occurredAt)
-```
-
-**Double-counting / duplicate-order safety:** there is still exactly one `KitOrderIntent` per approved recommendation. Purchases accumulate as events under lines. `purchasedQty(line) = Σ PURCHASED.quantity − Σ REFUNDED.quantity`, clamped to `[0, recommendedQty]` for display; a later purchase is a new event with a later `occurredAt`. No new intent is ever created for a repeat purchase.
-
-### 3.3 Security fix bundled with the migration (see §5)
-Enable RLS + clinic policies on the already-shipped order tables the features touch: `KitOrderPayment`, `ClinicKitFulfilment`, `Appointment` (and ideally `PaymentTransaction`, `CatalogOrder*`). Presented as SQL for approval; not auto-applied.
-
-### 3.4 API changes (Next.js route handlers / server actions — paths to confirm against app repo)
+### 3.3 API routes
 Feature A:
-- `POST /api/doctor/consultation-notes` — create a note (clinicId derived from session, never client). Body: `{ patientId, assessmentId?, clinicVisitId?, body, inputMode, language }`.
-- `GET /api/doctor/consultation-notes?patientId=…` — dated history, clinic-scoped.
-- `PATCH /api/doctor/consultation-notes/:id` — author-only, short window, else creates an `AMENDED` successor.
-- Transcription is **client-side only** (Web Speech API); no transcription endpoint, no audio upload.
+- `app/api/doctor/consultation-notes/route.ts` — `POST` create `{ patientId, assessmentId?, body, inputMode, language, noteDate? }` (clinic from session), `GET ?patientId=` / `?assessmentId=` dated history.
+- `app/api/doctor/consultation-notes/[id]/route.ts` — `PATCH` author-only amend (appends an `AMENDED` successor).
+- **Repoint** the existing note save: `addNote()` in `DoctorReviewClient.tsx` posts to the notes route instead of the consultation `PATCH`, so saving a note no longer mints a `ConsultationVersion` or fires consultation events. Legacy `content.doctorNotes` is rendered **read-only**.
 
 Feature B:
-- `POST /api/doctor/kit-purchase/backfill-lines` (internal, idempotent) — ensure `KitPurchaseLine` rows exist for a given `kitOrderIntentId`.
-- `POST /api/doctor/kit-purchase/:lineId/events` — append a `KitPurchaseEvent` (dated). Validates clinic, doctor, event type transitions, price provenance.
-- `PATCH /api/doctor/kit-purchase/:lineId/status` — controlled status change (defer/decline/substitute/discontinue) with required reason.
-- `GET /api/doctor/kit-purchase?assessmentId=…` — returns lines + derived purchased/remaining + event timeline.
-- Governed price read reuses the existing pricing API over `KitPrice`/`ProductPrice` (read-only); **no change to pricing logic.**
+- `app/api/doctor/orders/[intentId]/purchase/route.ts` — `GET` lines+events+derived; `POST` append an event (purchase/dispense/defer/decline/substitute/discontinue/treatment-started) with `occurredAt`; `PATCH` line status with required reason.
+- Extend `app/api/doctor/patients/[id]` (or add `/treatment-history/route.ts`) to return the merged date-wise history (visits, notes, purchase events, treatment start).
+
+### 3.4 UI (reuse, don't rebuild)
+- `components/shared/VoiceDictateButton.tsx` — reused as-is in the notes panel.
+- `app/doctor/reports/[assessmentId]/DoctorReviewClient.tsx` — `DoctorNotesBlock` gains the mic (dictation + typed) and writes to the new store; a new **Partial Kit panel** shows recommended vs purchased vs deferred vs remaining + a dated timeline, with a `[+ event]` form and controlled defer/decline/substitute actions.
+- `app/doctor/patients/[id]/page.tsx` + its API — add a date-wise **Consultation notes** list and a **Treatment & purchase history** section beside the assessment timeline.
+- Audit every note write and purchase event via existing `writeAuditLog`.
 
 ---
 
-## 4. Data model for dated encounters and item-level purchase events
+## 4. Phase 1 (minimal) implementation plan
 
-```
-Patient ──< Assessment ──1:1── ClinicVisit (startedAt = the dated encounter)
-   │             │
-   │             ├──< Consultation ──< ConsultationVersion (approved snapshots; immutable)
-   │             │                         └─ content.doctorNotes  (legacy, read-only)
-   │             │
-   │             ├──< ConsultationNote      [NEW]  (dated, authored, non-clinical)   ← Feature A
-   │             │
-   │             └──< KitOrderIntent (approved recommendation: kitIds[], quantities)  ← unchanged
-   │                      │
-   │                      ├──< KitPurchaseLine  [NEW] (one per recommended kit)       ← Feature B
-   │                      │        └──< KitPurchaseEvent [NEW] (dated ledger)
-   │                      ├──── KitOrderPayment (order-level, existing)
-   │                      └──── ClinicKitFulfilment (order-level lifecycle, existing)
-   │
-   └─ "date-wise treatment history" = union of ClinicVisit.startedAt,
-       ConsultationNote.noteDate, KitPurchaseEvent.occurredAt, ClinicKitFulfilment.*At,
-       ordered by date (a read-only projection; no new storage).
-```
-- **Dated encounter** = `ClinicVisit` (already exists). Notes and purchase events both carry their own date (`noteDate`, `occurredAt`) so they survive even where a `ClinicVisit` row is absent.
-- **Item-level purchase** = `KitPurchaseLine` (state) + `KitPurchaseEvent` (history). Recommendation stays whole in `KitOrderIntent`.
-- **Remaining / deferred** is always derived (recommended − purchased), never a stored mutable count — eliminates double counting.
+**In scope:**
+- Feature A: `ConsultationNote` model + unapplied migration + `noteStore.ts`; notes API; repoint `addNote()`; dictation via `VoiceDictateButton`; author attribution; dated history on the patient profile. Legacy notes read-only.
+- Feature B: `KitPurchaseLine` + `KitPurchaseEvent` models + unapplied migration + `purchaseStore.ts`; `ensurePurchaseLines` backfill; purchase/defer/decline/substitute/treatment-started events (quantities, dates, clinical status); derived purchased/remaining; governed price shown from `KitPrice` when present, **no invented prices**; history surfaces. With purchasing OFF, no chargeable rows are created — `saleValueMinor` stays null unless `PURCHASING_ENABLED`.
 
----
+**Out of scope (later):** online payment capture/refund wiring, follow-up scheduling/reminders, catalog population, migrating legacy in-content notes.
 
-## 5. Clinic isolation, author attribution, privacy & audit
-
-- **Clinic isolation:** every new table carries `clinicId NOT NULL` and gets **RLS enabled** with the same clinic-scoped policy pattern used by `Consultation`/`KitOrderIntent` (which have RLS on). `clinicId` is always derived from the authenticated session/doctor, never trusted from the request body. This directly addresses the "different patients sharing a name" risk — scoping is by id + clinic, not by name.
-- **Author attribution:** `ConsultationNote.authorDoctorId` + `authorNameSnapshot`; `KitPurchaseEvent.recordedByDoctorId`. Snapshots of the author name/role are stored so attribution is stable even if a doctor record later changes (mirrors how `AuditLog` already snapshots `actorName`/`actorRoleSnapshot`).
-- **Privacy / audio:** raw audio is **never persisted by default** (`audioRetained=false`, no upload path, transcription client-side). Only the doctor-edited text is stored. This satisfies A7 and keeps the feature out of audio-retention/consent complexity.
-- **No clinical inference:** `ConsultationNote` is inert text — it is never read by the clinical engine, never triggers a `ConsultationEvent`, never alters `KitOrderIntent`. Enforced by keeping it off the engine's read paths and documented as an invariant.
-- **Audit:** reuse the existing `AuditLog` (5,481 rows, rich: actor snapshot, before/after state, clinicId, requestId, source). Emit `AuditLog` entries for note create/amend/delete and every `KitPurchaseEvent`/line-status change. No new audit infrastructure needed.
-- **⚠ Pre-existing security finding (must be surfaced):** the Supabase advisor reports **RLS is disabled on 17 tables**, including the ones these features build on — `KitOrderPayment`, `ClinicKitFulfilment`, `Appointment`, `PaymentTransaction`, `CatalogOrder`, `CatalogOrderItem`, `CatalogShipment*`. With the anon key, these are fully readable/writable cross-clinic. **Recommendation:** enable RLS + clinic policies on at least `KitOrderPayment`, `ClinicKitFulfilment`, `Appointment` as part of Phase 1 (SQL provided for your approval; not auto-applied, because enabling RLS without policies would block all access). The new tables ship with RLS from day one.
-
----
-
-## 6. Staging test scenarios
-
-All to be run against **staging** only, with synthetic data; no real patient audio, no production test purchases.
-
-1. **Two patients, same name, same clinic** — notes and purchases for "Rahul Sharma" #1 never appear under "Rahul Sharma" #2; scoping proven by `patientId`, not name.
-2. **Same name across two clinics** — clinic A doctor cannot read clinic B's notes/events (RLS). Attempt cross-clinic `clinicId` in request body → rejected (server derives clinic from session).
-3. **Multiple doctors on one patient** — Dr. A dictates a note, Dr. B types one; both appear in the dated history with correct, stable author attribution; Dr. B cannot silently edit Dr. A's note (gets an `AMENDED` successor).
-4. **Partial purchase (the core case)** — 4 kits recommended; patient buys 1 today. Row shows Purchased 1 of 4; 3 remain visible as `RECOMMENDED`, not shown as owed/delivered.
-5. **Repeat visit, later purchase** — 3 weeks later the patient buys 2 more kits. New dated events append to the *same* recommendation; no second `KitOrderIntent`; purchased total = 3 of 4; no double count.
-6. **Deferred → later purchased** — a kit marked `DEFERRED` (reason recorded) is later purchased; timeline shows both events in date order; status resolves to `PURCHASED`.
-7. **Declined & substituted** — one kit declined (reason), one substituted for another kit (replacement recorded); discontinued requires the controlled action; none of these are counted as sales.
-8. **Mic unavailable** — simulate Safari/iOS / denied permission → UI falls back to typed note; save still works; `inputMode=TYPED`.
-9. **Governed price** — with `KitPrice` populated for a clinic, the event form prefills catalog unit price; recorded `saleValueMinor` can differ and both are stored; with `KitPrice` empty, price fields are entered manually and flagged as un-governed.
-10. **Audit** — every note and purchase event produces an `AuditLog` row with correct actor/clinic; no raw audio exists anywhere after a dictation.
-11. **Engine isolation** — saving/editing a note produces **no** `ConsultationEvent`, no change to `KitOrderIntent`, no new `ConsultationVersion`.
-
----
-
-## 7. Migration & rollback strategy (preserves historical orders)
-
-**Migration (additive, Prisma):**
-1. Create enums (`NoteInputMode`, `NoteStatus`, `KitLineStatus`, `KitPurchaseEventType`) and tables (`ConsultationNote`, `KitPurchaseLine`, `KitPurchaseEvent`) with RLS enabled + clinic policies. No change to any existing table.
-2. **Backfill (idempotent, read-then-insert):** for each existing `KitOrderIntent`, insert one `KitPurchaseLine` per `kitId` with `recommendedQty` from `quantities` and `lineStatus=RECOMMENDED`. Insert **no** purchase events — nothing is assumed bought (satisfies B10). Existing `KitOrderPayment` rows (2) may optionally seed a `PAYMENT_RECORDED`/`PURCHASED` event **only if** a human confirms the mapping; default is to leave them order-level and untouched.
-3. Separately (own reviewed migration), enable RLS + policies on `KitOrderPayment`, `ClinicKitFulfilment`, `Appointment`.
-4. Legacy `ConsultationVersion.content.doctorNotes` is left intact and shown read-only; no data is moved out of snapshots.
-
-**Rollback:** because the migration is purely additive, rollback is `DROP TABLE KitPurchaseEvent, KitPurchaseLine, ConsultationNote` + drop the new enums. **No historical order, payment, fulfilment, consultation, or snapshot is altered or deleted at any point**, so rollback cannot lose historic transactions. The RLS-enable migration rolls back by disabling RLS on those three tables (restoring prior — insecure — behavior). Run on staging, verify scenarios §6, then production in a maintenance window.
-
----
-
-## 8. Phase 1 implementation plan
-
-Phase 1 deliberately ships the **safe core** and defers anything that touches money movement or the clinical engine.
-
-**In scope (Phase 1):**
-- A: `ConsultationNote` table + RLS, create/list/amend APIs, dashboard Notes panel with Web Speech dictation + typed fallback + dated history. No audio storage.
-- B: `KitPurchaseLine` + `KitPurchaseEvent` tables + RLS, backfill, append-event / status APIs, dashboard Partial Kit panel + timeline, derived purchased/remaining. Prices read from `KitPrice` when present, manual + flagged when absent.
-- Security: enable RLS + clinic policies on `KitOrderPayment`, `ClinicKitFulfilment`, `Appointment` (presented for approval).
-
-**Out of scope (later phases):** populating the governed price catalog (`Kit`/`KitPrice` ingestion), online payment capture/refund wiring, substitution against a real `Kit` FK (keep free-form `kitId` until the catalog is populated), patient-facing timeline.
-
-**Affected files — to confirm against the application repo (not in this session):** [inferred]
-- `prisma/schema.prisma` + a new migration under `prisma/migrations/`.
-- `apps/patient-portal` doctor dashboard: the patient-profile / `DoctorReviewClient.tsx` neighborhood — add two panels (co-located components, e.g. `ConsultationNotes/` and `KitPurchaseTracker/`).
-- New API routes/server actions under the doctor API segment (alongside whatever hosts `approveAndCreateOrder` and the pricing API).
-- Shared auth/clinic-scoping helper (reuse the existing session→clinic resolver used by consultation routes).
+**Affected files (exact):**
+- `prisma/schema.prisma`; new `prisma/migrations/<date>_doctor_notes_and_partial_kit/migration.sql` (shipped unapplied).
+- New: `src/lib/notes/noteStore.ts`, `src/lib/commerce/purchaseStore.ts`, `src/app/api/doctor/consultation-notes/route.ts` (+`[id]/route.ts`), `src/app/api/doctor/orders/[intentId]/purchase/route.ts`.
+- Changed: `src/app/doctor/reports/[assessmentId]/DoctorReviewClient.tsx` (notes block + kit panel), `src/app/doctor/patients/[id]/page.tsx` and `src/app/api/doctor/patients/[id]/route.ts` (history).
+- Reused: `src/components/shared/VoiceDictateButton.tsx`, `src/lib/auth` (`requireDoctorContext`), `src/lib/audit/writeAuditLog.ts`, `src/lib/commerce/purchasingGate.ts`, `src/lib/commerce/kitQuantity.ts`.
 
 **Acceptance criteria:**
-- A doctor can dictate or type a note, edit it, and save it against the right patient and visit date; it appears in that patient's dated note history; it is **not** in any `ConsultationVersion`; no audio is stored; attribution is correct; another clinic cannot see it.
-- For a 4-kit recommendation, a doctor can record that 1 was purchased today and 2 more on a later date, mark 1 deferred/declined with a reason, and see purchased-vs-recommended, remaining, and a date-ordered timeline — with no duplicate order and no double counting, and unpurchased kits never shown as paid/owed/delivered.
-- Saving notes or purchase events never alters `KitOrderIntent`, kit priority, the treatment plan, approved consultations, or historic transactions.
-- All new tables enforce clinic isolation via RLS; every write emits an `AuditLog` entry.
+- A doctor can dictate or type a note, edit it, and save it against the right patient/visit; it appears in a date-wise history with author name; saving it creates **no** `ConsultationVersion` and emits **no** consultation event; no audio is stored.
+- For a multi-kit plan, a doctor can record 1 purchased today and 2 more on a later date, mark kits deferred/declined with a reason, and see purchased-vs-recommended, remaining, and a dated timeline — no duplicate intent, no double counting, unpurchased kits never shown as paid/owed.
+- `KitOrderIntent.kitIds`/`quantities`, kit priority, the treatment plan, approved consultations, and historic orders are unchanged; the clinical engine is untouched.
+- Before the migration is applied, every new surface returns a clean "not provisioned" (503) and the app still boots — matching the payment/fulfilment stores.
 
 ---
 
-### Open questions for approval
-1. Can the **application repository** (the Next.js app Vercel deploys) be granted to this session so the Phase 1 file list and `approveAndCreateOrder` wiring can be made exact?
-2. OK to include the **RLS-enable** migration for `KitOrderPayment`/`ClinicKitFulfilment`/`Appointment` in Phase 1, or handle separately?
-3. Keep kit identity as **free-form `kitId` strings** for Phase 1 (catalog unpopulated), migrating to a `Kit` FK when the price catalog is ingested — agreed?
-4. Web Speech API (browser-native, no server, no audio) acceptable for dictation, or is a server STT required later (which would reopen the audio-retention/consent questions)?
+## 5. Staging test strategy (`hairos-staging` only; synthetic data; no real audio, no production purchases)
 
-**No feature will be built until this plan is approved.**
+Apply the new migration **on staging only**, then:
+1. **Two patients, same name, same clinic** — notes/purchases never cross; scoping is by `patientId`, not name.
+2. **Same name across two clinics** — clinic A cannot read clinic B's notes/events; a forged `clinicId` in the body is ignored (clinic from session, tenant in `WHERE`).
+3. **Multiple doctors** — Dr A dictates, Dr B types; both show with correct author names; Dr B amending Dr A's note creates an `AMENDED` successor, not an overwrite.
+4. **Partial purchase** — 4 kits recommended, 1 purchased today → "1 of 4"; 3 remain `RECOMMENDED`, not shown as owed/delivered.
+5. **Repeat visit, later purchase** — +2 kits 3 weeks later → events append to the same intent; purchased = 3 of 4; no 2nd intent, no double count.
+6. **Deferred → later purchased** — defer (reason) then purchase; timeline shows both in date order; status resolves to `PURCHASED`.
+7. **Declined / substituted / discontinued** — reason captured; substitute recorded; none counted as a sale.
+8. **Treatment start** — order-level `treatmentStartedAt` still the follow-up anchor; a per-kit `TREATMENT_STARTED` event records a kit that starts on its own date without changing the anchor.
+9. **Dictation + fallback** — Chrome dictates; Firefox/denied-permission falls back to typing; save works either way; `inputMode` recorded; no audio persisted anywhere.
+10. **Engine isolation** — saving a note creates no `ConsultationVersion`, emits no `ConsultationEvent`, and does not alter `KitOrderIntent`.
+11. **Not-provisioned degrade** — with the migration un-applied, the notes and purchase surfaces return 503 with their reason codes and the app boots normally.
+12. **Governed price** — with `KitPrice` present the event form shows the catalog price; with none, quantity/date are recorded and no price is invented; with `PURCHASING_ENABLED` unset, no chargeable row is created.
+13. **Audit** — every note and purchase event writes an `AuditLog` row with correct actor/clinic.
+
+---
+
+## 6. Guardrails honored
+No production writes, migrations, merges, or deploys. Clinical engine, kit-selection priority, approved consultations, and historic transactions untouched. `KitOrderIntent`/`kitIds`/governed pricing preserved; no invented prices. Dictation reuses the existing Web-Speech component with no raw-audio storage. Staging RLS remediation is tracked separately (decision 2). **No feature will be built until this plan is approved.**
