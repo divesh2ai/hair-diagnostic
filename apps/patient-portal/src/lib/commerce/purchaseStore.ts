@@ -1,9 +1,10 @@
 import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { isSchemaDriftError } from "@/lib/prismaErrors";
-import type {
-  KitPurchaseEventType,
-  KitPurchaseLineStatus,
+import {
+  isSameEventPayload,
+  type KitPurchaseEventType,
+  type KitPurchaseLineStatus,
 } from "./kitPurchaseModel";
 
 // KitPurchaseLine / KitPurchaseEvent persistence, over raw SQL.
@@ -245,14 +246,82 @@ export async function listEventsByAssessment(
   });
 }
 
+/** All lines for a patient within the clinic, across every visit. */
+export async function listLinesByPatient(
+  clinicId: string,
+  patientId: string,
+): Promise<PurchaseLineRecord[]> {
+  return guardedPurchase(async () => {
+    const rows = await prisma.$queryRaw<LineRaw[]>(Prisma.sql`
+      SELECT ${LINE_COLS} FROM "KitPurchaseLine"
+       WHERE "clinicId" = ${clinicId} AND "patientId" = ${patientId}
+       ORDER BY "createdAt" ASC
+    `);
+    return rows.map(toLine);
+  });
+}
+
+/**
+ * All purchase events for a patient, across visits. Events carry no patientId
+ * of their own, so the patient scope is enforced by joining to the line — which
+ * does carry it — rather than trusting a denormalised copy.
+ */
+export async function listEventsByPatient(
+  clinicId: string,
+  patientId: string,
+): Promise<PurchaseEventRecord[]> {
+  return guardedPurchase(async () => {
+    const rows = await prisma.$queryRaw<EventRaw[]>(Prisma.sql`
+      SELECT ${EVENT_COLS} FROM "KitPurchaseEvent"
+       WHERE "clinicId" = ${clinicId}
+         AND EXISTS (
+           SELECT 1 FROM "KitPurchaseLine" l
+            WHERE l."id" = "KitPurchaseEvent"."kitPurchaseLineId"
+              AND l."clinicId" = ${clinicId}
+              AND l."patientId" = ${patientId}
+         )
+       ORDER BY "occurredAt" ASC, "createdAt" ASC
+    `);
+    return rows.map(toEvent);
+  });
+}
+
+/**
+ * Resolve a line by its id, scoped to BOTH the clinic AND the owning order.
+ *
+ * The order scope is the fix for cross-order tampering: a line id that is valid
+ * in the same clinic but belongs to a DIFFERENT KitOrderIntent is rejected
+ * (returns null), so an event or status change can never land on another
+ * order's line by passing a mismatched id.
+ */
 export async function readLine(
   clinicId: string,
   id: string,
+  kitOrderIntentId: string,
 ): Promise<PurchaseLineRecord | null> {
   return guardedPurchase(async () => {
     const rows = await prisma.$queryRaw<LineRaw[]>(Prisma.sql`
       SELECT ${LINE_COLS} FROM "KitPurchaseLine"
-       WHERE "id" = ${id} AND "clinicId" = ${clinicId}
+       WHERE "id" = ${id}
+         AND "clinicId" = ${clinicId}
+         AND "kitOrderIntentId" = ${kitOrderIntentId}
+    `);
+    return rows[0] ? toLine(rows[0]) : null;
+  });
+}
+
+/** Resolve the one line for a kit within a specific order, clinic-scoped. */
+export async function readLineByKit(
+  clinicId: string,
+  kitOrderIntentId: string,
+  kitId: string,
+): Promise<PurchaseLineRecord | null> {
+  return guardedPurchase(async () => {
+    const rows = await prisma.$queryRaw<LineRaw[]>(Prisma.sql`
+      SELECT ${LINE_COLS} FROM "KitPurchaseLine"
+       WHERE "clinicId" = ${clinicId}
+         AND "kitOrderIntentId" = ${kitOrderIntentId}
+         AND "kitId" = ${kitId}
     `);
     return rows[0] ? toLine(rows[0]) : null;
   });
@@ -260,19 +329,24 @@ export async function readLine(
 
 export type AppendEventOutcome =
   | { ok: true; event: PurchaseEventRecord; created: boolean }
-  | { ok: false; reason: "line_not_found" };
+  | { ok: false; reason: "line_not_found" | "idempotency_conflict" };
 
 /**
- * Append one dated event to a line, idempotently.
+ * Append one dated event to a line, idempotently and association-checked.
  *
- * The line is resolved WITH the caller's clinicId in the WHERE, so a doctor
- * cannot record against another tenant's line by guessing its id — the same
- * discipline as transitionFulfilment. When `clientEventId` is supplied, a
- * replayed submit collapses onto the existing row via the unique index rather
- * than creating a duplicate purchase.
+ * - The line is resolved by id scoped to BOTH clinic and the owning order
+ *   (`kitOrderIntentId`), so an event can never land on another tenant's or
+ *   another order's line.
+ * - `clientEventId` is REQUIRED: it is the idempotency key. A replay with the
+ *   same key and the same payload returns the existing row (`created:false`);
+ *   a replay with the same key but a DIFFERENT payload is rejected
+ *   (`idempotency_conflict`) rather than silently writing or silently ignoring.
+ * - `catalogUnitMinor` is the governed price resolved by the caller
+ *   SERVER-SIDE; `saleValueMinor` is the separately-recorded offline sale.
  */
 export async function appendPurchaseEvent(input: {
   clinicId: string;
+  kitOrderIntentId: string;
   kitPurchaseLineId: string;
   eventType: KitPurchaseEventType;
   boxes?: number | null;
@@ -283,13 +357,15 @@ export async function appendPurchaseEvent(input: {
   occurredAt: Date;
   recordedByDoctorId: string;
   note?: string | null;
-  clientEventId?: string | null;
+  clientEventId: string;
 }): Promise<AppendEventOutcome> {
   return guardedPurchase(async () => {
-    const line = await readLine(input.clinicId, input.kitPurchaseLineId);
+    const line = await readLine(input.clinicId, input.kitPurchaseLineId, input.kitOrderIntentId);
     if (!line) return { ok: false, reason: "line_not_found" } as const;
 
     const id = newId();
+    const boxes = input.boxes ?? null;
+    const saleValueMinor = input.saleValueMinor ?? null;
     const inserted = await prisma.$queryRaw<EventRaw[]>(Prisma.sql`
       INSERT INTO "KitPurchaseEvent" (
         "id", "kitPurchaseLineId", "clinicId", "assessmentId", "eventType",
@@ -299,11 +375,11 @@ export async function appendPurchaseEvent(input: {
       ) VALUES (
         ${id}, ${line.id}, ${line.clinicId}, ${line.assessmentId},
         ${input.eventType}::"KitPurchaseEventType",
-        ${input.boxes ?? null}, ${input.catalogUnitMinor ?? null},
-        ${input.saleValueMinor ?? null}, ${input.currency ?? "INR"},
+        ${boxes}, ${input.catalogUnitMinor ?? null},
+        ${saleValueMinor}, ${input.currency ?? "INR"},
         ${input.kitOrderPaymentId ?? null}, ${input.occurredAt},
         ${input.recordedByDoctorId}, ${input.note ?? null},
-        ${input.clientEventId ?? null}, NOW()
+        ${input.clientEventId}, NOW()
       )
       ON CONFLICT ("kitPurchaseLineId", "clientEventId") DO NOTHING
       RETURNING ${EVENT_COLS}
@@ -311,21 +387,34 @@ export async function appendPurchaseEvent(input: {
 
     if (inserted[0]) return { ok: true, event: toEvent(inserted[0]), created: true } as const;
 
-    // Conflict fired → the same clientEventId already recorded an event; return it.
+    // Conflict fired → an event with this key already exists on this line.
     const existing = await prisma.$queryRaw<EventRaw[]>(Prisma.sql`
       SELECT ${EVENT_COLS} FROM "KitPurchaseEvent"
        WHERE "kitPurchaseLineId" = ${line.id}
-         AND "clientEventId" = ${input.clientEventId ?? null}
+         AND "clientEventId" = ${input.clientEventId}
        LIMIT 1
     `);
     if (!existing[0]) throw new Error("purchase_event_conflict_without_row");
-    return { ok: true, event: toEvent(existing[0]), created: false } as const;
+    const prior = toEvent(existing[0]);
+    if (
+      !isSameEventPayload(
+        { eventType: prior.eventType, boxes: prior.boxes, saleValueMinor: prior.saleValueMinor },
+        { eventType: input.eventType, boxes, saleValueMinor },
+      )
+    ) {
+      return { ok: false, reason: "idempotency_conflict" } as const;
+    }
+    return { ok: true, event: prior, created: false } as const;
   });
 }
 
-/** Set a line's control status (defer/decline/substitute/discontinue), scoped. */
+/**
+ * Set a line's control status, scoped to clinic AND owning order so a status
+ * change cannot be applied to another order's line.
+ */
 export async function setLineStatus(input: {
   clinicId: string;
+  kitOrderIntentId: string;
   kitPurchaseLineId: string;
   lineStatus: KitPurchaseLineStatus;
   controlReason?: string | null;
@@ -338,7 +427,9 @@ export async function setLineStatus(input: {
              "controlReason"   = ${input.controlReason ?? null},
              "substituteKitId" = ${input.substituteKitId ?? null},
              "updatedAt"       = NOW()
-       WHERE "id" = ${input.kitPurchaseLineId} AND "clinicId" = ${input.clinicId}
+       WHERE "id" = ${input.kitPurchaseLineId}
+         AND "clinicId" = ${input.clinicId}
+         AND "kitOrderIntentId" = ${input.kitOrderIntentId}
       RETURNING "id"
     `);
     return { ok: rows.length > 0 };

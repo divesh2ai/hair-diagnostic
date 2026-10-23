@@ -7,6 +7,7 @@ import { ArrowLeft, User, Phone, Mail, Stethoscope, Building2 } from "lucide-rea
 import { SeverityBadge } from "@/components/ui/StatusBadges";
 import { standingOf } from "@/lib/doctor/clinicalStanding";
 import { ConsultationNotesPanel } from "@/components/doctor/ConsultationNotesPanel";
+import { PatientTreatmentHistory } from "@/components/doctor/PatientTreatmentHistory";
 
 interface PatientDetail {
   id: string;
@@ -95,6 +96,13 @@ export default function PatientTimelinePage() {
       </section>
 
       <ConsultationNotesPanel patientId={patient.id} />
+
+      <PatientTreatmentHistory
+        patientId={patient.id}
+        assessmentDates={Object.fromEntries(
+          patient.assessments.map((a) => [a.id, a.submittedAt]),
+        )}
+      />
 
       <section className="rounded-2xl bg-white border shadow-sm overflow-hidden">
         <div className="px-5 py-4 border-b">

@@ -78,7 +78,14 @@ describe("dictationAvailability — never blocks typing", () => {
 });
 
 describe("privacy", () => {
-  it("states that no audio is uploaded or stored", () => {
-    expect(DICTATION_PRIVACY_NOTICE.toLowerCase()).toContain("no audio");
+  const notice = DICTATION_PRIVACY_NOTICE.toLowerCase();
+  it("states HairOS stores no audio", () => {
+    expect(notice).toContain("no audio");
+  });
+  it("is honest that the browser speech service may process audio externally", () => {
+    expect(notice).toContain("externally");
+  });
+  it("states dictation is doctor-controlled (hold to listen)", () => {
+    expect(notice).toContain("hold");
   });
 });

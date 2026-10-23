@@ -88,6 +88,28 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "patient_not_found" }, { status: 404 });
   }
 
+  // If a visit or consultation is named, it must belong to the SAME patient and
+  // the authenticated clinic — otherwise a note could be filed against another
+  // patient's visit, or another clinic's record, by passing a mismatched id.
+  if (body.assessmentId) {
+    const assessment = await prisma.assessment.findFirst({
+      where: { id: body.assessmentId, clinicId: doctor.clinicId, patientId: body.patientId },
+      select: { id: true },
+    });
+    if (!assessment) {
+      return NextResponse.json({ error: "assessment_mismatch" }, { status: 400 });
+    }
+  }
+  if (body.consultationId) {
+    const consultation = await prisma.consultation.findFirst({
+      where: { id: body.consultationId, clinicId: doctor.clinicId, patientId: body.patientId },
+      select: { id: true },
+    });
+    if (!consultation) {
+      return NextResponse.json({ error: "consultation_mismatch" }, { status: 400 });
+    }
+  }
+
   // noteDate may be backdated to the visit day, but never set in the future.
   let noteDate: Date | undefined;
   if (body.noteDate) {

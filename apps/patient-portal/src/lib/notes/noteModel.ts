@@ -84,12 +84,17 @@ export function dictationAvailability(env: SpeechEnvironment): DictationAvailabi
 }
 
 /**
- * The one-line consent/privacy notice shown beside the mic. Recognition runs in
- * the browser via the Web Speech API; no audio is uploaded or stored by HairOS.
- * Keeping the copy here (not buried in JSX) makes it reviewable and testable.
+ * The one-line consent/privacy notice shown beside the mic.
+ *
+ * Deliberately does NOT claim recognition is purely on-device: the Web Speech
+ * API may send audio to a browser/OS speech service for transcription, which is
+ * outside HairOS's control. What HairOS guarantees is that it stores no audio —
+ * only the text the doctor saves — and that dictation only runs while the
+ * doctor holds the mic. Keeping the copy here (not buried in JSX) makes it
+ * reviewable and testable.
  */
 export const DICTATION_PRIVACY_NOTICE =
-  "Dictation transcribes in your browser. No audio is uploaded or stored — only the text you save.";
+  "Dictation uses your browser's speech service, which may process the audio externally. HairOS stores no audio — only the text you save — and listens only while you hold the mic.";
 
 export function dictationUnavailableMessage(reason: DictationUnavailableReason): string {
   switch (reason) {

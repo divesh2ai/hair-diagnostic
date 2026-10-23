@@ -263,6 +263,23 @@ export function summarisePlan(lines: readonly LineForSummary[]): PlanPurchaseSum
 }
 
 /**
+ * Whether a replay carrying an idempotency key matches the event already
+ * stored under it. A re-send of the identical action is safe (same payload);
+ * reusing a key for a DIFFERENT action is a conflict the caller must reject,
+ * never silently write or silently ignore.
+ */
+export function isSameEventPayload(
+  a: { eventType: KitPurchaseEventType; boxes: number | null; saleValueMinor: number | null },
+  b: { eventType: KitPurchaseEventType; boxes: number | null; saleValueMinor: number | null },
+): boolean {
+  return (
+    a.eventType === b.eventType &&
+    (a.boxes ?? null) === (b.boxes ?? null) &&
+    (a.saleValueMinor ?? null) === (b.saleValueMinor ?? null)
+  );
+}
+
+/**
  * Validate an incoming event before it is written. Returns an error code or
  * null. The box quantity itself is also DB-CHECK-guarded (>= 0); this is the
  * human-facing, testable gate.
