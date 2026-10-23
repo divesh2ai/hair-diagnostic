@@ -22,6 +22,8 @@ import { extractSafetyFlags } from "@/lib/doctor/clinicalAttention";
 import { summarizeProtocol, kitDisplayNameForPhase } from "@/lib/doctor/protocolModel";
 import { cartHref } from "@/lib/doctor/cartHref";
 import { PatientJourney } from "@/components/doctor/PatientJourney";
+import { ConsultationNotesPanel } from "@/components/doctor/ConsultationNotesPanel";
+import { KitPurchaseTracker } from "@/components/doctor/KitPurchaseTracker";
 import { ReviewHeader } from "./sections/ReviewHeader";
 import { ClinicalAttentionSection } from "./sections/ClinicalAttentionSection";
 import { ProtocolSection } from "./sections/ProtocolSection";
@@ -1006,6 +1008,13 @@ export function DoctorReviewClient({
               onEscalate={() => setRevisionOpen(true)}
             />
 
+            {/* PARTIAL-KIT TRACKING — directly beneath the approved plan, and
+                only once an order exists. Records what the patient actually
+                purchased/started; never mutates the approved lineup. */}
+            {operational?.orderIntentId && (
+              <KitPurchaseTracker intentId={operational.orderIntentId} patientId={patient.id} />
+            )}
+
             {/* THE SUPPORTING RECORD — one-pager, guidance, safety, audit. */}
             <div className="space-y-6 border-t border-[color:var(--hd-border)] pt-8">
               <OnePagerBlock assessmentId={assessmentId} />
@@ -1022,6 +1031,11 @@ export function DoctorReviewClient({
               notes={consultation.doctorNotes}
               onFlagIssue={() => setFeedbackOpen(true)}
             />
+
+            {/* ROUTINE VISIT NOTES — dictation + dated history. Deliberately
+                separate from the approval-rationale notes above and from the
+                approved snapshot: saving one never creates a ConsultationVersion. */}
+            <ConsultationNotesPanel patientId={patient.id} assessmentId={assessmentId} />
 
             {/* WHAT HAPPENS AFTER APPROVAL — report and delivery sit AFTER the
                 clinical decision and are plainly separate from it. */}
