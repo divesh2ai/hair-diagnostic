@@ -262,21 +262,80 @@ export function summarisePlan(lines: readonly LineForSummary[]): PlanPurchaseSum
   };
 }
 
+export interface EventPayloadIdentity {
+  eventType: KitPurchaseEventType;
+  boxes: number | null;
+  saleValueMinor: number | null;
+  /** ISO or YYYY-MM-DD; compared at date granularity. */
+  occurredAt: string;
+  /** The reason/note attached to the event. */
+  note: string | null;
+}
+
+/** Date-granularity normalisation so a date and its midnight ISO compare equal. */
+function dayOf(iso: string): string {
+  return (iso ?? "").slice(0, 10);
+}
+
 /**
- * Whether a replay carrying an idempotency key matches the event already
- * stored under it. A re-send of the identical action is safe (same payload);
- * reusing a key for a DIFFERENT action is a conflict the caller must reject,
- * never silently write or silently ignore.
+ * Whether a replay carrying an idempotency key matches the event already stored
+ * under it. A re-send of the identical action is safe (same payload); reusing a
+ * key for a DIFFERENT action is a conflict the caller must reject, never
+ * silently write or silently ignore.
+ *
+ * The comparison includes the meaningful fields — type, boxes, sale value, the
+ * event DATE, and the reason/note — so two actions that differ only in date or
+ * reason are correctly treated as different, not collapsed.
  */
-export function isSameEventPayload(
-  a: { eventType: KitPurchaseEventType; boxes: number | null; saleValueMinor: number | null },
-  b: { eventType: KitPurchaseEventType; boxes: number | null; saleValueMinor: number | null },
-): boolean {
+export function isSameEventPayload(a: EventPayloadIdentity, b: EventPayloadIdentity): boolean {
   return (
     a.eventType === b.eventType &&
     (a.boxes ?? null) === (b.boxes ?? null) &&
-    (a.saleValueMinor ?? null) === (b.saleValueMinor ?? null)
+    (a.saleValueMinor ?? null) === (b.saleValueMinor ?? null) &&
+    dayOf(a.occurredAt) === dayOf(b.occurredAt) &&
+    (a.note ?? "").trim() === (b.note ?? "").trim()
   );
+}
+
+export interface IdempotencyKeyInput {
+  kitId: string;
+  eventType: KitPurchaseEventType;
+  boxes?: number | null;
+  /** ISO or YYYY-MM-DD; keyed at date granularity. */
+  occurredAt: string;
+  reason?: string | null;
+}
+
+/**
+ * A STABLE idempotency key for one purchase action, derived deterministically
+ * from the action's meaningful fields. The same user action produces the same
+ * key on every retry (so a double-submit or a network retry de-duplicates),
+ * while a different action — a different date, reason, box count or type —
+ * produces a different key. Opaque (hashed) so the raw reason text is not
+ * embedded in the key. A hash collision is still caught server-side by
+ * isSameEventPayload, which rejects a mismatched payload rather than merging.
+ */
+export function purchaseEventIdempotencyKey(input: IdempotencyKeyInput): string {
+  const basis = [
+    input.kitId,
+    input.eventType,
+    String(input.boxes ?? ""),
+    (input.occurredAt ?? "").slice(0, 10),
+    (input.reason ?? "").trim(),
+  ].join("\u0001");
+
+  // Two independent rolling hashes (FNV-1a + djb2) concatenated, for a wide key
+  // with negligible collision risk and no dependency on crypto in the browser.
+  let fnv = 0x811c9dc5;
+  let djb2 = 5381;
+  for (let i = 0; i < basis.length; i++) {
+    const c = basis.charCodeAt(i);
+    fnv ^= c;
+    fnv = Math.imul(fnv, 0x01000193);
+    djb2 = (Math.imul(djb2, 33) + c) | 0;
+  }
+  const hex = (n: number) => (n >>> 0).toString(16).padStart(8, "0");
+  return `evt_${hex(fnv)}${hex(djb2)}`;
 }
 
 /**

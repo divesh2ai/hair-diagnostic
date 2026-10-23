@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { purchaseEventIdempotencyKey } from "@/lib/commerce/kitPurchaseModel";
 
 // Partial-kit purchase tracker, shown beneath the approved treatment plan.
 //
@@ -159,16 +160,33 @@ export function KitPurchaseTracker({
   }, [load]);
 
   const postEvent = useCallback(
-    async (kitId: string, body: Record<string, unknown>) => {
+    async (
+      kitId: string,
+      body: {
+        eventType: string;
+        boxes?: number;
+        occurredAt: string;
+        reason?: string;
+      },
+    ) => {
       setBusy(true);
       setError(null);
       try {
+        // STABLE idempotency key: derived from the action's fields, so a
+        // double-click or a network retry of the SAME action reuses the key and
+        // is de-duplicated server-side, while changing the date/reason/boxes/type
+        // is a different action with a different key.
+        const clientEventId = purchaseEventIdempotencyKey({
+          kitId,
+          eventType: body.eventType as never,
+          boxes: body.boxes ?? null,
+          occurredAt: body.occurredAt,
+          reason: body.reason ?? null,
+        });
         const res = await fetch(`/api/doctor/orders/${intentId}/purchase`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          // A fresh idempotency key per user action; a network retry of this
-          // exact submit reuses it and is de-duplicated server-side.
-          body: JSON.stringify({ kitId, clientEventId: crypto.randomUUID(), ...body }),
+          body: JSON.stringify({ kitId, clientEventId, ...body }),
         });
         if (res.status === 403) {
           setError("Recording a sale amount is disabled for this release.");
@@ -320,7 +338,7 @@ function RecordForm({
 }: {
   defaultBoxes: number;
   busy: boolean;
-  onSubmit: (payload: Record<string, unknown>) => void;
+  onSubmit: (payload: { eventType: string; boxes?: number; occurredAt: string; reason?: string }) => void;
 }) {
   const [eventType, setEventType] = useState<EventType>("PURCHASE_CONFIRMED_BY_CLINIC");
   const [boxes, setBoxes] = useState(defaultBoxes);

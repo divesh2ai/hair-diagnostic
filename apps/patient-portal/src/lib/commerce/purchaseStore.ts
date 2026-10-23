@@ -246,6 +246,46 @@ export async function listEventsByAssessment(
   });
 }
 
+/** Lines for ONE order. Scoped to the exact intent, not the assessment — a
+ *  re-approval can create a second intent for the same assessment, and reading
+ *  by assessment would mix two orders' lines. */
+export async function listLinesByIntent(
+  clinicId: string,
+  kitOrderIntentId: string,
+): Promise<PurchaseLineRecord[]> {
+  return guardedPurchase(async () => {
+    const rows = await prisma.$queryRaw<LineRaw[]>(Prisma.sql`
+      SELECT ${LINE_COLS} FROM "KitPurchaseLine"
+       WHERE "clinicId" = ${clinicId} AND "kitOrderIntentId" = ${kitOrderIntentId}
+       ORDER BY "createdAt" ASC
+    `);
+    return rows.map(toLine);
+  });
+}
+
+/** Events for ONE order, resolved through the line's owning intent (events hold
+ *  no intent id of their own), so another order on the same assessment is never
+ *  mixed in. */
+export async function listEventsByIntent(
+  clinicId: string,
+  kitOrderIntentId: string,
+): Promise<PurchaseEventRecord[]> {
+  return guardedPurchase(async () => {
+    const rows = await prisma.$queryRaw<EventRaw[]>(Prisma.sql`
+      SELECT ${EVENT_COLS} FROM "KitPurchaseEvent"
+       WHERE "clinicId" = ${clinicId}
+         AND EXISTS (
+           SELECT 1 FROM "KitPurchaseLine" l
+            WHERE l."id" = "KitPurchaseEvent"."kitPurchaseLineId"
+              AND l."clinicId" = ${clinicId}
+              AND l."kitOrderIntentId" = ${kitOrderIntentId}
+         )
+       ORDER BY "occurredAt" ASC, "createdAt" ASC
+    `);
+    return rows.map(toEvent);
+  });
+}
+
 /** All lines for a patient within the clinic, across every visit. */
 export async function listLinesByPatient(
   clinicId: string,
@@ -398,8 +438,20 @@ export async function appendPurchaseEvent(input: {
     const prior = toEvent(existing[0]);
     if (
       !isSameEventPayload(
-        { eventType: prior.eventType, boxes: prior.boxes, saleValueMinor: prior.saleValueMinor },
-        { eventType: input.eventType, boxes, saleValueMinor },
+        {
+          eventType: prior.eventType,
+          boxes: prior.boxes,
+          saleValueMinor: prior.saleValueMinor,
+          occurredAt: prior.occurredAt,
+          note: prior.note,
+        },
+        {
+          eventType: input.eventType,
+          boxes,
+          saleValueMinor,
+          occurredAt: input.occurredAt.toISOString(),
+          note: input.note ?? null,
+        },
       )
     ) {
       return { ok: false, reason: "idempotency_conflict" } as const;

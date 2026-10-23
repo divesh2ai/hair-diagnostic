@@ -38,8 +38,8 @@ import {
 } from "@/lib/commerce/kitPurchaseModel";
 import {
   ensurePurchaseLines,
-  listLinesByAssessment,
-  listEventsByAssessment,
+  listLinesByIntent,
+  listEventsByIntent,
   readLineByKit,
   appendPurchaseEvent,
   setLineStatus,
@@ -96,10 +96,12 @@ export async function GET(_req: Request, ctx: { params: Promise<{ intentId: stri
   }
 
   try {
-    // READ-ONLY: read whatever is persisted; do not create lines here.
+    // READ-ONLY: read whatever is persisted FOR THIS ORDER; do not create lines
+    // here, and do not read by assessment (a re-approval can leave a second
+    // intent on the same assessment — reading by assessment would mix them).
     const [persistedLines, events] = await Promise.all([
-      listLinesByAssessment(doctor.clinicId, intent.assessmentId),
-      listEventsByAssessment(doctor.clinicId, intent.assessmentId),
+      listLinesByIntent(doctor.clinicId, intent.id),
+      listEventsByIntent(doctor.clinicId, intent.id),
     ]);
     const prices = governedUnitMinor(intent.kitIds);
 

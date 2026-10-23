@@ -1,9 +1,12 @@
 // /api/doctor/patients/[id]/treatment-history
 //
-//   GET — the patient's kit purchase/treatment history across ALL visits,
-//         clinic-scoped and read-only. Lets the patient profile show what was
-//         actually obtained, when treatment started, and what remains — without
-//         opening each visit's review screen.
+//   GET — the patient's kit recommendations + purchase/treatment history across
+//         ALL visits, clinic-scoped and read-only.
+//
+// The RECOMMENDED lineup is sourced from KitOrderIntent (always present for an
+// approved plan), so a patient with four approved kits and zero purchases shows
+// four recommendations and zero confirmed purchases — never an empty history.
+// The purchase ledger (lines/events) is overlaid on top where it exists.
 
 import { NextResponse } from "next/server";
 import { requireDoctorContext } from "@/lib/auth";
@@ -12,6 +15,7 @@ import {
   summarisePlan,
   type KitPurchaseLineStatus,
   type PurchaseEventInput,
+  type LineForSummary,
 } from "@/lib/commerce/kitPurchaseModel";
 import {
   listLinesByPatient,
@@ -19,7 +23,9 @@ import {
   PURCHASE_NOT_PROVISIONED,
   PurchaseNotProvisionedError,
   type PurchaseEventRecord,
+  type PurchaseLineRecord,
 } from "@/lib/commerce/purchaseStore";
+import { listPatientApprovedOrders } from "@/lib/commerce/patientOrders";
 import { ensurePatientInClinic } from "@/lib/doctor/patientScope";
 
 export const dynamic = "force-dynamic";
@@ -30,15 +36,27 @@ export async function GET(_req: Request, ctx: { params: Promise<{ id: string }> 
   const { doctor } = authResult;
   const { id: patientId } = await ctx.params;
 
-  // Tenant scope: the patient must belong to the acting doctor's clinic.
   const inClinic = await ensurePatientInClinic(patientId, doctor.clinicId);
   if (!inClinic) return NextResponse.json({ error: "not_found" }, { status: 404 });
 
   try {
-    const [lines, events] = await Promise.all([
-      listLinesByPatient(doctor.clinicId, patientId),
-      listEventsByPatient(doctor.clinicId, patientId),
-    ]);
+    // Recommendations are the source of truth and always read (cheap, typed).
+    const orders = await listPatientApprovedOrders(doctor.clinicId, patientId);
+
+    // The purchase ledger is overlaid where present; it may be entirely empty
+    // (nothing purchased yet) or unprovisioned.
+    let lines: PurchaseLineRecord[] = [];
+    let events: PurchaseEventRecord[] = [];
+    try {
+      [lines, events] = await Promise.all([
+        listLinesByPatient(doctor.clinicId, patientId),
+        listEventsByPatient(doctor.clinicId, patientId),
+      ]);
+    } catch (err) {
+      // If the ledger tables aren't provisioned yet, still return the
+      // recommendations rather than failing the whole history.
+      if (!(err instanceof PurchaseNotProvisionedError)) throw err;
+    }
 
     const eventsByLine = new Map<string, PurchaseEventRecord[]>();
     for (const e of events) {
@@ -46,43 +64,44 @@ export async function GET(_req: Request, ctx: { params: Promise<{ id: string }> 
       arr.push(e);
       eventsByLine.set(e.kitPurchaseLineId, arr);
     }
+    // Persisted line keyed by order+kit, so a recommendation can find its ledger.
+    const lineByKey = new Map<string, PurchaseLineRecord>();
+    for (const l of lines) lineByKey.set(`${l.kitOrderIntentId}:${l.kitId}`, l);
+
     const toInputs = (evs: PurchaseEventRecord[]): PurchaseEventInput[] =>
       evs.map((e) => ({ eventType: e.eventType, boxes: e.boxes, occurredAt: e.occurredAt }));
 
-    // Group by visit (assessment). Each visit carries its own lineup + summary.
-    const byAssessment = new Map<string, typeof lines>();
-    for (const line of lines) {
-      const arr = byAssessment.get(line.assessmentId) ?? [];
-      arr.push(line);
-      byAssessment.set(line.assessmentId, arr);
-    }
-
-    const assessments = [...byAssessment.entries()].map(([assessmentId, visitLines]) => ({
-      assessmentId,
-      summary: summarisePlan(
-        visitLines.map((l) => ({
-          recommendedBoxes: l.recommendedBoxes,
-          storedStatus: l.lineStatus as KitPurchaseLineStatus,
-          events: toInputs(eventsByLine.get(l.id) ?? []),
-        })),
-      ),
-      lines: visitLines.map((l) => ({
-        kitId: l.kitId,
-        kitLabel: l.kitLabel,
-        recommendedBoxes: l.recommendedBoxes,
-        lineStatus: l.lineStatus,
-        controlReason: l.controlReason,
-        events: eventsByLine.get(l.id) ?? [],
-        derived: deriveLineState(l.recommendedBoxes, l.lineStatus, toInputs(eventsByLine.get(l.id) ?? [])),
-      })),
-    }));
+    const assessments = orders.map((order) => {
+      const lineViews = order.kits.map((kit) => {
+        const line = lineByKey.get(`${order.intentId}:${kit.kitId}`);
+        const evs = line ? eventsByLine.get(line.id) ?? [] : [];
+        const lineStatus = (line?.lineStatus ?? "RECOMMENDED") as KitPurchaseLineStatus;
+        return {
+          kitId: kit.kitId,
+          kitLabel: line?.kitLabel ?? kit.kitId,
+          recommendedBoxes: kit.recommendedBoxes,
+          lineStatus,
+          controlReason: line?.controlReason ?? null,
+          events: evs,
+          derived: deriveLineState(kit.recommendedBoxes, lineStatus, toInputs(evs)),
+        };
+      });
+      const summaryInput: LineForSummary[] = lineViews.map((v) => ({
+        recommendedBoxes: v.recommendedBoxes,
+        storedStatus: v.lineStatus,
+        events: toInputs(v.events),
+      }));
+      return { assessmentId: order.assessmentId, summary: summarisePlan(summaryInput), lines: lineViews };
+    });
 
     const overall = summarisePlan(
-      lines.map((l) => ({
-        recommendedBoxes: l.recommendedBoxes,
-        storedStatus: l.lineStatus as KitPurchaseLineStatus,
-        events: toInputs(eventsByLine.get(l.id) ?? []),
-      })),
+      assessments.flatMap((a) =>
+        a.lines.map((v) => ({
+          recommendedBoxes: v.recommendedBoxes,
+          storedStatus: v.lineStatus as KitPurchaseLineStatus,
+          events: v.events.map((e) => ({ eventType: e.eventType, boxes: e.boxes, occurredAt: e.occurredAt })),
+        })),
+      ),
     );
 
     return NextResponse.json({ overall, assessments });
