@@ -2,7 +2,9 @@
 
 import { useEffect, useState, type ReactNode } from "react";
 import Link from "next/link";
-import { Activity } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { Activity, Search } from "lucide-react";
+import { StatusBadge } from "@/components/ui/status-badge";
 import {
   growthDisplay,
   type GrowthSentiment,
@@ -80,11 +82,26 @@ interface Group<T> {
   items: T[];
 }
 
-type ActionCentre = {
+export type ActionCentre = {
   needsAttention: number;
   unavailableGroups: string[];
   groups: Record<string, Group<unknown>>;
 };
+export type ActionCentrePayload = ActionCentre;
+
+/**
+ * How many distinct alert types are currently live — the "Issues requiring
+ * action" headline. Counts the rows an operator would actually see in the
+ * list below, not a sum of per-queue counts. Unavailable checks are not
+ * counted as issues (they are a blind spot, surfaced separately).
+ */
+export function liveAttentionCount(data: ActionCentre | null): number {
+  if (!data) return 0;
+  return ATTENTION.filter((a) => {
+    const g = data.groups[a.key];
+    return g?.available && g.count > 0;
+  }).length;
+}
 
 /**
  * The exception conditions worth leading the dashboard with.
@@ -164,26 +181,43 @@ const ATTENTION: {
   },
 ];
 
-export function NeedsAttention({ health }: { health?: HealthPayload }) {
-  const [data, setData] = useState<ActionCentre | null>(null);
-  const [error, setError] = useState<string | null>(null);
+export function NeedsAttention({
+  health,
+  data: dataProp,
+  error: errorProp,
+}: {
+  health?: HealthPayload;
+  // When a parent already fetched the action centre, pass it in and this
+  // component renders it instead of fetching again — the Overview reads ONE
+  // action-centre response for both the "Issues requiring action" metric and
+  // this list. Omit both props and it self-fetches (preserves other callers).
+  data?: ActionCentre | null;
+  error?: string | null;
+}) {
+  const controlled = dataProp !== undefined || errorProp !== undefined;
+  const [selfData, setSelfData] = useState<ActionCentre | null>(null);
+  const [selfError, setSelfError] = useState<string | null>(null);
 
   useEffect(() => {
+    if (controlled) return;
     let cancelled = false;
     fetch("/api/admin/action-centre", { cache: "no-store" })
       .then((r) => (r.ok ? r.json() : Promise.reject(new Error(`HTTP ${r.status}`))))
       .then((j) => {
         if (cancelled) return;
-        setData(j);
-        setError(null);
+        setSelfData(j);
+        setSelfError(null);
       })
       .catch((e: Error) => {
-        if (!cancelled) setError(e.message);
+        if (!cancelled) setSelfError(e.message);
       });
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [controlled]);
+
+  const data = controlled ? dataProp ?? null : selfData;
+  const error = controlled ? errorProp ?? null : selfError;
 
   const band = health?.band ?? "unknown";
   const drivers = health ? healthDrivers(health) : null;
@@ -397,5 +431,213 @@ export function ComparisonStat({
       hint={g.secondary}
       tone={g.sentiment}
     />
+  );
+}
+
+/**
+ * Clinic activation & readiness — the three tiers kept deliberately distinct so
+ * a DATABASE ACTIVE record is never mistaken for a working clinic.
+ *
+ *   DATABASE ACTIVE       — Clinic.status = ACTIVE in the database.
+ *   ACCESS READY          — an active clinic whose doctor identity is
+ *                           provisioned (can sign in); NOT proof of a live login.
+ *   OPERATIONALLY VERIFIED — a trustworthy golden-path test record. There is no
+ *                           such source yet, so this reads "Verification
+ *                           pending" rather than inferring it from activity.
+ */
+export function ReadinessSummary({
+  total,
+  active,
+  accessReady,
+  operationallyVerified,
+}: {
+  total: number;
+  active: number;
+  accessReady: number;
+  /** null → no trustworthy verification-record source exists; show pending. */
+  operationallyVerified: number | null;
+}) {
+  return (
+    <section aria-labelledby="readiness-heading" className="space-y-2">
+      <h2
+        id="readiness-heading"
+        className="text-sm font-semibold tracking-tight"
+      >
+        Clinic activation &amp; readiness
+      </h2>
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+        <div className="rounded-lg border border-border bg-card px-3.5 py-3">
+          <div className="text-[11px] uppercase tracking-wide text-muted-foreground">
+            Database active
+          </div>
+          <div className="mt-1 text-xl font-semibold tabular-nums">
+            {active}
+            <span className="text-sm font-normal text-muted-foreground">
+              {" "}
+              / {total}
+            </span>
+          </div>
+          <div className="mt-0.5 text-xs text-muted-foreground">
+            Enabled in the database (status = ACTIVE)
+          </div>
+        </div>
+
+        <div className="rounded-lg border border-border bg-card px-3.5 py-3">
+          <div className="text-[11px] uppercase tracking-wide text-muted-foreground">
+            Access ready
+          </div>
+          <div className="mt-1 text-xl font-semibold tabular-nums">
+            {accessReady}
+            <span className="text-sm font-normal text-muted-foreground">
+              {" "}
+              / {active}
+            </span>
+          </div>
+          <div className="mt-0.5 text-xs text-muted-foreground">
+            Active clinic with a provisioned doctor identity — not proof of a
+            live login
+          </div>
+        </div>
+
+        <div className="rounded-lg border border-amber-200 bg-amber-50/60 px-3.5 py-3">
+          <div className="text-[11px] uppercase tracking-wide text-amber-800">
+            Operationally verified
+          </div>
+          <div className="mt-1 text-xl font-semibold tabular-nums text-amber-800">
+            {operationallyVerified ?? "—"}
+          </div>
+          <div className="mt-0.5 text-xs text-amber-800">
+            Verification pending — no golden-path test record source yet
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+type ClinicPreviewRow = {
+  id: string;
+  name: string;
+  slug: string;
+  status: string;
+};
+
+/**
+ * Searchable clinic directory preview. Shows the first few clinics and routes
+ * the full search to /admin/clinics (the authoritative directory). Zero,
+ * loading, empty and error states are all explicit — a failed load must never
+ * read as "no clinics".
+ */
+export function ClinicDirectoryPreview() {
+  const router = useRouter();
+  const [rows, setRows] = useState<ClinicPreviewRow[] | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [q, setQ] = useState("");
+
+  useEffect(() => {
+    let cancelled = false;
+    fetch("/api/admin/clinics?limit=6", { cache: "no-store" })
+      .then((r) => (r.ok ? r.json() : Promise.reject(new Error(`HTTP ${r.status}`))))
+      .then((j) => {
+        if (cancelled) return;
+        setRows(j.rows ?? []);
+        setError(null);
+      })
+      .catch((e: Error) => {
+        if (!cancelled) setError(e.message);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const submit = (e: React.FormEvent) => {
+    e.preventDefault();
+    const term = q.trim();
+    router.push(
+      term ? `/admin/clinics?search=${encodeURIComponent(term)}` : "/admin/clinics",
+    );
+  };
+
+  return (
+    <section aria-labelledby="directory-heading" className="space-y-2">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <h2
+          id="directory-heading"
+          className="text-sm font-semibold tracking-tight"
+        >
+          Clinic directory
+        </h2>
+        <Link
+          href="/admin/clinics"
+          className="rounded-sm text-xs text-muted-foreground underline-offset-2 hover:text-foreground hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
+        >
+          View all
+        </Link>
+      </div>
+
+      <form onSubmit={submit} className="flex items-center gap-2">
+        <div className="relative flex-1">
+          <Search className="pointer-events-none absolute left-2.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+          <input
+            value={q}
+            onChange={(e) => setQ(e.target.value)}
+            placeholder="Search clinics by name or slug…"
+            aria-label="Search clinics"
+            className="h-9 w-full rounded-lg border border-border bg-background pl-8 pr-3 text-sm focus:outline-none focus:ring-2 focus:ring-ring/40"
+          />
+        </div>
+      </form>
+
+      <div className="overflow-hidden rounded-lg border border-border bg-card">
+        {error ? (
+          <div className="px-4 py-3 text-sm text-amber-900">
+            <strong className="font-medium">Couldn&apos;t load clinics.</strong>{" "}
+            {error}. This is a loading failure, not an empty directory.
+          </div>
+        ) : rows === null ? (
+          <div className="px-4 py-6 text-sm text-muted-foreground">
+            Loading clinics…
+          </div>
+        ) : rows.length === 0 ? (
+          <div className="px-4 py-6 text-sm text-muted-foreground">
+            No clinics yet.{" "}
+            <Link href="/admin/clinics/new" className="underline">
+              Create the first one
+            </Link>
+            .
+          </div>
+        ) : (
+          <ul className="divide-y divide-border">
+            {rows.map((c) => (
+              <li key={c.id}>
+                <Link
+                  href={`/admin/clinics/${c.id}/edit`}
+                  className="flex items-center gap-3 px-4 py-2.5 hover:bg-muted/50"
+                >
+                  <div className="min-w-0 flex-1">
+                    <div className="truncate text-sm font-medium">{c.name}</div>
+                    <div className="truncate text-xs text-muted-foreground">
+                      {c.slug}
+                    </div>
+                  </div>
+                  <StatusBadge
+                    tone={
+                      c.status === "ACTIVE"
+                        ? "success"
+                        : c.status === "SUSPENDED"
+                          ? "warning"
+                          : "neutral"
+                    }
+                  >
+                    {c.status}
+                  </StatusBadge>
+                </Link>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+    </section>
   );
 }

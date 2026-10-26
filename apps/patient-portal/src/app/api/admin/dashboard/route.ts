@@ -65,6 +65,9 @@ export async function GET() {
       assessmentsInHealthWindow,
       partialFailuresInHealthWindow,
       stalledAssessments,
+      doctorsAccessReady,
+      assessmentsTotal,
+      clinicsAccessReady,
     ] = await prisma.$transaction([
       prisma.clinic.count({ where: { deletedAt: null } }),
       prisma.clinic.count({ where: { deletedAt: null, status: "ACTIVE" } }),
@@ -165,6 +168,40 @@ export async function GET() {
           },
         },
       }),
+      // ── Command-centre additions (read-only counts) ───────────────────────
+      // Access-ready = an active, non-deleted doctor whose auth identity is
+      // linked (supabaseUserId OR supabasePhoneUserId). This is "provisioned to
+      // sign in", NOT proof of a successful live OTP/OAuth login.
+      prisma.doctor.count({
+        where: {
+          isActive: true,
+          deletedAt: null,
+          OR: [
+            { supabaseUserId: { not: null } },
+            { supabasePhoneUserId: { not: null } },
+          ],
+        },
+      }),
+      // Total patient assessments (volume), excluding soft-deleted.
+      prisma.assessment.count({ where: { deletedAt: null } }),
+      // ACTIVE clinics that have at least one access-ready doctor. Used only for
+      // the readiness summary; it is NOT a claim of operational verification.
+      prisma.clinic.count({
+        where: {
+          deletedAt: null,
+          status: "ACTIVE",
+          doctors: {
+            some: {
+              isActive: true,
+              deletedAt: null,
+              OR: [
+                { supabaseUserId: { not: null } },
+                { supabasePhoneUserId: { not: null } },
+              ],
+            },
+          },
+        },
+      }),
     ]);
 
     // Retained for existing consumers. Note the `: 100` branch: with no
@@ -222,6 +259,15 @@ export async function GET() {
         assessmentsThisMonth,
         assessmentsLastMonth,
         platformHealth,
+        // Command-centre metrics + readiness summary inputs.
+        doctorsAccessReady,
+        assessmentsTotal,
+        // Clinic readiness tiers. operationallyVerified is intentionally null:
+        // no trustworthy golden-path verification record source exists yet, so
+        // the UI shows "Verification pending" rather than inferring it from
+        // activity rows. clinicsActive is the DATABASE ACTIVE count above.
+        clinicsAccessReady,
+        clinicsOperationallyVerified: null as number | null,
       },
       // The honest health object: band, reasons, and the counts behind them.
       // Additive — `metrics.platformHealth` is untouched for existing callers.
