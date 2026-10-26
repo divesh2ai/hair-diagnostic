@@ -32,6 +32,9 @@ export const en: Dictionary = {
   },
   nav: {
     dashboard: "Dashboard",
+    overview: "Overview",
+    networkMap: "India Network",
+    doctorsAccess: "Doctors & Access",
     clinics: "Clinics",
     doctors: "Doctors",
     patients: "Patients",
@@ -53,7 +56,7 @@ export const en: Dictionary = {
     fulfilment: "Fulfilment",
     operations: "Operations",
     auditSecurity: "Audit & Security",
-    sectionNetwork: "Network",
+    sectionNetwork: "Clinics & Network",
     sectionOperations: "Operations",
     sectionGovernance: "Governance",
     sectionSystem: "System",
