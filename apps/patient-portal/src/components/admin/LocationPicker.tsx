@@ -25,6 +25,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { MapPin, Trash2 } from "lucide-react";
 import { INDIA_BOUNDS, osmRasterStyle } from "@/lib/admin/network/basemap";
+import { loadMapLibre } from "@/lib/admin/network/mapRuntime";
 
 export type PickerValue = { latitude: number; longitude: number } | null;
 
@@ -64,13 +65,13 @@ export default function LocationPicker({
   useEffect(() => {
     let cancelled = false;
     let created: import("maplibre-gl").Map | null = null;
+    let loadTimer: ReturnType<typeof setTimeout> | null = null;
 
     void (async () => {
       try {
         // maplibre-gl touches `window` at module scope, so it is imported here
         // rather than at the top of the file.
-        const maplibre = await import("maplibre-gl");
-        await import("maplibre-gl/dist/maplibre-gl.css");
+        const maplibre = await loadMapLibre();
         if (cancelled || !container.current) return;
 
         const start = initial.current;
@@ -91,13 +92,20 @@ export default function LocationPicker({
           onChangeRef.current(next);
         });
         map.on("load", () => {
-          if (!cancelled) setStatus("ready");
+          if (loadTimer) clearTimeout(loadTimer);
+          if (!cancelled) {
+            map.resize();
+            setStatus("ready");
+          }
         });
         map.on("error", () => {
           // A blocked tile host must not leave this pretending to load. The
           // numeric fields below stay usable, so the branch is still savable.
-          if (!cancelled) setStatus((s) => (s === "ready" ? s : "failed"));
+          if (!cancelled) setStatus("failed");
         });
+        loadTimer = setTimeout(() => {
+          if (!cancelled) setStatus("failed");
+        }, 15_000);
 
         created = map;
         mapRef.current = map;
@@ -108,6 +116,7 @@ export default function LocationPicker({
 
     return () => {
       cancelled = true;
+      if (loadTimer) clearTimeout(loadTimer);
       markerRef.current?.remove();
       markerRef.current = null;
       created?.remove();
@@ -180,16 +189,16 @@ export default function LocationPicker({
       <div className="relative h-[280px] overflow-hidden rounded-lg border border-border bg-muted">
         <div ref={container} className="absolute inset-0" />
         {status === "loading" && (
-          <div className="absolute inset-0 grid place-items-center text-sm text-muted-foreground">
+          <div role="status" className="pointer-events-none absolute inset-0 grid place-items-center text-sm text-muted-foreground">
             Loading map…
           </div>
         )}
         {status === "failed" && (
-          <div className="absolute inset-0 grid place-items-center px-4 text-center">
+          <div role="status" className="pointer-events-none absolute inset-0 grid place-items-center bg-background/90 px-4 text-center">
             <div>
               <p className="text-sm font-medium">Basemap unavailable</p>
               <p className="mt-1 text-xs text-muted-foreground">
-                Tiles could not be reached. You can still enter coordinates below
+                The map could not finish loading. You can still enter coordinates below
                 and save the branch.
               </p>
             </div>
