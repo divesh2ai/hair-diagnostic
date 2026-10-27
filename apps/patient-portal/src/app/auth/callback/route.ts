@@ -1,5 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { createServerClient } from "@supabase/ssr";
+import { safeReturnPath } from "@/lib/auth/returnPath";
 
 // Magic-link landing. Supabase appends ?code=<otp> to the redirectTo URL;
 // we exchange it for a session, which sets the auth cookies. Then we send
@@ -7,13 +8,18 @@ import { createServerClient } from "@supabase/ssr";
 export async function GET(req: NextRequest) {
   const url = new URL(req.url);
   const code = url.searchParams.get("code");
-  const next = url.searchParams.get("next") ?? "/doctor";
+  // Validated return path (see lib/auth/returnPath): a same-origin absolute path
+  // only, defaulting to /post-login (the role router) — never /doctor, so a
+  // role-agnostic callback never assumes a role and can't be an open redirect.
+  // Resolved against THIS request's origin below, so the flow always returns to
+  // the same Vercel origin it started on.
+  const next = safeReturnPath(url.searchParams.get("next"));
 
   if (!code) {
     return NextResponse.redirect(new URL("/login?reason=missing_code", req.url));
   }
 
-  let res = NextResponse.redirect(new URL(next, req.url));
+  const res = NextResponse.redirect(new URL(next, req.url));
 
   const supabase = createServerClient(
     (process.env.NEXT_PUBLIC_SUPABASE_URL || "").replace(/\uFEFF/g, ""),
