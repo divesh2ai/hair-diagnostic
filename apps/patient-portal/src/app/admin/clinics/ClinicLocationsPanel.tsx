@@ -22,6 +22,8 @@ import { Label } from "@/components/ui/label";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { LoadingState, ErrorState } from "@/components/ui/states";
 import { toast } from "@/components/ui/toast";
+import { parseCoordinateInput as parseCoordinates } from "@/lib/admin/network/basemap";
+export { parseCoordinateInput as parseCoordinates } from "@/lib/admin/network/basemap";
 
 // Branch geography for one clinic.
 //
@@ -464,7 +466,7 @@ function DraftForm({
             <Input
               value={draft.coordinates}
               onChange={(e) => set("coordinates", e.target.value)}
-              placeholder="19.0596, 72.8295"
+              placeholder="Latitude, longitude (optional)"
               aria-label="Latitude, longitude"
             />
           </div>
@@ -563,10 +565,6 @@ function describeAddress(loc: ClinicLocation): string {
 }
 
 /**
- * `19.0596, 72.8295` → coordinates. Returns null for blank (no pin) and
- * "invalid" for anything unparseable, so a typo can't be read as "cleared".
- */
-/**
  * The draft stores coordinates as the string the admin sees, so the map and the
  * text field cannot drift apart. This narrows it for the picker; a half-typed
  * or out-of-range value simply shows no marker rather than throwing one onto
@@ -575,22 +573,4 @@ function describeAddress(loc: ClinicLocation): string {
 function pickerValue(input: string): { latitude: number; longitude: number } | null {
   const parsed = parseCoordinates(input);
   return parsed === "invalid" || parsed === null ? null : parsed;
-}
-
-export function parseCoordinates(
-  input: string,
-): { latitude: number; longitude: number } | null | "invalid" {
-  const trimmed = input.trim();
-  if (trimmed === "") return null;
-
-  const parts = trimmed.split(",").map((p) => p.trim());
-  if (parts.length !== 2) return "invalid";
-
-  const latitude = Number(parts[0]);
-  const longitude = Number(parts[1]);
-  if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) return "invalid";
-  if (latitude < -90 || latitude > 90) return "invalid";
-  if (longitude < -180 || longitude > 180) return "invalid";
-
-  return { latitude, longitude };
 }

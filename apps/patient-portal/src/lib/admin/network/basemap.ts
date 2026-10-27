@@ -59,3 +59,12 @@ export function isDrawableCoordinate(
     longitude <= 180
   );
 }
+
+/** Blank is no pin; a missing half must never be coerced to zero. */
+export function parseCoordinateInput(input: string): { latitude: number; longitude: number } | null | "invalid" {
+  if (input.trim() === "") return null;
+  const parts = input.trim().split(",").map((part) => part.trim());
+  if (parts.length !== 2 || parts.some((part) => part === "")) return "invalid";
+  const [latitude, longitude] = parts.map(Number);
+  return isDrawableCoordinate(latitude, longitude) ? { latitude, longitude } : "invalid";
+}

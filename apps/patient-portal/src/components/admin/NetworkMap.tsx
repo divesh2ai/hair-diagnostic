@@ -21,6 +21,8 @@
 
 import { useEffect, useRef, useState } from "react";
 import type { NetworkClinic } from "@/lib/admin/network/snapshot";
+import { INDIA_BOUNDS, osmRasterStyle } from "@/lib/admin/network/basemap";
+import { loadMapLibre } from "@/lib/admin/network/mapRuntime";
 
 export type NetworkMapProps = {
   clinics: NetworkClinic[];
@@ -35,27 +37,6 @@ const ATTENTION_COLOR: Record<string, string> = {
   watch: "#b45309",
   none: "#117a79",
 };
-
-/** Continental India, so the first paint is the network rather than the globe. */
-const INDIA_BOUNDS: [[number, number], [number, number]] = [
-  [67.0, 6.5],
-  [98.5, 36.5],
-];
-
-function osmRasterStyle() {
-  return {
-    version: 8 as const,
-    sources: {
-      osm: {
-        type: "raster" as const,
-        tiles: ["https://tile.openstreetmap.org/{z}/{x}/{y}.png"],
-        tileSize: 256,
-        attribution: "© OpenStreetMap contributors",
-      },
-    },
-    layers: [{ id: "osm", type: "raster" as const, source: "osm" }],
-  };
-}
 
 export default function NetworkMap({
   clinics,
@@ -81,10 +62,9 @@ export default function NetworkMap({
       try {
         // maplibre-gl v6 is a namespace, not a default export — `.default`
         // is undefined at runtime and a type error at build.
-        const maplibre = await import("maplibre-gl");
+        const maplibre = await loadMapLibre();
         // The stylesheet ships with the package; importing it here keeps the
         // dependency self-contained rather than editing a global CSS file.
-        await import("maplibre-gl/dist/maplibre-gl.css");
         if (cancelled || !container.current) return;
 
         // Held in a local const so TypeScript keeps the non-null narrowing
@@ -123,7 +103,7 @@ export default function NetworkMap({
               (e as { error?: unknown })?.error ?? e,
             );
           }
-          if (!cancelled) setStatus((s) => (s === "ready" ? s : "failed"));
+          if (!cancelled) setStatus("failed");
         });
 
         // Keep the canvas matched to its container as the layout changes
@@ -239,18 +219,18 @@ export default function NetworkMap({
     <div className="relative h-[520px] w-full overflow-hidden rounded-xl border border-border bg-muted">
       <div ref={container} className="absolute inset-0" />
       {status === "loading" && (
-        <div className="absolute inset-0 grid place-items-center text-sm text-muted-foreground">
+        <div role="status" className="pointer-events-none absolute inset-0 grid place-items-center text-sm text-muted-foreground">
           Loading map…
         </div>
       )}
       {status === "failed" && (
         // Honest degradation: the page still lists every clinic below, so a
         // blocked tile host costs the picture, not the information.
-        <div className="absolute inset-0 grid place-items-center p-6 text-center">
+        <div role="status" className="pointer-events-none absolute inset-0 grid place-items-center bg-background/90 p-6 text-center">
           <div>
             <p className="text-sm font-medium">Basemap unavailable</p>
             <p className="mt-1 text-xs text-muted-foreground">
-              Tiles could not be reached. Clinic locations are listed below and are
+              The map could not finish loading. Clinic locations are listed below and are
               unaffected.
             </p>
           </div>
