@@ -2,7 +2,7 @@
 
 import { useState, type ReactNode } from "react";
 import { Sidebar } from "./Sidebar";
-import { Header } from "./Header";
+import { Header, type EnvironmentIndicator } from "./Header";
 import type { NavSection } from "@/lib/navigation";
 
 // AppShell — the canonical chrome every authenticated page renders inside.
@@ -24,6 +24,7 @@ export function AppShell({
   navBadges,
   sidebarVariant = "default",
   activePath,
+  environment,
   children,
 }: {
   nav: NavSection[];
@@ -31,6 +32,9 @@ export function AppShell({
   displayName?: string | null;
   greetingName?: string | null;
   roleLabel: string;
+  // Persistent STAGING/PRODUCTION indicator, resolved server-side and passed
+  // in by the layout. Optional so surfaces that don't set it are unaffected.
+  environment?: EnvironmentIndicator | null;
   // Product/brand chip shown at the top of the sidebar. Doctor + Clinic
   // surfaces send "Dr FACT"; Super Admin sends "HairOS Intelligence".
   // Falls back to the i18n appName inside Sidebar when omitted.
@@ -66,6 +70,7 @@ export function AppShell({
           greetingName={greetingName ?? null}
           roleLabel={roleLabel}
           unreadNotifications={unreadNotifications}
+          environment={environment}
         />
         <main className="flex-1 min-w-0">{children}</main>
         <Footer />

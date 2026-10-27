@@ -36,6 +36,9 @@ type Payload = {
     assessmentsTotal: number;
     clinicsAccessReady: number;
     clinicsOperationallyVerified: number | null;
+    clinicsReal: number;
+    clinicsTestDemo: number;
+    clinicsUncertain: number;
   };
   health?: HealthPayload;
 };
@@ -123,7 +126,11 @@ export default function AdminDashboardPage() {
         <MiniStat
           label="Total clinics"
           value={m.clinicsTotal}
-          hint={`${m.clinicsActive} active`}
+          hint={
+            m.clinicsTestDemo > 0
+              ? `${m.clinicsReal + m.clinicsUncertain} real · ${m.clinicsTestDemo} test/demo`
+              : `${m.clinicsActive} active`
+          }
         />
         <MiniStat
           label="Doctors access-ready"

@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 import { AppShell, AppShellProviders } from "@/components/app-shell";
 import { navForRole } from "@/lib/navigation";
+import { resolveEnvironmentLabel } from "@shared/env/databaseTarget";
 
 export const dynamic = "force-dynamic";
 
@@ -16,6 +17,11 @@ export default async function AdminLayout({ children }: { children: ReactNode })
   const greetingName = firstNameOf(data.displayName, data.email);
   const adminNav = navForRole("SUPER_ADMIN");
 
+  // Resolved on the server from the real connection config (DATABASE_URL), so
+  // the badge in the header cannot be flipped by the client and always reflects
+  // the database this console is actually reading and writing.
+  const environment = resolveEnvironmentLabel(process.env);
+
   return (
     <AppShellProviders branding={data.branding} locale={data.locale}>
       <AppShell
@@ -25,6 +31,7 @@ export default async function AdminLayout({ children }: { children: ReactNode })
         greetingName={greetingName}
         roleLabel="Super Admin"
         productLabel="HairOS Intelligence"
+        environment={environment}
       >
         {children}
       </AppShell>

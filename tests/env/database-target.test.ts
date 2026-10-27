@@ -8,6 +8,7 @@ import {
   assessDatabaseTarget,
   extractSupabaseRef,
   isProductionRuntime,
+  resolveEnvironmentLabel,
 } from '../../packages/shared/env/databaseTarget';
 
 // The incident this guard exists for: `.env` and `.env.local` both pointed at
@@ -177,6 +178,40 @@ describe('the override', () => {
       [OVERRIDE_ENV_VAR]: OVERRIDE_ENV_VALUE,
     });
     expect(verdict.allowed).toBe(false);
+  });
+});
+
+describe('resolveEnvironmentLabel — the on-screen badge', () => {
+  it('labels the staging project STAGING', () => {
+    const r = resolveEnvironmentLabel(stagingEnv({ NODE_ENV: 'development' }));
+    expect(r.label).toBe('STAGING');
+    expect(r.ref).toBe(STAGING_SUPABASE_REF);
+    expect(r.split).toBe(false);
+  });
+
+  it('labels the production project PRODUCTION', () => {
+    const r = resolveEnvironmentLabel(prodEnv({ VERCEL_ENV: 'production' }));
+    expect(r.label).toBe('PRODUCTION');
+    expect(r.ref).toBe(PRODUCTION_SUPABASE_REF);
+  });
+
+  it('labels a local Postgres LOCAL', () => {
+    expect(
+      resolveEnvironmentLabel({ DATABASE_URL: 'postgresql://postgres:pw@localhost:5432/hairos' }).label,
+    ).toBe('LOCAL');
+  });
+
+  it('takes its answer from DATABASE_URL (where rows live), not the API URL', () => {
+    // A split config: rows on staging, public API pointed at production. The
+    // badge follows the data target and also flags the split.
+    const r = resolveEnvironmentLabel({ DATABASE_URL: POOLED_STAGING, NEXT_PUBLIC_SUPABASE_URL: API_PROD });
+    expect(r.label).toBe('STAGING');
+    expect(r.split).toBe(true);
+  });
+
+  it('names an unrecognised Supabase project UNKNOWN rather than guessing', () => {
+    const r = resolveEnvironmentLabel({ DATABASE_URL: 'https://abcdefghij0123456789.supabase.co' });
+    expect(r.label).toBe('UNKNOWN');
   });
 });
 

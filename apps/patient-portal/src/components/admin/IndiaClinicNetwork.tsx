@@ -61,6 +61,9 @@ type Payload = {
   };
   states: StateRow[];
   clinicsWithoutState: number;
+  includingTestClinics: boolean;
+  dataClasses: { real: number; test: number; uncertain: number };
+  excludedTestClinics: number;
   onMap: NetworkClinic[];
   offMap: NetworkClinic[];
   styleUrl: string | null;
@@ -84,10 +87,15 @@ export function IndiaClinicNetwork() {
   const [error, setError] = useState<string | null>(null);
   const [selectedState, setSelectedState] = useState<string | null>(null);
   const [selectedClinicId, setSelectedClinicId] = useState<string | null>(null);
+  // Off by default: the Overview shows the real network. Flipping this asks the
+  // server for the test/demo rows too — it is the explicit staging filter, not
+  // a client-side reinterpretation of data already fetched.
+  const [showTest, setShowTest] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
-    fetch("/api/admin/network", { cache: "no-store" })
+    const qs = showTest ? "?includeTest=1" : "";
+    fetch(`/api/admin/network${qs}`, { cache: "no-store" })
       .then((r) => (r.ok ? r.json() : Promise.reject(new Error(`HTTP ${r.status}`))))
       .then((j) => {
         if (!cancelled) setData(j);
@@ -98,7 +106,7 @@ export function IndiaClinicNetwork() {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [showTest]);
 
   const allClinics = useMemo(
     () => [...(data?.onMap ?? []), ...(data?.offMap ?? [])],
@@ -158,16 +166,36 @@ export function IndiaClinicNetwork() {
   return (
     <Section
       trailing={
-        (selectedState || selectedClinicId) && (
+        <>
+          {/* The explicit staging test-data filter. Confirmed test/demo clinics
+              are out by default; this opts them back in and says how many. */}
           <button
             type="button"
-            onClick={reset}
-            className="inline-flex items-center gap-1.5 rounded-md border border-border px-2.5 py-1 text-xs hover:bg-muted/50 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
+            onClick={() => setShowTest((v) => !v)}
+            aria-pressed={showTest}
+            className={`inline-flex items-center gap-1.5 rounded-md border px-2.5 py-1 text-xs focus:outline-none focus-visible:ring-2 focus-visible:ring-ring/50 ${
+              showTest
+                ? "border-amber-300 bg-amber-50 text-amber-800"
+                : "border-border hover:bg-muted/50"
+            }`}
           >
-            <ArrowLeft className="size-3.5" aria-hidden />
-            Reset to India
+            {showTest
+              ? "Hide test/demo"
+              : `Show test/demo${
+                  data.excludedTestClinics > 0 ? ` (${data.excludedTestClinics})` : ""
+                }`}
           </button>
-        )
+          {(selectedState || selectedClinicId) && (
+            <button
+              type="button"
+              onClick={reset}
+              className="inline-flex items-center gap-1.5 rounded-md border border-border px-2.5 py-1 text-xs hover:bg-muted/50 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
+            >
+              <ArrowLeft className="size-3.5" aria-hidden />
+              Reset to India
+            </button>
+          )}
+        </>
       }
     >
       {/* Roughly two-thirds map, one-third context, but expressed as grid

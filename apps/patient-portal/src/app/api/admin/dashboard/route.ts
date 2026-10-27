@@ -6,6 +6,7 @@ import {
   IN_FLIGHT_STATUSES,
   STALE_AFTER_MINUTES,
 } from "@/lib/admin/jobHealth";
+import { tallyDataClasses } from "@/lib/admin/testData";
 
 export const dynamic = "force-dynamic";
 
@@ -68,6 +69,7 @@ export async function GET() {
       doctorsAccessReady,
       assessmentsTotal,
       clinicsAccessReady,
+      clinicIdentities,
     ] = await prisma.$transaction([
       prisma.clinic.count({ where: { deletedAt: null } }),
       prisma.clinic.count({ where: { deletedAt: null, status: "ACTIVE" } }),
@@ -202,7 +204,18 @@ export async function GET() {
           },
         },
       }),
+      // Identities only (no counts): classified in JS into real/test/uncertain
+      // so test/demo rows can be separated from real-business totals. 16 rows
+      // today; a trivial read inside the existing single transaction.
+      prisma.clinic.findMany({
+        where: { deletedAt: null },
+        select: { id: true, name: true, slug: true },
+      }),
     ]);
+
+    // Test-data separation. Classification only — nothing is written, and only
+    // CONFIRMED-test rows (explicit markers) are counted out of the real total.
+    const dataClasses = tallyDataClasses(clinicIdentities);
 
     // Retained for existing consumers. Note the `: 100` branch: with no
     // previous-period activity there is no percentage change, and 100 is an
@@ -268,6 +281,13 @@ export async function GET() {
         // activity rows. clinicsActive is the DATABASE ACTIVE count above.
         clinicsAccessReady,
         clinicsOperationallyVerified: null as number | null,
+        // Test-data separation (additive; existing fields are unchanged).
+        // clinicsTotal still counts every non-deleted clinic; these name how
+        // many of those are real vs test/demo vs not-yet-classified so the UI
+        // can show a real-business total instead of a mixed one.
+        clinicsReal: dataClasses.real,
+        clinicsTestDemo: dataClasses.test,
+        clinicsUncertain: dataClasses.uncertain,
       },
       // The honest health object: band, reasons, and the counts behind them.
       // Additive — `metrics.platformHealth` is untouched for existing callers.

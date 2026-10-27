@@ -36,6 +36,9 @@ type Payload = {
     geocodedBranches: number;
   };
   states: Array<{ state: string; clinics: number; branches: number; intentsInWindow: number }>;
+  includingTestClinics: boolean;
+  dataClasses: { real: number; test: number; uncertain: number };
+  excludedTestClinics: number;
   onMap: NetworkClinic[];
   offMap: NetworkClinic[];
   styleUrl: string | null;
@@ -52,12 +55,16 @@ export default function AdminNetworkPage() {
   const [error, setError] = useState<string | null>(null);
   const [loaded, setLoaded] = useState(false);
   const [selected, setSelected] = useState<string | null>(null);
+  // Explicit staging test-data filter; off by default (see the API default).
+  const [showTest, setShowTest] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
     void (async () => {
       try {
-        const r = await fetch("/api/admin/network", { cache: "no-store" });
+        const r = await fetch(`/api/admin/network${showTest ? "?includeTest=1" : ""}`, {
+          cache: "no-store",
+        });
         const j = await r.json();
         if (cancelled) return;
         if (!r.ok) setError(j.message ?? j.error ?? "Couldn't load the network");
@@ -71,7 +78,7 @@ export default function AdminNetworkPage() {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [showTest]);
 
   // Action before watch, then most active first. A comparator that ignores
   // its second argument is not a sort — it just shuffles.
@@ -105,12 +112,39 @@ export default function AdminNetworkPage() {
 
   return (
     <PageContainer className="space-y-5">
-      <div>
-        <h1 className="text-2xl font-semibold tracking-tight">Clinic network</h1>
-        <p className="max-w-2xl text-sm text-muted-foreground">
-          Where the network physically is. Marker size shows kit order intents in the
-          last {data.windowDays} days; colour shows whether the clinic needs attention.
-        </p>
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <h1 className="text-2xl font-semibold tracking-tight">Clinic network</h1>
+          <p className="max-w-2xl text-sm text-muted-foreground">
+            Where the network physically is. Marker size shows kit order intents in the
+            last {data.windowDays} days; colour shows whether the clinic needs attention.
+          </p>
+          <p className="mt-1 text-xs text-muted-foreground">
+            {data.includingTestClinics
+              ? `Including ${data.dataClasses.test} test/demo clinic${
+                  data.dataClasses.test === 1 ? "" : "s"
+                }.`
+              : data.excludedTestClinics > 0
+                ? `${data.excludedTestClinics} test/demo clinic${
+                    data.excludedTestClinics === 1 ? "" : "s"
+                  } excluded.`
+                : "No test/demo clinics detected."}
+            {data.dataClasses.uncertain > 0 &&
+              ` ${data.dataClasses.uncertain} unclassified (shown, flagged for review).`}
+          </p>
+        </div>
+        <button
+          type="button"
+          onClick={() => setShowTest((v) => !v)}
+          aria-pressed={showTest}
+          className={`inline-flex shrink-0 items-center gap-1.5 rounded-md border px-2.5 py-1 text-xs focus:outline-none focus-visible:ring-2 focus-visible:ring-ring/50 ${
+            showTest
+              ? "border-amber-300 bg-amber-50 text-amber-800"
+              : "border-border hover:bg-muted/50"
+          }`}
+        >
+          {showTest ? "Hide test/demo" : "Show test/demo"}
+        </button>
       </div>
 
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
