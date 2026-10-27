@@ -61,6 +61,9 @@ type Payload = {
   };
   states: StateRow[];
   clinicsWithoutState: number;
+  includingTestClinics: boolean;
+  dataClasses: { real: number; test: number; uncertain: number };
+  excludedTestClinics: number;
   onMap: NetworkClinic[];
   offMap: NetworkClinic[];
   styleUrl: string | null;
@@ -84,10 +87,15 @@ export function IndiaClinicNetwork() {
   const [error, setError] = useState<string | null>(null);
   const [selectedState, setSelectedState] = useState<string | null>(null);
   const [selectedClinicId, setSelectedClinicId] = useState<string | null>(null);
+  // Off by default: the Overview shows the real network. Flipping this asks the
+  // server for the test/demo rows too — it is the explicit staging filter, not
+  // a client-side reinterpretation of data already fetched.
+  const [showTest, setShowTest] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
-    fetch("/api/admin/network", { cache: "no-store" })
+    const qs = showTest ? "?includeTest=1" : "";
+    fetch(`/api/admin/network${qs}`, { cache: "no-store" })
       .then((r) => (r.ok ? r.json() : Promise.reject(new Error(`HTTP ${r.status}`))))
       .then((j) => {
         if (!cancelled) setData(j);
@@ -98,7 +106,7 @@ export function IndiaClinicNetwork() {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [showTest]);
 
   const allClinics = useMemo(
     () => [...(data?.onMap ?? []), ...(data?.offMap ?? [])],
@@ -158,37 +166,59 @@ export function IndiaClinicNetwork() {
   return (
     <Section
       trailing={
-        (selectedState || selectedClinicId) && (
+        <>
+          {/* The explicit staging test-data filter. Confirmed test/demo clinics
+              are out by default; this opts them back in and says how many. */}
           <button
             type="button"
-            onClick={reset}
-            className="inline-flex items-center gap-1.5 rounded-md border border-border px-2.5 py-1 text-xs hover:bg-muted/50 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
+            onClick={() => setShowTest((v) => !v)}
+            aria-pressed={showTest}
+            className={`inline-flex items-center gap-1.5 rounded-md border px-2.5 py-1 text-xs focus:outline-none focus-visible:ring-2 focus-visible:ring-ring/50 ${
+              showTest
+                ? "border-amber-300 bg-amber-50 text-amber-800"
+                : "border-border hover:bg-muted/50"
+            }`}
           >
-            <ArrowLeft className="size-3.5" aria-hidden />
-            Reset to India
+            {showTest
+              ? "Hide test/demo"
+              : `Show test/demo${
+                  data.excludedTestClinics > 0 ? ` (${data.excludedTestClinics})` : ""
+                }`}
           </button>
-        )
+          {(selectedState || selectedClinicId) && (
+            <button
+              type="button"
+              onClick={reset}
+              className="inline-flex items-center gap-1.5 rounded-md border border-border px-2.5 py-1 text-xs hover:bg-muted/50 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
+            >
+              <ArrowLeft className="size-3.5" aria-hidden />
+              Reset to India
+            </button>
+          )}
+        </>
       }
     >
       {/* Roughly two-thirds map, one-third context, but expressed as grid
           fractions rather than fixed widths so it reflows rather than breaks. */}
       <div className="grid gap-4 lg:grid-cols-[1.9fr_1fr]">
         <div className="min-w-0">
-          {t.branchesOnMap > 0 ? (
-            <div className="h-[420px] overflow-hidden rounded-xl">
-              <NetworkMap
-                clinics={data.onMap}
-                styleUrl={data.styleUrl}
-                selectedClinicId={selectedClinicId}
-                onSelect={selectClinic}
-              />
-            </div>
-          ) : (
-            <NothingPinned
-              clinics={t.clinics}
-              states={data.states.length}
+          {/* The India basemap ALWAYS renders — even with zero coordinates —
+              so the map is visible with no pins rather than replaced by an
+              empty-state card. A coordinate is still never invented; the
+              "nothing pinned" guidance is an overlay, not a substitute for the
+              map. (If the tile host is unreachable, NetworkMap shows its own
+              "Basemap unavailable" fallback.) */}
+          <div className="relative h-[420px] overflow-hidden rounded-xl">
+            <NetworkMap
+              clinics={data.onMap}
+              styleUrl={data.styleUrl}
+              selectedClinicId={selectedClinicId}
+              onSelect={selectClinic}
             />
-          )}
+            {t.branchesOnMap === 0 && (
+              <NothingPinnedOverlay clinics={t.clinics} states={data.states.length} />
+            )}
+          </div>
         </div>
 
         {/* One panel, three states: network → state → clinic. */}
@@ -252,33 +282,39 @@ function Section({
 }
 
 /**
- * What the map shows when no branch has a coordinate.
+ * Overlay shown ON TOP of the India basemap when no branch has a coordinate.
  *
- * Not a generic empty state: it says which fact is missing, confirms the
- * network data itself is intact, and links to the screen where a pin is added.
+ * The basemap renders behind it (the map is never replaced), so the country is
+ * visible with no pins — honest about both facts at once: the network exists,
+ * and nothing has been pinned. A coordinate is still never invented. The card
+ * is pointer-events-none except its action link, so it never blocks the map
+ * beneath it.
  */
-function NothingPinned({ clinics, states }: { clinics: number; states: number }) {
+function NothingPinnedOverlay({ clinics, states }: { clinics: number; states: number }) {
   return (
-    <div className="flex h-[420px] flex-col items-center justify-center rounded-xl border border-dashed border-border bg-muted/20 px-6 text-center">
-      <div
-        aria-hidden
-        className="mb-3 flex size-9 items-center justify-center rounded-md border border-border bg-card text-muted-foreground"
-      >
-        <MapPin className="size-4" />
+    <div className="pointer-events-none absolute inset-x-0 bottom-0 z-10 p-3">
+      <div className="pointer-events-auto mx-auto flex max-w-md items-start gap-3 rounded-lg border border-border bg-card/95 px-3 py-2.5 shadow-sm backdrop-blur">
+        <div
+          aria-hidden
+          className="mt-0.5 flex size-7 shrink-0 items-center justify-center rounded-md border border-border bg-background text-muted-foreground"
+        >
+          <MapPin className="size-3.5" />
+        </div>
+        <div className="min-w-0">
+          <p className="text-sm font-medium">No clinic has been pinned yet</p>
+          <p className="mt-0.5 text-xs text-muted-foreground">
+            {clinics} {clinics === 1 ? "clinic" : "clinics"} across {states}{" "}
+            {states === 1 ? "state" : "states"}, but no branch has a coordinate —
+            positions are never guessed from a city name.{" "}
+            <Link
+              href="/admin/clinics"
+              className="font-medium text-foreground underline underline-offset-2"
+            >
+              Add clinic locations
+            </Link>
+          </p>
+        </div>
       </div>
-      <p className="text-sm font-medium">No clinic has been pinned yet</p>
-      <p className="mt-1 max-w-md text-sm text-muted-foreground">
-        {clinics} {clinics === 1 ? "clinic is" : "clinics are"} on the platform
-        across {states} {states === 1 ? "state" : "states"}, but no branch has a
-        coordinate. Positions are never guessed from a city or state name, so
-        the map stays empty rather than showing {clinics === 1 ? "it" : "them"}{" "}
-        somewhere approximate.
-      </p>
-      <Link href="/admin/clinics" className="mt-4">
-        <Button variant="outline" size="sm">
-          Add clinic locations
-        </Button>
-      </Link>
     </div>
   );
 }

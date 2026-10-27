@@ -73,6 +73,9 @@ export default function NetworkMap({
   useEffect(() => {
     let cancelled = false;
     let created: import("maplibre-gl").Map | null = null;
+    let loadTimer: ReturnType<typeof setTimeout> | null = null;
+    let resizeObserver: ResizeObserver | null = null;
+    let ready = false;
 
     void (async () => {
       try {
@@ -95,22 +98,70 @@ export default function NetworkMap({
         });
         map.addControl(new maplibre.NavigationControl({ showCompass: false }), "top-right");
         map.on("load", () => {
-          if (!cancelled) setStatus("ready");
+          if (cancelled) return;
+          ready = true;
+          if (loadTimer) {
+            clearTimeout(loadTimer);
+            loadTimer = null;
+          }
+          setStatus("ready");
+          // A map constructed before its flex/grid container has settled on a
+          // size paints into a zero/stale box and reads as blank even though
+          // the basemap loaded fine. Forcing a resize on load — and on every
+          // container resize below — makes the canvas match the box it is in.
+          map.resize();
         });
         // A tile host that is blocked or offline must not leave the panel
-        // pretending to load forever.
-        map.on("error", () => {
+        // pretending to load forever. Log the first error for Chrome-console
+        // diagnosis (tile host, style, or worker), without per-tile spam.
+        let errorLogged = false;
+        map.on("error", (e) => {
+          if (!errorLogged) {
+            errorLogged = true;
+            console.warn(
+              "[NetworkMap] MapLibre error",
+              (e as { error?: unknown })?.error ?? e,
+            );
+          }
           if (!cancelled) setStatus((s) => (s === "ready" ? s : "failed"));
         });
+
+        // Keep the canvas matched to its container as the layout changes
+        // (detail panel open/close, viewport resize) without rebuilding the map.
+        if (typeof ResizeObserver !== "undefined" && container.current) {
+          resizeObserver = new ResizeObserver(() => map.resize());
+          resizeObserver.observe(container.current);
+        }
+
+        // Bounded load timeout. MapLibre 6 is ESM-only and spawns a separate
+        // worker chunk; if that worker fails to initialise under the bundler,
+        // neither "load" nor "error" fires and the panel would otherwise sit on
+        // "Loading map…" forever — exactly the "blank canvas" symptom. After the
+        // timeout we degrade to the honest "Basemap unavailable" state (the
+        // clinic list below is unaffected) and log a diagnostic. On a healthy
+        // map "load" fires in well under a second, so this never trips.
+        loadTimer = setTimeout(() => {
+          if (cancelled || ready) return;
+          console.warn(
+            "[NetworkMap] basemap did not finish loading within 15s — likely a " +
+              "MapLibre worker/style initialisation failure. Check the console for " +
+              "worker errors and the network tab for tile.openstreetmap.org requests.",
+          );
+          setStatus((s) => (s === "ready" ? s : "failed"));
+        }, 15_000);
+
         created = map;
         mapRef.current = map;
-      } catch {
+      } catch (err) {
+        console.warn("[NetworkMap] map initialisation threw", err);
         if (!cancelled) setStatus("failed");
       }
     })();
 
     return () => {
       cancelled = true;
+      if (loadTimer) clearTimeout(loadTimer);
+      resizeObserver?.disconnect();
       markersRef.current.forEach((m) => m.remove());
       markersRef.current = [];
       created?.remove();

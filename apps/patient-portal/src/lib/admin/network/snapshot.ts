@@ -19,6 +19,7 @@
 import type { ClinicStatus } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { isMappable, locationSetupState } from "@/lib/clinic/location";
+import { classifyClinicDataClass, type ClinicDataClass } from "@/lib/admin/testData";
 
 /** Days of order-intent history used for the activity weighting. */
 export const ACTIVITY_WINDOW_DAYS = 30;
@@ -53,6 +54,12 @@ export type NetworkClinic = {
   intentsTotal: number;
   attention: { level: AttentionLevel; reasons: string[] };
   /**
+   * real / test / uncertain, from explicit markers only (see lib/admin/testData).
+   * Confirmed-test clinics are excluded from this snapshot by default so the
+   * real-clinic network view is not inflated by QA/demo rows.
+   */
+  dataClass: ClinicDataClass;
+  /**
    * Every state this clinic has a branch in, from ALL locations rather than
    * only the drawable ones.
    *
@@ -84,6 +91,12 @@ export type NetworkSnapshot = {
   }>;
   /** Clinics whose branches record no state at all — countable, not placeable. */
   clinicsWithoutState: number;
+  /** True when confirmed test/demo clinics are included in this snapshot. */
+  includingTestClinics: boolean;
+  /** Data-class tally over the FULL network, before any test exclusion. */
+  dataClasses: { real: number; test: number; uncertain: number };
+  /** How many confirmed-test clinics were held out of the view above (0 when included). */
+  excludedTestClinics: number;
   totals: {
     clinics: number;
     clinicsOnMap: number;
@@ -166,7 +179,10 @@ function attentionFor(input: {
  * round trips regardless of how many clinics exist — the map must not become
  * an N+1 as the network grows.
  */
-export async function loadNetworkSnapshot(): Promise<NetworkSnapshot> {
+export async function loadNetworkSnapshot(
+  options: { includeTestClinics?: boolean } = {},
+): Promise<NetworkSnapshot> {
+  const includeTestClinics = options.includeTestClinics === true;
   return prisma.$transaction(async (tx) => {
     const since = new Date(Date.now() - ACTIVITY_WINDOW_DAYS * 24 * 60 * 60 * 1000);
 
@@ -260,6 +276,8 @@ export async function loadNetworkSnapshot(): Promise<NetworkSnapshot> {
         name: c.name,
         slug: c.slug,
         status: c.status,
+        dataClass: classifyClinicDataClass({ id: c.id, name: c.name, slug: c.slug })
+          .dataClass,
         state: primary?.state ?? null,
         city: primary?.city ?? null,
         branches,
@@ -276,8 +294,29 @@ export async function loadNetworkSnapshot(): Promise<NetworkSnapshot> {
       };
     });
 
-    const onMap = built.filter((c) => c.branches.length > 0);
-    const offMap = built.filter((c) => c.branches.length === 0);
+    // Data-class tally over the FULL network, computed before any exclusion so
+    // the honest totals (how many test/demo rows exist at all) survive.
+    const dataClasses = { real: 0, test: 0, uncertain: 0 };
+    for (const c of built) dataClasses[c.dataClass] += 1;
+
+    // The visible network. Confirmed-test clinics are held out by default so
+    // the real-clinic map and counts are not inflated by QA/demo rows; the
+    // caller opts them back in explicitly. `uncertain` is never excluded — an
+    // unresolved classification is surfaced, not silently dropped either way.
+    // Rows are paired with their source locations here so the state rollup can
+    // iterate the filtered set without relying on a positional index into the
+    // unfiltered query result.
+    const rows = built.map(
+      (clinic, i) => ({ clinic, locations: clinics[i]!.locations }),
+    );
+    const visibleRows = includeTestClinics
+      ? rows
+      : rows.filter((r) => r.clinic.dataClass !== "test");
+    const visible = visibleRows.map((r) => r.clinic);
+    const excludedTestClinics = built.length - visible.length;
+
+    const onMap = visible.filter((c) => c.branches.length > 0);
+    const offMap = visible.filter((c) => c.branches.length === 0);
 
     // ── State rollup ──────────────────────────────────────────────────────
     // Keyed on the state NAME recorded against a branch, across every clinic
@@ -301,9 +340,7 @@ export async function loadNetworkSnapshot(): Promise<NetworkSnapshot> {
         attention: AttentionLevel;
       }
     >();
-    for (let i = 0; i < built.length; i++) {
-      const c = built[i]!;
-      const locations = clinics[i]!.locations;
+    for (const { clinic: c, locations } of visibleRows) {
       for (const state of c.statesPresent) {
         if (!stateMap.has(state)) {
           stateMap.set(state, {
@@ -326,7 +363,7 @@ export async function loadNetworkSnapshot(): Promise<NetworkSnapshot> {
       }
     }
 
-    const clinicsWithoutState = built.filter((c) => c.statesPresent.length === 0).length;
+    const clinicsWithoutState = visible.filter((c) => c.statesPresent.length === 0).length;
 
     const allBranches = onMap.flatMap((c) => c.branches);
 
@@ -339,8 +376,11 @@ export async function loadNetworkSnapshot(): Promise<NetworkSnapshot> {
         .map(([state, v]) => ({ state, ...v }))
         .sort((a, b) => b.clinics - a.clinics || a.state.localeCompare(b.state)),
       clinicsWithoutState,
+      includingTestClinics: includeTestClinics,
+      dataClasses,
+      excludedTestClinics,
       totals: {
-        clinics: built.length,
+        clinics: visible.length,
         clinicsOnMap: onMap.length,
         clinicsOffMap: offMap.length,
         branchesOnMap: allBranches.length,

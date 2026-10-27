@@ -215,6 +215,57 @@ export function assessDatabaseTarget(env: EnvLike): DatabaseTargetVerdict {
   };
 }
 
+/**
+ * A plain, human-facing label for the environment this process is pointed at,
+ * for a persistent on-screen indicator ("STAGING" / "PRODUCTION").
+ *
+ * ── Why it reads the same signal the guard does ──────────────────────────────
+ * The label must never be a client-settable toggle or a vanity string — a
+ * badge that can disagree with the database it sits above is worse than no
+ * badge. So it is derived from the exact same Supabase refs the write-guard
+ * uses, and the authoritative source is the SERVER `DATABASE_URL` (where rows
+ * are actually read and written), not the public API URL. A caller resolves
+ * this in a server component and passes the result down; the browser never
+ * decides it.
+ *
+ * `split` repeats `assessDatabaseTarget`'s split-brain detection so the badge
+ * can shout when the data target and the storage target disagree — the one
+ * case where "which environment am I in?" has no honest single answer.
+ */
+export type EnvironmentLabel = "PRODUCTION" | "STAGING" | "LOCAL" | "UNKNOWN";
+
+export interface ResolvedEnvironment {
+  label: EnvironmentLabel;
+  /** The authoritative Supabase project ref (from DATABASE_URL), or null locally. */
+  ref: string | null;
+  /** True when the env points at more than one Supabase project (misconfig). */
+  split: boolean;
+}
+
+export function resolveEnvironmentLabel(env: EnvLike): ResolvedEnvironment {
+  const distinct = [
+    ...new Set(
+      [
+        extractSupabaseRef(env.DATABASE_URL),
+        extractSupabaseRef(env.DIRECT_URL),
+        extractSupabaseRef(env.NEXT_PUBLIC_SUPABASE_URL),
+      ].filter((r): r is string => r !== null),
+    ),
+  ];
+  const split = distinct.length > 1;
+
+  // DATABASE_URL is where rows live, so it is the authoritative target. Fall
+  // back to any resolved ref only when DATABASE_URL names no Supabase project.
+  const ref = extractSupabaseRef(env.DATABASE_URL) ?? distinct[0] ?? null;
+
+  if (ref === PRODUCTION_SUPABASE_REF) return { label: "PRODUCTION", ref, split };
+  if (ref === STAGING_SUPABASE_REF) return { label: "STAGING", ref, split };
+  if (ref === null) return { label: "LOCAL", ref: null, split };
+  // A Supabase project we don't recognise — name it honestly rather than
+  // guessing STAGING and letting an unknown target read as safe.
+  return { label: "UNKNOWN", ref, split };
+}
+
 /** Throws unless this process may talk to the configured database. */
 export function assertSafeDatabaseTarget(env: EnvLike, context: string): void {
   const verdict = assessDatabaseTarget(env);
