@@ -139,6 +139,57 @@ describe("plotting — a position is never invented", () => {
   });
 });
 
+describe("test-data separation — confirmed test clinics are held out by default", () => {
+  // A real clinic and an explicit TEST clinic, both plottable, so the only
+  // thing that can change the count is the test-exclusion logic.
+  function realAndTest() {
+    return [
+      clinic({ id: "real-1", name: "Reniu Clinic", slug: "reniu-clinic" }),
+      clinic({
+        id: "test-1",
+        name: "DrFACT Mumbai Test Clinic",
+        slug: "drfact-mumbai-test",
+        locations: [location({ id: "loc-test" })],
+      }),
+    ];
+  }
+
+  it("default: excludes the confirmed-test clinic from the map and counts", async () => {
+    clinicRows = realAndTest();
+    const snap = await loadNetworkSnapshot();
+    expect(snap.includingTestClinics).toBe(false);
+    expect(snap.excludedTestClinics).toBe(1);
+    expect(snap.totals.clinics).toBe(1); // only the real clinic
+    const names = [...snap.onMap, ...snap.offMap].map((c: Row) => c.name);
+    expect(names).toEqual(["Reniu Clinic"]);
+    // The full-network tally is still honest about what exists.
+    expect(snap.dataClasses).toEqual({ real: 1, test: 1, uncertain: 0 });
+  });
+
+  it("includeTestClinics: brings the test clinic back and marks it", async () => {
+    clinicRows = realAndTest();
+    const snap = await loadNetworkSnapshot({ includeTestClinics: true });
+    expect(snap.includingTestClinics).toBe(true);
+    expect(snap.excludedTestClinics).toBe(0);
+    expect(snap.totals.clinics).toBe(2);
+    const test = [...snap.onMap, ...snap.offMap].find(
+      (c: Row) => c.slug === "drfact-mumbai-test",
+    );
+    expect(test).toBeDefined();
+    expect((test as Row).dataClass).toBe("test");
+  });
+
+  it("an UNCERTAIN (first-party brand, no test token) clinic is NEVER excluded", async () => {
+    clinicRows = [
+      clinic({ id: "unc", name: "DrFACT Mumbai", slug: "drfact-mumbai" }),
+    ];
+    const snap = await loadNetworkSnapshot();
+    expect(snap.excludedTestClinics).toBe(0);
+    expect(snap.totals.clinics).toBe(1);
+    expect(snap.dataClasses).toEqual({ real: 0, test: 0, uncertain: 1 });
+  });
+});
+
 describe("attention — deterministic, and always explained", () => {
   it("REGRESSION: an ACTIVE clinic with no mappable branch is an action", async () => {
     clinicRows = [clinic({ status: "ACTIVE", locations: [location({ latitude: null, longitude: null })] })];

@@ -1,0 +1,73 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>HairOS India basemap self-check</title>
+<!--
+  Auth-free, app-free proof that the India basemap renders independently of
+  clinic coordinates. It uses the SAME basemap definition the app uses
+  (apps/patient-portal/src/lib/admin/network/basemap.ts): an inline OSM raster
+  style and the same continental-India bounds, with ONE hard-coded test marker.
+
+  If India paints and the red marker shows, the basemap mechanism works and the
+  empty map in staging is only the absence of coordinates — not a broken map.
+  Open this file in any normal browser (it needs internet for the OSM tiles and
+  the MapLibre CDN). Pinned versions are used so the check is reproducible.
+-->
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/maplibre-gl/4.7.1/maplibre-gl.min.css" />
+<style>
+  :root { --bg:#f7f7f5; --fg:#0e2a47; --border:#d9d9d6; }
+  body { margin:0; font-family: ui-sans-serif, system-ui, sans-serif; background:var(--bg); color:var(--fg); }
+  header { padding:12px 16px; border-bottom:1px solid var(--border); }
+  h1 { font-size:15px; margin:0 0 2px; }
+  p { font-size:12px; margin:0; color:#555; }
+  #map { position:absolute; inset:88px 0 0 0; }
+  #status { padding:6px 16px; font-size:12px; }
+  .ok { color:#117a79; } .bad { color:#b91c1c; }
+</style>
+</head>
+<body>
+<header>
+  <h1>HairOS — India basemap self-check</h1>
+  <p>Same OSM raster style and India bounds as the app. One test marker is placed deliberately. No login, no app, no database.</p>
+</header>
+<div id="status">Loading MapLibre…</div>
+<div id="map"></div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/maplibre-gl/4.7.1/maplibre-gl.min.js"></script>
+<script>
+  var statusEl = document.getElementById("status");
+  function set(cls, msg) { statusEl.className = cls; statusEl.textContent = msg; }
+
+  // Mirror of basemap.ts
+  var INDIA_BOUNDS = [[67.0, 6.5], [98.5, 36.5]];
+  var osmRasterStyle = {
+    version: 8,
+    sources: { osm: { type: "raster", tiles: ["https://tile.openstreetmap.org/{z}/{x}/{y}.png"], tileSize: 256, attribution: "© OpenStreetMap contributors" } },
+    layers: [{ id: "osm", type: "raster", source: "osm" }]
+  };
+
+  try {
+    var map = new maplibregl.Map({
+      container: "map",
+      style: osmRasterStyle,
+      bounds: INDIA_BOUNDS,
+      fitBoundsOptions: { padding: 40 }
+    });
+    map.addControl(new maplibregl.NavigationControl({ showCompass: false }), "top-right");
+    map.on("load", function () {
+      set("ok", "✓ Basemap loaded. India should be visible with a red test marker over Mumbai. (The real app shows no markers in staging only because no coordinate is stored — not because the map is broken.)");
+      // One deliberate test marker — proves marker rendering too.
+      var el = document.createElement("div");
+      el.style.cssText = "width:18px;height:18px;border-radius:9999px;background:#b91c1c;border:2px solid #fff;box-shadow:0 1px 6px rgba(0,0,0,.4)";
+      new maplibregl.Marker({ element: el }).setLngLat([72.8777, 19.076]).addTo(map);
+    });
+    map.on("error", function (e) {
+      set("bad", "✗ A map error occurred (often blocked OSM tiles on this network): " + (e && e.error && e.error.message ? e.error.message : "tile/style load failed"));
+    });
+  } catch (err) {
+    set("bad", "✗ MapLibre failed to initialise: " + err);
+  }
+</script>
+</body>
+</html>
