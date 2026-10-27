@@ -28,7 +28,11 @@ Legend: **PASS** = verified by evidence available here · **NOT VERIFIED** = nee
   - `/api/admin/network` default-excludes test and honors `?includeTest=1`.
 - **NOT VERIFIED (rendered):** that on the preview the Overview tiles show the real-business figures (e.g. "Clinics (real)" = 14, "Patient assessments" excludes the 67 test ones) with the "N test/demo excluded" note, and that the network **Show/hide test/demo** toggle flips the map/counts.
 
-### Gap 4 — India basemap actually renders, independent of missing coordinates — **NOT VERIFIED** (must be confirmed in Chrome)
+### Gap 4 — India basemap renders, independent of missing coordinates — **basemap engine PASS (real browser); in-preview paint NOT VERIFIED**
+**Update:** a real headless-Chromium test of the bundled MapLibre 6.6.0 proved the **basemap engine, module worker, canvas and marker all work** (`load` fired, canvas 1280×720, marker in DOM, zero errors). A second run with the real OSM style showed that for a raster style `load` does not fire until tiles load. **Root cause of the reported blank: the Dashboard suppressed the basemap entirely at zero coordinates** (rendered an empty-state card instead of the map) — now fixed to always render the basemap with a non-blocking overlay. See `MAP_DIAGNOSIS.md` for the full evidence, the 7-clinic production coordinate inventory, and the approval-gated enrichment workflow. Whether OSM tiles paint in the *authenticated preview* is still NOT VERIFIED (can't reach it from here); if blocked there, the fix is `NEXT_PUBLIC_MAP_STYLE_URL`, not code.
+
+<details><summary>Earlier (pre-evidence) analysis — retained for history</summary>
+
 Corrected: this is **not** PASS. Code inspection cannot prove pixels painted, and the reported *blank canvas* on `/admin/network` may be a real paint failure, not the intended zero-marker empty state. The two are genuinely different and must be told apart in the browser.
 
 - **What the two states look like:**
@@ -44,6 +48,8 @@ Corrected: this is **not** PASS. Code inspection cannot prove pixels painted, an
 - **Evidence from the installed package:** MapLibre **6.6.0** is **ESM-only** (`exports` has only an `import` condition; no CJS `main`) and ships a **separate worker chunk** (`dist/maplibre-gl-worker.mjs` + `maplibre-gl-shared.mjs`). An ESM worker chunk that the Next/Vercel bundler fails to emit/resolve is a known cause of a map that constructs but whose `load` never fires — i.e. the stuck-"Loading map…" blank.
 - **Fix applied this round (graceful degradation, no provider/version change):** `NetworkMap` now (1) runs a **15s bounded load-timeout** that flips to the honest **"Basemap unavailable"** state (+ the clinic list) and logs a diagnostic if `load` never fires — so a stuck worker can no longer present as a silent blank; (2) calls `map.resize()` on load and via a **ResizeObserver** so a canvas constructed before its grid/flex container settles can't stay a zero-size blank; (3) logs the first MapLibre `error` and any init throw to the console for Chrome diagnosis. On a healthy map `load` fires in <1s so the timeout never trips, and the zero-coordinate empty state is unchanged.
 - **Still NOT VERIFIED:** whether the basemap actually **paints** on the preview. The fix guarantees the page degrades honestly instead of showing a silent blank, and emits console diagnostics — but confirming real tiles paint (vs. the fallback) still needs the Chrome checks above. If the worker is the cause, the browser console will now show it.
+
+</details>
 
 ### Gap 5 — Precise no-coordinate clinic list + approval-based completion — **PASS**
 **Staging: 0 of 17 locations have coordinates.** 13 clinics hold 17 branches (all `geoStatus=UNSET`, no lat/long); 3 clinics (`drfact-mumbai`, `drfact-pune-test`, `acube-aesthetics`) have **no location rows at all**.
@@ -92,7 +98,7 @@ Clinics with **no branch record at all** (need a location before a pin): `DrFACT
 | 1 Google login & routing | NOT VERIFIED (needs auth browser) |
 | 2 STAGING badge | PASS (logic) · NOT VERIFIED (rendered) |
 | 3 Test/demo exclusion from KPIs + network + toggle | PASS (logic) · NOT VERIFIED (rendered) |
-| 4 India basemap renders | **NOT VERIFIED** — must confirm in Chrome; blank canvas may be a real paint failure |
+| 4 India basemap renders | basemap engine **PASS** (real headless browser) · root cause found & fixed (dashboard suppressed the map at 0 coords) · in-preview tile paint NOT VERIFIED |
 | 5 No-coordinate list + process | PASS |
 | 6 Real ≠ operationally Live | PASS |
 
