@@ -1,6 +1,8 @@
 import { redirect } from 'next/navigation';
 
 import { isValidClinicSlug } from '@/lib/clinic/slug';
+import { getAuthClaims } from '@/lib/auth';
+import { rootForRole } from '@/lib/navigation';
 
 /**
  * Where a bare hostname sends a visitor.
@@ -35,6 +37,17 @@ function defaultClinicSlug(): string {
   return isValidClinicSlug(configured) ? configured : FALLBACK_CLINIC_SLUG;
 }
 
-export default function RootPage() {
+export default async function RootPage() {
+  // Role-aware root. An authenticated STAFF/ADMIN session must NEVER fall
+  // through to a clinic's PATIENT assessment page — that is the P0 bug where a
+  // Super Admin who lands on "/" (e.g. via an OAuth Site-URL fallback) was
+  // dumped onto /q/<DEFAULT_CLINIC_SLUG>. Route them to their own console
+  // instead. Anonymous visitors and patients keep the public clinic entry, so
+  // /q/[slug] stays publicly reachable and the QR-scan flow is unchanged.
+  const claims = await getAuthClaims().catch(() => null);
+  const role = claims?.user_role;
+  if (role && role !== 'PATIENT') {
+    redirect(rootForRole(role));
+  }
   redirect(`/q/${defaultClinicSlug()}`);
 }

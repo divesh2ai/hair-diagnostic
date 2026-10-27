@@ -2,7 +2,17 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { Plus, Power, Archive, RotateCcw } from "lucide-react";
+import QRCode from "react-qr-code";
+import {
+  Plus,
+  Power,
+  Archive,
+  RotateCcw,
+  QrCode,
+  Copy,
+  Check,
+  X,
+} from "lucide-react";
 import { PageContainer } from "@/components/app-shell";
 import { DataTable, type Column } from "@/components/ui/data-table";
 import { SearchBox } from "@/components/ui/search-box";
@@ -24,23 +34,150 @@ type Row = {
   patientCount: number;
   locationCount: number;
   locationSetup: "NONE" | "INCOMPLETE" | "COMPLETE";
+  // Phase 3 directory fields.
+  primaryDoctorName: string | null;
+  primaryDoctorProvisioned: boolean;
+  accessReady: boolean;
+  city: string | null;
+  state: string | null;
+  whatsappConfigured: boolean;
+  lastAssessmentAt: string | null;
+  assessmentPath: string;
   createdAt: string;
   updatedAt: string;
 };
 
 const PAGE_SIZE = 25;
 
+/** Small labelled chip. Colour is never the only signal — the word is shown. */
+function Chip({
+  tone,
+  children,
+}: {
+  tone: "ok" | "warn" | "muted";
+  children: React.ReactNode;
+}) {
+  const cls =
+    tone === "ok"
+      ? "border-emerald-200 bg-emerald-50 text-emerald-800"
+      : tone === "warn"
+        ? "border-amber-200 bg-amber-50 text-amber-800"
+        : "border-border bg-muted/40 text-muted-foreground";
+  return (
+    <span
+      className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[11px] ${cls}`}
+    >
+      {children}
+    </span>
+  );
+}
+
+/** QR + copyable patient assessment link for one clinic. */
+function AssessmentQrDialog({
+  clinic,
+  onClose,
+}: {
+  clinic: { name: string; assessmentPath: string };
+  onClose: () => void;
+}) {
+  const [copied, setCopied] = useState(false);
+  // Absolute URL in the CURRENT environment (staging preview → staging host,
+  // production → production host), so the QR a Super Admin scans matches where
+  // they are working.
+  const url =
+    typeof window !== "undefined"
+      ? `${window.location.origin}${clinic.assessmentPath}`
+      : clinic.assessmentPath;
+
+  const copy = async () => {
+    try {
+      await navigator.clipboard.writeText(url);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1500);
+    } catch {
+      toast.error("Couldn't copy the link");
+    }
+  };
+
+  return (
+    <div
+      className="fixed inset-0 z-50 grid place-items-center bg-black/40 p-4"
+      role="dialog"
+      aria-modal="true"
+      aria-label={`Assessment link for ${clinic.name}`}
+      onClick={onClose}
+    >
+      <div
+        className="w-full max-w-sm rounded-2xl border border-border bg-card p-5 shadow-lg"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="mb-3 flex items-start justify-between gap-3">
+          <div className="min-w-0">
+            <h3 className="truncate text-sm font-semibold">{clinic.name}</h3>
+            <p className="text-xs text-muted-foreground">Patient assessment link</p>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            aria-label="Close"
+            className="rounded-md p-1 text-muted-foreground hover:bg-muted"
+          >
+            <X className="size-4" />
+          </button>
+        </div>
+
+        <div className="grid place-items-center rounded-xl border border-border bg-white p-4">
+          <QRCode value={url} size={168} />
+        </div>
+
+        <div className="mt-3 flex items-center gap-2">
+          <input
+            readOnly
+            value={url}
+            aria-label="Assessment URL"
+            className="h-9 w-full rounded-lg border border-border bg-background px-2.5 text-xs"
+          />
+          <Button variant="outline" size="sm" onClick={copy}>
+            {copied ? <Check className="size-4" /> : <Copy className="size-4" />}
+            {copied ? "Copied" : "Copy"}
+          </Button>
+        </div>
+        <a
+          href={url}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="mt-2 inline-block text-xs text-muted-foreground underline underline-offset-2 hover:text-foreground"
+        >
+          Open the patient landing page
+        </a>
+      </div>
+    </div>
+  );
+}
+
 export default function AdminClinicsPage() {
   const [rows, setRows] = useState<Row[]>([]);
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
-  const [search, setSearch] = useState("");
+  // Seed the search from a ?search= param (the Overview directory preview routes
+  // here with one). Lazy initializer, SSR-guarded — no effect, no cascading render.
+  const [search, setSearch] = useState(() => {
+    if (typeof window === "undefined") return "";
+    try {
+      return new URLSearchParams(window.location.search).get("search") ?? "";
+    } catch {
+      return "";
+    }
+  });
   const [status, setStatus] = useState<string>("");
   const [page, setPage] = useState(1);
   const [confirm, setConfirm] = useState<
     { id: string; name: string; action: "suspend" | "activate" | "archive" } | null
   >(null);
   const [busy, setBusy] = useState(false);
+  const [qr, setQr] = useState<{ name: string; assessmentPath: string } | null>(
+    null,
+  );
 
   async function load() {
     setLoading(true);
@@ -57,7 +194,6 @@ export default function AdminClinicsPage() {
     setLoading(false);
   }
 
-  // Reload when filters/page change. Debounce search to a single trailing call.
   useEffect(() => {
     const handle = setTimeout(load, search ? 250 : 0);
     return () => clearTimeout(handle);
@@ -102,15 +238,19 @@ export default function AdminClinicsPage() {
               <Avatar name={r.name} size="sm" />
             )}
             <div className="min-w-0">
-              <div className="font-medium truncate">{r.name}</div>
-              <div className="text-xs text-muted-foreground truncate">{r.slug}</div>
+              <div className="truncate font-medium">{r.name}</div>
+              <div className="truncate text-xs text-muted-foreground">
+                {r.city || r.state
+                  ? [r.city, r.state].filter(Boolean).join(", ")
+                  : r.slug}
+              </div>
             </div>
           </div>
         ),
       },
       {
         key: "status",
-        header: "Status",
+        header: "DB status",
         cell: (r) => (
           <StatusBadge
             tone={
@@ -124,44 +264,74 @@ export default function AdminClinicsPage() {
             {r.status}
           </StatusBadge>
         ),
-        width: "120px",
+        width: "110px",
       },
       {
-        key: "doctors",
-        header: "Doctors",
-        cell: (r) => r.doctorCount,
-        align: "right",
-        width: "100px",
+        // Three distinct facts, never collapsed: access-ready (provisioning) and
+        // operationally verified (always pending — no golden-path record source).
+        key: "readiness",
+        header: "Readiness",
+        cell: (r) => (
+          <div className="flex flex-col items-start gap-1">
+            {r.accessReady ? (
+              <Chip tone="ok">Access ready</Chip>
+            ) : (
+              <Chip tone="warn">Not provisioned</Chip>
+            )}
+            <Chip tone="warn">Verification pending</Chip>
+          </div>
+        ),
+        width: "160px",
       },
       {
-        key: "patients",
-        header: "Patients",
-        cell: (r) => r.patientCount,
-        align: "right",
-        width: "100px",
+        key: "doctor",
+        header: "Primary doctor",
+        cell: (r) => (
+          <div className="min-w-0">
+            <div className="truncate text-sm">
+              {r.primaryDoctorName ?? (
+                <span className="text-muted-foreground">No doctor</span>
+              )}
+            </div>
+            <div className="text-xs text-muted-foreground">
+              {r.primaryDoctorName
+                ? r.primaryDoctorProvisioned
+                  ? "login-ready"
+                  : "not provisioned"
+                : ""}
+              {r.doctorCount > 1 ? ` · +${r.doctorCount - 1} more` : ""}
+            </div>
+          </div>
+        ),
+        width: "160px",
       },
       {
-        // The national map is only as complete as this column. A clinic that
-        // reads "Not set up" cannot be plotted, however healthy it otherwise is.
-        key: "location",
-        header: "Location",
+        key: "lastAssessment",
+        header: "Last assessment",
         cell: (r) =>
-          r.locationSetup === "COMPLETE" ? (
-            <StatusBadge tone="success">
-              {r.locationCount > 1 ? `${r.locationCount} branches` : "On map"}
-            </StatusBadge>
-          ) : r.locationSetup === "INCOMPLETE" ? (
-            <StatusBadge tone="warning">Pin missing</StatusBadge>
+          r.lastAssessmentAt ? (
+            new Date(r.lastAssessmentAt).toLocaleDateString()
           ) : (
-            <StatusBadge tone="neutral">Not set up</StatusBadge>
+            <span className="text-xs text-muted-foreground">None yet</span>
           ),
-        width: "140px",
+        width: "130px",
       },
       {
-        key: "created",
-        header: "Created",
-        cell: (r) => new Date(r.createdAt).toLocaleDateString(),
-        width: "120px",
+        key: "delivery",
+        header: "Delivery",
+        cell: (r) => (
+          <div className="flex flex-col items-start gap-1">
+            {r.whatsappConfigured ? (
+              <Chip tone="ok">WhatsApp configured</Chip>
+            ) : (
+              <Chip tone="muted">WhatsApp not set</Chip>
+            )}
+            {/* No reliable per-clinic report-delivery evidence source, so this
+                is pending rather than inferred. */}
+            <Chip tone="warn">Report pending</Chip>
+          </div>
+        ),
+        width: "170px",
       },
       {
         key: "actions",
@@ -169,6 +339,17 @@ export default function AdminClinicsPage() {
         align: "right",
         cell: (r) => (
           <div className="flex items-center justify-end gap-1">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() =>
+                setQr({ name: r.name, assessmentPath: r.assessmentPath })
+              }
+              aria-label={`Assessment QR for ${r.name}`}
+            >
+              <QrCode />
+              QR
+            </Button>
             <Link href={`/admin/clinics/${r.id}/edit`}>
               <Button variant="ghost" size="sm">
                 Edit
@@ -211,7 +392,7 @@ export default function AdminClinicsPage() {
             )}
           </div>
         ),
-        width: "260px",
+        width: "300px",
       },
     ],
     [],
@@ -219,11 +400,12 @@ export default function AdminClinicsPage() {
 
   return (
     <PageContainer className="space-y-4">
-      <div className="flex items-end justify-between gap-4 flex-wrap">
+      <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
           <h1 className="text-2xl font-semibold tracking-tight">Clinics</h1>
           <p className="text-sm text-muted-foreground">
-            {total.toLocaleString()} total
+            {total.toLocaleString()} total · DB status, access readiness and
+            operational verification are shown separately
           </p>
         </div>
         <Link href="/admin/clinics/new">
@@ -234,17 +416,29 @@ export default function AdminClinicsPage() {
         </Link>
       </div>
 
-      <FilterBar onClear={() => { setSearch(""); setStatus(""); setPage(1); }}>
+      <FilterBar
+        onClear={() => {
+          setSearch("");
+          setStatus("");
+          setPage(1);
+        }}
+      >
         <SearchBox
           value={search}
-          onChange={(v) => { setSearch(v); setPage(1); }}
+          onChange={(v) => {
+            setSearch(v);
+            setPage(1);
+          }}
           placeholder="Search by name or slug"
           className="min-w-[260px]"
         />
         <select
           value={status}
-          onChange={(e) => { setStatus(e.target.value); setPage(1); }}
-          className="h-9 px-3 rounded-lg border border-border bg-background text-sm font-medium focus:outline-none focus:ring-2 focus:ring-ring/40 transition-all cursor-pointer"
+          onChange={(e) => {
+            setStatus(e.target.value);
+            setPage(1);
+          }}
+          className="h-9 cursor-pointer rounded-lg border border-border bg-background px-3 text-sm font-medium transition-all focus:outline-none focus:ring-2 focus:ring-ring/40"
         >
           <option value="">All statuses</option>
           <option value="ACTIVE">Active</option>
@@ -291,6 +485,8 @@ export default function AdminClinicsPage() {
           confirm ? applyAction(confirm.id, confirm.action) : Promise.resolve()
         }
       />
+
+      {qr && <AssessmentQrDialog clinic={qr} onClose={() => setQr(null)} />}
     </PageContainer>
   );
 }

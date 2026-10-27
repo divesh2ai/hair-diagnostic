@@ -44,14 +44,40 @@ export async function GET(req: Request) {
           slug: true,
           logoUrl: true,
           status: true,
+          whatsappNumber: true,
           createdAt: true,
           updatedAt: true,
           _count: { select: { doctors: true, patients: true } },
-          // Enough to answer "can this clinic be plotted?" without pulling
-          // every branch's address into a list response.
+          // Enough to answer "can this clinic be plotted?" plus the verified
+          // city/state the directory shows — only what a location record
+          // carries, never inferred.
           locations: {
             where: { deletedAt: null },
-            select: { geoStatus: true },
+            select: {
+              geoStatus: true,
+              city: true,
+              state: true,
+              isPrimary: true,
+            },
+          },
+          // Active doctors with their auth-identity columns, to resolve the
+          // primary doctor and whether anyone is provisioned (access-ready).
+          doctors: {
+            where: { isActive: true, deletedAt: null },
+            select: {
+              name: true,
+              isPrimary: true,
+              supabaseUserId: true,
+              supabasePhoneUserId: true,
+            },
+            orderBy: [{ isPrimary: "desc" }, { createdAt: "asc" }],
+          },
+          // Latest patient assessment date (one row).
+          assessments: {
+            where: { deletedAt: null },
+            select: { submittedAt: true },
+            orderBy: { submittedAt: "desc" },
+            take: 1,
           },
         },
       }),
@@ -59,21 +85,54 @@ export async function GET(req: Request) {
     ]);
 
     return NextResponse.json({
-      rows: rows.map((r) => ({
-        id: r.id,
-        name: r.name,
-        slug: r.slug,
-        logoUrl: r.logoUrl,
-        status: r.status,
-        doctorCount: r._count.doctors,
-        patientCount: r._count.patients,
-        locationCount: r.locations.length,
-        // NONE | INCOMPLETE | COMPLETE — the Super Admin worklist for getting
-        // the national map populated.
-        locationSetup: locationSetupState(r.locations),
-        createdAt: r.createdAt.toISOString(),
-        updatedAt: r.updatedAt.toISOString(),
-      })),
+      rows: rows.map((r) => {
+        const isProvisioned = (d: {
+          supabaseUserId: string | null;
+          supabasePhoneUserId: string | null;
+        }) => d.supabaseUserId != null || d.supabasePhoneUserId != null;
+        const primaryDoctor = r.doctors[0] ?? null;
+        // ACCESS READY = at least one active doctor whose auth identity is
+        // linked (provisioned to sign in) — NOT proof of a live login.
+        const accessReady = r.doctors.some(isProvisioned);
+        // Verified city/state: the primary location, else the first that names
+        // a state. Only what a location record carries; never inferred.
+        const primaryLoc =
+          r.locations.find((l) => l.isPrimary) ??
+          r.locations.find((l) => l.state) ??
+          r.locations[0] ??
+          null;
+        return {
+          id: r.id,
+          name: r.name,
+          slug: r.slug,
+          logoUrl: r.logoUrl,
+          status: r.status,
+          doctorCount: r._count.doctors,
+          patientCount: r._count.patients,
+          locationCount: r.locations.length,
+          // NONE | INCOMPLETE | COMPLETE — the Super Admin worklist for getting
+          // the national map populated.
+          locationSetup: locationSetupState(r.locations),
+          // ── Phase 3 directory fields (all derived from existing rows) ──────
+          primaryDoctorName: primaryDoctor?.name ?? null,
+          primaryDoctorProvisioned: primaryDoctor
+            ? isProvisioned(primaryDoctor)
+            : false,
+          accessReady,
+          city: primaryLoc?.city ?? null,
+          state: primaryLoc?.state ?? null,
+          // Provisioning/config fact (a number is configured), NOT proof of a
+          // successful delivery.
+          whatsappConfigured: !!r.whatsappNumber,
+          lastAssessmentAt:
+            r.assessments[0]?.submittedAt?.toISOString() ?? null,
+          // Public patient assessment entry point (slug-derived; the client
+          // renders the absolute URL + QR).
+          assessmentPath: `/q/${r.slug}`,
+          createdAt: r.createdAt.toISOString(),
+          updatedAt: r.updatedAt.toISOString(),
+        };
+      }),
       total,
       limit,
       offset,
