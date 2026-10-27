@@ -5,68 +5,108 @@
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>HairOS India basemap self-check</title>
 <!--
-  Auth-free, app-free proof that the India basemap renders independently of
-  clinic coordinates. It uses the SAME basemap definition the app uses
-  (apps/patient-portal/src/lib/admin/network/basemap.ts): an inline OSM raster
-  style and the same continental-India bounds, with ONE hard-coded test marker.
+  Faithful, auth-free isolation of the app's basemap.
 
-  If India paints and the red marker shows, the basemap mechanism works and the
-  empty map in staging is only the absence of coordinates — not a broken map.
-  Open this file in any normal browser (it needs internet for the OSM tiles and
-  the MapLibre CDN). Pinned versions are used so the check is reproducible.
+  It pins the SAME MapLibre version the app ships (maplibre-gl 6.6.0), the SAME
+  inline OSM raster style, the SAME India bounds and the SAME Map constructor
+  options as apps/patient-portal/src/components/admin/NetworkMap.tsx — but with
+  NO app, NO login, NO clinic data.
+
+  Purpose: separate "the basemap fails to paint" from "the map is empty because
+  no clinic has a coordinate" (the intended staging state).
+    • India paints here, zero markers  → basemap works; staging's empty map is
+      only missing coordinates, not a broken map.
+    • Blank / stuck here too            → the basemap itself (tiles, worker,
+      version, or network) is the problem — read the status line + the browser
+      console/network tab.
+  "Add test marker" proves marker rendering independently of any coordinate.
+
+  Open in Chrome on normal internet. Watch the status line, the Console, and the
+  Network tab (filter: tile.openstreetmap.org).
 -->
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/maplibre-gl/4.7.1/maplibre-gl.min.css" />
+<link rel="stylesheet" href="https://unpkg.com/maplibre-gl@6.6.0/dist/maplibre-gl.css" />
 <style>
   :root { --bg:#f7f7f5; --fg:#0e2a47; --border:#d9d9d6; }
   body { margin:0; font-family: ui-sans-serif, system-ui, sans-serif; background:var(--bg); color:var(--fg); }
   header { padding:12px 16px; border-bottom:1px solid var(--border); }
   h1 { font-size:15px; margin:0 0 2px; }
   p { font-size:12px; margin:0; color:#555; }
-  #map { position:absolute; inset:88px 0 0 0; }
-  #status { padding:6px 16px; font-size:12px; }
-  .ok { color:#117a79; } .bad { color:#b91c1c; }
+  .bar { display:flex; gap:8px; align-items:center; padding:8px 16px; flex-wrap:wrap; }
+  button { font:inherit; font-size:12px; padding:4px 10px; border:1px solid var(--border); border-radius:6px; background:#fff; cursor:pointer; }
+  #status { font-size:12px; }
+  .ok { color:#117a79; } .bad { color:#b91c1c; } .muted { color:#555; }
+  #map { position:absolute; inset:128px 0 0 0; }
 </style>
 </head>
 <body>
 <header>
-  <h1>HairOS — India basemap self-check</h1>
-  <p>Same OSM raster style and India bounds as the app. One test marker is placed deliberately. No login, no app, no database.</p>
+  <h1>HairOS — India basemap self-check (MapLibre 6.6.0, app config)</h1>
+  <p>Same version, style, bounds and options as the app's NetworkMap. No markers by default — exactly like staging with no coordinates.</p>
 </header>
-<div id="status">Loading MapLibre…</div>
+<div class="bar">
+  <button id="marker">Add test marker</button>
+  <span id="status" class="muted">Loading MapLibre 6.6.0…</span>
+</div>
 <div id="map"></div>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/maplibre-gl/4.7.1/maplibre-gl.min.js"></script>
+<script src="https://unpkg.com/maplibre-gl@6.6.0/dist/maplibre-gl.js"></script>
 <script>
   var statusEl = document.getElementById("status");
+  var tileOk = 0, tileErr = 0;
   function set(cls, msg) { statusEl.className = cls; statusEl.textContent = msg; }
 
-  // Mirror of basemap.ts
+  // ── Mirror of basemap.ts ────────────────────────────────────────────────
   var INDIA_BOUNDS = [[67.0, 6.5], [98.5, 36.5]];
-  var osmRasterStyle = {
-    version: 8,
-    sources: { osm: { type: "raster", tiles: ["https://tile.openstreetmap.org/{z}/{x}/{y}.png"], tileSize: 256, attribution: "© OpenStreetMap contributors" } },
-    layers: [{ id: "osm", type: "raster", source: "osm" }]
-  };
+  function osmRasterStyle() {
+    return {
+      version: 8,
+      sources: { osm: { type: "raster", tiles: ["https://tile.openstreetmap.org/{z}/{x}/{y}.png"], tileSize: 256, attribution: "© OpenStreetMap contributors" } },
+      layers: [{ id: "osm", type: "raster", source: "osm" }]
+    };
+  }
 
-  try {
-    var map = new maplibregl.Map({
-      container: "map",
-      style: osmRasterStyle,
-      bounds: INDIA_BOUNDS,
-      fitBoundsOptions: { padding: 40 }
-    });
-    map.addControl(new maplibregl.NavigationControl({ showCompass: false }), "top-right");
-    map.on("load", function () {
-      set("ok", "✓ Basemap loaded. India should be visible with a red test marker over Mumbai. (The real app shows no markers in staging only because no coordinate is stored — not because the map is broken.)");
-      // One deliberate test marker — proves marker rendering too.
-      var el = document.createElement("div");
-      el.style.cssText = "width:18px;height:18px;border-radius:9999px;background:#b91c1c;border:2px solid #fff;box-shadow:0 1px 6px rgba(0,0,0,.4)";
-      new maplibregl.Marker({ element: el }).setLngLat([72.8777, 19.076]).addTo(map);
-    });
-    map.on("error", function (e) {
-      set("bad", "✗ A map error occurred (often blocked OSM tiles on this network): " + (e && e.error && e.error.message ? e.error.message : "tile/style load failed"));
-    });
-  } catch (err) {
-    set("bad", "✗ MapLibre failed to initialise: " + err);
+  if (typeof maplibregl === "undefined") {
+    set("bad", "✗ MapLibre 6.6.0 failed to load from the CDN (check the console/network tab).");
+  } else {
+    try {
+      // Exact options used by NetworkMap.tsx.
+      var map = new maplibregl.Map({
+        container: "map",
+        style: osmRasterStyle(),
+        bounds: INDIA_BOUNDS,
+        fitBoundsOptions: { padding: 40 },
+        attributionControl: { compact: true }
+      });
+      map.addControl(new maplibregl.NavigationControl({ showCompass: false }), "top-right");
+
+      var loaded = false;
+      map.on("load", function () {
+        loaded = true;
+        set("ok", "✓ Basemap 'load' fired. India should be visible with NO markers (as in staging). Use 'Add test marker' to confirm markers render.");
+      });
+      // Per-tile outcome, so a blocked tile host is distinguishable from a
+      // failed init.
+      map.on("data", function (e) { if (e && e.tile && e.dataType === "source") tileOk++; });
+      map.on("error", function (e) {
+        tileErr++;
+        var m = (e && e.error && e.error.message) ? e.error.message : "unknown map error";
+        set("bad", "✗ Map error (" + tileErr + "): " + m + (loaded ? "" : " — 'load' has NOT fired, so the basemap is stuck, not merely empty."));
+      });
+      // Catch the stuck-loading case the app also has: if 'load' never fires,
+      // the real app shows "Loading map…" forever and reads as blank.
+      setTimeout(function () {
+        if (!loaded) set("bad", "✗ 'load' did not fire within 15s — the basemap is STUCK (worker/style/version/network), not just empty. Check the console for maplibre worker errors and the network tab for tile requests.");
+      }, 15000);
+
+      document.getElementById("marker").addEventListener("click", function () {
+        if (!loaded) { set("muted", "Wait for the basemap to load first."); return; }
+        var el = document.createElement("div");
+        el.style.cssText = "width:18px;height:18px;border-radius:9999px;background:#b91c1c;border:2px solid #fff;box-shadow:0 1px 6px rgba(0,0,0,.4)";
+        new maplibregl.Marker({ element: el }).setLngLat([72.8777, 19.076]).addTo(map);
+        set("ok", "✓ Marker added over Mumbai — marker rendering works independently of any stored coordinate.");
+      });
+    } catch (err) {
+      set("bad", "✗ MapLibre 6.6.0 init threw: " + err + " — this would show the app's 'Basemap unavailable' fallback, not a blank canvas.");
+    }
   }
 </script>
 </body>

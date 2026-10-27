@@ -6,7 +6,7 @@ import {
   IN_FLIGHT_STATUSES,
   STALE_AFTER_MINUTES,
 } from "@/lib/admin/jobHealth";
-import { tallyDataClasses } from "@/lib/admin/testData";
+import { tallyDataClasses, isConfirmedTest } from "@/lib/admin/testData";
 
 export const dynamic = "force-dynamic";
 
@@ -46,6 +46,26 @@ export async function GET() {
       startOfToday.getTime() - 7 * 24 * 60 * 60 * 1000,
     );
 
+    // ── Test-data separation (read-only, classification only) ────────────────
+    // Identify confirmed-test/demo clinics BEFORE the count batch so their
+    // synthetic patients, doctors and assessments can be excluded from the
+    // default real-business KPIs. One trivial 16-row read; it also gives the
+    // real/test/uncertain tally and the true all-clinic total for free.
+    //
+    // `notTest` is built so it SPREADS TO NOTHING when there is no confirmed
+    // test clinic (e.g. production): the where-clauses are then byte-identical
+    // to before, which is why the existing dashboard tests pass unchanged.
+    const clinicIdentities = await prisma.clinic.findMany({
+      where: { deletedAt: null },
+      select: { id: true, name: true, slug: true },
+    });
+    const dataClasses = tallyDataClasses(clinicIdentities);
+    const testClinicIds = clinicIdentities.filter(isConfirmedTest).map((c) => c.id);
+    const notTest = testClinicIds.length > 0 ? { notIn: testClinicIds } : undefined;
+    // Spread into a where to scope it to real-business clinics; `{}` when none.
+    const byClinic = notTest ? { clinicId: notTest } : {};
+    const byClinicId = notTest ? { id: notTest } : {};
+
     // Deployed Prisma uses pgbouncer with connection_limit=1 (see DATABASE_URL).
     // A Promise.all of 12 independent queries starves that single connection
     // and blows the lambda timeout. $transaction runs the whole batch inside
@@ -69,33 +89,35 @@ export async function GET() {
       doctorsAccessReady,
       assessmentsTotal,
       clinicsAccessReady,
-      clinicIdentities,
     ] = await prisma.$transaction([
-      prisma.clinic.count({ where: { deletedAt: null } }),
-      prisma.clinic.count({ where: { deletedAt: null, status: "ACTIVE" } }),
-      prisma.doctor.count({ where: { deletedAt: null } }),
-      prisma.patient.count({ where: { deletedAt: null } }),
+      // Clinic status counts, scoped to real-business clinics (test excluded).
+      prisma.clinic.count({ where: { deletedAt: null, ...byClinicId } }),
+      prisma.clinic.count({ where: { deletedAt: null, status: "ACTIVE", ...byClinicId } }),
+      prisma.doctor.count({ where: { deletedAt: null, ...byClinic } }),
+      prisma.patient.count({ where: { deletedAt: null, ...byClinic } }),
       prisma.assessment.count({
-        where: { deletedAt: null, submittedAt: { gte: startOfToday } },
+        where: { deletedAt: null, submittedAt: { gte: startOfToday }, ...byClinic },
       }),
       prisma.assessment.count({
         where: {
           deletedAt: null,
           status: "COMPLETED",
           completedAt: { gte: startOfToday },
+          ...byClinic,
         },
       }),
       prisma.assessment.count({
-        where: { deletedAt: null, submittedAt: { gte: startOfMonth } },
+        where: { deletedAt: null, submittedAt: { gte: startOfMonth }, ...byClinic },
       }),
       prisma.assessment.count({
         where: {
           deletedAt: null,
           submittedAt: { gte: startOfLastMonth, lt: lastMonthCutoff },
+          ...byClinic,
         },
       }),
       prisma.clinic.findMany({
-        where: { deletedAt: null },
+        where: { deletedAt: null, ...byClinicId },
         take: 5,
         orderBy: { createdAt: "desc" },
         select: {
@@ -108,7 +130,7 @@ export async function GET() {
         },
       }),
       prisma.doctor.findMany({
-        where: { deletedAt: null },
+        where: { deletedAt: null, ...byClinic },
         take: 5,
         orderBy: { createdAt: "desc" },
         select: {
@@ -122,7 +144,7 @@ export async function GET() {
         },
       }),
       prisma.assessment.findMany({
-        where: { deletedAt: null },
+        where: { deletedAt: null, ...byClinic },
         take: 5,
         orderBy: { submittedAt: "desc" },
         select: {
@@ -133,18 +155,21 @@ export async function GET() {
           clinic: { select: { name: true } },
         },
       }),
-      // Both sides of the health rate share one 7-day window.
+      // Both sides of the health rate share one 7-day window. Test clinics are
+      // excluded so synthetic failures don't distort the real platform health.
       prisma.assessment.count({
         where: {
           deletedAt: null,
           status: "FAILED",
           createdAt: { gte: startOfHealthWindow },
+          ...byClinic,
         },
       }),
       prisma.assessment.count({
         where: {
           deletedAt: null,
           createdAt: { gte: startOfHealthWindow },
+          ...byClinic,
         },
       }),
       // PARTIAL_FAILURE was scoring as success. The patient's record is
@@ -155,6 +180,7 @@ export async function GET() {
           deletedAt: null,
           status: "PARTIAL_FAILURE",
           createdAt: { gte: startOfHealthWindow },
+          ...byClinic,
         },
       }),
       // Stalled mid-pipeline: in an actively-progressing status with no write
@@ -168,12 +194,14 @@ export async function GET() {
           updatedAt: {
             lt: new Date(now.getTime() - STALE_AFTER_MINUTES * 60_000),
           },
+          ...byClinic,
         },
       }),
       // ── Command-centre additions (read-only counts) ───────────────────────
       // Access-ready = an active, non-deleted doctor whose auth identity is
       // linked (supabaseUserId OR supabasePhoneUserId). This is "provisioned to
-      // sign in", NOT proof of a successful live OTP/OAuth login.
+      // sign in", NOT proof of a successful live OTP/OAuth login. Test clinics'
+      // doctors are excluded — a provisioned QA doctor is not real readiness.
       prisma.doctor.count({
         where: {
           isActive: true,
@@ -182,16 +210,18 @@ export async function GET() {
             { supabaseUserId: { not: null } },
             { supabasePhoneUserId: { not: null } },
           ],
+          ...byClinic,
         },
       }),
-      // Total patient assessments (volume), excluding soft-deleted.
-      prisma.assessment.count({ where: { deletedAt: null } }),
+      // Total patient assessments (volume), excluding soft-deleted and test.
+      prisma.assessment.count({ where: { deletedAt: null, ...byClinic } }),
       // ACTIVE clinics that have at least one access-ready doctor. Used only for
       // the readiness summary; it is NOT a claim of operational verification.
       prisma.clinic.count({
         where: {
           deletedAt: null,
           status: "ACTIVE",
+          ...byClinicId,
           doctors: {
             some: {
               isActive: true,
@@ -204,18 +234,7 @@ export async function GET() {
           },
         },
       }),
-      // Identities only (no counts): classified in JS into real/test/uncertain
-      // so test/demo rows can be separated from real-business totals. 16 rows
-      // today; a trivial read inside the existing single transaction.
-      prisma.clinic.findMany({
-        where: { deletedAt: null },
-        select: { id: true, name: true, slug: true },
-      }),
     ]);
-
-    // Test-data separation. Classification only — nothing is written, and only
-    // CONFIRMED-test rows (explicit markers) are counted out of the real total.
-    const dataClasses = tallyDataClasses(clinicIdentities);
 
     // Retained for existing consumers. Note the `: 100` branch: with no
     // previous-period activity there is no percentage change, and 100 is an
@@ -281,13 +300,16 @@ export async function GET() {
         // activity rows. clinicsActive is the DATABASE ACTIVE count above.
         clinicsAccessReady,
         clinicsOperationallyVerified: null as number | null,
-        // Test-data separation (additive; existing fields are unchanged).
-        // clinicsTotal still counts every non-deleted clinic; these name how
-        // many of those are real vs test/demo vs not-yet-classified so the UI
-        // can show a real-business total instead of a mixed one.
+        // Test-data separation. Every count ABOVE now excludes confirmed
+        // test/demo clinics by default — clinicsTotal/clinicsActive, the doctor,
+        // patient and assessment volumes, access-ready and health all describe
+        // the real-business network. These fields expose the split and the true
+        // all-clinic total so nothing is hidden and the UI can note what was
+        // excluded. `clinicsAllIncludingTest` counts every non-deleted clinic.
         clinicsReal: dataClasses.real,
         clinicsTestDemo: dataClasses.test,
         clinicsUncertain: dataClasses.uncertain,
+        clinicsAllIncludingTest: clinicIdentities.length,
       },
       // The honest health object: band, reasons, and the counts behind them.
       // Additive — `metrics.platformHealth` is untouched for existing callers.

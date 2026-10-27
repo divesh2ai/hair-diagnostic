@@ -39,6 +39,7 @@ type Payload = {
     clinicsReal: number;
     clinicsTestDemo: number;
     clinicsUncertain: number;
+    clinicsAllIncludingTest: number;
   };
   health?: HealthPayload;
 };
@@ -112,6 +113,13 @@ export default function AdminDashboardPage() {
             · {m.doctorsTotal} {m.doctorsTotal === 1 ? "doctor" : "doctors"} ·{" "}
             {m.patientsTotal} {m.patientsTotal === 1 ? "patient" : "patients"}
           </p>
+          {m.clinicsTestDemo > 0 && (
+            <p className="mt-0.5 text-xs text-muted-foreground">
+              Real-business figures — {m.clinicsTestDemo} confirmed test/demo{" "}
+              {m.clinicsTestDemo === 1 ? "clinic is" : "clinics are"} excluded from
+              these KPIs.
+            </p>
+          )}
         </div>
         <Link href="/admin/clinics/new">
           <Button>
@@ -124,11 +132,11 @@ export default function AdminDashboardPage() {
       {/* ── Four command-centre metrics ─────────────────────────────────── */}
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         <MiniStat
-          label="Total clinics"
+          label="Clinics (real)"
           value={m.clinicsTotal}
           hint={
             m.clinicsTestDemo > 0
-              ? `${m.clinicsReal + m.clinicsUncertain} real · ${m.clinicsTestDemo} test/demo`
+              ? `${m.clinicsAllIncludingTest} total · ${m.clinicsTestDemo} test/demo excluded`
               : `${m.clinicsActive} active`
           }
         />
