@@ -1,108 +1,135 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import {
-  Plus,
-} from "lucide-react";
+import { Plus, ArrowRight } from "lucide-react";
 import { PageContainer } from "@/components/app-shell";
-import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
-import { StatusBadge, toneForAssessmentStatus } from "@/components/ui/status-badge";
+import { SearchBox } from "@/components/ui/search-box";
+import { StatusBadge } from "@/components/ui/status-badge";
 import { Avatar } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { LoadingState, ErrorState } from "@/components/ui/states";
-import {
-  NeedsAttention,
-  MiniStat,
-  ComparisonStat,
-  type HealthPayload,
-} from "@/components/admin/DashboardSections";
-import { conversionPercent } from "@/lib/admin/growth";
-import { IndiaClinicNetwork } from "@/components/admin/IndiaClinicNetwork";
+import { MiniStat } from "@/components/admin/DashboardSections";
 
-type Payload = {
-  metrics: {
-    clinicsTotal: number;
-    clinicsActive: number;
-    doctorsTotal: number;
-    patientsTotal: number;
-    assessmentsToday: number;
-    assessmentsCompletedToday: number;
-    monthlyGrowth: number;
-    // The raw comparison pair behind `monthlyGrowth`. Optional so an older
-    // cached payload degrades to "no comparison available" rather than
-    // rendering NaN. Month-to-date against the same elapsed slice of last
-    // month — the API cuts both windows at the same offset.
-    assessmentsThisMonth?: number;
-    assessmentsLastMonth?: number;
-    platformHealth: number;
-  };
-  // The honest health object. Optional so an older cached payload still
-  // renders rather than crashing the page.
-  health?: HealthPayload;
-  recent: {
-    clinics: Array<{
-      id: string;
-      name: string;
-      slug: string;
-      logoUrl: string | null;
-      status: string;
-      createdAt: string;
-    }>;
-    doctors: Array<{
-      id: string;
-      name: string;
-      email: string;
-      avatarUrl: string | null;
-      clinicName: string;
-      createdAt: string;
-    }>;
-    assessments: Array<{
-      id: string;
-      status: string;
-      submittedAt: string | null;
-      patientName: string;
-      clinicName: string;
-    }>;
-  };
+// ── Phase 1: Clinic Activation Overview ──────────────────────────────────────
+// Deliberately simplified. The seven-section command centre and the MapLibre
+// India network have been removed from the main dashboard for Phase 1 — the
+// geographic code is preserved (src/components/admin/IndiaClinicNetwork.tsx,
+// /api/admin/network) for a future release once the network passes ~50 clinics.
+// This page answers one question for the Super Admin: which clinics are
+// registered, and which are switched on.
+//
+// Counts come from the existing authenticated /api/admin/dashboard (clinicsTotal
+// and clinicsActive); the register comes from the existing /api/admin/clinics.
+// No new tables, no new endpoints, no clinic records are modified here.
+//
+// Definitions (must not drift):
+//   • Active   = Clinic.status === "ACTIVE"
+//   • Inactive = non-archived clinic whose status is not ACTIVE (e.g. SUSPENDED)
+//   • Archived / soft-deleted (deletedAt set) is excluded by the APIs above and
+//     never counts as either Active or Inactive.
+// Activation here is a DATABASE state only. It does NOT assert the clinic is
+// clinically verified or that a doctor can log in — see the caveat rendered
+// below, which must stay.
+
+type DashboardMetrics = {
+  clinicsTotal: number;
+  clinicsActive: number;
 };
 
-type Funnel = {
-  counts: { clinics: number; doctors: number };
-  funnel: {
-    started: number;
-    completed: number;
-    approved: number;
-    orders: number;
-    ordersActive: number;
-  };
-  leaks: { editsRequested: number; rejected: number };
+type ClinicRow = {
+  id: string;
+  name: string;
+  slug: string;
+  logoUrl: string | null;
+  status: string;
+  createdAt: string;
 };
 
-export default function AdminDashboardPage() {
-  const [data, setData] = useState<Payload | null>(null);
-  const [funnel, setFunnel] = useState<Funnel | null>(null);
+type Filter = "all" | "active" | "inactive";
+
+// A clinic is active iff its status is exactly ACTIVE. Everything else returned
+// by /api/admin/clinics (which already excludes archived/soft-deleted rows) is
+// inactive. ARCHIVED is excluded here too, defensively, so a stray archived row
+// can never be rendered or counted.
+function isActive(status: string): boolean {
+  return status === "ACTIVE";
+}
+function isArchived(status: string): boolean {
+  return status === "ARCHIVED";
+}
+
+export default function AdminClinicActivationPage() {
+  const [metrics, setMetrics] = useState<DashboardMetrics | null>(null);
+  const [clinics, setClinics] = useState<ClinicRow[] | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [search, setSearch] = useState("");
+  const [filter, setFilter] = useState<Filter>("all");
 
   useEffect(() => {
+    // Authoritative counts. The register below can corroborate them, but these
+    // are the numbers the dashboard reports.
     fetch("/api/admin/dashboard", { cache: "no-store" })
       .then((r) => (r.ok ? r.json() : Promise.reject(r.statusText)))
-      .then(setData)
+      .then((d) =>
+        setMetrics({
+          clinicsTotal: d.metrics.clinicsTotal,
+          clinicsActive: d.metrics.clinicsActive,
+        }),
+      )
       .catch((e) => setError(String(e)));
-    fetch("/api/admin/funnel", { cache: "no-store" })
-      .then((r) => (r.ok ? r.json() : null))
-      .then(setFunnel)
-      .catch(() => setFunnel(null));
+
+    // The full non-archived register. Phase 1 is < 50 clinics by design, so a
+    // single page (limit 200) holds the whole list and search/filter happen
+    // client-side. "Inactive" spans several statuses, which the single-equals
+    // `status` query param can't express, so we fetch all and classify here.
+    fetch("/api/admin/clinics?limit=200", { cache: "no-store" })
+      .then((r) => (r.ok ? r.json() : Promise.reject(r.statusText)))
+      .then((d) =>
+        setClinics(
+          (d.rows as ClinicRow[]).filter((c) => !isArchived(c.status)),
+        ),
+      )
+      .catch((e) => setError(String(e)));
   }, []);
+
+  // Counts: prefer the dashboard's authoritative numbers; fall back to the
+  // register if the dashboard call failed but the list succeeded.
+  const counts = useMemo(() => {
+    if (metrics) {
+      return {
+        total: metrics.clinicsTotal,
+        active: metrics.clinicsActive,
+        inactive: Math.max(metrics.clinicsTotal - metrics.clinicsActive, 0),
+      };
+    }
+    if (clinics) {
+      const active = clinics.filter((c) => isActive(c.status)).length;
+      return { total: clinics.length, active, inactive: clinics.length - active };
+    }
+    return null;
+  }, [metrics, clinics]);
+
+  const visible = useMemo(() => {
+    if (!clinics) return [];
+    const q = search.trim().toLowerCase();
+    return clinics.filter((c) => {
+      if (filter === "active" && !isActive(c.status)) return false;
+      if (filter === "inactive" && isActive(c.status)) return false;
+      if (q && !c.name.toLowerCase().includes(q) && !c.slug.toLowerCase().includes(q))
+        return false;
+      return true;
+    });
+  }, [clinics, search, filter]);
 
   if (error) {
     return (
       <PageContainer>
-        <ErrorState title="Couldn't load dashboard" description={error} />
+        <ErrorState title="Couldn't load clinic overview" description={error} />
       </PageContainer>
     );
   }
-  if (!data) {
+  if (!counts || !clinics) {
     return (
       <PageContainer>
         <LoadingState />
@@ -110,23 +137,17 @@ export default function AdminDashboardPage() {
     );
   }
 
-  const m = data.metrics;
-
   return (
-    <PageContainer className="space-y-7">
-      {/* ── Header ────────────────────────────────────────────────────────
-          Four equally-weighted buttons used to sit here: Needs attention,
-          Create clinic, View clinics, Audit. Three were redundant — Needs
-          Attention is now the first section of this page, and Audit and
-          Clinics are one click away in the sidebar. A header full of
-          same-weight buttons tells the operator nothing about what matters. */}
+    <PageContainer className="space-y-6">
+      {/* ── Header ──────────────────────────────────────────────────────── */}
       <div className="flex items-end justify-between gap-4 flex-wrap">
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight">Platform overview</h1>
+          <h1 className="text-2xl font-semibold tracking-tight">
+            Clinic activation
+          </h1>
           <p className="text-sm text-muted-foreground">
-            {m.clinicsActive} active {m.clinicsActive === 1 ? "clinic" : "clinics"} ·{" "}
-            {m.doctorsTotal} {m.doctorsTotal === 1 ? "doctor" : "doctors"} ·{" "}
-            {m.patientsTotal} {m.patientsTotal === 1 ? "patient" : "patients"}
+            {counts.active} of {counts.total}{" "}
+            {counts.total === 1 ? "clinic" : "clinics"} active
           </p>
         </div>
         <Link href="/admin/clinics/new">
@@ -137,270 +158,117 @@ export default function AdminDashboardPage() {
         </Link>
       </div>
 
-      {/* ── 1. NEEDS ATTENTION ────────────────────────────────────────────
-          The most important region of the page, and the reason Action Centre
-          no longer exists as a separate destination. An operator should never
-          have to navigate somewhere else to discover that something is broken. */}
-      <NeedsAttention health={data.health} />
+      {/* ── Activation counts ───────────────────────────────────────────── */}
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+        <MiniStat label="Registered clinics" value={counts.total} hint="non-archived" />
+        <MiniStat label="Active" value={counts.active} hint="status ACTIVE" />
+        <MiniStat label="Inactive" value={counts.inactive} hint="e.g. suspended" />
+      </div>
 
-      {/* ── 2. TODAY ──────────────────────────────────────────────────────
-          Only metrics with definitions we can defend. */}
-      <section aria-labelledby="today-heading">
-        <h2 id="today-heading" className="mb-2 text-sm font-semibold tracking-tight">
-          Today
-        </h2>
-        {/* Only metrics that are genuinely about TODAY.
-            Doctor approvals and kit orders were shown here first, sourced from
-            the funnel — but those are all-time totals, and an all-time number
-            under a heading that says "Today" is misleading however it is
-            captioned. The admin dashboard API exposes no per-day approval or
-            order counts, and inventing them is not an option, so this section
-            says less and means it. The all-time view is the funnel below.
+      {/* ── Honesty caveat (must stay) ──────────────────────────────────────
+          "Active" is a database status only. It must never be read as a
+          clinical sign-off or as proof a doctor can log in. */}
+      <p className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900 dark:border-amber-900/40 dark:bg-amber-950/30 dark:text-amber-200">
+        Activation reflects the clinic&rsquo;s database status only. It is{" "}
+        <strong>not</strong> a clinical verification and does not confirm that a
+        doctor can log in.
+      </p>
 
-            "Stalled now" was the third card here and has been removed for two
-            reasons. It is not a today number — jobHealth counts stalled work
-            across all time on purpose, so a job wedged last week sat under a
-            heading claiming to describe the day. And Needs Attention above
-            already reports it in both directions: as a row with somewhere to
-            go when there is stalled work, and as "no work is stalled" when
-            there is not. Two cards that are true beats three that are not. */}
-        {/* Same four-column grid as Network below, so the two honest cards sit on
-            the same column rhythm as the four beneath them rather than at
-            their own width. Two of four columns filled is a deliberate-looking
-            row; two cards at a different size is a misalignment. */}
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-          <MiniStat label="Assessments started" value={m.assessmentsToday} />
-          <MiniStat label="Completed" value={m.assessmentsCompletedToday} />
-        </div>
-      </section>
-
-      {/* ── 3. INDIA CLINIC NETWORK ───────────────────────────────────────
-          Where the network is, above the numeric rollups rather than below
-          the funnel. "Which clinic, and where" is the question the counts
-          underneath are an abstraction of, so it comes first. */}
-      <IndiaClinicNetwork />
-
-      {/* ── 4. NETWORK OVERVIEW ───────────────────────────────────────────
-          Context, not urgency. Deliberately lighter than Needs Attention:
-          seven equally-sized KPI cards previously made a stalled pipeline and
-          a patient count look like the same class of information. */}
-      <section aria-labelledby="network-heading">
-        <div className="mb-2 flex flex-wrap items-baseline justify-between gap-2">
-          <h2 id="network-heading" className="text-sm font-semibold tracking-tight">
-            Network
+      {/* ── Register: search + Active/Inactive filter ───────────────────── */}
+      <section aria-labelledby="register-heading" className="space-y-3">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <h2 id="register-heading" className="text-sm font-semibold tracking-tight">
+            Clinics
           </h2>
           <Link
             href="/admin/clinics"
-            className="rounded-sm text-xs text-muted-foreground underline-offset-2 hover:text-foreground hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
+            className="inline-flex items-center gap-1 rounded-sm text-xs text-muted-foreground underline-offset-2 hover:text-foreground hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
           >
-            View clinics
+            Manage clinics
+            <ArrowRight className="size-3" />
           </Link>
         </div>
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-          <MiniStat
-            label="Active clinics"
-            value={m.clinicsActive}
-            hint={`${m.clinicsTotal} total`}
+
+        <div className="flex flex-wrap items-center gap-2">
+          <SearchBox
+            value={search}
+            onChange={setSearch}
+            placeholder="Search by clinic name"
+            className="min-w-[260px] flex-1"
           />
-          <MiniStat label="Doctors" value={m.doctorsTotal} />
-          <MiniStat label="Patients" value={m.patientsTotal} />
-          {/* ── Growth ───────────────────────────────────────────────────────
-              This card used to read "+450%", which was arithmetically correct
-              and operationally meaningless: eleven assessments against a base
-              of two. At this network's scale one extra patient moves the
-              percentage by tens of points, so the absolute change leads and
-              the percentage survives as context beside its denominator. The
-              rule, and why the threshold is what it is, live in
-              lib/admin/growth. Assessments arriving is the platform working,
-              so a decline is a real operational signal, not just a smaller
-              number — hence higherIsBetter rather than neutral. */}
-          {m.assessmentsThisMonth !== undefined &&
-          m.assessmentsLastMonth !== undefined ? (
-            <ComparisonStat
-              label="Assessments this month"
-              current={m.assessmentsThisMonth}
-              previous={m.assessmentsLastMonth}
-              unit="assessment"
-              direction="higherIsBetter"
-            />
-          ) : (
-            // An older cached payload has the percentage but not the counts
-            // behind it. Rather than show a figure we cannot qualify, say so.
-            <MiniStat label="Assessments this month" value="—" hint="comparison unavailable" />
-          )}
+          <div
+            role="group"
+            aria-label="Filter by activation"
+            className="inline-flex rounded-lg border border-border bg-background p-0.5 text-sm font-medium"
+          >
+            {(
+              [
+                ["all", "All"],
+                ["active", "Active"],
+                ["inactive", "Inactive"],
+              ] as [Filter, string][]
+            ).map(([value, label]) => (
+              <button
+                key={value}
+                type="button"
+                onClick={() => setFilter(value)}
+                aria-pressed={filter === value}
+                className={`rounded-md px-3 py-1 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-ring/50 ${
+                  filter === value
+                    ? "bg-foreground text-background"
+                    : "text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
         </div>
-      </section>
 
-      {funnel && (
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base">Conversion funnel</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <FunnelStrip funnel={funnel.funnel} leaks={funnel.leaks} />
-          </CardContent>
-        </Card>
-      )}
-
-      <div className="grid lg:grid-cols-3 gap-4">
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base">New clinics</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            {data.recent.clinics.length === 0 && (
-              <p className="text-sm text-muted-foreground">No recent clinics.</p>
-            )}
-            {data.recent.clinics.map((c) => (
+        <div className="divide-y divide-border overflow-hidden rounded-lg border border-border">
+          {visible.length === 0 ? (
+            <p className="px-4 py-8 text-center text-sm text-muted-foreground">
+              {clinics.length === 0
+                ? "No clinics registered yet."
+                : "No clinics match this search or filter."}
+            </p>
+          ) : (
+            visible.map((c) => (
               <Link
                 key={c.id}
                 href={`/admin/clinics/${c.id}/edit`}
-                className="flex items-center gap-3 rounded-md p-2 -mx-2 hover:bg-muted"
+                className="flex items-center gap-3 px-4 py-3 hover:bg-muted focus:outline-none focus-visible:bg-muted"
               >
                 {c.logoUrl ? (
                   // eslint-disable-next-line @next/next/no-img-element
                   <img
                     src={c.logoUrl}
                     alt=""
-                    className="size-8 rounded-md object-cover"
+                    className="size-9 rounded-md object-cover"
                   />
                 ) : (
                   <Avatar name={c.name} size="sm" />
                 )}
-                <div className="flex-1 min-w-0">
-                  <div className="text-sm font-medium truncate">{c.name}</div>
-                  <div className="text-xs text-muted-foreground truncate">{c.slug}</div>
+                <div className="min-w-0 flex-1">
+                  <div className="truncate text-sm font-medium">{c.name}</div>
+                  <div className="truncate text-xs text-muted-foreground">
+                    {c.slug}
+                  </div>
                 </div>
-                <StatusBadge tone={c.status === "ACTIVE" ? "success" : "neutral"}>
-                  {c.status}
+                <StatusBadge tone={isActive(c.status) ? "success" : "neutral"}>
+                  {isActive(c.status) ? "Active" : "Inactive"}
                 </StatusBadge>
               </Link>
-            ))}
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base">New doctors</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            {data.recent.doctors.length === 0 && (
-              <p className="text-sm text-muted-foreground">No recent doctors.</p>
-            )}
-            {data.recent.doctors.map((d) => (
-              <div key={d.id} className="flex items-center gap-3">
-                <Avatar name={d.name} src={d.avatarUrl} size="sm" />
-                <div className="flex-1 min-w-0">
-                  <div className="text-sm font-medium truncate">{d.name}</div>
-                  <div className="text-xs text-muted-foreground truncate">
-                    {d.clinicName}
-                  </div>
-                </div>
-              </div>
-            ))}
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base">Recent assessments</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            {data.recent.assessments.length === 0 && (
-              <p className="text-sm text-muted-foreground">No recent assessments.</p>
-            )}
-            {data.recent.assessments.map((a) => (
-              <div key={a.id} className="flex items-center gap-3">
-                <div className="flex-1 min-w-0">
-                  <div className="text-sm font-medium truncate">
-                    {a.patientName}
-                  </div>
-                  <div className="text-xs text-muted-foreground truncate">
-                    {a.clinicName}
-                  </div>
-                </div>
-                <StatusBadge tone={toneForAssessmentStatus(a.status)}>
-                  {a.status}
-                </StatusBadge>
-              </div>
-            ))}
-          </CardContent>
-        </Card>
-      </div>
-    </PageContainer>
-  );
-}
-
-function FunnelStrip({
-  funnel,
-  leaks,
-}: {
-  funnel: Funnel["funnel"];
-  leaks: Funnel["leaks"];
-}) {
-  const stages: { label: string; count: number; tone: string }[] = [
-    { label: "Started", count: funnel.started, tone: "bg-stone-100 text-slate-800" },
-    { label: "Completed", count: funnel.completed, tone: "bg-teal-100 text-teal-900" },
-    { label: "Doctor approved", count: funnel.approved, tone: "bg-indigo-100 text-indigo-900" },
-    { label: "Kit orders", count: funnel.orders, tone: "bg-amber-100 text-amber-900" },
-    { label: "Active orders", count: funnel.ordersActive, tone: "bg-emerald-100 text-emerald-900" },
-  ];
-  // Same low-base rule as the growth card, for the same reason. These are
-  // conversion ratios rather than period-over-period growth, but they break at
-  // small samples identically — and the old code divided by `Math.max(1, prev)`,
-  // which turns an empty preceding stage into a fabricated percentage of the
-  // numerator. Below the threshold the counts speak for themselves.
-  const top = stages[0].count;
-  return (
-    <div className="space-y-3">
-      <div className="grid gap-2 sm:grid-cols-5">
-        {stages.map((s, i) => {
-          const prev = i === 0 ? null : stages[i - 1].count;
-          // The first stage IS the denominator, so "100% of start" restated the
-          // card rather than adding to it.
-          const isStart = i === 0;
-          // For the second stage the previous stage IS the start, so both
-          // ratios are the same number and printing them twice says nothing
-          // the first one did not.
-          const prevIsTop = prev !== null && prev === top;
-          const pctFromTop =
-            isStart || prevIsTop ? null : conversionPercent(s.count, top);
-          const pctFromPrev = prev === null ? null : conversionPercent(s.count, prev);
-          const rates = [
-            pctFromPrev != null
-              ? `${pctFromPrev}% ${prevIsTop ? "of start" : "vs prev"}`
-              : null,
-            pctFromTop != null ? `${pctFromTop}% of start` : null,
-          ].filter(Boolean);
-          return (
-            <div key={s.label} className={`rounded-xl ${s.tone} px-3 py-2.5`}>
-              <div className="text-[10px] uppercase tracking-wider opacity-80">{s.label}</div>
-              <div className="font-serif text-2xl leading-tight tabular-nums">{s.count.toLocaleString()}</div>
-              <div className="mt-1 text-[10px] opacity-80">
-                {isStart
-                  ? "start of funnel"
-                  : rates.length > 0
-                    ? rates.join(" · ")
-                    : `of ${prev!.toLocaleString()} at the previous stage`}
-              </div>
-            </div>
-          );
-        })}
-      </div>
-      <p className="text-[11px] text-muted-foreground">
-        Assessments started → completed → doctor-approved → kit order intent → active (not
-        cancelled). Excludes soft-deleted assessments.
-        {(leaks.editsRequested > 0 || leaks.rejected > 0) && (
-          <>
-            {" "}
-            <span className="text-amber-700">
-              {leaks.editsRequested.toLocaleString()} sent back for edits,{" "}
-              {leaks.rejected.toLocaleString()} rejected
-            </span>{" "}
-            — counted as leaks, not as approvals.
-          </>
+            ))
+          )}
+        </div>
+        {visible.length > 0 && (
+          <p className="text-xs text-muted-foreground">
+            Showing {visible.length} of {clinics.length} registered{" "}
+            {clinics.length === 1 ? "clinic" : "clinics"}.
+          </p>
         )}
-      </p>
-    </div>
+      </section>
+    </PageContainer>
   );
 }
