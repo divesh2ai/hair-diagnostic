@@ -1,10 +1,12 @@
 // Super Admin information architecture — the sidebar contract.
 //
-// The sidebar had grown to ten top-level entries that described the system's
-// internal services rather than the operator's jobs. This locks the
-// consolidated shape so a future change has to be deliberate rather than
-// accidental: destinations creep back one at a time, and each one always looks
-// individually reasonable.
+// Locks the approved seven-SECTION command-centre IA so a future change has to
+// be deliberate rather than accidental. The nav exposes nine destinations
+// across four visual groups: Overview; a "Clinics & Network" group (the clinic
+// directory + the India network map, previously reachable only via the
+// dashboard embed's "View full" link); a tight block of the four standalone
+// primaries (Doctors & Access, Operations, Clinical Governance, Audit &
+// Security); and a "Settings" group that also carries Help & Support.
 //
 // Runner: JEST. `npm test` is vitest and will mis-report this file.
 //   npx jest tests/admin/super-admin-nav.test.ts
@@ -19,20 +21,29 @@ const nav = navForRole("SUPER_ADMIN");
 const hrefs = nav.flatMap((s) => s.items.map((i) => i.href));
 
 describe("Super Admin primary navigation", () => {
-  it("exposes exactly seven destinations", () => {
-    expect(hrefs).toHaveLength(7);
+  it("exposes exactly nine destinations", () => {
+    expect(hrefs).toHaveLength(9);
   });
 
   it("exposes exactly the agreed destinations, in order", () => {
     expect(hrefs).toEqual([
       "/admin",
       "/admin/clinics",
+      "/admin/network",
       "/admin/people",
       "/admin/operations",
       "/admin/clinical-governance",
       "/admin/audit",
       "/admin/settings",
+      "/admin/support",
     ]);
+  });
+
+  it("surfaces the India clinic network map as a destination", () => {
+    // The map was implemented and embedded on the dashboard, but had no
+    // sidebar entry — reachable only via the embed's "View full" link. This
+    // locks it in as a first-class destination.
+    expect(hrefs).toContain("/admin/network");
   });
 
   it.each([
@@ -44,13 +55,34 @@ describe("Super Admin primary navigation", () => {
     expect(hrefs).not.toContain(href);
   });
 
-  it("groups destinations rather than listing ten flat items", () => {
-    // Five groups: unlabelled Dashboard, Network, Operations, Governance,
-    // System. The first is intentionally unlabelled — a single item does not
-    // need a heading above it.
-    expect(nav).toHaveLength(5);
+  it("groups the nine destinations into the four command-centre blocks", () => {
+    // [0] Overview (unlabelled — a single item needs no heading)
+    // [1] "Clinics & Network"  (Clinics + India Network)
+    // [2] the four standalone primaries (unlabelled, one tight block)
+    // [3] "Settings"           (Platform Settings + Help & Support)
+    expect(nav).toHaveLength(4);
     expect(nav[0]!.labelKey).toBeNull();
-    expect(nav.slice(1).every((s) => s.labelKey !== null)).toBe(true);
+    expect(nav[0]!.items.map((i) => i.href)).toEqual(["/admin"]);
+
+    expect(nav[1]!.labelKey).toBe("nav.sectionNetwork");
+    expect(nav[1]!.items.map((i) => i.href)).toEqual([
+      "/admin/clinics",
+      "/admin/network",
+    ]);
+
+    expect(nav[2]!.labelKey).toBeNull();
+    expect(nav[2]!.items.map((i) => i.href)).toEqual([
+      "/admin/people",
+      "/admin/operations",
+      "/admin/clinical-governance",
+      "/admin/audit",
+    ]);
+
+    // The Settings group carries both Platform Settings and Help & Support.
+    expect(nav[3]!.items.map((i) => i.href)).toEqual([
+      "/admin/settings",
+      "/admin/support",
+    ]);
   });
 
   it("keeps every group non-empty", () => {
