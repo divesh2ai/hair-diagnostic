@@ -125,6 +125,18 @@ export const AUDIT_ACTION_GROUPS = {
     // DOCTOR_PHONE_LOGIN_LINKED, which is a first login onto an unlinked row.
     "DOCTOR_PHONE_IDENTITY_ATTACHED",
   ],
+  // Operational recovery actions taken from the Super Admin command centre.
+  // Re-driving a wedged assessment is a privileged, data-affecting action, so
+  // every sweep and every individual requeue is recorded — the recovery path
+  // only re-enters the idempotent pipeline, it never closes or deletes a job,
+  // and the audit trail is how that stays accountable.
+  Operations: [
+    // One sweep of the stalled-job recovery endpoint: the batch-level summary
+    // (how many were eligible, requeued, skipped).
+    "ASSESSMENT_RECOVERY_SWEEP",
+    // One stalled assessment handed back to resumeOrchestration() to re-drive.
+    "ASSESSMENT_RECOVERY_REQUEUED",
+  ],
 } as const;
 
 /** Flat list, in group order. */
