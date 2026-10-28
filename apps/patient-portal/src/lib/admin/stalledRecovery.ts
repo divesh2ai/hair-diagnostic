@@ -42,12 +42,28 @@ export type RecoveryCandidateRow = {
   status: string;
   /** Last write to the row. The pipeline touches this on every transition. */
   updatedAt: Date;
-  /** Completed recovery attempts so far. */
+  /**
+   * Total resume attempts recorded on the row — a SHARED budget. The
+   * orchestrator increments `retryCount` on every `resumeOrchestration()` from
+   * any path (an original failure retry, a force-regenerate, or a prior sweep),
+   * so a job that already consumed resumes elsewhere has correspondingly fewer
+   * left here. That is deliberate: the ceiling bounds TOTAL re-drives per row,
+   * not sweeps alone, so a chronically-failing job is not resumed without end.
+   */
   retryCount: number;
   /**
    * Phase-A lease expiry, when the row carries one. A value in the FUTURE
    * means a worker is (or very recently was) actively running this row, so it
    * must never be double-driven. Null/absent means no live owner.
+   *
+   * NOTE: the lease covers Phase A only. Phase-B statuses (GENERATING_REPORT /
+   * REPORT_GENERATING) carry no live lease, so a row genuinely still rendering
+   * Phase B past the stale window can look abandoned here. Re-driving it is
+   * safe but not free: the orchestrator guards Phase B with a status
+   * compare-and-set plus the unique `AIArtifact(assessmentId,type)` constraint,
+   * so a concurrent Phase B cannot double-write artifacts — the staleness
+   * threshold (an order of magnitude above a healthy run) is what keeps a
+   * live render from being treated as stuck.
    */
   phaseALeaseExpiresAt?: Date | null;
 };

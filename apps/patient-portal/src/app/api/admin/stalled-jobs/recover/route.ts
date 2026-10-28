@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server";
+import { NextResponse, after } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { assertSuperAdmin, handleAuthError } from "@/lib/auth";
 import { IN_FLIGHT_STATUSES, STALE_AFTER_MINUTES } from "@/lib/admin/jobHealth";
@@ -26,13 +26,35 @@ export const dynamic = "force-dynamic";
 //   • DRY-RUN BY DEFAULT. A plain POST (or { execute: false }) returns the plan
 //     — which rows would be re-driven and which are skipped and why — and
 //     writes NOTHING. Re-driving only happens on an explicit { execute: true }.
-//   • Never re-drives a row with a live lease (a worker is already on it), nor
-//     one past the retry ceiling. Both are reported as skipped, not touched.
+//   • Never re-drives a row with a live Phase-A lease (a worker is already on
+//     it), nor one past the retry ceiling. Both are reported as skipped.
 //   • Never deletes, closes, cancels, or fabricates a terminal state. The only
 //     write to a clinical row is the one resumeOrchestration() already makes.
-//   • Bounded: at most HARD_CAP rows are even considered per call.
-//   • Every requeue and the sweep summary are audited.
-const HARD_CAP = 100;
+//   • Bounded: the scan is capped (and truncation is reported, not hidden), and
+//     a single call re-drives at most EXECUTE_BATCH_CAP jobs.
+//   • Every requeue and the sweep summary are audited with the row's ACTUAL
+//     before/after status, so the trail never claims a requeue the orchestrator
+//     silently declined (retry ceiling / ineligible reclaim both no-op).
+//
+// ── Why execution is offloaded to after() ────────────────────────────────────
+// resumeOrchestration() sleeps a retry backoff and then runs the full Phase A +
+// Phase B pipeline (seconds to tens of seconds each). Awaiting that serially
+// for a batch inside the request would blow the function timeout and leave jobs
+// half-driven — the exact abandonment this endpoint exists to cure. So, exactly
+// like the sibling /api/assessment/orchestrate route, the HTTP response returns
+// as soon as the plan is computed and the re-drives run in an after() callback
+// (the platform keeps the lambda alive for its duration). The response reports
+// what was DISPATCHED; per-job success/failure lands in the audit log.
+//
+// A durable queue (Inngest is scaffolded but unwired) remains the right home for
+// large backlogs; this endpoint is deliberately bounded and is the operator's
+// manual recovery lever for the handful of jobs that slip through.
+
+/** How many stalled rows the scan reads. Above this we report truncation
+ *  rather than silently hiding the excess. */
+const SCAN_CAP = 200;
+/** Hard ceiling on how many jobs one call will re-drive, even if asked for more. */
+const EXECUTE_BATCH_CAP = 25;
 
 type RecoverBody = {
   execute?: boolean;
@@ -50,7 +72,7 @@ export async function POST(req: Request) {
       Number.isFinite(requestedLimit) && requestedLimit > 0
         ? requestedLimit
         : DEFAULT_RECOVERY_LIMIT,
-      HARD_CAP,
+      EXECUTE_BATCH_CAP,
     );
 
     const now = new Date();
@@ -65,16 +87,19 @@ export async function POST(req: Request) {
         updatedAt: { lt: staleBefore },
       },
       orderBy: { updatedAt: "asc" },
-      take: HARD_CAP,
+      take: SCAN_CAP,
       select: {
         id: true,
         status: true,
         updatedAt: true,
         retryCount: true,
         phaseALeaseExpiresAt: true,
-        clinic: { select: { id: true, name: true } },
       },
     });
+
+    // If the scan hit its cap there may be more stalled rows than we can see;
+    // say so rather than letting `scanned` imply the whole population.
+    const scanTruncated = rows.length === SCAN_CAP;
 
     const candidates: RecoveryCandidateRow[] = rows.map((r) => ({
       id: r.id,
@@ -89,67 +114,108 @@ export async function POST(req: Request) {
     if (!execute) {
       return NextResponse.json({
         mode: "dry_run",
-        note: "No rows were modified. POST { \"execute\": true } to re-drive the eligible jobs.",
+        note: 'No rows were modified. POST { "execute": true } to re-drive the eligible jobs.',
         scanned: rows.length,
+        scanTruncated,
         ...plan,
       });
     }
 
-    // Execute: re-drive each eligible job. One failure must not abort the batch
-    // — record it and carry on, so a single poison row cannot block recovery of
-    // the rest.
-    const results: Array<{ id: string; requeued: boolean; error?: string }> =
-      [];
-    for (const item of plan.eligible) {
-      try {
-        await resumeOrchestration(item.id);
-        results.push({ id: item.id, requeued: true });
-        await writeAuditLog({
-          action: "ASSESSMENT_RECOVERY_REQUEUED",
-          entityType: "assessment",
-          entityId: item.id,
-          assessmentId: item.id,
-          actorId: ctx.userId,
-          actorRole: ctx.role,
-          actorType: "admin",
-          metadata: {
-            status: item.status,
-            ageMinutes: item.ageMinutes,
-            retryCount: item.retryCount,
-          },
-        }).catch(() => {});
-      } catch (err) {
-        results.push({
-          id: item.id,
-          requeued: false,
-          error: err instanceof Error ? err.message : String(err),
-        });
-      }
-    }
+    // Execute: offload the re-drives to after() so the response returns promptly
+    // and no single request awaits a batch of full pipeline runs. Per-job audit
+    // records the ACTUAL outcome (status before → after), so a resume the
+    // orchestrator silently declined (retry ceiling / ineligible) is logged as
+    // `no_change`, never as a requeue that did not happen.
+    const dispatched = plan.eligible.map((e) => e.id);
 
-    const succeeded = results.filter((r) => r.requeued).length;
-    await writeAuditLog({
-      action: "ASSESSMENT_RECOVERY_SWEEP",
-      entityType: "platform",
-      entityId: "stalled-jobs",
-      actorId: ctx.userId,
-      actorRole: ctx.role,
-      actorType: "admin",
-      metadata: {
-        scanned: rows.length,
-        attempted: plan.eligible.length,
-        succeeded,
-        failed: plan.eligible.length - succeeded,
-        skipped: plan.skipped.length,
-      },
-    }).catch(() => {});
+    after(async () => {
+      let requeued = 0;
+      let noChange = 0;
+      let failed = 0;
+
+      for (const item of plan.eligible) {
+        let before: string | null = null;
+        try {
+          const pre = await prisma.assessment.findUnique({
+            where: { id: item.id },
+            select: { status: true },
+          });
+          before = pre?.status ?? null;
+
+          await resumeOrchestration(item.id);
+
+          const post = await prisma.assessment.findUnique({
+            where: { id: item.id },
+            select: { status: true },
+          });
+          const after_ = post?.status ?? null;
+          const changed = after_ !== before;
+          if (changed) requeued += 1;
+          else noChange += 1;
+
+          await writeAuditLog({
+            action: "ASSESSMENT_RECOVERY_REQUEUED",
+            entityType: "assessment",
+            entityId: item.id,
+            assessmentId: item.id,
+            actorId: ctx.userId,
+            actorRole: ctx.role,
+            actorType: "admin",
+            metadata: {
+              statusBefore: before,
+              statusAfter: after_,
+              // false = resumeOrchestration() declined (retry ceiling or
+              // ineligible reclaim); the row was NOT re-driven.
+              reDriven: changed,
+              ageMinutes: item.ageMinutes,
+              retryCount: item.retryCount,
+            },
+          }).catch(() => {});
+        } catch (err) {
+          failed += 1;
+          await writeAuditLog({
+            action: "ASSESSMENT_RECOVERY_REQUEUED",
+            entityType: "assessment",
+            entityId: item.id,
+            assessmentId: item.id,
+            actorId: ctx.userId,
+            actorRole: ctx.role,
+            actorType: "admin",
+            metadata: {
+              statusBefore: before,
+              reDriven: false,
+              error: err instanceof Error ? err.message : String(err),
+            },
+          }).catch(() => {});
+        }
+      }
+
+      await writeAuditLog({
+        action: "ASSESSMENT_RECOVERY_SWEEP",
+        entityType: "platform",
+        entityId: "stalled-jobs",
+        actorId: ctx.userId,
+        actorRole: ctx.role,
+        actorType: "admin",
+        metadata: {
+          scanned: rows.length,
+          scanTruncated,
+          dispatched: dispatched.length,
+          reDriven: requeued,
+          noChange,
+          failed,
+          skipped: plan.skipped.length,
+        },
+      }).catch(() => {});
+    });
 
     return NextResponse.json({
       mode: "executed",
+      note: "Re-drives dispatched in the background; per-job outcome is in the audit log (ASSESSMENT_RECOVERY_REQUEUED / _SWEEP).",
       scanned: rows.length,
-      attempted: plan.eligible.length,
-      succeeded,
-      results,
+      scanTruncated,
+      dispatched,
+      dispatchedCount: dispatched.length,
       skipped: plan.skipped,
     });
   } catch (err) {
