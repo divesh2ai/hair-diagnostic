@@ -34,14 +34,18 @@ authorization (§11). PR #44 remains a **DRAFT**.
 6. **Doctor-only clinical actions stay doctor-only (§9):** clinical review and treatment
    approval require a live Doctor row; staff roles route to `/clinic`, never `/doctor`.
 7. **No Twilio/SMS and no Email-OTP dependency** for this restoration.
+8. **Shared Doctor accounts are prohibited as a standing rule.** A doctor login must be an
+   individually-controlled account. This specific address is permitted *only* because it is
+   being converted to Dr Avinash's exclusive control (§2); the general prohibition on shared
+   / multi-person doctor logins remains in force for every clinic.
 
 ## 2. De-sharing precondition checklist (must be signed off before §6 runs)
 
 UID `9b6afbc8…` is unblocked for DOCTOR access only after **all** are confirmed and recorded
 (who confirmed, when):
 
-- [ ] **(1) Exclusive control** — Dr Avinash confirms he exclusively controls
-  `acubeaestheticsclinic@gmail.com`.
+- [x] **(1) Exclusive control** — CONFIRMED 2026-10-29: Dr Avinash will exclusively control
+  `acubeaestheticsclinic@gmail.com`. (Conditions 2–4 below still to be recorded.)
 - [ ] **(2) Shared access revoked** — all other staff access, active sessions, and account
   **recovery** access (recovery email/phone, app passwords, delegated/forwarding access) have
   been removed from the account.
@@ -67,7 +71,7 @@ require the named operator's explicit out-of-band sign-off, recorded in the migr
 | Target Google UID `9b6afbc8…` | provider `google`, email `acubeaestheticsclinic@gmail.com` confirmed; 0 Doctor/ClinicMember/OrganizationMember/Patient links |
 | Phone UID exclusivity | `dacc52cf` in 1 place only — this Doctor row |
 | Acube members | only the Doctor row (0 ClinicMember, 0 OrganizationMember) |
-| Acube patients / assessments | 7 / 7 |
+| Acube patients / assessments | 8 / 8 as of 2026-10-29 re-verify (was 7/7 at first audit — live clinic activity added one; the migration touches no Patient/Assessment rows, so all are preserved whatever the count) |
 
 ## 4. Schema diff (prod vs staging)
 `AuditLog.id` NOT NULL, no default (supply it). `Doctor.email` NOT NULL in prod (placeholder
@@ -209,5 +213,7 @@ execution** without separate authorization.
 1. Complete and record the §2 de-sharing checklist (conditions 1–4).
 2. Flip `v_desharing_confirmed := true` in §6 and set `v_desharing_by`.
 3. Your explicit **EXECUTE** for §6.
-4. Post-write read-only verification: hook → `DOCTOR` + Acube; `/doctor` shows 7 patients + 7
-   assessments; clinic isolation; session refresh; logout; rollback-readiness.
+4. Post-write read-only verification: hook → `DOCTOR` + Acube; `/doctor` shows all current
+   Acube patients + assessments (8/8 as of 2026-10-29; the count equals whatever exists at
+   cutover, since the migration never writes those rows); clinic isolation; session refresh;
+   logout; rollback-readiness.
