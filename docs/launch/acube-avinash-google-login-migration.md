@@ -1,236 +1,249 @@
-# Acube Aesthetics — Dr Avinash Agarwal Google-Login Migration (P0)
+# Acube Aesthetics — Google Authentication Design & Dr Avinash Migration (P0)
 
-**Status:** PROPOSED — validated by a synthetic staging rehearsal; **not executed in
-production**. No production auth mapping, database record, or deployment has been
-changed. Execution requires separate explicit authorization (see §9).
-
-**Scope:** exactly one doctor at one clinic. Does not touch Super Admin auth or any
-other doctor.
+**Status:** AUTHORITATIVE DESIGN. Procedure validated by a synthetic staging rehearsal;
+**not executed in production**. No production auth mapping, database record, deployment, or
+staff account has been created or changed. Execution requires separate explicit
+authorization (see §10). PR #44 remains a **DRAFT**.
 
 **Target:** production `pykoyxbleowxwechotth` (`drfact-hairos-production`).
-**Rehearsal:** staging `vbkoupvduadmcxggtnsb` (synthetic data only; no real Acube
-records are ever copied to staging).
+**Rehearsal:** staging `vbkoupvduadmcxggtnsb` (synthetic data only; no real Acube records
+are ever copied to staging).
 
 ---
 
-## 1. Verified production facts (read-only, 2026-10-29)
+## 1. Authentication design decisions (authoritative)
+
+1. **Dr Avinash logs in with an individually-controlled personal Google account** that has
+   **2-Step Verification enabled**. He is the sole controller of its credentials and 2FA
+   device. A shared or clinic-branded mailbox is never a doctor login identity.
+2. **`acubeaestheticsclinic@gmail.com` and its existing Google UID
+   `9b6afbc8-d69e-4e49-b44e-231c6aa136ba` are PROHIBITED from receiving DOCTOR
+   permissions.** This address is accessible to multiple clinic staff; binding doctor-level
+   clinical access to it would let anyone with mailbox access authenticate as the doctor.
+   The migration SQL enforces this with a hard denylist guard (§5). The orphan `auth.users`
+   row for this address grants nothing today (no app record references it) and must never be
+   linked to a Doctor row.
+3. **Identity continuity preserved.** The migration keeps `Doctor.id`
+   (`c3d13b725f9e74c709f1839e8`), `clinicId` (`ccf1d8f1911e95f18366d848c`), and all **7
+   patients** and **7 assessments** unchanged — it touches only the two identity columns and
+   the email on the single Doctor row. All history FKs to `Doctor.id`, never to the auth UID.
+4. **Clinic staff use their own individual Google accounts** with least-privilege
+   `STAFF` / `CLINIC_ADMIN` roles (§7). No staff role is ever attached to the shared mailbox.
+5. **No automatic access from an unverified email match (§7.2).** A pre-provisioned
+   ClinicMember/Doctor row is itself the authorization decision and is created only after
+   identity verification and approved clinic membership — never speculatively, never from an
+   unverified address.
+6. **Doctor-only clinical actions stay doctor-only (§8).** Clinical review and treatment
+   approval require a live Doctor row; staff roles route to `/clinic` and can never reach
+   `/doctor` or `/api/doctor/*`.
+7. **The shared clinic Gmail is a contact address only (§9)** — e.g. `Clinic.email` for
+   reception — never a login identity for any role.
+8. **No Twilio / SMS and no Email-OTP dependency** for this restoration. Google is the
+   primary (and, for the doctor, sole) authentication channel.
+
+## 2. Verified production facts (read-only, 2026-10-29)
 
 | Fact | Value |
 | --- | --- |
 | Doctor row id | `c3d13b725f9e74c709f1839e8` ("Dr Avinash Agarwal") |
 | Clinic | `acube-aesthetics` / "Acube Aesthetics" (`ccf1d8f1911e95f18366d848c`) |
 | `isActive` / `provisioningStatus` | `true` / `ACTIVE` |
-| `Doctor.supabaseUserId` | `dacc52cf-7848-41fb-913c-700737ac5c51` (phone identity) |
+| `Doctor.supabaseUserId` | `dacc52cf-7848-41fb-913c-700737ac5c51` (phone identity) — **unchanged** |
 | `Doctor.supabasePhoneUserId` | `NULL` |
-| `Doctor.email` | placeholder on reserved `.invalid` TLD — not a real/Google mailbox |
-| auth.users `dacc52cf` | providers `["phone"]`; phone-confirmed; no email, no Google identity |
-| auth.users carrying that email | none (no duplicate/orphan to collide with) |
-| **Phone UID exclusivity** | `dacc52cf` appears in **1** place only — this Doctor row. 0 in OrganizationMember / ClinicMember / Patient. |
-| Acube patients / assessments / doctors | 7 / 7 / 1 |
-| History FKs to Doctor | `Assessment.reviewingDoctorId`, `Patient.doctorId`, `KitOrderIntent.doctorId`, `RecommendationFeedback.doctorId` → all reference **`Doctor.id`**, never the auth UID |
-| Production auth providers in use | phone ×6 (doctors), email+google ×1 (Super Admin — both identities linked) |
+| `Doctor.email` | placeholder on reserved `.invalid` TLD |
+| Phone UID exclusivity | `dacc52cf` appears in 1 place only — this Doctor row |
+| Acube members | **only** the Doctor row — 0 ClinicMember, 0 OrganizationMember rows |
+| Shared mailbox references | 0 in Doctor/ClinicMember/OrganizationMember; 1 orphan `auth.users` row (grants nothing) |
+| Acube patients / assessments | 7 / 7 |
+| History FKs to Doctor | `Assessment.reviewingDoctorId`, `Patient.doctorId`, `KitOrderIntent.doctorId`, `RecommendationFeedback.doctorId` → all reference **`Doctor.id`** |
 
-## 2. Staging vs production schema diff (tables the migration writes)
+## 3. Staging vs production schema diff (tables the migration writes)
 
-`AuditLog` — **identical** in both: `id` is **NOT NULL with no DB default** (Prisma
-generates the `cuid()` client-side, so a raw `INSERT` must supply `id`); `action`,
-`entityType`, `entityId` NOT NULL no default; `createdAt` defaults `now()`; `clinicId`
-nullable.
+`AuditLog` — identical in both: `id` is **NOT NULL, no DB default** (Prisma generates the
+`cuid()` client-side, so a raw `INSERT` must supply `id`). `Doctor` — identical **except**
+`email` is **NOT NULL in production** (nullable in staging); this is why the row holds a
+`@hairos.invalid` placeholder rather than `NULL`. `updatedAt` is NOT NULL with no default in
+both, so raw writes must set it.
 
-`Doctor` — identical **except**: `email` is **NOT NULL in production** but nullable in
-staging. This is why the production row holds a `@hairos.invalid` placeholder rather than
-`NULL`. The migration replaces that placeholder with the real Google address, which keeps
-the NOT NULL constraint satisfied. `updatedAt` is NOT NULL with no default in both, so raw
-`UPDATE`/`INSERT` must set it explicitly.
+## 4. Root cause
 
-## 3. Root cause
-
-On "Continue with Google", Supabase mints a **new** auth user (uid `G`, real Google email,
-`google` provider). The JWT hook Doctor branch doesn't match: `supabaseUserId`/
-`supabasePhoneUserId` ≠ `G`, and the `email`/`phone` pre-link fallbacks are gated behind
+On "Continue with Google", Supabase mints a **new** auth user (uid `G`, the sign-in email,
+`google` provider). The JWT hook's Doctor branch doesn't match: `supabaseUserId` /
+`supabasePhoneUserId` ≠ `G`, and the `email` / `phone` pre-link fallbacks are gated behind
 `supabaseUserId IS NULL` — false, because the phone uid is already set. No role claim →
 `proxy.ts` forbids → `/login?reason=forbidden`. Data/linking gap, not a code bug.
 
-## 4. Migration — Google-canonical transition (guarded, atomic)
+## 5. Doctor migration — guarded, atomic, personal-UID only
 
-### 4.1 Verified-ownership gate (perform first, before any write)
-
-1. Confirm Dr Avinash's exact Google address out-of-band.
-2. Have **Avinash** complete "Continue with Google" once from his own device to mint auth
-   user `G` (provider `google`, his real email). He is expected to hit
-   `/login?reason=forbidden` at this pre-link stage. **Per current authorization this step
-   is NOT yet to be performed** — it creates a production auth identity and waits on final
-   approval (§9).
-3. Confirm `G` read-only before any write:
+### 5.1 Verified-ownership gate (perform first; not executed until §10)
+1. Confirm Dr Avinash's **personal** Google address (2FA ON, sole controller) out-of-band.
+2. He completes "Continue with Google" with that personal account on production `/login`
+   (expect `/login?reason=forbidden` pre-link — normal). This mints his personal uid `G`.
+3. Read-only verification before any write (bind email↔uid, provider `google`, confirmed,
+   zero Doctor/ClinicMember/OrganizationMember/Patient links, **and not the shared mailbox**):
 
 ```sql
--- Expect exactly one row: provider google, email == the confirmed address,
--- created moments ago. Capture <G> = u.id.
-SELECT u.id, u.email, u.created_at,
-       (SELECT array_agg(i.provider) FROM auth.identities i WHERE i.user_id = u.id) AS providers
-FROM auth.users u
-WHERE lower(u.email) = lower('<avinash-real-google-email>');
+WITH g AS (SELECT '<G_personal>'::uuid AS uid, '<avinash-personal-email>' AS email)
+SELECT
+  (SELECT lower(u.email)=lower(g.email) FROM auth.users u, g WHERE u.id=g.uid)              AS email_matches_uid,
+  (SELECT u.email_confirmed_at IS NOT NULL FROM auth.users u, g WHERE u.id=g.uid)           AS email_confirmed,
+  (SELECT array_agg(i.provider) FROM auth.identities i, g WHERE i.user_id=g.uid)            AS providers,
+  (SELECT count(*) FROM public."Doctor" d, g WHERE d."supabaseUserId"=g.uid::text OR d."supabasePhoneUserId"=g.uid::text) AS g_doctor_links,
+  (SELECT count(*) FROM public."ClinicMember" m, g WHERE m."supabaseUserId"=g.uid::text)    AS g_clinicmember_links,
+  (SELECT count(*) FROM public."OrganizationMember" m, g WHERE m."supabaseUserId"=g.uid::text) AS g_orgmember_links,
+  (lower('<avinash-personal-email>') <> 'acubeaestheticsclinic@gmail.com')                  AS not_shared_mailbox;
+-- PASS gate: email_matches_uid, email_confirmed, providers⊇{google}, all link counts 0, not_shared_mailbox=true.
 ```
 
-### 4.2 The write — single atomic block, self-aborting
-
-Run as one statement. Every guard `RAISE`s, which aborts the whole block (Doctor update
-**and** audit insert roll back together). Substitute `<G>` and `<avinash-real-google-email>`.
+### 5.2 The write — single atomic block, self-aborting (NOT executed)
 
 ```sql
 DO $$
 DECLARE
-  v_target_id      text := 'c3d13b725f9e74c709f1839e8';              -- Dr Avinash's Doctor.id (stable)
-  v_old_phone_uid  text := 'dacc52cf-7848-41fb-913c-700737ac5c51';   -- current phone uid
-  v_new_google_uid text := '<G>';                                    -- uid from §4.1
-  v_new_email      text := '<avinash-real-google-email>';            -- real address, never a placeholder
-  v_clinic         text;
-  v_n              int;
-  v_audit_id       text := 'mig_' || replace(gen_random_uuid()::text, '-', '');  -- unique AuditLog.id
+  v_target_id      text := 'c3d13b725f9e74c709f1839e8';
+  v_old_phone_uid  text := 'dacc52cf-7848-41fb-913c-700737ac5c51';
+  v_new_google_uid text := '<G_personal>';              -- Avinash's PERSONAL Google UID (from §5.1)
+  v_new_email      text := '<avinash-personal-email>';  -- personal address; NOT the clinic mailbox
+  v_old_supa text; v_old_phone text; v_old_email text; v_clinic text; v_n int;
+  v_audit_id text := 'mig-c3d13b72-google-personal-20261029';   -- FIXED id → exact rollback binding
 BEGIN
-  -- Identity-ownership guards: the Google uid must not already be linked anywhere.
-  IF EXISTS (SELECT 1 FROM public."Doctor"
-             WHERE ("supabaseUserId"=v_new_google_uid OR "supabasePhoneUserId"=v_new_google_uid)
-               AND id<>v_target_id) THEN RAISE EXCEPTION 'ABORT: google uid already linked to another Doctor'; END IF;
-  IF EXISTS (SELECT 1 FROM public."ClinicMember" WHERE "supabaseUserId"=v_new_google_uid)
-     THEN RAISE EXCEPTION 'ABORT: google uid already a ClinicMember'; END IF;
-  IF EXISTS (SELECT 1 FROM public."OrganizationMember" WHERE "supabaseUserId"=v_new_google_uid)
-     THEN RAISE EXCEPTION 'ABORT: google uid already an OrganizationMember'; END IF;
+  -- Hard denylist (design §1.2): the shared clinic mailbox may never be a doctor login.
+  IF lower(v_new_email) = 'acubeaestheticsclinic@gmail.com'
+     THEN RAISE EXCEPTION 'ABORT: shared clinic mailbox must not be a doctor login identity'; END IF;
+  IF v_new_google_uid = '9b6afbc8-d69e-4e49-b44e-231c6aa136ba'
+     THEN RAISE EXCEPTION 'ABORT: shared clinic Google UID is prohibited from DOCTOR permissions'; END IF;
 
-  -- The old phone uid must be exclusive to the one intended Doctor.
-  IF (SELECT count(*) FROM public."Doctor"
-      WHERE "supabaseUserId"=v_old_phone_uid OR "supabasePhoneUserId"=v_old_phone_uid) <> 1
+  -- Capture ACTUAL originals before any change; lock the row.
+  SELECT "supabaseUserId","supabasePhoneUserId",email,"clinicId"
+    INTO v_old_supa, v_old_phone, v_old_email, v_clinic
+    FROM public."Doctor" WHERE id=v_target_id FOR UPDATE;
+  IF NOT FOUND THEN RAISE EXCEPTION 'ABORT: target Doctor not found'; END IF;
+  IF v_old_supa <> v_old_phone_uid OR v_old_phone IS NOT NULL
+     THEN RAISE EXCEPTION 'ABORT: target not in expected pre-migration state (supa=%, phone=%)', v_old_supa, v_old_phone; END IF;
+
+  -- Ownership / conflict re-checks inside the transaction.
+  IF EXISTS (SELECT 1 FROM public."Doctor" WHERE ("supabaseUserId"=v_new_google_uid OR "supabasePhoneUserId"=v_new_google_uid) AND id<>v_target_id)
+     THEN RAISE EXCEPTION 'ABORT: google uid already linked to another Doctor'; END IF;
+  IF EXISTS (SELECT 1 FROM public."ClinicMember"       WHERE "supabaseUserId"=v_new_google_uid) THEN RAISE EXCEPTION 'ABORT: google uid is a ClinicMember'; END IF;
+  IF EXISTS (SELECT 1 FROM public."OrganizationMember" WHERE "supabaseUserId"=v_new_google_uid) THEN RAISE EXCEPTION 'ABORT: google uid is an OrganizationMember'; END IF;
+  IF NOT EXISTS (SELECT 1 FROM auth.identities i WHERE i.user_id=v_new_google_uid::uuid AND i.provider='google')
+     THEN RAISE EXCEPTION 'ABORT: uid has no google identity'; END IF;
+  IF NOT EXISTS (SELECT 1 FROM auth.users uu WHERE uu.id=v_new_google_uid::uuid AND lower(uu.email)=lower(v_new_email) AND uu.email_confirmed_at IS NOT NULL)
+     THEN RAISE EXCEPTION 'ABORT: uid google email mismatch or unconfirmed'; END IF;
+  IF (SELECT count(*) FROM public."Doctor" WHERE "supabaseUserId"=v_old_phone_uid OR "supabasePhoneUserId"=v_old_phone_uid) <> 1
      THEN RAISE EXCEPTION 'ABORT: phone uid not exclusive to one Doctor'; END IF;
-  IF EXISTS (SELECT 1 FROM public."OrganizationMember" WHERE "supabaseUserId"=v_old_phone_uid)
-     OR EXISTS (SELECT 1 FROM public."ClinicMember" WHERE "supabaseUserId"=v_old_phone_uid)
-     THEN RAISE EXCEPTION 'ABORT: phone uid also a privileged/clinic member'; END IF;
 
-  -- Guarded, optimistic-locked write; exactly one row or abort.
+  -- The write: personal Google canonical; phone UID retained for rollback; placeholder -> real email.
   UPDATE public."Doctor"
-     SET "supabaseUserId"=v_new_google_uid,
-         "supabasePhoneUserId"=v_old_phone_uid,   -- phone identity preserved as fallback
-         email=v_new_email,                        -- replaces the @hairos.invalid placeholder
-         "updatedAt"=now()
-   WHERE id=v_target_id
-     AND "supabaseUserId"=v_old_phone_uid
-     AND "supabasePhoneUserId" IS NULL
-  RETURNING "clinicId" INTO v_clinic;
+     SET "supabaseUserId"=v_new_google_uid, "supabasePhoneUserId"=v_old_phone_uid,
+         email=v_new_email, "updatedAt"=now()
+   WHERE id=v_target_id AND "supabaseUserId"=v_old_phone_uid AND "supabasePhoneUserId" IS NULL;
   GET DIAGNOSTICS v_n = ROW_COUNT;
   IF v_n <> 1 THEN RAISE EXCEPTION 'ABORT: expected exactly 1 Doctor row updated, got %', v_n; END IF;
 
-  -- Audit (explicit unique id; clinic in metadata, matching writeAuditLog which drops the column).
-  INSERT INTO public."AuditLog"(id,action,"entityType","entityId","actorId","actorType",source,metadata,"createdAt")
+  -- Exact-record audit: fixed id, ACTUAL originals in beforeState.
+  INSERT INTO public."AuditLog"(id,action,"entityType","entityId","actorId","actorType",source,metadata,"beforeState","afterState","createdAt")
   VALUES (v_audit_id,'DOCTOR_GOOGLE_IDENTITY_LINKED','Doctor',v_target_id,v_new_google_uid,'system','script',
-          jsonb_build_object('fromUid',v_old_phone_uid,'toUid',v_new_google_uid,'clinicId',v_clinic,'emailReplacedPlaceholder',true),
+          jsonb_build_object('clinicId',v_clinic,'fromUid',v_old_phone_uid,'toUid',v_new_google_uid),
+          jsonb_build_object('supabaseUserId',v_old_supa,'supabasePhoneUserId',v_old_phone,'email',v_old_email),
+          jsonb_build_object('supabaseUserId',v_new_google_uid,'supabasePhoneUserId',v_old_phone_uid,'email',v_new_email),
           now());
 END $$;
 ```
 
-> **App-convention alternative (preferred where an app/Prisma runtime is available):** run
-> the equivalent inside `prisma.$transaction`, calling `prisma.doctor.updateMany({...})` and
-> asserting `count === 1`, then `writeAuditLog({ action: "DOCTOR_GOOGLE_IDENTITY_LINKED",
-> entityType: "Doctor", entityId, actorType: "system", metadata: {...}, prismaClient: tx })`.
-> `writeAuditLog` generates the `cuid()` id natively. The `DOCTOR_GOOGLE_IDENTITY_LINKED`
-> action was added to `src/lib/audit/actions.ts` in this PR so it is type-valid and
-> filterable in the audit console.
+The fixed `v_audit_id` also makes the migration idempotent-safe: a re-run collides on the
+AuditLog primary key and aborts, and the optimistic `WHERE` no-matches once migrated.
 
-### 4.3 Confirm (read-only, before asking Avinash to sign in again)
-
-```sql
--- Expect user_role=DOCTOR, clinic_id=ccf1d8f1911e95f18366d848c
-SELECT public.custom_access_token_hook(jsonb_build_object('user_id','<G>','claims','{}'::jsonb))->'claims';
-```
-
-Then Avinash signs in with Google → uid `G` → DOCTOR → `/doctor`.
-
-## 5. Rollback — optimistic-locked, self-aborting
-
-Won't overwrite a later legitimate change: the `WHERE` matches only the exact migrated
-state, and the block aborts (changes nothing) if it isn't found.
+## 6. Rollback — exact-record bound, email-change protected (NOT executed)
 
 ```sql
 DO $$
-DECLARE v_n int;
+DECLARE
+  v_audit_id       text := 'mig-c3d13b72-google-personal-20261029';
+  v_google         text := '<G_personal>';
+  v_phone          text := 'dacc52cf-7848-41fb-913c-700737ac5c51';
+  v_migrated_email text := '<avinash-personal-email>';
+  v_before jsonb; v_n int;
 BEGIN
+  SELECT "beforeState" INTO v_before FROM public."AuditLog" WHERE id = v_audit_id;   -- EXACT record, not latest-matching
+  IF v_before IS NULL THEN RAISE EXCEPTION 'ABORT rollback: migration audit record % not found', v_audit_id; END IF;
   UPDATE public."Doctor"
-     SET "supabaseUserId"='dacc52cf-7848-41fb-913c-700737ac5c51',
-         "supabasePhoneUserId"=NULL,
-         email='<original-@hairos.invalid-placeholder>',
-         "updatedAt"=now()
+     SET "supabaseUserId"=v_before->>'supabaseUserId',
+         "supabasePhoneUserId"=v_before->>'supabasePhoneUserId',   -- original NULL restored as NULL
+         email=v_before->>'email', "updatedAt"=now()
    WHERE id='c3d13b725f9e74c709f1839e8'
-     AND "supabaseUserId"='<G>'
-     AND "supabasePhoneUserId"='dacc52cf-7848-41fb-913c-700737ac5c51'
-     AND email='<avinash-real-google-email>';
+     AND "supabaseUserId"=v_google AND "supabasePhoneUserId"=v_phone
+     AND email=v_migrated_email;   -- refuses if email changed post-migration
   GET DIAGNOSTICS v_n = ROW_COUNT;
   IF v_n <> 1 THEN RAISE EXCEPTION 'ABORT rollback: expected 1 row, got % (state changed since migration)', v_n; END IF;
 END $$;
 ```
 
-Capture `<original-@hairos.invalid-placeholder>` from §1 before migrating. Leave auth user
-`G` in place — it grants nothing once no Doctor row names it.
+## 7. Clinic staff onboarding — individual Google accounts, least privilege
 
-## 6. Staging rehearsal evidence (synthetic, 2026-10-29) — PASS
+### 7.1 Model
+Each staff member who needs portal access gets **their own** ClinicMember row for the Acube
+clinic, keyed to **their own** personal Google email, with the smallest role that fits:
+- `STAFF` — default; operational access to `/clinic`, no clinical approval authority.
+- `CLINIC_ADMIN` — only for a clinic manager who must manage the clinic (doctors, settings).
 
-Executed against staging with throwaway `REH_`-prefixed fixtures (two clinics A/B, two
-doctors, patients + an assessment; Doctor A mirrored Avinash's exact starting state incl. a
-non-null placeholder email). The procedure above was run verbatim.
+On the member's first Google sign-in, the JWT hook links their uid by email and emits the
+clinic-scoped role + `clinic_id`. Staff land on `/clinic`; they can never reach `/doctor`.
+Today there are **zero** ClinicMember rows for Acube, so nothing is over-privileged; add rows
+individually, on request, for named people only.
 
-| Check | Result |
-| --- | --- |
-| Pre-migration: Google uid resolves | `user_role=NULL` (locked out) — reproduces prod |
-| Pre-migration: phone uid resolves | `DOCTOR`, clinic A |
-| Post-migration: Google uid (hook) | **`DOCTOR`, clinic A** |
-| Post-migration: phone uid (hook) | `DOCTOR` (retained identity still resolves) |
-| Post-migration: unrelated Google uid | `NULL` (denied) |
-| `/doctor` guard (`doctorAuthIdentityWhere`, active only) | resolves to Doctor A, clinic A |
-| Clinic isolation (Google uid → clinic B rows) | **0** |
-| History preserved (patients / assessments still linked to same `Doctor.id`) | 2 / 1 |
-| Row state after migration | `supabaseUserId=G · supabasePhoneUserId=phone · email=real` |
-| Audit row written (explicit id) | 1 |
-| Rollback → Google uid | `NULL` (locked out again) |
-| Rollback → phone uid | `DOCTOR` |
-| Rollback → row state | original state restored exactly |
-| Stale rollback vs later legitimate edit | matched **0 rows**; legitimate edit preserved |
+### 7.2 No access from an unverified email match
+The hook's email match is only the *link mechanism*; the *authorization decision* is the
+deliberate creation of the pre-provisioned row. Therefore:
+- Create a ClinicMember row **only after** verifying the person's identity and confirming
+  approved clinic membership (named individual, role approved by the clinic admin / Super
+  Admin).
+- Never create a row speculatively, in bulk, or from an unverified or shared address.
+- Never attach any role to `acubeaestheticsclinic@gmail.com`.
 
-## 7. Post-authorization production verification (§9 gate)
+Staff-provisioning SQL is intentionally **not** templated here; it is produced per named
+person (email + role) at onboarding time, under the same explicit-authorization gate as the
+Doctor migration.
 
-- [ ] Google Login reaches `/doctor` for Avinash
-- [ ] Original **7** Acube patient records visible
-- [ ] **7** assessments open; report access; doctor review; kit records
-- [ ] **Clinic isolation**: only Acube data; an unrelated Google account → `/login?reason=forbidden`, zero Acube data
-- [ ] Session persists across refresh; logout → `/login`
-- [ ] Rollback readiness confirmed (dry-run the §5 `WHERE` returns the single row)
-- [ ] Super Admin Google login still lands `/admin` (regression)
+## 8. Clinic isolation & doctor-only clinical approvals
 
-## 8. Security considerations / open items
+- **Isolation:** every clinic-scoped role carries `clinic_id` from the hook; `proxy.ts` and
+  the `assert*` tenant guards scope all queries to that clinic. A member of another clinic —
+  or an unrelated Google account — resolves to no Acube row and sees no Acube data.
+- **Doctor-only actions:** `DOCTOR` is emitted only from a live `Doctor` row (hook precedence
+  step 2); `/doctor` and `/api/doctor/*` require that row (`loadDoctorShellData`). Clinical
+  review and treatment approval are therefore restricted to the authorized doctor; `STAFF`
+  and `CLINIC_ADMIN` cannot perform them.
 
-- **Retained phone identity (finding 6).** `supabasePhoneUserId=dacc52cf` is kept for
-  identity continuity and audit, and still resolves to `DOCTOR` via the hook. Unintended
-  phone login is currently prevented by two independent layers: (a) the project's SMS/OTP
-  provider gates phone sign-in (login UI hides the Mobile tab when the live probe reports it
-  unavailable — shipped in this PR), and (b) Google is the primary channel. If hard
-  isolation is preferred over continuity, set `supabasePhoneUserId=NULL` in §4.2 instead —
-  then only Google resolves. **Decision required.**
-- **Email-OTP channel (finding 7).** The login page gates the *phone* tab on a live probe,
-  but the *Email* OTP channel is still shown unconditionally and would present a broken
-  channel if SMTP is unconfigured. Production data shows no doctor uses email OTP (only the
-  Super Admin, who uses Google). Recommended fix: gate the Email channel behind an explicit
-  ops-controlled availability signal so only confirmed-working channels appear, Google
-  always. **Not shipped in this PR** because it changes the shared login UI for all clinics;
-  **decision required** before it touches other doctors.
-- **Hook provenance.** The checked-in hook mirror header cites project `gwkgopbscdftpitppgwe`
-  (neither current prod nor staging). Doc-only correction.
+## 9. Shared clinic Gmail — contact only
+`acubeaestheticsclinic@gmail.com` may be used as a **contact** address (e.g. `Clinic.email`
+reception contact) but never as a login identity for any role. It is prohibited from DOCTOR
+permissions (§1.2) and must not back any ClinicMember/OrganizationMember row.
 
-## 9. Readiness & the exact approval required
+## 10. Staging rehearsal evidence (synthetic, 2026-10-29) — PASS
 
-The procedure is **ready for execution** and has passed a full synthetic staging rehearsal
-including rollback. Production is untouched.
+The guarded migration + rollback were rehearsed on staging with throwaway `REH_` fixtures
+(Doctor A mirrored Avinash's exact starting state). Results: pre-migration Google uid → no
+role (lockout reproduced); post-migration Google uid → **DOCTOR + intended clinic**; retained
+phone uid → DOCTOR; unrelated uid → denied; `/doctor` guard resolved to the right doctor+
+clinic; **0** cross-clinic leakage; patients/assessments stayed linked to the unchanged
+`Doctor.id`; exact-id audit written; rollback restored the exact original state and re-locked
+the Google uid; a stale rollback against a later legitimate edit matched **0 rows**. The
+only change for production is the identity *source* (a personal Google account, not the shared
+mailbox); the mechanism is identical.
 
-**Blocking approval needed, in order:**
-1. **Authorize the verified-ownership step (§4.1):** permission to have Dr Avinash perform
-   the first production Google sign-in (this creates auth user `G` in production).
-2. Provide/confirm his **real Google email**.
-3. **Authorize the §4.2 write** against `pykoyxbleowxwechotth`.
-4. Decide the two open items in §8 (retain vs drop the phone identity; email-OTP gating).
+## 11. Readiness & the exact approval required
 
-Nothing in steps 1–3 runs without your explicit go-ahead.
+Ready for execution; production untouched; **PR #44 stays DRAFT — do not merge, deploy,
+create production staff accounts, or execute production SQL** without separate authorization.
+
+**Immediate P0 path:**
+1. Dr Avinash signs in with his **personal** (2FA) Google account → mints uid `G`.
+2. Read-only verification (§5.1) fills `<G_personal>` / `<avinash-personal-email>`.
+3. Your explicit **EXECUTE** for §5.2.
+4. Post-write read-only verification: hook → `DOCTOR` + Acube; `/doctor` shows the 7 patients
+   + 7 assessments; clinic isolation; session refresh; logout; rollback-readiness.
+
+**Open follow-ups (non-blocking for the doctor restore):** staff onboarding per named person
+(§7); optional cleanup of the orphan shared-mailbox `auth.users` row; the login-UI Email-OTP
+gating hardening; and the stale hook-provenance comment.
