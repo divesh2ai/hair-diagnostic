@@ -21,6 +21,13 @@ export interface SkinCommonProfile {
   sessionId: string;
   answers: SkinCommonAnswers;
   completedAt?: string;
+  /**
+   * Branch handle the patient entered Skin FACT under, from the clinic URL's
+   * `?branch=`. Carried on the common profile so every concern submitted in
+   * this session inherits the same branch; the submit route re-validates it
+   * against the clinic. Optional — a generic link carries none.
+   */
+  branch?: string | null;
 }
 
 export interface SkinFactIntake {

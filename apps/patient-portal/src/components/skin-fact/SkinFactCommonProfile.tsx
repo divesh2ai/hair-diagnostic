@@ -53,13 +53,18 @@ export function SkinFactCommonProfile() {
     initialisedFor.current = clinicSlug;
     const fresh = query.get('start') === '1';
     const saved = fresh ? null : loadSkinCommonProfile(localStorage, clinicSlug);
-    setProfile(saved ?? {
+    // Branch the patient entered under. Prefer a value the URL carries now
+    // (a branch QR deep-linking into Skin FACT); otherwise keep whatever the
+    // saved profile already held. The submit route re-validates it per-clinic.
+    const branch = query.get('branch') || saved?.branch || null;
+    setProfile(saved ? { ...saved, branch } : {
       productType: 'SKIN_FACT',
       intakeType: 'COMMON',
       version: '2.0.0',
       clinicSlug,
       sessionId: crypto.randomUUID(),
       answers: emptySkinCommonAnswers(),
+      branch,
     });
     setStep(0);
     setLoaded(true);
