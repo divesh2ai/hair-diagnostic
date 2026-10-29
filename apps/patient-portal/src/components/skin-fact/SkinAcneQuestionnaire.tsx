@@ -264,7 +264,7 @@ export function SkinAcneQuestionnaire() {
       const response = await fetch('/api/assessment/submit', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          clinicSlug, concern: 'skin_acne', answers,
+          clinicSlug, concern: 'skin_acne', branch: profile!.branch ?? undefined, answers,
           patientInfo: {
             name: profile!.answers.name, gender: profile!.answers.gender,
             phone: phoneResult.ok ? phoneResult.e164 : undefined,

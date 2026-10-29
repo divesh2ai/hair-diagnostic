@@ -4,6 +4,13 @@ import { AssessmentV3Client } from './AssessmentV3Client';
 
 interface AssessmentV3PageProps {
   params: Promise<{ clinicSlug: string }>;
+  searchParams: Promise<{ branch?: string | string[] }>;
+}
+
+/** First value only — `?branch=a&branch=b` is a malformed link, not a choice. */
+function firstParam(value: string | string[] | undefined): string | null {
+  if (Array.isArray(value)) return value[0] ?? null;
+  return value ?? null;
 }
 
 /**
@@ -20,13 +27,15 @@ interface AssessmentV3PageProps {
  * in-flight assessments. A missing clinic simply falls back to offering every
  * language the platform supports.
  */
-export default async function AssessmentV3Page({ params }: AssessmentV3PageProps) {
+export default async function AssessmentV3Page({ params, searchParams }: AssessmentV3PageProps) {
   const { clinicSlug } = await params;
+  const branch = firstParam((await searchParams).branch);
   const clinic = await getClinicLandingData(clinicSlug);
 
   return (
     <AssessmentV3Client
       clinicSlug={clinicSlug}
+      branch={branch}
       clinic={
         clinic
           ? {

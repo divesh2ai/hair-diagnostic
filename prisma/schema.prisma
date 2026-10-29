@@ -423,6 +423,18 @@ model ClinicLocation {
 
   // Branch label within the clinic, e.g. "Bandra West". Not the clinic name.
   branchName String
+
+  // URL-safe handle for this branch within its clinic, e.g. "bandra". It is
+  // what the patient-facing QR/link carries as `?branch=` on the shared clinic
+  // route (/q/[clinicSlug]?branch=bandra), so a branch gets a readable, stable
+  // address without a second clinic slug or a cuid in the URL.
+  //
+  // Nullable: a branch created before this column, or one that has no QR yet,
+  // simply has no handle and is unreachable by `?branch=` until one is set —
+  // which is correct, not a bug. Unique PER CLINIC only (@@unique below), so
+  // "bandra" can exist once under each clinic. Resolution is always scoped by
+  // clinicId first; the slug never crosses a clinic boundary.
+  slug String?
   // The branch a patient reaches from the clinic-level QR or link when no
   // specific branch is named. At most one live primary per clinic.
   //
@@ -466,8 +478,14 @@ model ClinicLocation {
   updatedAt DateTime  @updatedAt
   deletedAt DateTime?
 
+  // Assessments taken at this branch. Scope attribution only; see Assessment.
+  assessments Assessment[]
+
   @@index([clinicId])
   @@index([clinicId, status])
+  // One branch handle per clinic. Nullable slugs don't collide (Postgres
+  // treats NULLs as distinct), so branches without a QR handle coexist freely.
+  @@unique([clinicId, slug])
   // Drill-down queries: India â†’ state â†’ city â†’ clinic.
   @@index([country, state, city])
   // Viewport queries for the national map. A plain btree on the pair is enough
@@ -975,6 +993,19 @@ model Assessment {
   patientId String
   patient   Patient @relation(fields: [patientId], references: [id])
 
+  // The physical branch this assessment was taken at, resolved and VALIDATED
+  // server-side at submission from the branch the QR/link carried (see
+  // lib/clinics/resolveClinicBranch). Scope only — it never changes `clinicId`,
+  // which stays the single tenant boundary every isolation query relies on, and
+  // no engine, scorer or kit rule may read it.
+  //
+  // Nullable with NO backfill, exactly like `visitType`: assessments submitted
+  // before branch attribution existed, submissions from the generic clinic URL
+  // where the patient named no branch, and any client that omits it all persist
+  // null. A null is the honest "branch not captured", never a guessed branch.
+  clinicLocationId String?
+  clinicLocation   ClinicLocation? @relation(fields: [clinicLocationId], references: [id])
+
   reviewingDoctorId String?
   reviewingDoctor   Doctor? @relation("DoctorReviewer", fields: [reviewingDoctorId], references: [id])
 
@@ -1060,6 +1091,9 @@ model Assessment {
   // "Today's kit-fulfilment visits at this clinic" and the returning-patient
   // split, without scanning the clinic's whole assessment history.
   @@index([clinicId, visitType])
+  // The doctor registry's branch filter: "this clinic's patients at Mulund"
+  // reads the latest assessment's branch. Equality on clinicId, then branch.
+  @@index([clinicId, clinicLocationId])
 }
 
 model AssessmentResponse {

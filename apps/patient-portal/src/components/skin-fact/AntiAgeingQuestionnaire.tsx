@@ -109,7 +109,7 @@ export function AntiAgeingQuestionnaire({preview=false}:{preview?:boolean}) {
       if(containsInlineBinary(payload))throw new Error('Invalid inline upload data.');
       if(preview){router.push('/design-preview/skin-fact/anti-ageing/processing');return}
       const phoneResult=normaliseMobile(common!.answers.phone);
-      const response=await fetch('/api/assessment/submit',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({clinicSlug,concern:'skin_anti_ageing',answers:payload,patientInfo:{name:common!.answers.name,gender:common!.answers.gender,phone:phoneResult.ok?phoneResult.e164:undefined,whatsappConsent:common!.answers.whatsappConsent}})});
+      const response=await fetch('/api/assessment/submit',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({clinicSlug,concern:'skin_anti_ageing',branch:common!.branch??undefined,answers:payload,patientInfo:{name:common!.answers.name,gender:common!.answers.gender,phone:phoneResult.ok?phoneResult.e164:undefined,whatsappConsent:common!.answers.whatsappConsent}})});
       const data=await response.json();if(!response.ok)throw new Error(data.error??'Submission failed');
       localStorage.removeItem(antiAgeingStorageKey(clinicSlug));
       const completed=markConcernComplete(intake!,'ANTI_AGEING',data.assessmentId);
