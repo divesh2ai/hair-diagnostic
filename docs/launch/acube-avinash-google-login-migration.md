@@ -91,15 +91,33 @@ Set `v_desharing_confirmed := true` **only** once the §2 checklist is fully sig
 fill `v_desharing_by` with who confirmed it.
 
 ### 6a. Cutover session revocation (run immediately before the mapping, same authorized window)
-UID `9b6afbc8…` holds **12 active app sessions / 13 refresh tokens** (2026-10-29) — residue of
-prior shared use. They grant nothing while the UID is unlinked, but would become live DOCTOR
-sessions the moment the mapping lands. Clear them first so only a fresh, post-de-sharing login
-by Dr Avinash gains access:
+UID `9b6afbc8…` holds **12 live sessions across 6 distinct IPs / 2 user agents, all aal1**, and
+**12 live refresh tokens** (2026-10-29), with no server-side session expiry (`not_after` NULL)
+— confirming shared, multi-device use. They grant nothing while the UID is unlinked, but a live
+refresh token would mint a DOCTOR access token the moment the mapping lands. Revoke them
+**before** linking, via a supported mechanism:
 
-```sql
-DELETE FROM auth.refresh_tokens WHERE user_id = '9b6afbc8-d69e-4e49-b44e-231c6aa136ba';
-DELETE FROM auth.sessions       WHERE user_id = '9b6afbc8-d69e-4e49-b44e-231c6aa136ba'::uuid;
-```
+- **Primary (supported):** Supabase Dashboard → Authentication → Users → this user → **Sign
+  out user (global)**; or Admin API `supabase.auth.admin.signOut('<uid>', 'global')` /
+  `POST /auth/v1/admin/users/<uid>/logout {"scope":"global"}`. This revokes sessions and
+  refresh tokens through GoTrue. Requires the service-role key / dashboard; it is an operator
+  action, not performed through the SQL MCP.
+- **Verify (read-only SQL):** confirm nothing live remains — expect `0 / 0`:
+  ```sql
+  SELECT (SELECT count(*) FROM auth.sessions       WHERE user_id='9b6afbc8-d69e-4e49-b44e-231c6aa136ba'::uuid)              AS sessions,
+         (SELECT count(*) FROM auth.refresh_tokens WHERE user_id='9b6afbc8-d69e-4e49-b44e-231c6aa136ba' AND NOT revoked)   AS live_refresh_tokens;
+  ```
+- **Fallback only (never the sole mechanism):** if the admin path is unavailable,
+  `DELETE FROM auth.refresh_tokens WHERE user_id='9b6afbc8-d69e-4e49-b44e-231c6aa136ba';`
+  then `DELETE FROM auth.sessions WHERE user_id='9b6afbc8-d69e-4e49-b44e-231c6aa136ba'::uuid;`
+  and re-run the verify query.
+
+**Token-validity note.** Supabase access tokens (JWTs) are stateless: `getClaims()` /
+`proxy.ts` validate signature + `exp` (default ~1h TTL) via JWKS and do **not** re-check
+server-side revocation. Safe here only because of ordering — pre-link JWTs carry no
+`user_role`, so they cannot reach `/doctor` even within their remaining life, and once refresh
+tokens are revoked no DOCTOR JWT can be minted until Dr Avinash signs in afresh. Never link
+before revocation + verification complete.
 
 ### 6b. The guarded mapping
 
