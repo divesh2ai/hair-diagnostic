@@ -74,7 +74,7 @@ require the named operator's explicit out-of-band sign-off, recorded in the migr
 | Target Google UID `9b6afbc8…` | provider `google`, email `acubeaestheticsclinic@gmail.com` confirmed; 0 Doctor/ClinicMember/OrganizationMember/Patient links |
 | Phone UID exclusivity | `dacc52cf` in 1 place only — this Doctor row |
 | Acube members | only the Doctor row (0 ClinicMember, 0 OrganizationMember) |
-| Acube patients / assessments | 8 / 8 as of 2026-10-29 re-verify (was 7/7 at first audit — live clinic activity added one; the migration touches no Patient/Assessment rows, so all are preserved whatever the count) |
+| Acube patients / assessments | 8 / 8 as of 2026-10-29 re-verify (was 7/7 at first audit; the added record — patient created 2026-10-29 12:38, unassigned — is confirmed by the clinic as a valid QR-code test submission). The migration touches no Patient/Assessment rows, so all are preserved whatever the count. This record-confirmation is tracked separately from the auth cutover. |
 
 ## 4. Schema diff (prod vs staging)
 `AuditLog.id` NOT NULL, no default (supply it). `Doctor.email` NOT NULL in prod (placeholder
