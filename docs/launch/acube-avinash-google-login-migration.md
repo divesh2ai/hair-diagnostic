@@ -48,7 +48,10 @@ UID `9b6afbc8…` is unblocked for DOCTOR access only after **all** are confirme
   `acubeaestheticsclinic@gmail.com`. (Conditions 2–4 below still to be recorded.)
 - [ ] **(2) Shared access revoked** — all other staff access, active sessions, and account
   **recovery** access (recovery email/phone, app passwords, delegated/forwarding access) have
-  been removed from the account.
+  been removed from the account. **This also includes the existing HairOS/Supabase app
+  sessions for the UID** (12 active sessions / 13 refresh tokens observed 2026-10-29) — see
+  §6a; once the UID is linked, any surviving session becomes a live DOCTOR session, so they
+  must be cleared so only a fresh post-de-sharing login by Dr Avinash gains access.
 - [ ] **(3) 2-Step Verification** — 2SV is enabled and its device/credentials are solely
   Dr Avinash's.
 - [ ] **(4) Staff re-homed** — any staff who used this mailbox now have their **own** separate
@@ -86,6 +89,19 @@ Linking the uid to the Doctor row resolves it.
 
 Set `v_desharing_confirmed := true` **only** once the §2 checklist is fully signed off, and
 fill `v_desharing_by` with who confirmed it.
+
+### 6a. Cutover session revocation (run immediately before the mapping, same authorized window)
+UID `9b6afbc8…` holds **12 active app sessions / 13 refresh tokens** (2026-10-29) — residue of
+prior shared use. They grant nothing while the UID is unlinked, but would become live DOCTOR
+sessions the moment the mapping lands. Clear them first so only a fresh, post-de-sharing login
+by Dr Avinash gains access:
+
+```sql
+DELETE FROM auth.refresh_tokens WHERE user_id = '9b6afbc8-d69e-4e49-b44e-231c6aa136ba';
+DELETE FROM auth.sessions       WHERE user_id = '9b6afbc8-d69e-4e49-b44e-231c6aa136ba'::uuid;
+```
+
+### 6b. The guarded mapping
 
 ```sql
 DO $$
@@ -211,9 +227,10 @@ execution** without separate authorization.
 
 **Immediate P0 path:**
 1. Complete and record the §2 de-sharing checklist (conditions 1–4).
-2. Flip `v_desharing_confirmed := true` in §6 and set `v_desharing_by`.
-3. Your explicit **EXECUTE** for §6.
-4. Post-write read-only verification: hook → `DOCTOR` + Acube; `/doctor` shows all current
+2. Revoke the UID's existing app sessions (§6a).
+3. Flip `v_desharing_confirmed := true` in §6b and set `v_desharing_by`.
+4. Your explicit **EXECUTE** for §6a + §6b.
+5. Post-write read-only verification: hook → `DOCTOR` + Acube; `/doctor` shows all current
    Acube patients + assessments (8/8 as of 2026-10-29; the count equals whatever exists at
    cutover, since the migration never writes those rows); clinic isolation; session refresh;
    logout; rollback-readiness.
