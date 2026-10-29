@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { useAssessmentStore } from '@/stores/useAssessmentStore';
@@ -95,13 +95,47 @@ function MetricChip({
   );
 }
 
-interface ClinicLandingClientProps {
-  clinic: ClinicLandingData;
+/** A branch the patient can start under. Slug is the QR handle. */
+export interface BranchOption {
+  id: string;
+  slug: string;
+  branchName: string;
 }
 
-export default function ClinicLandingClient({ clinic }: ClinicLandingClientProps) {
+interface ClinicLandingClientProps {
+  clinic: ClinicLandingData;
+  /**
+   * Selectable branches for this clinic that have a QR handle, resolved on the
+   * server. Empty or length-1 means there is nothing for the patient to choose
+   * — the flow starts straight away (attributed to the single branch, if any).
+   */
+  branches?: BranchOption[];
+  /**
+   * The branch the URL already named and the server validated, if any. When
+   * set, the patient is never asked to choose — the QR decided for them.
+   */
+  initialBranch?: string | null;
+}
+
+export default function ClinicLandingClient({
+  clinic,
+  branches = [],
+  initialBranch = null,
+}: ClinicLandingClientProps) {
   const router = useRouter();
   const { setClinicData, reset } = useAssessmentStore();
+
+  // The branch this visit is attributed to. Seeded from the (validated) URL
+  // param; otherwise chosen from the picker below. A single-branch clinic auto-
+  // selects, so its patients are never shown a one-option question.
+  const soleBranch = branches.length === 1 ? branches[0].slug : null;
+  const [branch, setBranch] = useState<string | null>(initialBranch ?? soleBranch);
+  // The generic clinic URL: more than one branch and the patient has not been
+  // handed one. We must ask before starting, so the assessment is attributed.
+  const mustChoose = !branch && branches.length >= 2;
+  const [showPicker, setShowPicker] = useState(false);
+
+  const branchSuffix = branch ? `?branch=${encodeURIComponent(branch)}` : '';
 
   // Sync the Zustand assessment store with the server-resolved clinic. Reset
   // any stale in-progress session first so returning patients don't leak
@@ -125,7 +159,24 @@ export default function ClinicLandingClient({ clinic }: ClinicLandingClientProps
     reset,
   ]);
 
-  const startAssessment = () => router.push(`/q/${clinic.slug}/assessment-v3`);
+  const startAssessment = () => {
+    // Generic URL with more than one branch: ask first, then start. A patient
+    // must never begin a clinically-attributed assessment with the branch left
+    // to chance.
+    if (mustChoose) {
+      setShowPicker(true);
+      return;
+    }
+    router.push(`/q/${clinic.slug}/assessment-v3${branchSuffix}`);
+  };
+  // Choosing a branch starts the assessment immediately under it — the choice
+  // and the intent are one gesture. The slug also rides the URL, so a reload
+  // keeps the attribution.
+  const chooseBranch = (slug: string) => {
+    setBranch(slug);
+    setShowPicker(false);
+    router.push(`/q/${clinic.slug}/assessment-v3?branch=${encodeURIComponent(slug)}`);
+  };
   const openScience = () => router.push(`/q/${clinic.slug}/science`);
 
   return (
@@ -622,6 +673,60 @@ export default function ClinicLandingClient({ clinic }: ClinicLandingClientProps
           </p>
         </div>
       </footer>
+
+      {/* ── BRANCH PICKER ──────────────────────────────────────────
+          Shown only on the generic clinic URL when more than one branch
+          exists and none was named. Closing it returns to the page without
+          starting — a patient who is unsure should not be forced to pick. */}
+      {showPicker && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-label="Choose your clinic branch"
+          className="fixed inset-0 z-50 flex items-center justify-center p-6"
+          style={{ background: 'rgba(6,10,7,0.72)' }}
+          onClick={() => setShowPicker(false)}
+        >
+          <div
+            className="w-full max-w-md rounded-2xl border p-7"
+            style={{ background: PANEL, borderColor: LINE }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <p
+              className="font-[family-name:var(--font-fraunces)] text-[22px] font-semibold"
+              style={{ color: CREAM }}
+            >
+              Which branch are you visiting?
+            </p>
+            <p className="mt-2 text-[14px] leading-6" style={{ color: MUTED }}>
+              {clinic.name} has more than one location. Choose the branch you are
+              at so your assessment reaches the right clinical record.
+            </p>
+            <div className="mt-6 flex flex-col gap-3">
+              {branches.map((b) => (
+                <button
+                  key={b.id}
+                  type="button"
+                  onClick={() => chooseBranch(b.slug)}
+                  className="flex items-center justify-between rounded-xl border px-5 py-4 text-left transition-colors"
+                  style={{ borderColor: LINE, color: CREAM }}
+                >
+                  <span className="text-[16px] font-semibold">{b.branchName}</span>
+                  <ArrowRight className="h-4 w-4" style={{ color: GOLD }} />
+                </button>
+              ))}
+            </div>
+            <button
+              type="button"
+              onClick={() => setShowPicker(false)}
+              className="mt-5 w-full text-center text-[12px] uppercase tracking-[0.22em]"
+              style={{ color: MUTED }}
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+      )}
     </div>
     </MotionConfig>
   );

@@ -7,6 +7,7 @@ import {
   AppointmentsNotProvisionedError,
   type AppointmentRecord,
 } from "@/lib/doctor/appointments";
+import { listClinicBranches } from "@/lib/clinics/branches";
 
 export const dynamic = "force-dynamic";
 
@@ -46,7 +47,7 @@ export async function GET(req: Request) {
   const doctorId = url.searchParams.get("doctorId");
 
   try {
-    const [clinic, patients] = await Promise.all([
+    const [clinic, patients, branches] = await Promise.all([
       prisma.clinic.findUnique({
         where: { id: doctor.clinicId },
         select: { timezone: true },
@@ -69,11 +70,23 @@ export async function GET(req: Request) {
               status: true,
               reviewDecision: true,
               submittedAt: true,
+              // Which branch the latest assessment was taken at. Drives the
+              // registry's branch filter. Null for assessments from before
+              // branch attribution and for generic-URL walk-ins.
+              clinicLocationId: true,
             },
           },
         },
       }),
+      // The clinic's selectable branches, for the registry's branch filter.
+      // Scoped to the caller's own clinic — same boundary as the patient list.
+      listClinicBranches(prisma, doctor.clinicId),
     ]);
+
+    // branchName by location id, so a row can show where its latest assessment
+    // was taken without a per-row lookup. Soft-deleted/closed branches are not
+    // listed, so an assessment at one resolves to null — shown as unfiltered.
+    const branchNameById = new Map(branches.map((b) => [b.id, b.branchName]));
 
     // `concern` decides which review surface a row's action button opens —
     // skin cases have their own (see lib/doctor/reviewHref), and without it
@@ -120,9 +133,13 @@ export async function GET(req: Request) {
       timeZone: clinic?.timezone || "Asia/Kolkata",
       appointmentsProvisioned,
       truncated: patients.length === LIST_CAP,
+      // The clinic's branches, so the registry can offer "All / <branch>" chips
+      // only when the clinic actually has branches. One or zero → no chips.
+      branches: branches.map((b) => ({ id: b.id, branchName: b.branchName })),
       patients: patients.map((p) => {
         const latest = p.assessments[0];
         const next = nextAppointments.get(p.id);
+        const lastBranchId = latest?.clinicLocationId ?? null;
         return {
           id: p.id,
           name: p.name,
@@ -133,6 +150,10 @@ export async function GET(req: Request) {
           lastConcern: latest ? (concerns.get(latest.id) ?? null) : null,
           lastStatus: latest?.status ?? null,
           lastReviewDecision: latest?.reviewDecision ?? null,
+          // Branch of the latest assessment. Id drives filtering; name is for
+          // display. Null when unattributed or the branch is no longer listed.
+          lastBranchId,
+          lastBranchName: lastBranchId ? (branchNameById.get(lastBranchId) ?? null) : null,
           nextAppointment: next
             ? {
                 id: next.id,

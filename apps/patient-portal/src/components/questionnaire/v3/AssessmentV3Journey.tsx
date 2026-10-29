@@ -126,6 +126,14 @@ export interface AssessmentV3JourneyProps {
    * gate omit it and nothing else changes.
    */
   intakeToken?: string | null;
+  /**
+   * The physical branch the patient reached this clinic through, as the QR or
+   * link carried it (a branch slug like "bandra"). Sent to the submit route,
+   * which re-validates it against this clinic's own branches before recording
+   * it — see /api/assessment/submit. Optional: a generic clinic link carries
+   * none and the assessment is filed attributed to no branch.
+   */
+  branch?: string | null;
   onSubmitted?: (result: { assessmentId: string; previewToken?: string }) => void | Promise<void>;
 }
 
@@ -137,6 +145,7 @@ export function AssessmentV3Journey({
   patientInfoOverride,
   visitType,
   intakeToken,
+  branch,
   onSubmitted,
 }: AssessmentV3JourneyProps) {
   const params = useParams();
@@ -267,6 +276,7 @@ export function AssessmentV3Journey({
           locale,
           ...(visitType ? { visitType } : {}),
           ...(intakeToken ? { intakeToken } : {}),
+          ...(branch ? { branch } : {}),
           ...(patientInfoOverride ? { patientInfo: patientInfoOverride } : {}),
         }),
       });
@@ -304,6 +314,7 @@ export function AssessmentV3Journey({
     }
   }, [
     answers,
+    branch,
     concern,
     effectiveClinicSlug,
     intakeToken,

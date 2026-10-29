@@ -13,6 +13,7 @@ import {
   type MonthKey,
 } from "@/lib/format/clinicDay";
 import { reviewHref } from "@/lib/doctor/reviewHref";
+import { ALL_BRANCHES, matchesBranchFilter } from "@/lib/doctor/branchFilter";
 import { PatientCalendar } from "./PatientCalendar";
 import { DayPanel } from "./DayPanel";
 import { BookAppointmentDialog } from "./BookAppointmentDialog";
@@ -92,8 +93,14 @@ const EMPTY_REGISTRY: PatientsPayload = {
   timeZone: FALLBACK_TZ,
   appointmentsProvisioned: false,
   truncated: false,
+  branches: [],
   patients: [],
 };
+
+// Branch filter value lives in @/lib/doctor/branchFilter (ALL_BRANCHES +
+// matchesBranchFilter), shared with its tests. Kept separate from the status
+// filter so a doctor can ask "awaiting review at Mulund" — the two narrow the
+// list together.
 
 export default function AllPatientsPage() {
   const [registry, setRegistry] = useState<PatientsPayload | null>(null);
@@ -111,6 +118,7 @@ export default function AllPatientsPage() {
   const [query, setQuery] = useState("");
   const [sort, setSort] = useState<Sort>("priority");
   const [filter, setFilter] = useState<Filter>("all");
+  const [branchFilter, setBranchFilter] = useState<string>(ALL_BRANCHES);
   const [loading, setLoading] = useState(true);
 
   const [booking, setBooking] = useState<{
@@ -215,11 +223,33 @@ export default function AllPatientsPage() {
     return c;
   }, [patients]);
 
+  const branches = useMemo(() => registry?.branches ?? [], [registry]);
+  // The branch chips only earn their place when there is a real choice. A
+  // clinic with one branch (or none) would show "All Patients" beside a single
+  // redundant chip, so the whole row is hidden below two branches.
+  const showBranchFilter = branches.length >= 2;
+
+  // Count patients per branch (by their latest assessment's branch) so each
+  // chip can carry its size, exactly as the status chips do.
+  const branchCounts = useMemo(() => {
+    const c = new Map<string, number>();
+    for (const p of patients) {
+      if (p.lastBranchId) c.set(p.lastBranchId, (c.get(p.lastBranchId) ?? 0) + 1);
+    }
+    return c;
+  }, [patients]);
+
   const visible = useMemo(() => {
     const wanted = FILTERS.find((f) => f.id === filter)?.standing ?? null;
     let rows = wanted
       ? patients.filter((p) => standingStyle(p).info.standing === wanted)
       : patients;
+
+    // Branch narrows by the latest assessment's branch. An unattributed patient
+    // (null branch) matches only "All Patients", never a specific branch.
+    if (branchFilter !== ALL_BRANCHES) {
+      rows = rows.filter((p) => matchesBranchFilter(p.lastBranchId, branchFilter));
+    }
 
     if (query) {
       const q = query.trim().toLowerCase();
@@ -249,7 +279,7 @@ export default function AllPatientsPage() {
       const bt = b.lastAssessment ? new Date(b.lastAssessment).getTime() : 0;
       return bt - at;
     });
-  }, [patients, query, sort, filter]);
+  }, [patients, query, sort, filter, branchFilter]);
 
   return (
     // `data-surface="doctor"` scopes the HairOS Doctor token layer to this tree
@@ -312,6 +342,62 @@ export default function AllPatientsPage() {
                     className={`w-full rounded-[var(--hd-radius-sm)] border border-[var(--hd-border)] bg-[var(--hd-surface)] py-2.5 pl-10 pr-3 text-[14px] text-[var(--hd-text)] placeholder-[var(--hd-text-muted)] ${SURFACE.focus}`}
                   />
                 </div>
+
+                {/* ── BRANCH FILTER ─────────────────────────────────────────
+                    Shown only when the clinic has more than one branch. "All
+                    Patients" then one chip per branch, each carrying its count.
+                    Separate from the status row so branch and status narrow
+                    together — "awaiting review at Mulund" is one state. */}
+                {showBranchFilter && (
+                  <div
+                    role="tablist"
+                    aria-label="Filter patients by branch"
+                    className="flex flex-wrap items-center gap-1"
+                  >
+                    <button
+                      type="button"
+                      role="tab"
+                      aria-selected={branchFilter === ALL_BRANCHES}
+                      onClick={() => setBranchFilter(ALL_BRANCHES)}
+                      className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-[12.5px] font-medium transition-colors ${
+                        branchFilter === ALL_BRANCHES
+                          ? "border-[var(--hd-text)] bg-[var(--hd-text)] text-white"
+                          : "border-[var(--hd-border)] bg-[var(--hd-surface)] text-[var(--hd-text-secondary)] hover:border-[var(--hd-border-strong)]"
+                      } ${SURFACE.focus}`}
+                    >
+                      All Patients
+                      <span
+                        className={`tabular-nums ${branchFilter === ALL_BRANCHES ? "text-white/70" : "text-[var(--hd-text-muted)]"}`}
+                      >
+                        {patients.length}
+                      </span>
+                    </button>
+                    {branches.map((b) => {
+                      const active = b.id === branchFilter;
+                      return (
+                        <button
+                          key={b.id}
+                          type="button"
+                          role="tab"
+                          aria-selected={active}
+                          onClick={() => setBranchFilter(b.id)}
+                          className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-[12.5px] font-medium transition-colors ${
+                            active
+                              ? "border-[var(--hd-text)] bg-[var(--hd-text)] text-white"
+                              : "border-[var(--hd-border)] bg-[var(--hd-surface)] text-[var(--hd-text-secondary)] hover:border-[var(--hd-border-strong)]"
+                          } ${SURFACE.focus}`}
+                        >
+                          {b.branchName}
+                          <span
+                            className={`tabular-nums ${active ? "text-white/70" : "text-[var(--hd-text-muted)]"}`}
+                          >
+                            {branchCounts.get(b.id) ?? 0}
+                          </span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
 
                 <div className="flex flex-wrap items-center justify-between gap-3">
                   {/* Filters double as the page's counts. A separate stat strip
@@ -503,6 +589,12 @@ function Row({
               <>
                 <Sep />
                 <span>last {shortDate(p.lastAssessment, timeZone)}</span>
+              </>
+            )}
+            {p.lastBranchName && (
+              <>
+                <Sep />
+                <span>{p.lastBranchName}</span>
               </>
             )}
             {p.nextAppointment && (
