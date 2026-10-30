@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 
 // Read-only treatment/purchase history for the patient profile, across visits.
 // Lets a doctor open a patient and see what was actually obtained, when
@@ -132,6 +133,23 @@ export function PatientTreatmentHistory({
                       </li>
                     ))}
                   </ul>
+                  {/*
+                    The dashboard history is read-only, but the doctor must be able
+                    to act on it in one step at the next visit — continue, revise or
+                    discontinue the kits that are still open or deferred. Recording
+                    lives on the review screen's KitPurchaseTracker, so this is the
+                    direct route to it, shown only when there is something to act on
+                    (an open or deferred kit). A min 44px touch target keeps it usable
+                    on a phone at the chairside.
+                  */}
+                  {(v.summary.remainingKits > 0 || v.summary.deferredKits > 0) && (
+                    <Link
+                      href={`/doctor/reports/${v.assessmentId}`}
+                      className="mt-2 inline-flex min-h-[44px] items-center text-xs font-medium text-sky-600 hover:text-sky-700"
+                    >
+                      Continue, revise or discontinue remaining kits →
+                    </Link>
+                  )}
                 </li>
               );
             })}
