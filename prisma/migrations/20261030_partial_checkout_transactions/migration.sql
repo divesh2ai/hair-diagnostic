@@ -1,3 +1,8 @@
+-- REVIEWED STAGING-ONLY CANDIDATE. Original 3ea5381 is preserved separately.
+-- Execute as one transaction; new enum values must not be used before COMMIT.
+BEGIN;
+SET LOCAL lock_timeout = '3s';
+SET LOCAL statement_timeout = '30s';
 -- Release 2. Additive; apply to staging first. Never rewrite the Phase 1 ledger.
 ALTER TYPE "KitPurchaseEventType" ADD VALUE IF NOT EXISTS 'EXTERNALLY_OBTAINED';
 ALTER TYPE "KitPurchaseEventType" ADD VALUE IF NOT EXISTS 'CONTINUED';
@@ -37,37 +42,50 @@ CREATE POLICY "KitPurchaseTransaction_clinic_select" ON "KitPurchaseTransaction"
 GRANT SELECT ON "KitPurchaseTransaction" TO authenticated;
 GRANT ALL ON "KitPurchaseTransaction" TO service_role;
 
+-- RLS-independent relational integrity for purchase lines. Parent primary IDs
+-- already guarantee these composite keys are unique. No parent SELECT policy
+-- or privilege is widened, and no SECURITY DEFINER function is introduced.
+ALTER TABLE "KitOrderIntent" ADD CONSTRAINT "r2_order_clinic_assessment_key"
+  UNIQUE ("id", "clinicId", "assessmentId");
+ALTER TABLE "Assessment" ADD CONSTRAINT "r2_assessment_clinic_patient_key"
+  UNIQUE ("id", "clinicId", "patientId");
+ALTER TABLE "KitPurchaseLine" ADD CONSTRAINT "r2_line_order_clinic_assessment_fkey"
+  FOREIGN KEY ("kitOrderIntentId", "clinicId", "assessmentId")
+  REFERENCES "KitOrderIntent" ("id", "clinicId", "assessmentId") ON DELETE CASCADE ON UPDATE CASCADE;
+ALTER TABLE "KitPurchaseLine" ADD CONSTRAINT "r2_line_assessment_clinic_patient_fkey"
+  FOREIGN KEY ("assessmentId", "clinicId", "patientId")
+  REFERENCES "Assessment" ("id", "clinicId", "patientId") ON DELETE RESTRICT ON UPDATE CASCADE;
+-- Kit-array membership is intentionally not revalidated on legacy status edits.
+-- The application validates new materialisation and checkout against approved
+-- kitIds. Historical lines for removed kits retain their facts and control history.
+
 -- Enforce tenant associations even for direct PostgREST writes to Phase 1 tables.
 CREATE FUNCTION public.check_release2_associations() RETURNS trigger
 LANGUAGE plpgsql SECURITY INVOKER SET search_path = public AS $$
 BEGIN
-  IF TG_TABLE_NAME = 'KitPurchaseLine' THEN
-    IF NOT EXISTS (SELECT 1 FROM "KitOrderIntent" i JOIN "Consultation" c ON c.id=i."consultationId"
-      WHERE i.id=NEW."kitOrderIntentId" AND i."clinicId"=NEW."clinicId"
-        AND i."assessmentId"=NEW."assessmentId" AND c."patientId"=NEW."patientId"
-        AND NEW."kitId"=ANY(i."kitIds")) THEN RAISE EXCEPTION 'purchase_line_association' USING ERRCODE='23514'; END IF;
-  ELSIF TG_TABLE_NAME = 'KitPurchaseEvent' THEN
-    IF NOT EXISTS (SELECT 1 FROM "KitPurchaseLine" l WHERE l.id=NEW."kitPurchaseLineId"
+  IF TG_TABLE_NAME = 'KitPurchaseEvent' THEN
+    IF NOT EXISTS (SELECT 1 FROM public."KitPurchaseLine" l WHERE l.id=NEW."kitPurchaseLineId"
       AND l."clinicId"=NEW."clinicId" AND l."assessmentId"=NEW."assessmentId")
-      OR NOT EXISTS (SELECT 1 FROM "Doctor" d WHERE d.id=NEW."recordedByDoctorId" AND d."clinicId"=NEW."clinicId")
+      OR NOT EXISTS (SELECT 1 FROM public."Doctor" d WHERE d.id=NEW."recordedByDoctorId" AND d."clinicId"=NEW."clinicId")
       OR (NEW."transactionId" IS NOT NULL AND NOT EXISTS (
-        SELECT 1 FROM "KitPurchaseTransaction" t JOIN "KitPurchaseLine" l ON l.id=NEW."kitPurchaseLineId"
+        SELECT 1 FROM public."KitPurchaseTransaction" t JOIN public."KitPurchaseLine" l ON l.id=NEW."kitPurchaseLineId"
         WHERE t.id=NEW."transactionId" AND t."clinicId"=NEW."clinicId" AND t."kitOrderIntentId"=l."kitOrderIntentId"))
     THEN RAISE EXCEPTION 'purchase_event_association' USING ERRCODE='23514'; END IF;
   ELSIF TG_TABLE_NAME = 'ConsultationNote' THEN
-    IF NOT EXISTS (SELECT 1 FROM "Patient" p WHERE p.id=NEW."patientId" AND p."clinicId"=NEW."clinicId")
-      OR NOT EXISTS (SELECT 1 FROM "Doctor" d WHERE d.id=NEW."authorDoctorId" AND d."clinicId"=NEW."clinicId")
-      OR (NEW."assessmentId" IS NOT NULL AND NOT EXISTS (SELECT 1 FROM "Assessment" a WHERE a.id=NEW."assessmentId" AND a."clinicId"=NEW."clinicId" AND a."patientId"=NEW."patientId"))
+    IF NOT EXISTS (SELECT 1 FROM public."Patient" p WHERE p.id=NEW."patientId" AND p."clinicId"=NEW."clinicId")
+      OR NOT EXISTS (SELECT 1 FROM public."Doctor" d WHERE d.id=NEW."authorDoctorId" AND d."clinicId"=NEW."clinicId")
+      OR (NEW."assessmentId" IS NOT NULL AND NOT EXISTS (SELECT 1 FROM public."Assessment" a WHERE a.id=NEW."assessmentId" AND a."clinicId"=NEW."clinicId" AND a."patientId"=NEW."patientId"))
     THEN RAISE EXCEPTION 'note_association' USING ERRCODE='23514'; END IF;
   ELSE
-    IF NOT EXISTS (SELECT 1 FROM "KitOrderIntent" i WHERE i.id=NEW."kitOrderIntentId"
+    IF NOT EXISTS (SELECT 1 FROM public."KitOrderIntent" i WHERE i.id=NEW."kitOrderIntentId"
       AND i."clinicId"=NEW."clinicId" AND i."assessmentId"=NEW."assessmentId")
-      OR (NEW."recordedByDoctorId" IS NOT NULL AND NOT EXISTS (SELECT 1 FROM "Doctor" d WHERE d.id=NEW."recordedByDoctorId" AND d."clinicId"=NEW."clinicId"))
+      OR (NEW."recordedByDoctorId" IS NOT NULL AND NOT EXISTS (SELECT 1 FROM public."Doctor" d WHERE d.id=NEW."recordedByDoctorId" AND d."clinicId"=NEW."clinicId"))
     THEN RAISE EXCEPTION 'transaction_association' USING ERRCODE='23514'; END IF;
   END IF;
   RETURN NEW;
 END $$;
-CREATE TRIGGER release2_line_associations BEFORE INSERT OR UPDATE ON "KitPurchaseLine" FOR EACH ROW EXECUTE FUNCTION public.check_release2_associations();
 CREATE TRIGGER release2_event_associations BEFORE INSERT ON "KitPurchaseEvent" FOR EACH ROW EXECUTE FUNCTION public.check_release2_associations();
 CREATE TRIGGER release2_note_associations BEFORE INSERT OR UPDATE ON "ConsultationNote" FOR EACH ROW EXECUTE FUNCTION public.check_release2_associations();
 CREATE TRIGGER release2_transaction_associations BEFORE INSERT OR UPDATE ON "KitPurchaseTransaction" FOR EACH ROW EXECUTE FUNCTION public.check_release2_associations();
+
+COMMIT;

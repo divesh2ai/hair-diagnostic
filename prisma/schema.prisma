@@ -1060,6 +1060,7 @@ model Assessment {
   // "Today's kit-fulfilment visits at this clinic" and the returning-patient
   // split, without scanning the clinic's whole assessment history.
   @@index([clinicId, visitType])
+  @@unique([id, clinicId, patientId], map: "r2_assessment_clinic_patient_key")
 }
 
 model AssessmentResponse {
@@ -1677,6 +1678,7 @@ model KitOrderIntent {
   @@index([doctorId])
   @@index([assessmentId])
   @@index([clinicId, treatmentStartedAt])
+  @@unique([id, clinicId, assessmentId], map: "r2_order_clinic_assessment_key")
 }
 
 enum KitOrderStatus {
