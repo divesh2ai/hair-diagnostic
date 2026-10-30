@@ -18,6 +18,8 @@
 // own event type; only a clinic-confirmed sale counts toward purchased boxes.
 
 export type KitPurchaseEventType =
+  | "EXTERNALLY_OBTAINED"
+  | "CONTINUED"
   | "PURCHASE_REPORTED_BY_PATIENT"
   | "PURCHASE_CONFIRMED_BY_CLINIC"
   | "PAYMENT_RECORDED"
@@ -40,6 +42,8 @@ export type KitPurchaseLineStatus =
   | "DISCONTINUED";
 
 export const KIT_PURCHASE_EVENT_TYPES: readonly KitPurchaseEventType[] = [
+  "EXTERNALLY_OBTAINED",
+  "CONTINUED",
   "PURCHASE_REPORTED_BY_PATIENT",
   "PURCHASE_CONFIRMED_BY_CLINIC",
   "PAYMENT_RECORDED",
@@ -55,6 +59,7 @@ export const KIT_PURCHASE_EVENT_TYPES: readonly KitPurchaseEventType[] = [
 
 /** Control states a line can be moved into; each one requires a reason. */
 export const CONTROL_EVENT_TYPES: readonly KitPurchaseEventType[] = [
+  "CONTINUED",
   "DEFERRED",
   "DECLINED",
   "SUBSTITUTED",
@@ -63,6 +68,7 @@ export const CONTROL_EVENT_TYPES: readonly KitPurchaseEventType[] = [
 
 /** Events that carry a box quantity. */
 export const QUANTITY_EVENT_TYPES: readonly KitPurchaseEventType[] = [
+  "EXTERNALLY_OBTAINED",
   "PURCHASE_REPORTED_BY_PATIENT",
   "PURCHASE_CONFIRMED_BY_CLINIC",
   "DISPENSED",
@@ -100,6 +106,7 @@ export interface PurchaseEventInput {
 }
 
 export interface DerivedLineState {
+  externallyObtainedBoxes: number;
   recommendedBoxes: number;
   /** Authoritative: clinic-confirmed purchases net of refunds/returns. */
   purchasedBoxes: number;
@@ -126,7 +133,7 @@ function sumBoxes(events: readonly PurchaseEventInput[], type: KitPurchaseEventT
  * stored control status, and its full event history.
  *
  * Counting rule — deliberate:
- *   purchasedBoxes = confirmed-by-clinic − refunded − returned   (never below 0)
+ *   purchasedBoxes = confirmed-by-clinic − refunded (never below 0)
  * Patient-reported and dispensed events are surfaced but do NOT add to the
  * purchased total, so an unverified claim can never read as a sale and a
  * confirmed-then-dispensed kit is not counted twice.
@@ -143,10 +150,13 @@ export function deriveLineState(
   const confirmed = sumBoxes(events, "PURCHASE_CONFIRMED_BY_CLINIC");
   const refunded = sumBoxes(events, "REFUNDED");
   const returned = sumBoxes(events, "RETURNED");
-  const dispensedBoxes = sumBoxes(events, "DISPENSED");
+  const dispensedBoxes = Math.max(0, sumBoxes(events, "DISPENSED") - returned);
+  const externallyObtainedBoxes = sumBoxes(events, "EXTERNALLY_OBTAINED");
   const patientReportedBoxes = sumBoxes(events, "PURCHASE_REPORTED_BY_PATIENT");
 
-  const purchasedBoxes = Math.max(0, confirmed - refunded - returned);
+  // Returning stock and refunding money are separate actions. Subtracting
+  // both would reverse the same purchase twice.
+  const purchasedBoxes = Math.max(0, confirmed - refunded);
   const rec = Math.max(0, recommendedBoxes);
   const remainingBoxes = Math.max(0, rec - purchasedBoxes);
 
@@ -158,7 +168,9 @@ export function deriveLineState(
   const treatmentStartedAt = treatmentStarted ? starts[0] : null;
 
   let status: KitPurchaseLineStatus;
-  if (purchasedBoxes > 0 && rec > 0 && purchasedBoxes >= rec) {
+  if (["DISCONTINUED", "SUBSTITUTED", "DECLINED"].includes(storedStatus)) {
+    status = storedStatus;
+  } else if (purchasedBoxes > 0 && rec > 0 && purchasedBoxes >= rec) {
     status = "PURCHASED";
   } else if (purchasedBoxes > 0) {
     status = "PARTIALLY_PURCHASED";
@@ -172,10 +184,11 @@ export function deriveLineState(
       | KitPurchaseLineStatus
       | undefined;
     const stored = storedStatus && storedStatus !== "RECOMMENDED" ? storedStatus : undefined;
-    status = (lastControl ?? stored ?? "RECOMMENDED") as KitPurchaseLineStatus;
+    status = (lastControl === ("CONTINUED" as string) ? "RECOMMENDED" : lastControl ?? stored ?? "RECOMMENDED") as KitPurchaseLineStatus;
   }
 
   return {
+    externallyObtainedBoxes,
     recommendedBoxes: rec,
     purchasedBoxes,
     dispensedBoxes,
@@ -352,11 +365,12 @@ export function validatePurchaseEvent(input: {
   if (!isKitPurchaseEventType(input.eventType)) return "invalid_event_type";
   const type = input.eventType;
 
-  if (requiresReason(type) && !(input.reason && input.reason.trim().length > 0)) {
+  if (input.reason != null && (typeof input.reason !== "string" || input.reason.length > 2000)) return "invalid_reason";
+  if (requiresReason(type) && !(typeof input.reason === "string" && input.reason.trim().length > 0)) {
     return "reason_required";
   }
   if (requiresBoxes(type)) {
-    if (input.boxes == null || !Number.isInteger(input.boxes) || input.boxes <= 0) {
+    if (input.boxes == null || !Number.isSafeInteger(input.boxes) || input.boxes <= 0 || input.boxes > 99) {
       return "boxes_required";
     }
   }

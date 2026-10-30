@@ -18,6 +18,7 @@ type LineStatus =
   | "DISCONTINUED";
 
 interface Derived {
+  externallyObtainedBoxes:number;
   recommendedBoxes: number;
   purchasedBoxes: number;
   remainingBoxes: number;
@@ -44,6 +45,7 @@ interface Summary {
   remainingBoxes: number;
 }
 interface VisitHistory {
+  intentId:string;
   assessmentId: string;
   summary: Summary;
   lines: LineView[];
@@ -114,7 +116,7 @@ export function PatientTreatmentHistory({
             {visits.map((v) => {
               const date = assessmentDates[v.assessmentId];
               return (
-                <li key={v.assessmentId} className="border-t border-stone-100 pt-3">
+                <li key={v.intentId} className="border-t border-stone-100 pt-3">
                   <p className="text-[11px] font-medium uppercase tracking-wide text-stone-500">
                     Visit {date ? new Date(date).toLocaleDateString() : ""}
                   </p>
@@ -123,12 +125,13 @@ export function PatientTreatmentHistory({
                       <li key={l.kitId} className="text-xs text-slate-700">
                         <span className="font-medium">{l.kitLabel}</span> — {l.derived.purchasedBoxes}/{l.recommendedBoxes} boxes ·{" "}
                         {STATUS_LABEL[l.derived.status]}
-                        {l.derived.remainingBoxes > 0 && l.derived.status !== "DECLINED" && (
+                        {l.derived.remainingBoxes > 0 && !["DECLINED","SUBSTITUTED","DISCONTINUED"].includes(l.derived.status) && (
                           <span className="text-slate-500"> · {l.derived.remainingBoxes} remaining</span>
                         )}
                         {l.derived.treatmentStarted && l.derived.treatmentStartedAt && (
                           <span className="text-emerald-700"> · started {new Date(l.derived.treatmentStartedAt).toLocaleDateString()}</span>
                         )}
+                        {l.derived.externallyObtainedBoxes>0 && <span> · externally obtained {l.derived.externallyObtainedBoxes} (no clinic charge)</span>}
                         {l.controlReason && <span className="text-stone-400"> · {l.controlReason}</span>}
                       </li>
                     ))}

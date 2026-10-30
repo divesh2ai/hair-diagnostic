@@ -1964,6 +1964,8 @@ enum KitPurchaseLineStatus {
 ///   DEFERRED | DECLINED | SUBSTITUTED | DISCONTINUED — clinical/commercial state
 ///   REFUNDED | RETURNED          — reversals (negative to the counted total)
 enum KitPurchaseEventType {
+  EXTERNALLY_OBTAINED
+  CONTINUED
   PURCHASE_REPORTED_BY_PATIENT
   PURCHASE_CONFIRMED_BY_CLINIC
   PAYMENT_RECORDED
@@ -2017,7 +2019,32 @@ model KitPurchaseLine {
 /// these events (see lib/commerce/kitPurchaseModel.ts), never stored as a
 /// mutable total — so a later purchase on a new date is just a new row, with no
 /// duplicate order and no double counting.
+model KitPurchaseTransaction {
+  id String @id
+  kitOrderIntentId String
+  clinicId String
+  assessmentId String
+  clientTransactionId String
+  selection Json
+  amountMinor Int
+  currency String @default("INR")
+  status String @default("PENDING")
+  reference String?
+  recordedByDoctorId String?
+  reason String?
+  createdAt DateTime @default(now())
+  paidAt DateTime?
+  refundedAt DateTime?
+  updatedAt DateTime @updatedAt
+
+  @@unique([kitOrderIntentId, clientTransactionId])
+  @@unique([clinicId, reference])
+  @@index([clinicId, kitOrderIntentId, createdAt], map: "KitPurchaseTransaction_clinic_intent_idx")
+}
+
 model KitPurchaseEvent {
+  substituteKitId String?
+  transactionId String?
   id                String @id @default(cuid())
 
   kitPurchaseLineId String
@@ -2052,6 +2079,7 @@ model KitPurchaseEvent {
   createdAt DateTime @default(now())
 
   @@unique([kitPurchaseLineId, clientEventId])
+  @@index([transactionId])
   @@index([kitPurchaseLineId, occurredAt])
   @@index([assessmentId, occurredAt])
   @@index([clinicId, occurredAt])

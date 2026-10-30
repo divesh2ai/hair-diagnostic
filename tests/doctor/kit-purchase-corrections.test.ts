@@ -166,12 +166,5 @@ describe("patient treatment history includes approved, unpurchased kits", () => 
   });
 });
 
-describe("tracker uses the stable idempotency key, not a random one", () => {
-  const src = read(TRACKER);
-  it("derives the key from the action via purchaseEventIdempotencyKey", () => {
-    expect(src).toContain("purchaseEventIdempotencyKey");
-  });
-  it("does not mint a fresh random key per submit", () => {
-    expect(src).not.toContain("crypto.randomUUID()");
-  });
-});
+// Release 2 replaces content-derived keys: identical genuine purchases on the
+// same day must be distinct. Retry retention is covered by the checkout tests.

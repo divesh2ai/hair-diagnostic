@@ -91,7 +91,7 @@ export async function GET(_req: Request, ctx: { params: Promise<{ id: string }> 
         storedStatus: v.lineStatus,
         events: toInputs(v.events),
       }));
-      return { assessmentId: order.assessmentId, summary: summarisePlan(summaryInput), lines: lineViews };
+      return { intentId:order.intentId, assessmentId: order.assessmentId, summary: summarisePlan(summaryInput), lines: lineViews };
     });
 
     const overall = summarisePlan(

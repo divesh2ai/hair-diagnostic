@@ -42,7 +42,6 @@ import {
   listEventsByIntent,
   readLineByKit,
   appendPurchaseEvent,
-  setLineStatus,
   PURCHASE_NOT_PROVISIONED,
   PurchaseNotProvisionedError,
   type PurchaseEventRecord,
@@ -168,12 +167,13 @@ export async function POST(req: Request, ctx: { params: Promise<{ intentId: stri
     kitOrderPaymentId?: string | null;
     occurredAt?: string;
     clientEventId?: string;
+    substituteKitId?: string;
   };
 
   if (!body.kitId) return NextResponse.json({ error: "kitId_required" }, { status: 400 });
   // A stable idempotency key is mandatory: it is how a retried submit is made
   // safe. Without it we cannot tell a replay from a second real action.
-  if (!body.clientEventId || body.clientEventId.trim().length === 0) {
+  if (typeof body.clientEventId !== "string" || body.clientEventId.trim().length === 0 || body.clientEventId.length > 128) {
     return NextResponse.json({ error: "clientEventId_required" }, { status: 400 });
   }
   // Governed price is never accepted from the client; reject if supplied so a
@@ -189,6 +189,9 @@ export async function POST(req: Request, ctx: { params: Promise<{ intentId: stri
   });
   if (validationError) return NextResponse.json({ error: validationError }, { status: 400 });
   const eventType = body.eventType as KitPurchaseEventType;
+  if (["PAYMENT_RECORDED", "REFUNDED"].includes(eventType) || body.saleValueMinor != null || body.kitOrderPaymentId != null) {
+    return NextResponse.json({ error: "use_selected_transaction" }, { status: 409 });
+  }
 
   const intent = await loadIntent(intentId, doctor.clinicId);
   if (!intent || !intent.consultation?.patientId) {
@@ -199,6 +202,9 @@ export async function POST(req: Request, ctx: { params: Promise<{ intentId: stri
     return NextResponse.json({ error: "kit_not_on_order" }, { status: 400 });
   }
 
+  if (eventType === "SUBSTITUTED" && (typeof body.substituteKitId !== "string" || body.substituteKitId === body.kitId || !intent.kitIds.includes(body.substituteKitId))) {
+    return NextResponse.json({ error: "substitute_must_be_on_approved_plan" }, { status: 400 });
+  }
   // Money recording passes through the purchasing kill-switch, exactly like
   // lib/payments/paymentStore. Quantity / dispensing / clinical-state records
   // carry no money and are always allowed.
@@ -243,6 +249,7 @@ export async function POST(req: Request, ctx: { params: Promise<{ intentId: stri
       recordedByDoctorId: doctor.id,
       note: body.reason ?? null,
       clientEventId: body.clientEventId,
+      substituteKitId: body.substituteKitId,
     });
 
     if (!outcome.ok) {
@@ -250,16 +257,6 @@ export async function POST(req: Request, ctx: { params: Promise<{ intentId: stri
         return NextResponse.json({ error: "idempotency_conflict" }, { status: 409 });
       }
       return NextResponse.json({ error: outcome.reason }, { status: 404 });
-    }
-
-    if (requiresReason(eventType)) {
-      await setLineStatus({
-        clinicId: doctor.clinicId,
-        kitOrderIntentId: intent.id,
-        kitPurchaseLineId: line.id,
-        lineStatus: eventType as KitPurchaseLineStatus,
-        controlReason: body.reason ?? null,
-      });
     }
 
     if (outcome.created) {
@@ -296,68 +293,15 @@ export async function POST(req: Request, ctx: { params: Promise<{ intentId: stri
 }
 
 export async function PATCH(req: Request, ctx: { params: Promise<{ intentId: string }> }) {
-  const authResult = await requireDoctorContext();
-  if (authResult instanceof NextResponse) return authResult;
-  const { doctor, authUserId, authRole, mode } = authResult;
-  const { intentId } = await ctx.params;
-
-  const body = (await req.json().catch(() => ({}))) as {
-    kitId?: string;
-    lineStatus?: string;
-    controlReason?: string | null;
-    substituteKitId?: string | null;
-  };
-
-  const CONTROL: KitPurchaseLineStatus[] = ["DEFERRED", "DECLINED", "SUBSTITUTED", "DISCONTINUED"];
-  if (!body.kitId) return NextResponse.json({ error: "kitId_required" }, { status: 400 });
-  if (!body.lineStatus || !CONTROL.includes(body.lineStatus as KitPurchaseLineStatus)) {
-    return NextResponse.json({ error: "invalid_line_status" }, { status: 400 });
+  const body = await req.json().catch(() => ({}));
+  const eventType = body.lineStatus === "RECOMMENDED" ? "CONTINUED" : body.lineStatus;
+  if (!["CONTINUED","DEFERRED","DECLINED","SUBSTITUTED","DISCONTINUED"].includes(eventType)) {
+    return NextResponse.json({error:"invalid_line_status"},{status:400});
   }
-  if (!(body.controlReason && body.controlReason.trim().length > 0)) {
-    return NextResponse.json({ error: "reason_required" }, { status: 400 });
-  }
-
-  const intent = await loadIntent(intentId, doctor.clinicId);
-  if (!intent || !intent.consultation?.patientId) {
-    return NextResponse.json({ error: "not_found" }, { status: 404 });
-  }
-  if (!intent.kitIds.includes(body.kitId)) {
-    return NextResponse.json({ error: "kit_not_on_order" }, { status: 400 });
-  }
-
-  try {
-    await ensureLines(intent);
-    const line = await readLineByKit(doctor.clinicId, intent.id, body.kitId);
-    if (!line) return NextResponse.json({ error: "line_not_found" }, { status: 404 });
-
-    const res = await setLineStatus({
-      clinicId: doctor.clinicId,
-      kitOrderIntentId: intent.id,
-      kitPurchaseLineId: line.id,
-      lineStatus: body.lineStatus as KitPurchaseLineStatus,
-      controlReason: body.controlReason,
-      substituteKitId: body.substituteKitId ?? null,
-    });
-    if (!res.ok) return NextResponse.json({ error: "line_not_found" }, { status: 404 });
-
-    await writeAuditLog({
-      action: "KIT_PURCHASE_LINE_STATUS_CHANGED",
-      entityType: "KitPurchaseLine",
-      entityId: line.id,
-      clinicId: doctor.clinicId,
-      assessmentId: intent.assessmentId,
-      actorId: authUserId,
-      actorRole: authRole,
-      actorType: mode,
-      metadata: { lineStatus: body.lineStatus, kitId: body.kitId },
-    });
-
-    return NextResponse.json({ ok: true });
-  } catch (err) {
-    const np = notProvisioned(err);
-    if (np) return np;
-    throw err;
-  }
+  return POST(new Request(req.url, { method:"POST", headers:req.headers, body:JSON.stringify({
+    kitId:body.kitId, eventType, reason:body.controlReason, substituteKitId:body.substituteKitId,
+    clientEventId:body.clientEventId, occurredAt:body.occurredAt,
+  }) }), ctx);
 }
 
 interface LoadedIntent {

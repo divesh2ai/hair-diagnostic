@@ -104,9 +104,18 @@ jobs:
             tests/doctor/provisioning.test.ts \
             tests/doctor/review-queue-membership.test.ts \
             tests/doctor/skin-acne-not-hair.test.ts \
+            tests/doctor/consultation-note-model.test.ts \
+            tests/doctor/kit-purchase-model.test.ts \
+            tests/doctor/kit-purchase-corrections.test.ts \
+            tests/doctor/partial-checkout-postgres.test.ts \
             tests/commerce/budget-substitution.test.ts \
             tests/commerce/kit-price-governance.test.ts \
             tests/commerce/patient-cart-fail-closed.test.ts
+          npx vitest run \
+            tests/commerce/purchasing-disabled-gate.test.ts \
+            tests/commerce/purchasing-disabled-routes.test.ts \
+            tests/api/doctor-route-scope.test.ts \
+            tests/post-approval/payment-webhook-signature.test.ts
 
   # ── INFORMATIONAL ──────────────────────────────────────────────────────────
   # Expected red until the baseline is repaired. Do not require this check.

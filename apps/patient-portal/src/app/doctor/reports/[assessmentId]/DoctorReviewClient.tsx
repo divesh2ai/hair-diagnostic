@@ -22,6 +22,7 @@ import { extractSafetyFlags } from "@/lib/doctor/clinicalAttention";
 import { summarizeProtocol, kitDisplayNameForPhase } from "@/lib/doctor/protocolModel";
 import { cartHref } from "@/lib/doctor/cartHref";
 import { PatientJourney } from "@/components/doctor/PatientJourney";
+import { PatientTreatmentHistory } from "@/components/doctor/PatientTreatmentHistory";
 import { ConsultationNotesPanel } from "@/components/doctor/ConsultationNotesPanel";
 import { KitPurchaseTracker } from "@/components/doctor/KitPurchaseTracker";
 import { ReviewHeader } from "./sections/ReviewHeader";
@@ -1035,6 +1036,7 @@ export function DoctorReviewClient({
             {/* ROUTINE VISIT NOTES — dictation + dated history. Deliberately
                 separate from the approval-rationale notes above and from the
                 approved snapshot: saving one never creates a ConsultationVersion. */}
+            <PatientTreatmentHistory patientId={patient.id} />
             <ConsultationNotesPanel patientId={patient.id} assessmentId={assessmentId} />
 
             {/* WHAT HAPPENS AFTER APPROVAL — report and delivery sit AFTER the

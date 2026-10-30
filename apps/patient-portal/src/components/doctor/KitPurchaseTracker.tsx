@@ -1,7 +1,7 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
-import { purchaseEventIdempotencyKey } from "@/lib/commerce/kitPurchaseModel";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { PartialKitCheckout } from "./PartialKitCheckout";
 
 // Partial-kit purchase tracker, shown beneath the approved treatment plan.
 //
@@ -21,6 +21,8 @@ type LineStatus =
   | "DISCONTINUED";
 
 type EventType =
+  | "EXTERNALLY_OBTAINED"
+  | "CONTINUED"
   | "PURCHASE_REPORTED_BY_PATIENT"
   | "PURCHASE_CONFIRMED_BY_CLINIC"
   | "PAYMENT_RECORDED"
@@ -40,9 +42,11 @@ interface PurchaseEvent {
   saleValueMinor: number | null;
   occurredAt: string;
   note: string | null;
+  transactionId?: string | null;
 }
 
 interface Derived {
+  externallyObtainedBoxes: number;
   recommendedBoxes: number;
   purchasedBoxes: number;
   dispensedBoxes: number;
@@ -110,6 +114,8 @@ const fmtINR = (minor: number | null) =>
   minor == null ? "—" : `₹${(minor / 100).toLocaleString("en-IN")}`;
 
 const EVENT_LABEL: Record<EventType, string> = {
+  EXTERNALLY_OBTAINED: "Obtained externally (no clinic charge)",
+  CONTINUED: "Recommendation continued",
   PURCHASE_REPORTED_BY_PATIENT: "Patient reported purchase",
   PURCHASE_CONFIRMED_BY_CLINIC: "Clinic confirmed purchase",
   PAYMENT_RECORDED: "Payment recorded",
@@ -130,6 +136,8 @@ export function KitPurchaseTracker({
   intentId: string;
   patientId?: string;
 }) {
+  const pendingEvent = useRef<{signature:string;id:string}|null>(null);
+  const inFlight = useRef(false);
   const [summary, setSummary] = useState<Summary | null>(null);
   const [lines, setLines] = useState<LineView[]>([]);
   const [loading, setLoading] = useState(true);
@@ -146,10 +154,13 @@ export function KitPurchaseTracker({
         setUnavailable(true);
         return;
       }
-      if (!res.ok) return;
+      if (!res.ok) throw new Error("Could not load kit history. Refresh to retry.");
+      setUnavailable(false);
       const data = (await res.json()) as { summary: Summary; lines: LineView[] };
       setSummary(data.summary);
       setLines(data.lines);
+    } catch {
+      setError("Could not load kit history. Refresh to retry.");
     } finally {
       setLoading(false);
     }
@@ -167,22 +178,17 @@ export function KitPurchaseTracker({
         boxes?: number;
         occurredAt: string;
         reason?: string;
+        substituteKitId?: string;
       },
     ) => {
+      if (inFlight.current) return;
+      inFlight.current = true;
       setBusy(true);
       setError(null);
       try {
-        // STABLE idempotency key: derived from the action's fields, so a
-        // double-click or a network retry of the SAME action reuses the key and
-        // is de-duplicated server-side, while changing the date/reason/boxes/type
-        // is a different action with a different key.
-        const clientEventId = purchaseEventIdempotencyKey({
-          kitId,
-          eventType: body.eventType as never,
-          boxes: body.boxes ?? null,
-          occurredAt: body.occurredAt,
-          reason: body.reason ?? null,
-        });
+        const signature = JSON.stringify({kitId,...body});
+        if (pendingEvent.current?.signature !== signature) pendingEvent.current = {signature,id:crypto.randomUUID()};
+        const clientEventId = pendingEvent.current.id;
         const res = await fetch(`/api/doctor/orders/${intentId}/purchase`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -201,34 +207,13 @@ export function KitPurchaseTracker({
           setError(j.error ?? "Could not record.");
           return;
         }
+        pendingEvent.current = null;
         setOpenKit(null);
         await load();
+      } catch {
+        setError("Connection lost. Retry to safely record the same action.");
       } finally {
-        setBusy(false);
-      }
-    },
-    [intentId, load],
-  );
-
-  const setStatus = useCallback(
-    async (kitId: string, lineStatus: LineStatus) => {
-      const reason = window.prompt(`Reason for marking this kit ${STATUS_LABEL[lineStatus].toLowerCase()}?`);
-      if (!reason || reason.trim().length === 0) return;
-      setBusy(true);
-      setError(null);
-      try {
-        const res = await fetch(`/api/doctor/orders/${intentId}/purchase`, {
-          method: "PATCH",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ kitId, lineStatus, controlReason: reason.trim() }),
-        });
-        if (!res.ok) {
-          const j = (await res.json().catch(() => ({}))) as { error?: string };
-          setError(j.error ?? "Could not update.");
-          return;
-        }
-        await load();
-      } finally {
+        inFlight.current = false;
         setBusy(false);
       }
     },
@@ -248,13 +233,13 @@ export function KitPurchaseTracker({
     <section className="rounded-2xl border bg-white p-5 shadow-sm space-y-4">
       <div>
         <h3 className="font-semibold text-slate-800">Kit purchases &amp; treatment</h3>
-        <p className="text-xs text-slate-500">
+        <p className="text-sm text-slate-500">
           What the patient actually obtained — recorded separately from the approved plan, which is unchanged.
         </p>
       </div>
 
       {summary && (
-        <div className="flex flex-wrap gap-x-6 gap-y-1 text-xs text-slate-600">
+        <div className="flex flex-wrap gap-x-6 gap-y-1 text-sm text-slate-600">
           <span><strong className="text-slate-900">{summary.purchasedKits}/{summary.recommendedKits}</strong> kits purchased</span>
           <span><strong className="text-slate-900">{summary.purchasedBoxes}/{summary.recommendedBoxes}</strong> boxes purchased</span>
           <span>{summary.remainingKits} remaining · {summary.deferredKits} deferred · {summary.declinedKits} declined</span>
@@ -262,7 +247,7 @@ export function KitPurchaseTracker({
       )}
 
       {loading ? (
-        <p className="text-xs text-slate-400">Loading…</p>
+        <p className="text-sm text-slate-400">Loading…</p>
       ) : (
         <ul className="divide-y divide-stone-100">
           {lines.map((line) => (
@@ -270,11 +255,12 @@ export function KitPurchaseTracker({
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <div className="min-w-0">
                   <p className="text-sm font-medium text-slate-800">{line.kitLabel}</p>
-                  <p className="text-[11px] text-slate-500">
+                  <p className="text-sm text-slate-500">
                     {line.derived.purchasedBoxes}/{line.recommendedBoxes} boxes · catalog {fmtINR(line.catalogUnitMinor)}/box
                     {line.derived.patientReportedBoxes > 0 && (
                       <> · <span className="text-amber-700">patient-reported {line.derived.patientReportedBoxes} (unconfirmed)</span></>
                     )}
+                    {line.derived.externallyObtainedBoxes > 0 && <> · externally obtained {line.derived.externallyObtainedBoxes} (no clinic charge)</>}
                     {line.derived.dispensedBoxes > 0 && <> · dispensed {line.derived.dispensedBoxes}</>}
                     {line.derived.treatmentStarted && line.derived.treatmentStartedAt && (
                       <> · started {fmtDate(line.derived.treatmentStartedAt)}</>
@@ -284,24 +270,22 @@ export function KitPurchaseTracker({
                     )}
                   </p>
                 </div>
-                <span className={`inline-flex items-center rounded-md border px-2 py-0.5 text-[11px] font-medium ${statusTone(line.derived.status)}`}>
+                <span className={`inline-flex items-center rounded-md border px-2 py-0.5 text-sm font-medium ${statusTone(line.derived.status)}`}>
                   {STATUS_LABEL[line.derived.status]}
                 </span>
               </div>
 
               <div className="mt-2 flex flex-wrap gap-1.5">
                 <button type="button" disabled={busy} onClick={() => setOpenKit(openKit === line.kitId ? null : line.kitId)}
-                  className="rounded-md border border-stone-300 bg-white px-2 py-1 text-[11px] font-medium text-slate-700 hover:bg-stone-50 disabled:opacity-50">
+                  className="rounded-md border border-stone-300 bg-white min-h-11 px-3 py-2 text-sm font-medium text-slate-700 hover:bg-stone-50 disabled:opacity-50">
                   {openKit === line.kitId ? "Close" : "Record…"}
                 </button>
-                <button type="button" disabled={busy} onClick={() => setStatus(line.kitId, "DEFERRED")}
-                  className="rounded-md border border-stone-200 bg-white px-2 py-1 text-[11px] text-stone-600 hover:bg-stone-50 disabled:opacity-50">Defer</button>
-                <button type="button" disabled={busy} onClick={() => setStatus(line.kitId, "DECLINED")}
-                  className="rounded-md border border-stone-200 bg-white px-2 py-1 text-[11px] text-stone-600 hover:bg-stone-50 disabled:opacity-50">Decline</button>
               </div>
 
               {openKit === line.kitId && (
                 <RecordForm
+                  kits={lines.map(l=>({id:l.kitId,label:l.kitLabel}))}
+                  currentKitId={line.kitId}
                   defaultBoxes={Math.max(1, line.derived.remainingBoxes || line.recommendedBoxes)}
                   busy={busy}
                   onSubmit={(payload) => postEvent(line.kitId, payload)}
@@ -313,10 +297,11 @@ export function KitPurchaseTracker({
                   {[...line.events]
                     .sort((a, b) => a.occurredAt.localeCompare(b.occurredAt))
                     .map((e) => (
-                      <li key={e.id} className="text-[11px] text-slate-600">
+                      <li key={e.id} className="text-sm text-slate-600">
                         <span className="text-slate-400">{fmtDate(e.occurredAt)}</span> · {EVENT_LABEL[e.eventType]}
                         {e.boxes != null && <> · {e.boxes} box{e.boxes === 1 ? "" : "es"}</>}
                         {e.saleValueMinor != null && <> · sale {fmtINR(e.saleValueMinor)}</>}
+                        {e.transactionId && <span className="break-all"> · transaction {e.transactionId}</span>}
                         {e.note && <> · {e.note}</>}
                       </li>
                     ))}
@@ -326,70 +311,90 @@ export function KitPurchaseTracker({
           ))}
         </ul>
       )}
-      {error && <p className="text-xs text-rose-600">{error}</p>}
+      {!loading && <PartialKitCheckout endpoint={`/api/doctor/orders/${intentId}/transactions`} doctor quantitiesAreRemaining onChanged={()=>void load()}
+        items={lines.map(l=>({kitId:l.kitId,label:l.kitLabel,unitMinor:l.catalogUnitMinor,
+          maxBoxes:["DECLINED","DISCONTINUED","SUBSTITUTED"].includes(l.lineStatus)?0:Math.max(0,l.derived.remainingBoxes-(l.derived.externallyObtainedBoxes??0))}))} />}
+      {error && <p role="alert" className="text-sm text-rose-700">{error}</p>}
     </section>
   );
 }
 
 function RecordForm({
+  kits, currentKitId,
   defaultBoxes,
   busy,
   onSubmit,
 }: {
+  kits: {id:string;label:string}[]; currentKitId:string;
   defaultBoxes: number;
   busy: boolean;
-  onSubmit: (payload: { eventType: string; boxes?: number; occurredAt: string; reason?: string }) => void;
+  onSubmit: (payload: { eventType: string; boxes?: number; occurredAt: string; reason?: string; substituteKitId?: string }) => void;
 }) {
   const [eventType, setEventType] = useState<EventType>("PURCHASE_CONFIRMED_BY_CLINIC");
   const [boxes, setBoxes] = useState(defaultBoxes);
   const [occurredAt, setOccurredAt] = useState(() => new Date().toISOString().slice(0, 10));
   const [note, setNote] = useState("");
+  const [substituteKitId,setSubstituteKitId] = useState("");
+  const needsReason = ["CONTINUED","DEFERRED","DECLINED","SUBSTITUTED","DISCONTINUED"].includes(eventType);
   const quantityEvent =
     eventType === "PURCHASE_CONFIRMED_BY_CLINIC" ||
     eventType === "PURCHASE_REPORTED_BY_PATIENT" ||
-    eventType === "DISPENSED";
+    eventType === "DISPENSED" || eventType === "EXTERNALLY_OBTAINED" || eventType === "RETURNED";
 
   return (
     <div className="mt-2 grid gap-2 rounded-lg border border-stone-200 bg-stone-50 p-3 sm:grid-cols-2">
-      <label className="text-[11px] text-slate-600">
+      <label className="text-sm text-slate-600">
         What happened
         <select value={eventType} onChange={(e) => setEventType(e.target.value as EventType)}
-          className="mt-0.5 w-full rounded border border-stone-300 bg-white px-2 py-1 text-xs">
+          className="mt-0.5 w-full rounded border border-stone-300 bg-white min-h-11 px-3 py-2 text-sm">
           <option value="PURCHASE_CONFIRMED_BY_CLINIC">Clinic confirmed purchase</option>
           <option value="PURCHASE_REPORTED_BY_PATIENT">Patient reported purchase</option>
           <option value="DISPENSED">Dispensed</option>
           <option value="TREATMENT_STARTED">Treatment started</option>
+          <option value="EXTERNALLY_OBTAINED">Obtained externally — no clinic charge</option>
+          <option value="RETURNED">Stock returned — no automatic refund</option>
+          <option value="CONTINUED">Continue recommendation</option>
+          <option value="DEFERRED">Defer recommendation</option>
+          <option value="DECLINED">Decline recommendation</option>
+          <option value="DISCONTINUED">Discontinue recommendation</option>
+          <option value="SUBSTITUTED">Substitute with another approved kit</option>
         </select>
       </label>
-      <label className="text-[11px] text-slate-600">
+      <label className="text-sm text-slate-600">
         Date
         <input type="date" value={occurredAt} max={new Date().toISOString().slice(0, 10)}
           onChange={(e) => setOccurredAt(e.target.value)}
-          className="mt-0.5 w-full rounded border border-stone-300 bg-white px-2 py-1 text-xs" />
+          className="mt-0.5 w-full rounded border border-stone-300 bg-white min-h-11 px-3 py-2 text-sm" />
       </label>
       {quantityEvent && (
-        <label className="text-[11px] text-slate-600">
+        <label className="text-sm text-slate-600">
           Boxes
           <input type="number" min={1} value={boxes} onChange={(e) => setBoxes(Math.max(1, Number(e.target.value)))}
-            className="mt-0.5 w-full rounded border border-stone-300 bg-white px-2 py-1 text-xs" />
+            className="mt-0.5 w-full rounded border border-stone-300 bg-white min-h-11 px-3 py-2 text-sm" />
         </label>
       )}
-      <label className="text-[11px] text-slate-600 sm:col-span-2">
-        Note (optional)
+      {eventType === "SUBSTITUTED" && <label className="text-sm text-slate-700 sm:col-span-2">Replacement already on approved plan
+        <select value={substituteKitId} onChange={e=>setSubstituteKitId(e.target.value)} className="mt-1 min-h-11 w-full rounded border px-2 text-base">
+          <option value="">Select approved replacement</option>{kits.filter(k=>k.id!==currentKitId).map(k=><option key={k.id} value={k.id}>{k.label}</option>)}
+        </select><span className="block mt-1">For a different kit or revised recommendation, edit and re-approve the treatment plan first.</span>
+      </label>}
+      <label className="text-sm text-slate-600 sm:col-span-2">
+        {needsReason?"Reason (required)":"Note (optional)"}
         <input value={note} onChange={(e) => setNote(e.target.value)}
-          className="mt-0.5 w-full rounded border border-stone-300 bg-white px-2 py-1 text-xs" />
+          className="mt-0.5 w-full rounded border border-stone-300 bg-white min-h-11 px-3 py-2 text-sm" />
       </label>
       <div className="sm:col-span-2">
-        <button type="button" disabled={busy}
+        <button type="button" disabled={busy || !occurredAt || (quantityEvent && (!Number.isInteger(boxes) || boxes < 1)) || (needsReason && !note.trim()) || (eventType === "SUBSTITUTED" && !substituteKitId)}
           onClick={() =>
             onSubmit({
               eventType,
               boxes: quantityEvent ? boxes : undefined,
               occurredAt: new Date(occurredAt).toISOString(),
               reason: note.trim() || undefined,
+              substituteKitId: eventType === "SUBSTITUTED" ? substituteKitId : undefined,
             })
           }
-          className="rounded-md border border-sky-300 bg-sky-50 px-3 py-1.5 text-xs font-medium text-sky-800 hover:bg-sky-100 disabled:opacity-50">
+          className="rounded-md border border-sky-300 bg-sky-50 min-h-11 px-3 py-2 text-sm font-medium text-sky-800 hover:bg-sky-100 disabled:opacity-50">
           Record
         </button>
       </div>

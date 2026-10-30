@@ -5,13 +5,15 @@ import {
   isSameEventPayload,
   type KitPurchaseEventType,
   type KitPurchaseLineStatus,
+  requiresReason,
 } from "./kitPurchaseModel";
 
 // KitPurchaseLine / KitPurchaseEvent persistence, over raw SQL.
 //
 // Same baseline-freeze reasoning as lib/fulfilment/fulfilmentStore.ts: the
 // tables are in schema.prisma and in
-// prisma/migrations/20261023_doctor_notes_and_partial_kit, which is NOT applied.
+// prisma/migrations/20261023_doctor_notes_and_partial_kit and the additive
+// 20261030_partial_checkout_transactions migration. Provisioning is environment-specific.
 // Raw SQL keeps the module compiling and the app booting whether or not they
 // exist; callers get PurchaseNotProvisionedError → 503 with a stable reason.
 
@@ -21,7 +23,7 @@ export class PurchaseNotProvisionedError extends Error {
   readonly reason = PURCHASE_NOT_PROVISIONED;
   constructor() {
     super(
-      "KitPurchaseLine/KitPurchaseEvent are not provisioned. Apply prisma/migrations/20261023_doctor_notes_and_partial_kit.",
+      "Purchase tracking is not provisioned. Check 20261023_doctor_notes_and_partial_kit and 20261030_partial_checkout_transactions.",
     );
     this.name = "PurchaseNotProvisionedError";
   }
@@ -70,6 +72,8 @@ export interface PurchaseLineRecord {
 }
 
 export interface PurchaseEventRecord {
+  substituteKitId: string | null;
+  transactionId: string | null;
   id: string;
   kitPurchaseLineId: string;
   clinicId: string;
@@ -104,6 +108,8 @@ interface LineRaw {
 }
 
 interface EventRaw {
+  substituteKitId: string | null;
+  transactionId: string | null;
   id: string;
   kitPurchaseLineId: string;
   clinicId: string;
@@ -127,6 +133,8 @@ const LINE_COLS = Prisma.sql`
   "substituteKitId", "controlReason", "createdAt", "updatedAt"
 `;
 const EVENT_COLS = Prisma.sql`
+  "substituteKitId",
+  "transactionId",
   "id", "kitPurchaseLineId", "clinicId", "assessmentId",
   "eventType"::text AS "eventType", "boxes", "catalogUnitMinor", "saleValueMinor",
   "currency", "kitOrderPaymentId", "occurredAt", "recordedByDoctorId",
@@ -153,6 +161,8 @@ function toLine(r: LineRaw): PurchaseLineRecord {
 
 function toEvent(r: EventRaw): PurchaseEventRecord {
   return {
+    substituteKitId: r.substituteKitId,
+    transactionId: r.transactionId,
     id: r.id,
     kitPurchaseLineId: r.kitPurchaseLineId,
     clinicId: r.clinicId,
@@ -398,20 +408,24 @@ export async function appendPurchaseEvent(input: {
   recordedByDoctorId: string;
   note?: string | null;
   clientEventId: string;
+  substituteKitId?: string | null;
 }): Promise<AppendEventOutcome> {
-  return guardedPurchase(async () => {
-    const line = await readLine(input.clinicId, input.kitPurchaseLineId, input.kitOrderIntentId);
+  return guardedPurchase(() => prisma.$transaction(async (tx) => {
+    await tx.$queryRaw`SELECT id FROM "KitOrderIntent" WHERE id=${input.kitOrderIntentId} AND "clinicId"=${input.clinicId} FOR UPDATE`;
+    const [rawLine] = await tx.$queryRaw<LineRaw[]>(Prisma.sql`SELECT ${LINE_COLS} FROM "KitPurchaseLine"
+      WHERE id=${input.kitPurchaseLineId} AND "clinicId"=${input.clinicId} AND "kitOrderIntentId"=${input.kitOrderIntentId}`);
+    const line = rawLine ? toLine(rawLine) : null;
     if (!line) return { ok: false, reason: "line_not_found" } as const;
 
     const id = newId();
     const boxes = input.boxes ?? null;
     const saleValueMinor = input.saleValueMinor ?? null;
-    const inserted = await prisma.$queryRaw<EventRaw[]>(Prisma.sql`
+    const inserted = await tx.$queryRaw<EventRaw[]>(Prisma.sql`
       INSERT INTO "KitPurchaseEvent" (
         "id", "kitPurchaseLineId", "clinicId", "assessmentId", "eventType",
         "boxes", "catalogUnitMinor", "saleValueMinor", "currency",
         "kitOrderPaymentId", "occurredAt", "recordedByDoctorId", "note",
-        "clientEventId", "createdAt"
+        "clientEventId", "substituteKitId", "createdAt"
       ) VALUES (
         ${id}, ${line.id}, ${line.clinicId}, ${line.assessmentId},
         ${input.eventType}::"KitPurchaseEventType",
@@ -419,16 +433,24 @@ export async function appendPurchaseEvent(input: {
         ${saleValueMinor}, ${input.currency ?? "INR"},
         ${input.kitOrderPaymentId ?? null}, ${input.occurredAt},
         ${input.recordedByDoctorId}, ${input.note ?? null},
-        ${input.clientEventId}, NOW()
+        ${input.clientEventId}, ${input.substituteKitId ?? null}, NOW()
       )
       ON CONFLICT ("kitPurchaseLineId", "clientEventId") DO NOTHING
       RETURNING ${EVENT_COLS}
     `);
 
-    if (inserted[0]) return { ok: true, event: toEvent(inserted[0]), created: true } as const;
+    if (inserted[0]) {
+      if (requiresReason(input.eventType)) {
+        const status = input.eventType === "CONTINUED" ? "RECOMMENDED" : input.eventType;
+        await tx.$executeRaw`UPDATE "KitPurchaseLine" SET "lineStatus"=${status}::"KitPurchaseLineStatus",
+          "controlReason"=${input.note ?? null},"substituteKitId"=${input.substituteKitId ?? null},"updatedAt"=NOW()
+          WHERE id=${line.id} AND "clinicId"=${input.clinicId}`;
+      }
+      return { ok: true, event: toEvent(inserted[0]), created: true } as const;
+    }
 
     // Conflict fired → an event with this key already exists on this line.
-    const existing = await prisma.$queryRaw<EventRaw[]>(Prisma.sql`
+    const existing = await tx.$queryRaw<EventRaw[]>(Prisma.sql`
       SELECT ${EVENT_COLS} FROM "KitPurchaseEvent"
        WHERE "kitPurchaseLineId" = ${line.id}
          AND "clientEventId" = ${input.clientEventId}
@@ -436,6 +458,7 @@ export async function appendPurchaseEvent(input: {
     `);
     if (!existing[0]) throw new Error("purchase_event_conflict_without_row");
     const prior = toEvent(existing[0]);
+    if (prior.substituteKitId !== (input.substituteKitId ?? null)) return {ok:false,reason:"idempotency_conflict"} as const;
     if (
       !isSameEventPayload(
         {
@@ -457,7 +480,7 @@ export async function appendPurchaseEvent(input: {
       return { ok: false, reason: "idempotency_conflict" } as const;
     }
     return { ok: true, event: prior, created: false } as const;
-  });
+  }));
 }
 
 /**
