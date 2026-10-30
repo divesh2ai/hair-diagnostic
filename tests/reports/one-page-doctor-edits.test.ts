@@ -16,10 +16,12 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const findUniqueAssessment = vi.fn();
 const findFirstArtifact = vi.fn();
+const findApprovingDoctor = vi.fn();
 const getClinicContext = vi.fn();
 
 vi.mock("@/lib/prisma", () => ({
   prisma: {
+    doctor: { findFirst: (...a: unknown[]) => findApprovingDoctor(...a) },
     assessment: { findUnique: (...a: unknown[]) => findUniqueAssessment(...a) },
     aIArtifact: { findFirst: (...a: unknown[]) => findFirstArtifact(...a) },
   },
@@ -60,13 +62,14 @@ function assessmentRow(treatmentPlan: Record<string, unknown> | undefined) {
     rawResponses: {},
     patient: { name: "P", age: 30, gender: "female", phone: null },
     clinic: { name: "C", address: null, phone: null, logoUrl: null },
+    reviewingDoctorId: "doctor-a",
     reviewingDoctor: { name: "Dr A", signatureUrl: null },
     consultations: [
       {
         currentVersion: {
           approvalStatus: "APPROVED",
           approvedAt: null,
-          approvedBy: "Dr A",
+          approvedBy: "auth-doctor-a",
           content: treatmentPlan ? { treatmentPlan } : {},
         },
       },
@@ -93,6 +96,7 @@ function legacyApprovedRow() {
 
 beforeEach(() => {
   vi.clearAllMocks();
+  findApprovingDoctor.mockResolvedValue({ name: "Dr A", signatureUrl: "https://example.com/sig.png" });
   vi.stubEnv("ALLOW_DEV_LOGIN", "0");
   getClinicContext.mockResolvedValue({
     userId: "u",

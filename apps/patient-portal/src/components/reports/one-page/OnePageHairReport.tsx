@@ -44,7 +44,7 @@ export function HairAssessmentPrintPage({ data }: { data: OnePageReportViewModel
         data-density={data.layoutMode}
         data-row-count={Math.min(8, Math.max(2, data.treatmentPlan.length))}
       >
-        <ReportHeader />
+        <ReportHeader data={data} />
         <RowA data={data} />
         <MappingBand data={data} />
         <LowerGrid data={data} />
@@ -55,7 +55,7 @@ export function HairAssessmentPrintPage({ data }: { data: OnePageReportViewModel
 }
 
 /* ============================== HEADER ================================= */
-function ReportHeader() {
+function ReportHeader({ data }: { data: OnePageReportViewModel }) {
   return (
     <header className="hd">
       <div className="hd-lockup">
@@ -67,10 +67,10 @@ function ReportHeader() {
       </div>
       <div className="hd-title">
         <h1>Your Hair Health Assessment</h1>
-        <p>Doctor-reviewed clinical summary &nbsp;&bull;&nbsp; Treatment plan &nbsp;&bull;&nbsp; Recovery journey</p>
+        <p>{data.doctorApproval.state === "APPROVED" ? "Doctor-reviewed clinical summary" : "Draft — awaiting doctor review"} &nbsp;&bull;&nbsp; Treatment plan &nbsp;&bull;&nbsp; Recovery journey</p>
       </div>
       <div className="hd-right">
-        <DoctorReviewedChip />
+        <DoctorReviewedChip data={data} />
         <div className="hd-meta">
           <span className="hd-meta-line">v1.0</span>
           <span className="hd-meta-line">Page 1 of 1</span>
@@ -80,11 +80,11 @@ function ReportHeader() {
   );
 }
 
-function DoctorReviewedChip() {
+function DoctorReviewedChip({ data }: { data: OnePageReportViewModel }) {
   return (
     <div className="chip-dr">
       <ShieldSvg />
-      <span>DOCTOR<br/>REVIEWED</span>
+      <span>{data.doctorApproval.state === "APPROVED" ? <>DOCTOR<br/>REVIEWED</> : <>DRAFT<br/>AWAITING DOCTOR REVIEW</>}</span>
     </div>
   );
 }
@@ -194,7 +194,7 @@ function ResultBlock({ data }: { data: OnePageReportViewModel }) {
     <div className="blk result-blk">
       <div className="pill-doctor">
         <ShieldFilledSvg />
-        <span>DOCTOR-REVIEWED RESULT</span>
+        <span>{data.doctorApproval.state === "APPROVED" ? "DOCTOR-REVIEWED RESULT" : "DRAFT — AWAITING DOCTOR REVIEW"}</span>
       </div>
       <h2 className="serif result-title">
         {head}
@@ -642,11 +642,13 @@ function DailySupportCard({ data }: { data: OnePageReportViewModel }) {
 
 /* ============================== FOOTER ================================= */
 function ReportFooter({ data }: { data: OnePageReportViewModel }) {
-  const signatureUrl = data.doctorApproval.signatureUrl ?? null;
+  const approved = data.doctorApproval.state === "APPROVED";
+  const signatureUrl = approved ? data.doctorApproval.signatureUrl : null;
   return (
     <footer className="ft">
-      <FooterCell icon={<UserSvg />} label="Reviewed & Recommended by">
-        <b>{data.clinician.name}</b>
+      <FooterCell icon={<UserSvg />} label={approved ? "Reviewed & Recommended by" : "Awaiting doctor review"}>
+        <b>{approved ? data.doctorApproval.approvedBy : data.clinician.name}</b>
+        {approved ? <small>Approved: {data.doctorApproval.approvedAt}</small> : null}
         {signatureUrl ? (
           <img className="sig-img" src={signatureUrl} alt="Reviewing doctor signature" />
         ) : null}
@@ -661,7 +663,7 @@ function ReportFooter({ data }: { data: OnePageReportViewModel }) {
       <FooterCell icon={<InfoSvg />} label="">
         <small className="ft-disc">{data.disclaimer}</small>
       </FooterCell>
-      <div className="ft-chip"><DoctorReviewedChip /></div>
+      <div className="ft-chip"><DoctorReviewedChip data={data} /></div>
     </footer>
   );
 }

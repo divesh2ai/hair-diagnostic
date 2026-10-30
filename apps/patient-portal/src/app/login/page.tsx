@@ -13,6 +13,19 @@ import {
   toDoctorLinkFailure,
 } from "@/lib/auth/otpErrors";
 
+// Multi-colour Google "G". Inlined so the button needs no brand-icon
+// dependency (lucide ships no brand marks).
+function GoogleIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 48 48" aria-hidden="true">
+      <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z" />
+      <path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z" />
+      <path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z" />
+      <path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z" />
+    </svg>
+  );
+}
+
 // Two-step OTP sign-in. Step 1 sends a 6-digit code to the email. Step 2
 // verifies the code and creates a session. This avoids the PKCE
 // cross-device problem that magic links have (opening the link in a
@@ -41,6 +54,7 @@ function LoginInner() {
   const [code, setCode] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [oauthLoading, setOauthLoading] = useState(false);
 
   // \u2500\u2500 Phone OTP \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500
   // Same two-step shape as email, plus a live availability check: the
@@ -170,6 +184,40 @@ function LoginInner() {
     setVerifiedPhone(null);
   };
 
+  // ── Google OAuth (PKCE) ───────────────────────────────────────────────────
+  // Primary Super Admin sign-in path: email magic links / email OTP depend on
+  // SMTP + templates that are not reliably configured, so Google removes the
+  // email dependency entirely.
+  //
+  // The @supabase/ssr browser client uses PKCE and stores the code verifier in
+  // a cookie, so the existing server callback (/auth/callback) can complete
+  // exchangeCodeForSession. We hand off to /post-login, which routes by role
+  // (SUPER_ADMIN → /admin). Authorisation is unchanged and lives entirely
+  // server-side: custom_access_token_hook sets user_role from OrganizationMember
+  // and proxy.ts gates /admin to SUPER_ADMIN. A Google identity that is not an
+  // authorised Super Admin simply never receives the claim and is turned away —
+  // Google email / provider alone grants nothing. Doctor mobile OTP is untouched.
+  const signInWithGoogle = async () => {
+    if (oauthLoading) return;
+    setOauthLoading(true);
+    setErrorMsg(null);
+    try {
+      const redirectTo = `${window.location.origin}/auth/callback?next=${encodeURIComponent(nextPath)}`;
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: "google",
+        options: { redirectTo },
+      });
+      if (error) throw error;
+      // Success redirects the browser to Google; nothing below runs. Only an
+      // error path falls through, so the spinner is cleared only on failure.
+    } catch (err) {
+      const message =
+        err instanceof Error ? err.message : "Could not start Google sign-in.";
+      setOauthLoading(false);
+      toast.error("Google sign-in unavailable", { description: message });
+    }
+  };
+
   const sendCode = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!email.trim()) return;
@@ -248,6 +296,28 @@ function LoginInner() {
           </p>
         </div>
 
+        <div className="space-y-3">
+          <button
+            type="button"
+            onClick={signInWithGoogle}
+            disabled={oauthLoading}
+            className="inline-flex h-11 w-full items-center justify-center gap-2.5 rounded-lg border border-stone-300 bg-white text-sm font-semibold text-slate-800 shadow-sm transition-colors hover:bg-stone-50 disabled:opacity-60"
+          >
+            {oauthLoading ? (
+              <span className="h-4 w-4 animate-spin rounded-full border-2 border-slate-400 border-t-transparent" />
+            ) : (
+              <>
+                <GoogleIcon className="h-4 w-4" /> Continue with Google
+              </>
+            )}
+          </button>
+          <div className="flex items-center gap-3">
+            <span className="h-px flex-1 bg-stone-200" />
+            <span className="text-[11px] uppercase tracking-wider text-stone-400">or</span>
+            <span className="h-px flex-1 bg-stone-200" />
+          </div>
+        </div>
+
         <div className="grid grid-cols-2 gap-1 rounded-lg bg-stone-200/70 p-1">
           <button
             type="button"
@@ -289,6 +359,12 @@ function LoginInner() {
           <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
             Your account doesn&apos;t have access. Contact your clinic admin if
             this looks wrong.
+          </div>
+        )}
+
+        {(reason === "exchange_failed" || reason === "missing_code") && (
+          <div className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-900">
+            Google sign-in couldn&apos;t be completed. Please try again.
           </div>
         )}
 
