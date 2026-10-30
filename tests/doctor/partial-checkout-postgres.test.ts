@@ -31,7 +31,7 @@ beforeAll(async()=>{
   pg=await PGlite.create({parsers:{1114:(s:string)=>new Date(s+"Z")}});
   transport.client=bridge(pg);
   await pg.exec(`
-    CREATE ROLE authenticated; CREATE ROLE service_role;
+    CREATE ROLE anon; CREATE ROLE authenticated; CREATE ROLE service_role;
     CREATE FUNCTION jwt_user_role() RETURNS text LANGUAGE sql STABLE AS $$ SELECT current_setting('request.jwt.claims',true)::jsonb->>'user_role' $$;
     CREATE FUNCTION jwt_is_super_admin() RETURNS boolean LANGUAGE sql STABLE AS $$ SELECT jwt_user_role()='SUPER_ADMIN' $$;
     CREATE FUNCTION jwt_is_clinic_member(id text) RETURNS boolean LANGUAGE sql STABLE AS $$ SELECT current_setting('request.jwt.claims',true)::jsonb->>'clinic_id'=id $$;
@@ -42,7 +42,7 @@ beforeAll(async()=>{
     CREATE TABLE "Consultation"(id text PRIMARY KEY,"clinicId" text,"patientId" text,"currentVersionId" text);
     CREATE TABLE "ConsultationVersion"(id text PRIMARY KEY,"approvalStatus" text);
     CREATE TABLE "KitOrderIntent"(id text PRIMARY KEY,"clinicId" text,"assessmentId" text,"consultationId" text,"consultationVersionId" text,"kitIds" text[],quantities jsonb,status text);
-    CREATE TABLE "KitOrderPayment"(id text PRIMARY KEY,"kitOrderIntentId" text,status text);
+    CREATE TABLE "KitOrderPayment"(id text PRIMARY KEY,"kitOrderIntentId" text,status text,"clinicId" text);
     GRANT SELECT ON ALL TABLES IN SCHEMA public TO authenticated;
   `);
   await pg.exec(readFileSync("prisma/migrations/20261023_doctor_notes_and_partial_kit/migration.sql","utf8"));

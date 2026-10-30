@@ -3,6 +3,14 @@
 BEGIN;
 SET LOCAL lock_timeout = '3s';
 SET LOCAL statement_timeout = '30s';
+-- Fail closed on missing legacy prerequisite (production currently lacks it).
+DO $prerequisite$
+BEGIN
+  IF to_regclass('public."KitOrderPayment"') IS NULL THEN
+    RAISE EXCEPTION 'KitOrderPayment prerequisite missing; separate schema review required';
+  END IF;
+END
+$prerequisite$;
 -- Release 2. Additive; apply to staging first. Never rewrite the Phase 1 ledger.
 ALTER TYPE "KitPurchaseEventType" ADD VALUE IF NOT EXISTS 'EXTERNALLY_OBTAINED';
 ALTER TYPE "KitPurchaseEventType" ADD VALUE IF NOT EXISTS 'CONTINUED';
@@ -39,8 +47,23 @@ CREATE POLICY "KitPurchaseTransaction_clinic_select" ON "KitPurchaseTransaction"
     (public.jwt_user_role() IN ('DOCTOR','CLINIC_ADMIN','STAFF') AND public.jwt_is_clinic_member("clinicId"))
   );
 -- Money transitions are server-only. A browser JWT cannot self-assert PAID.
-GRANT SELECT ON "KitPurchaseTransaction" TO authenticated;
-GRANT ALL ON "KitPurchaseTransaction" TO service_role;
+-- Table-scoped hardening: public schema defaults are deliberately unchanged.
+-- All browser financial mutations go through authenticated server handlers.
+REVOKE ALL PRIVILEGES ON TABLE public."KitPurchaseTransaction", public."KitPurchaseEvent",
+  public."KitPurchaseLine", public."KitOrderPayment" FROM PUBLIC, anon, authenticated, service_role;
+GRANT SELECT ON TABLE public."KitPurchaseTransaction", public."KitPurchaseEvent",
+  public."KitPurchaseLine", public."KitOrderPayment" TO authenticated;
+GRANT ALL PRIVILEGES ON TABLE public."KitPurchaseTransaction", public."KitPurchaseLine",
+  public."KitOrderPayment" TO service_role;
+-- Events are append-only for the service role; the owning server role remains trusted.
+GRANT SELECT, INSERT ON TABLE public."KitPurchaseEvent" TO service_role;
+ALTER TABLE public."KitOrderPayment" ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "KitOrderPayment_clinic_select" ON public."KitOrderPayment"
+  FOR SELECT TO authenticated USING (
+    jwt_is_super_admin() OR (jwt_user_role() IN ('DOCTOR','CLINIC_ADMIN','STAFF')
+      AND jwt_is_clinic_member("clinicId"))
+  );
+
 
 -- RLS-independent relational integrity for purchase lines. Parent primary IDs
 -- already guarantee these composite keys are unique. No parent SELECT policy
@@ -88,4 +111,32 @@ CREATE TRIGGER release2_event_associations BEFORE INSERT ON "KitPurchaseEvent" F
 CREATE TRIGGER release2_note_associations BEFORE INSERT OR UPDATE ON "ConsultationNote" FOR EACH ROW EXECUTE FUNCTION public.check_release2_associations();
 CREATE TRIGGER release2_transaction_associations BEFORE INSERT OR UPDATE ON "KitPurchaseTransaction" FOR EACH ROW EXECUTE FUNCTION public.check_release2_associations();
 
+DO $financial_security$
+DECLARE t text; r text; p text;
+BEGIN
+  FOREACH t IN ARRAY ARRAY['KitPurchaseTransaction','KitPurchaseEvent','KitPurchaseLine','KitOrderPayment'] LOOP
+    IF NOT EXISTS (SELECT 1 FROM pg_class WHERE oid=format('public.%I',t)::regclass AND relrowsecurity) THEN
+      RAISE EXCEPTION 'Missing financial RLS: %',t;
+    END IF;
+    FOREACH r IN ARRAY ARRAY['anon','authenticated'] LOOP
+      FOREACH p IN ARRAY ARRAY['INSERT','UPDATE','DELETE','TRUNCATE','REFERENCES','TRIGGER','MAINTAIN'] LOOP
+        IF has_table_privilege(r,format('public.%I',t),p) THEN
+          RAISE EXCEPTION 'Unexpected financial privilege: % % %',r,t,p;
+        END IF;
+      END LOOP;
+      IF has_any_column_privilege(r,format('public.%I',t),'INSERT,UPDATE,REFERENCES') THEN
+        RAISE EXCEPTION 'Unexpected financial column privilege: % %',r,t;
+      END IF;
+    END LOOP;
+    IF has_table_privilege('anon',format('public.%I',t),'SELECT')
+       OR has_any_column_privilege('anon',format('public.%I',t),'SELECT')
+       OR NOT has_table_privilege('authenticated',format('public.%I',t),'SELECT') THEN
+      RAISE EXCEPTION 'Invalid financial read privilege: %',t;
+    END IF;
+  END LOOP;
+  IF has_table_privilege('service_role','public."KitPurchaseEvent"','UPDATE,DELETE,TRUNCATE') THEN
+    RAISE EXCEPTION 'Service event ledger must be append-only';
+  END IF;
+END
+$financial_security$;
 COMMIT;
