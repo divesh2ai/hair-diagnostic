@@ -141,23 +141,11 @@ export default function AdminClinicsPage() {
         width: "100px",
       },
       {
-        // The national map is only as complete as this column. A clinic that
-        // reads "Not set up" cannot be plotted, however healthy it otherwise is.
-        key: "location",
-        header: "Location",
-        cell: (r) =>
-          r.locationSetup === "COMPLETE" ? (
-            <StatusBadge tone="success">
-              {r.locationCount > 1 ? `${r.locationCount} branches` : "On map"}
-            </StatusBadge>
-          ) : r.locationSetup === "INCOMPLETE" ? (
-            <StatusBadge tone="warning">Pin missing</StatusBadge>
-          ) : (
-            <StatusBadge tone="neutral">Not set up</StatusBadge>
-          ),
-        width: "140px",
-      },
-      {
+        // Phase 1 simplification: the map-location readiness column has been
+        // removed from the directory. The geographic data (locationSetup /
+        // locationCount) is still returned by /api/admin/clinics and preserved
+        // for a future release once the national map is reinstated past ~50
+        // clinics. See src/app/admin/page.tsx for the Phase 1 rationale.
         key: "created",
         header: "Created",
         cell: (r) => new Date(r.createdAt).toLocaleDateString(),
