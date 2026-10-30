@@ -1,3 +1,4 @@
+import { CheckoutError } from "@/lib/commerce/partialCheckout";
 import { NextResponse } from "next/server";
 import { requireDoctorContext } from "@/lib/auth";
 import { confirmPayment } from "@/lib/payments/confirmPayment";
@@ -135,6 +136,7 @@ export async function POST(
       mode: result.mode,
     });
   } catch (err) {
+    if (err instanceof CheckoutError) return NextResponse.json({error:err.code},{status:err.status});
     if (err instanceof PaymentNotProvisionedError) {
       return NextResponse.json({ error: PAYMENT_NOT_PROVISIONED }, { status: 503 });
     }
