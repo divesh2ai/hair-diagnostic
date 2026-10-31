@@ -19,24 +19,29 @@ which only B creates; A alone is not schema-compatible with the application.
 Self-contained SQL lives in `release2-production-package/`. Apply in this order. A and B are
 **byte-identical** to the reviewed PR #35 artifacts at head `0b0c8c5`.
 
-**APPLY THIS ARTIFACT (recommended):** `00_release2_atomic.sql` — A + B + C in **one transaction**
-(see §5, closes the inter-step exposure window).
+**Recorded as ONE migration:** `20261031_release2_atomic` → **exactly one** row in
+`supabase_migrations.schema_migrations`, never three. See §5 for the supported recorder.
 
-| # | Supabase migration name | File | SHA-256 |
-|---|---|---|---|
-| **BUNDLE** | `20261031_release2_atomic` (records A,B,C) | `00_release2_atomic.sql` | `56f6d242e9b452ccc7ddff4ce2ca0ec3745fe0a855e27e2791b9ac15bfbef36d` |
-| A | `20261023_doctor_notes_and_partial_kit` | `01_…_doctor_notes_and_partial_kit.sql` | `427d8f28d5a3b0a3a445495775d84a1fec0c12867e49aaf07e2f5c0750863011` |
-| B | `20261030_partial_checkout_transactions` | `02_…_partial_checkout_transactions.sql` | `5c1b4a4dd4f3394f17ed97744f94efb07764d6bcff2800c3572d8487a1555019` |
-| C | `20261031_release2_grant_hardening` | `03_…_release2_grant_hardening.sql` | `5151ca639e5663cfd3a2f62394257c07335a367bcd7ad87bb7af84953866e02f` |
+| Role | File | SHA-256 |
+|---|---|---|
+| **APPLY & RECORD** — feed to the recorder (recorder owns the txn) | `00b_release2_atomic.record-form.sql` | `273900c92a964e94b1c67f5f4a366a3bf8832699b5836fbcf3b4a59c6bc146d9` |
+| Frozen reference — self-contained `BEGIN/COMMIT`, for `psql -1` review only (not recorded) | `00_release2_atomic.sql` | `56f6d242e9b452ccc7ddff4ce2ca0ec3745fe0a855e27e2791b9ac15bfbef36d` |
+| Component A (verbatim PR #35) | `01_…_doctor_notes_and_partial_kit.sql` | `427d8f28d5a3b0a3a445495775d84a1fec0c12867e49aaf07e2f5c0750863011` |
+| Component B (verbatim PR #35) | `02_…_partial_checkout_transactions.sql` | `5c1b4a4dd4f3394f17ed97744f94efb07764d6bcff2800c3572d8487a1555019` |
+| Component C (hardening) | `03_…_release2_grant_hardening.sql` | `5151ca639e5663cfd3a2f62394257c07335a367bcd7ad87bb7af84953866e02f` |
 
 - A and B are **byte-identical** to the reviewed PR #35 artifacts; A's checksum **matches the PR #35
-  staging-verification banner** (`427d8f28…863011`). C changed (ConsultationNote tightened to
-  SELECT-only, §2); new checksum above.
-- The bundle is A+B+C concatenated under a single `BEGIN/COMMIT` (each component's inner
-  `BEGIN/COMMIT`/`SET LOCAL` removed; one wrapper sets `lock_timeout=3s`, `statement_timeout=60s`).
-  Component files are retained for provenance/review.
+  staging-verification banner** (`427d8f28…863011`).
+- **Checksum caveat (honest):** your instruction to "keep the exact frozen bundle checksum" and your
+  instruction to "use a supported migration-recording method that preserves the single transaction"
+  **cannot both hold**, because the supported recorders wrap each file in their own transaction and an
+  **embedded `BEGIN/COMMIT` is a documented cause of partial migrations** (Supabase KB: *"Partial
+  migrations and schema inconsistencies from embedded transactions"*). The recorded artifact is
+  therefore `00b_…record-form.sql` (`273900c9…`), which has the **same statement set and order** as the
+  frozen `00_…` bundle with only the outer transaction control delegated to the recorder. The frozen
+  `56f6d242…` bundle is retained for provenance / `psql -1` review.
 - Verify before execution: `sha256sum release2-production-package/0{0,1,2,3}_*.sql` must reproduce the
-  four values above.
+  values above (`00b` is the one that gets applied+recorded).
 
 ---
 
@@ -125,12 +130,20 @@ part of this release. Changes are applied and recorded through the Supabase migr
   invisible to every other session until the one `COMMIT`, by which point C's REVOKEs are already in
   effect. There is **no committed intermediate state** with write exposure. Order is strictly A→B→C
   (C references A/B objects; B references A's enum/tables).
-- **Runner transaction behavior (verified-by-design):** the bundle owns its transaction with an explicit
-  `BEGIN … COMMIT`. Run it through a path that executes the batch as-is — the Supabase **SQL editor
-  "Run"** or `psql -1 -f 00_release2_atomic.sql` — so that explicit transaction governs. Do **not** feed
-  it to a runner that adds its own outer transaction wrapper (nested `COMMIT` would misbehave); in
-  particular do not split it back into three `apply_migration` calls. `apply_migration` is used only
-  afterward to **record** the three migration names in the Supabase ledger (metadata only).
+- **Supported recorder (correction — single record, no fabrication):** apply
+  `00b_release2_atomic.record-form.sql` as **one** migration named `20261031_release2_atomic` via a
+  method that *records* it:
+    - Supabase CLI: `supabase migration new 20261031_release2_atomic` (paste the record-form body),
+      then `supabase db push --db-url "$PROD_DB_URL"`; **or**
+    - the management API / MCP `apply_migration` with name `20261031_release2_atomic` and the
+      record-form body.
+  Both write **exactly one** row to `supabase_migrations.schema_migrations`. **Do not** run the bundle
+  through the bare SQL Editor and then hand-insert ledger rows, and **do not** record three separate
+  entries — the bundle is one applied migration, so it is one record. No Prisma or Supabase history is
+  fabricated or edited.
+- **Runner owns the transaction:** the record-form file has **no** embedded `BEGIN/COMMIT`; the recorder
+  wraps the whole file in one transaction (its `SET LOCAL` timeouts run inside that wrapper). Embedding
+  `BEGIN/COMMIT` would risk a partial migration (Supabase KB), so it is deliberately absent here.
 - **Fail-safe recovery:** any failed statement aborts the whole bundle → `ROLLBACK` → zero tables
   created, zero partial grants, nothing to clean up. Re-run after addressing the cause. `lock_timeout=3s`
   makes the two `ADD CONSTRAINT … UNIQUE` statements on `KitOrderIntent`/`Assessment` fail fast rather
@@ -264,18 +277,20 @@ GROUP BY 1,2 ORDER BY 1,2;
 Attempt a cross-tenant insert as a Clinic-B context inside a transaction and confirm it raises
 `purchase_event_association` / RLS denial, then `ROLLBACK`. No row persists.
 ### 8.5 Migration ledger
-`supabase_migrations.schema_migrations` now also lists the 3 Release-2 names; `_prisma_migrations`
-**unchanged** (failed row left exactly as-is).
+`supabase_migrations.schema_migrations` gains **exactly one** new row: `20261031_release2_atomic`
+(the single bundle record — not three). `_prisma_migrations` is **unchanged** — the failed
+`20260626_phase3_admin` row is left exactly as-is; nothing is hand-inserted or edited in either ledger.
 
 ---
 
 ## 9. Go / No-Go criteria
 
 **GO only if ALL hold:**
-- [ ] §1 checksums reproduce exactly (BUNDLE=`56f6d242…`, A=`427d8f28…`, B=`5c1b4a4d…`, C=`5151ca63…`).
+- [ ] §1 checksums reproduce exactly (applied=`00b` `273900c9…`; frozen ref `56f6d242…`; A=`427d8f28…`, B=`5c1b4a4d…`, C=`5151ca63…`).
 - [ ] §7 backup/PITR evidence attached and restorable.
 - [ ] `PURCHASING_ENABLED` confirmed OFF in production Vercel env.
-- [ ] Apply ran A→B→C, each recorded in the Supabase ledger; Prisma ledger untouched.
+- [ ] Applied via a supported recorder as **one** migration `20261031_release2_atomic` → exactly one
+  new Supabase ledger row; Prisma ledger untouched; no hand-inserted rows.
 - [ ] §8.1 baseline counts all `true`; §8.3 grant matrix matches target (no `anon`).
 - [ ] §8.2/8.4 objects + isolation smoke pass.
 
