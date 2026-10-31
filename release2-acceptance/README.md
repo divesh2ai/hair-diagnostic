@@ -1,68 +1,62 @@
-# Release 2 — local Doctor acceptance kit (run on your Windows machine)
+# Release 2 — automated Doctor acceptance (gates 2, 3, 6)
 
-Closes gates 2 & 3 (authenticated UI journey + cross-clinic denial) with **real
-screenshots and API results**, on a machine that can reach the staging preview.
-You log in privately in the browser — **no passwords / OTPs / cookies are ever
-typed into chat or written to any file**. The kit only records screenshots you
-trigger plus each API call's `method + status + path` (no bodies/headers/query).
+Genuine automated acceptance. The **only** manual steps are: log in privately as
+the doctor, and open one synthetic test patient's review page. Everything else
+is automated and self-reports **PASS/FAIL** to `results.jsonl` with checkpoint
+screenshots. **No passwords, OTPs, cookies, or secrets** are ever read, written,
+or logged. The dev-login bypass is never used.
 
-## One-time setup (PowerShell)
+Authored against frozen PR #35 `0b0c8c5`. It was written in a network-restricted
+sandbox that cannot reach the app, so **you run it** on a machine that can; it
+asserts and reports on its own.
+
+## Fail-closed preconditions (checked first, abort on failure)
+- Preview reachable.
+- **Served revision pinned to 0b0c8c5** via the `x-vercel-deployment-url` response header (expects the `hairos-r1dxbok0x-…` deployment). Aborts if it can't confirm.
+- **Backend = staging**: the running page must only ever call the staging Supabase host (`vbkoupv…`); any contact with the production host (`pykoyx…`) fails the run (gate 6, secret-free — replaces the old env-dump check).
+
+## Setup (PowerShell, once)
 ```powershell
-# Node 18+ required. In an empty folder, next to run-acceptance.mjs:
 npm init -y
 npm install -D playwright
 npx playwright install chromium
 ```
 
-## Gate 2 — Dr Test A journey
+## Gate 2 — Dr Test A (synthetic patient, inside the test clinic)
 ```powershell
-node run-acceptance.mjs --out evidence-doctorA
+node run-acceptance.mjs --role doctorA --out evidence-doctorA
 ```
-A Chromium window opens at the preview `/login`. Then:
-1. Log in as **Dr Test A** privately (normal staging login; `/api/dev/login` is available on staging if SMS-OTP is inconvenient — your choice, done in the browser).
-2. Perform, clicking **“HAIROS capture”** (bottom-right) at each checkpoint:
-   - Open a patient’s **consultation review**.
-   - Add a **typed note** → save; **refresh** → confirm it persists (capture before+after).
-   - Add a **microphone-dictated** note; confirm **typed fallback** works.
-   - Confirm **4 recommended kits**.
-   - **Select 2** kits (1 box each) for purchase.
-   - Record **clinic-counter test payment**.
-   - **Defer** the remaining 2 kits.
-   - Reopen the patient → confirm **previous notes + kit history** on follow-up.
-   - Do a **later purchase** and a **refund** (synthetic data).
-3. Close the window. Evidence lands in `evidence-doctorA/`.
+1. A browser opens at the preview `/login`. **Log in privately as Dr Test A** (normal auth).
+2. When prompted, **open one SYNTHETIC test patient's review page** (`…/doctor/reports/<id>`) in that same window. (Dr Test A's clinic *is* a test clinic — all its patients are synthetic.) The kit then runs automatically and asserts:
+   - notes panel enabled; **typed note saved**; **persists after reload**; dictation control present + typed fallback verified;
+   - tracker enabled with recommended kits; **records a clinic-confirmed purchase** and asserts purchased-box count **increases**; **defers** a remaining kit and asserts a deferred state shows;
+   - **purchasing gated OFF** — the checkout/payment/refund path is asserted disabled and the payment / later-purchase / refund steps are reported **SKIP (gated)**, never PASS (respecting `PURCHASING_ENABLED`);
+   - follow-up treatment/purchase history present.
 
-Note the patient **id** and assessment **id** from the URLs (`/doctor/patients/<id>`, `/doctor/reports/<assessmentId>`) — you’ll reuse them in gate 3.
+Note the patient and assessment IDs from the URL bar for gate 3.
 
-## Gate 3 — Dr QA B isolation (fresh login)
+## Gate 3 — Dr QA B (separate clinic, assert denial)
 ```powershell
-node run-acceptance.mjs --out evidence-doctorB
+node run-acceptance.mjs --role doctorB --out evidence-doctorB `
+  --cross-url "https://<preview>/doctor/reports/<DrTestA-assessment-id>" `
+  --cross-api "/api/doctor/patients/<DrTestA-patient-id>"
 ```
-1. Log in as **Dr QA B** (separate clinic).
-2. Paste Dr Test A’s patient/report URLs into the address bar:
-   - `<BASE>/doctor/patients/<A-patient-id>`
-   - `<BASE>/doctor/reports/<A-assessment-id>`
-   Confirm each is **denied / not found / empty** → capture.
-3. Confirm Dr QA B’s own lists show **none** of Dr Test A’s records → capture.
-4. Close. Evidence lands in `evidence-doctorB/`.
+Log in privately as **Dr QA B**. The kit asserts the Doctor-A API path returns **403/404/401 or empty 200** (no rows) and the Doctor-A page is **denied** (≥400 or a login/forbidden screen). A rendered page or returned rows = **FAIL (leak)**.
 
-`api-results.jsonl` should show **2xx** for Dr A’s own actions and **403/404** (or empty 200) for the cross-clinic probes.
-
-## Gate 6 — preview private DB target (authorized Vercel access, no secrets shown)
-On your machine, logged into Vercel CLI as the operator:
+## Optional — exercise the money path (only with approved staging enablement)
+The payment/refund path is gated by `PURCHASING_ENABLED`. Do **not** enable it in
+production. Only if you have explicitly approved enabling purchasing **on
+staging** for this test, re-run gate 2 with:
 ```powershell
-vercel link                      # pick the 'hairos' project
-# Show which keys exist per target WITHOUT values:
-vercel env ls preview
-# Prove the ref WITHOUT printing the secret (pull to a temp file, grep ref, delete):
-vercel env pull .env.preview.tmp --environment=preview
-findstr /C:"vbkoupvduadmcxggtnsb" .env.preview.tmp   # expect a match (staging)
-findstr /C:"pykoyxbleowxwechotth" .env.preview.tmp   # expect NO match (not production)
-del .env.preview.tmp
+node run-acceptance.mjs --role doctorA --out evidence-doctorA-purchasing --purchasing-scope approved
 ```
-Record only PASS/FAIL (staging ref present, production ref absent) — do not paste the file.
+Then the clinic-counter payment, later purchase, and refund become assertable.
+Without this flag the kit correctly refuses to claim those passed.
 
-## What to send back
-- `evidence-doctorA/` and `evidence-doctorB/` (screenshots + `api-results.jsonl`).
-- Gate 6 PASS/FAIL.
-Any failure → fix it and re-run only that journey. When all pass, I’ll finalize the exact production cutover commands (migrations already prepared; purchasing stays OFF).
+## Output / what to send back
+- `evidence-doctorA/results.jsonl` + screenshots, `evidence-doctorB/results.jsonl` + screenshots.
+- `api-results.jsonl` (method + status + path only).
+All gates PASS (payment steps may read SKIP-gated) ⇒ gates 2/3/6 closed. Any FAIL ⇒ fix the actual issue, rerun only that role. When green, I'll hand over the exact production migration + deploy commands (purchasing stays OFF).
+
+## Flags
+`--base <url>` override preview · `--role doctorA|doctorB` · `--out <dir>` · `--cross-url` / `--cross-api` (gate 3) · `--purchasing-scope approved` (gated money path).
