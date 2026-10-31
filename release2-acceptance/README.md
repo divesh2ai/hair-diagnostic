@@ -12,8 +12,10 @@ asserts and reports on its own.
 
 ## Fail-closed preconditions (checked first, abort on failure)
 - Preview reachable.
-- **Served revision pinned to 0b0c8c5** via the `x-vercel-deployment-url` response header (expects the `hairos-r1dxbok0x-…` deployment). Aborts if it can't confirm.
+- **Served revision pinned to 0b0c8c5** by TWO independent checks: the `x-vercel-deployment-url` header (when present) **and** the Next.js `buildId` of the running page compared against the immutable `hairos-r1dxbok0x-…` (0b0c8c5) deployment fetched server-side. Aborts if neither can confirm.
 - **Backend = staging**: the running page must only ever call the staging Supabase host (`vbkoupv…`); any contact with the production host (`pykoyx…`) fails the run (gate 6, secret-free — replaces the old env-dump check).
+- **Authenticated identity pinned**: `/api/doctor/me` must return `doctor.id` + `clinic.slug` matching the expected staging doctor/clinic (Dr Test A → `cmsuip6ue0006u6hzrn4iiwr3` / `drfact-mumbai-test`; Dr QA B → `cmsv8xwwc00016a4k4oxcpqhn` / `drfact-pune-test`). Mismatch is a mandatory FAIL.
+- **Exit code** is nonzero if any mandatory check FAILs; `SKIP`/`MANUAL` never count as PASS.
 
 ## Setup (PowerShell, once)
 ```powershell
@@ -27,11 +29,11 @@ npx playwright install chromium
 node run-acceptance.mjs --role doctorA --out evidence-doctorA
 ```
 1. A browser opens at the preview `/login`. **Log in privately as Dr Test A** (normal auth).
-2. When prompted, **open one SYNTHETIC test patient's review page** (`…/doctor/reports/<id>`) in that same window. (Dr Test A's clinic *is* a test clinic — all its patients are synthetic.) The kit then runs automatically and asserts:
-   - notes panel enabled; **typed note saved**; **persists after reload**; dictation control present + typed fallback verified;
-   - tracker enabled with recommended kits; **records a clinic-confirmed purchase** and asserts purchased-box count **increases**; **defers** a remaining kit and asserts a deferred state shows;
-   - **purchasing gated OFF** — the checkout/payment/refund path is asserted disabled and the payment / later-purchase / refund steps are reported **SKIP (gated)**, never PASS (respecting `PURCHASING_ENABLED`);
-   - follow-up treatment/purchase history present.
+2. When prompted, **open one SYNTHETIC test patient's review page with an approved 4-kit plan** (`…/doctor/reports/<id>`). Dr Test A's clinic *is* a test clinic — all patients are synthetic. The kit then runs automatically and asserts:
+   - notes panel enabled; **typed note saved**; **persists after reload**; **dictation control present** (PASS) — genuine speech recognition is logged **MANUAL** (human-mic check), never a pass;
+   - **exactly 4 recommended kits**; **records 2 clinic-confirmed purchases** (asserts `purchasedKits=2`); **defers 2** (asserts `deferredKits=2`); **remaining correct** (2 purchased / 2 deferred / 0 remaining of 4);
+   - **purchasing gated OFF** — checkout asserted disabled; payment / later-purchase / refund reported **MANUAL** (not automated), never PASS;
+   - navigates to the **actual patient profile** and asserts the **saved note** and **kit history** render there.
 
 Note the patient and assessment IDs from the URL bar for gate 3.
 
@@ -43,20 +45,12 @@ node run-acceptance.mjs --role doctorB --out evidence-doctorB `
 ```
 Log in privately as **Dr QA B**. The kit asserts the Doctor-A API path returns **403/404/401 or empty 200** (no rows) and the Doctor-A page is **denied** (≥400 or a login/forbidden screen). A rendered page or returned rows = **FAIL (leak)**.
 
-## Optional — exercise the money path (only with approved staging enablement)
-The payment/refund path is gated by `PURCHASING_ENABLED`. Do **not** enable it in
-production. Only if you have explicitly approved enabling purchasing **on
-staging** for this test, re-run gate 2 with:
-```powershell
-node run-acceptance.mjs --role doctorA --out evidence-doctorA-purchasing --purchasing-scope approved
-```
-Then the clinic-counter payment, later purchase, and refund become assertable.
-Without this flag the kit correctly refuses to claim those passed.
+> The money path (clinic-counter payment, later purchase, refund) is **not automated** in this kit and is reported **MANUAL** — it is never claimed as passed. It stays gated by `PURCHASING_ENABLED` and is out of scope for this acceptance.
 
 ## Output / what to send back
 - `evidence-doctorA/results.jsonl` + screenshots, `evidence-doctorB/results.jsonl` + screenshots.
 - `api-results.jsonl` (method + status + path only).
-All gates PASS (payment steps may read SKIP-gated) ⇒ gates 2/3/6 closed. Any FAIL ⇒ fix the actual issue, rerun only that role. When green, I'll hand over the exact production migration + deploy commands (purchasing stays OFF).
+Exit is **nonzero on any mandatory FAIL**; `SKIP`/`MANUAL` never count as PASS. All mandatory checks PASS (money steps show MANUAL) ⇒ gates 2/3/6 closed. Any FAIL ⇒ fix the actual issue and rerun only that role. When green, I'll hand over the exact production migration + deploy commands (purchasing stays OFF).
 
 ## Flags
-`--base <url>` override preview · `--role doctorA|doctorB` · `--out <dir>` · `--cross-url` / `--cross-api` (gate 3) · `--purchasing-scope approved` (gated money path).
+`--base <url>` override preview · `--role doctorA|doctorB` · `--out <dir>` · `--cross-url` / `--cross-api` (gate 3).

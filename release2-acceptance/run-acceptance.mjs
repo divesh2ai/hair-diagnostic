@@ -13,8 +13,8 @@
 //    doctor opens inside their own (test) clinic. The kit never selects a
 //    patient for you and never crosses clinics except to PROVE denial.
 //  - PURCHASING_ENABLED is respected: the checkout/payment/refund path is
-//    asserted to be gated OFF and reported as SKIPPED (gated) — never PASS —
-//    unless you pass --purchasing-scope approved (explicit staging enablement).
+//    asserted to be gated OFF. The money-path steps are NOT automated here and
+//    are reported MANUAL — never PASS. (No --purchasing-scope bypass.)
 //  - The development-login bypass (/api/dev/login) is NEVER used.
 //
 // Authored against frozen PR #35 @ 0b0c8c5 source selectors. Run it on a machine
@@ -36,6 +36,12 @@ const BRANCH_ALIAS = "https://hairos-git-claude-phase1-notes-18d307-diveshs-proj
 const STAGING_REF = "vbkoupvduadmcxggtnsb";
 const PROD_REF = "pykoyxbleowxwechotth";
 
+// Expected authenticated identities — must resolve via the deployed /api/doctor/me.
+const IDENTITY = {
+  doctorA: { id: "cmsuip6ue0006u6hzrn4iiwr3", slug: "drfact-mumbai-test", label: "Dr Test A" },
+  doctorB: { id: "cmsv8xwwc00016a4k4oxcpqhn", slug: "drfact-pune-test", label: "Dr QA B" },
+};
+
 // ---- args ------------------------------------------------------------------
 const argv = process.argv.slice(2);
 const arg = (k, d) => { const i = argv.indexOf(k); return i >= 0 ? argv[i + 1] : d; };
@@ -44,7 +50,6 @@ const OUT = arg("--out", `evidence-${ROLE}-${Date.now()}`);
 const BASE = (arg("--base", BRANCH_ALIAS)).replace(/\/+$/, "");
 const CROSS_URL = arg("--cross-url", "");          // doctorB: a Doctor-A page URL (expect denial)
 const CROSS_API = arg("--cross-api", "");          // doctorB: a Doctor-A API path (expect 403/empty)
-const PURCHASING_SCOPE = arg("--purchasing-scope", "gated"); // 'approved' only with explicit staging enablement
 
 const SHOTS = join(OUT, "screenshots");
 mkdirSync(SHOTS, { recursive: true });
@@ -53,8 +58,14 @@ writeFileSync(RESULTS, "");
 const API_LOG = join(OUT, "api-results.jsonl");
 writeFileSync(API_LOG, "");
 
-let shotN = 0, prodHostSeen = false, stagingHostSeen = false;
+let shotN = 0, prodHostSeen = false, stagingHostSeen = false, hadFail = false;
 const safe = (s) => String(s || "x").replace(/[^a-z0-9_-]+/gi, "-").slice(0, 60);
+// Next.js buildId from page HTML — a revision fingerprint independent of headers.
+const buildIdOf = (html) => {
+  const m = String(html).match(/"buildId"\s*:\s*"([^"]+)"/)
+    || String(html).match(/\/_next\/static\/([^/"]+)\/_(?:buildManifest|ssgManifest)/);
+  return m ? m[1] : null;
+};
 
 async function shot(page, label) {
   const f = join(SHOTS, `${String(++shotN).padStart(2, "0")}-${safe(label)}.png`);
@@ -62,9 +73,11 @@ async function shot(page, label) {
   return f;
 }
 function record(name, status, detail = "") {
+  if (status === "FAIL") hadFail = true;            // any mandatory FAIL -> nonzero exit
   const row = { name, status, detail, t: new Date().toISOString() };
   appendFileSync(RESULTS, JSON.stringify(row) + "\n");
-  const tag = status === "PASS" ? "PASS " : status === "FAIL" ? "FAIL " : status === "SKIP" ? "SKIP " : "info ";
+  // SKIP and MANUAL are never counted as PASS.
+  const tag = { PASS: "PASS ", FAIL: "FAIL ", SKIP: "SKIP ", MANUAL: "MANL " }[status] || "info ";
   console.log(`  [${tag}] ${name}${detail ? " — " + detail : ""}`);
 }
 async function assert(page, name, fn) {
@@ -115,10 +128,24 @@ const run = async () => {
   catch (e) { record("preview-reachable", "FAIL", e.message); console.log("\nFATAL: preview unreachable.\n"); await browser.close(); process.exit(2); }
   record("preview-reachable", "PASS", `${resp.status()} ${BASE}`);
 
+  // Revision pin — two independent checks; never rely solely on the header.
   const depHost = resp.headers()["x-vercel-deployment-url"] || "";
-  if (!depHost) { record("revision-pin-0b0c8c5", "FAIL", "x-vercel-deployment-url header absent; cannot confirm revision"); console.log("\nFATAL: cannot confirm served revision is 0b0c8c5.\n"); await browser.close(); process.exit(3); }
-  if (depHost !== EXPECTED_DEPLOY_HOST) { record("revision-pin-0b0c8c5", "FAIL", `served ${depHost} != ${EXPECTED_DEPLOY_HOST}`); console.log("\nFATAL: served revision is not the frozen 0b0c8c5 deployment.\n"); await browser.close(); process.exit(3); }
-  record("revision-pin-0b0c8c5", "PASS", `${depHost} (sha ${EXPECTED_SHA.slice(0,7)})`);
+  const headerOk = depHost === EXPECTED_DEPLOY_HOST;
+  if (depHost && !headerOk) { record("revision-pin-header", "FAIL", `served ${depHost} != ${EXPECTED_DEPLOY_HOST}`); console.log("\nFATAL: served revision is not the frozen 0b0c8c5 deployment.\n"); await browser.close(); process.exit(3); }
+  record("revision-pin-header", headerOk ? "PASS" : "info", headerOk ? depHost : "x-vercel-deployment-url absent; using buildId pin");
+  // Independent buildId fingerprint: BASE must serve the same Next build as the
+  // immutable 0b0c8c5 deployment URL (fetched server-side, no CORS).
+  let baseBuild = null, pinBuild = null;
+  try { baseBuild = buildIdOf(await resp.text()); } catch {}
+  try { const r = await context.request.get(`https://${EXPECTED_DEPLOY_HOST}/login`, { timeout: 30000 }); if (r.ok()) pinBuild = buildIdOf(await r.text()); } catch {}
+  if (baseBuild && pinBuild) {
+    if (baseBuild !== pinBuild) { record("revision-pin-buildid", "FAIL", `base build ${baseBuild} != 0b0c8c5 build ${pinBuild}`); console.log("\nFATAL: base does not serve the 0b0c8c5 build.\n"); await browser.close(); process.exit(3); }
+    record("revision-pin-buildid", "PASS", `buildId ${baseBuild} == 0b0c8c5 deployment`);
+  } else if (headerOk) {
+    record("revision-pin-buildid", "info", "buildId unavailable; header pin confirmed");
+  } else {
+    record("revision-pin-0b0c8c5", "FAIL", "cannot confirm revision by header or buildId"); console.log("\nFATAL: cannot confirm served revision is 0b0c8c5.\n"); await browser.close(); process.exit(3);
+  }
 
   // ---- Manual private login -------------------------------------------------
   console.log(`\n>>> Log in privately as ${ROLE === "doctorB" ? "Dr QA B" : "Dr Test A"} in the browser window.`);
@@ -134,15 +161,24 @@ const run = async () => {
     if (me) break;
   }
   if (!me) { record("authenticated-login", "FAIL", "no authenticated doctor session detected (10 min)"); await browser.close(); process.exit(4); }
-  const who = me.name || me.doctor?.name || "(doctor)";
-  const clinic = me.clinicId || me.doctor?.clinicId || me.clinic?.id || "(clinic)";
-  record("authenticated-login", "PASS", `${who} @ clinic ${clinic}`);
+  const exp = IDENTITY[ROLE] || IDENTITY.doctorA;
+  const gotId = me?.doctor?.id ?? null;        // from the actual /api/doctor/me shape
+  const gotSlug = me?.clinic?.slug ?? null;
+  const gotName = me?.doctor?.name ?? "(doctor)";
   await shot(page, "authenticated");
+  if (gotId === exp.id && gotSlug === exp.slug) {
+    record("identity-matches-staging", "PASS", `${gotName} · doctor.id=${gotId} · clinic.slug=${gotSlug}`);
+  } else {
+    record("identity-matches-staging", "FAIL", `expected id=${exp.id} slug=${exp.slug}; got id=${gotId} slug=${gotSlug}`);
+    console.log("\nFATAL: authenticated identity does not match the expected staging doctor/clinic.\n");
+    await finish(browser);
+    return;
+  }
 
   // ---- Gate 6: staging backend proof (secret-free) --------------------------
   record("backend-staging-supabase-host", stagingHostSeen && !prodHostSeen ? "PASS" : (prodHostSeen ? "FAIL" : "info"),
     `staging seen=${stagingHostSeen} prod seen=${prodHostSeen}`);
-  record("backend-server-db-staging", me ? "PASS" : "FAIL", "authenticated /api/doctor/me resolved against the deployed server DB");
+  record("backend-server-db-staging", gotSlug === exp.slug ? "PASS" : "FAIL", `server /api/doctor/me resolved clinic.slug=${gotSlug} against the deployed DB`);
 
   if (ROLE === "doctorB") {
     // ---- Gate 3: cross-clinic denial ---------------------------------------
@@ -198,84 +234,108 @@ const run = async () => {
     await page.getByText(MARK, { exact: false }).first().waitFor({ timeout: 20000 });
     return "note still present after refresh";
   });
-  await assert(page, "dictation-control-and-typed-fallback", async () => {
-    // Typed fallback proven above. Assert the mic/dictation control is present
-    // (actual speech recognition needs a human mic and is not scriptable).
+  await assert(page, "dictation-control-present", async () => {
     const hasMic = await page.locator('button[aria-label*="dict" i], button:has-text("Dictate"), [data-dictate], svg.lucide-mic, .lucide-mic').count();
     if (!hasMic) throw new Error("dictation control not found next to the note field");
-    return "dictation control present; typed fallback verified";
+    return "mic/dictation control present; typed fallback already verified";
   });
+  record("speech-recognition-human-check", "MANUAL", "genuine microphone speech recognition is not scriptable — requires a human mic test; attach a short clip/screenshot");
 
-  // Kit tracker: 4 recommended, record 2 purchased, defer 2 (quantity, ungated).
-  await assert(page, "tracker-enabled-and-4-recommended", async () => {
+  // Kit tracker: EXACTLY 4 recommended; record 2 purchases + 2 deferrals (quantity/clinical, ungated); assert remaining.
+  const readSummary = async () => page.evaluate(() => {
+    const t = document.body.innerText;
+    const kp = t.match(/(\d+)\s*\/\s*(\d+)\s*kits purchased/i);
+    const bx = t.match(/(\d+)\s*\/\s*(\d+)\s*boxes purchased/i);
+    const rd = t.match(/(\d+)\s*remaining\s*·\s*(\d+)\s*deferred\s*·\s*(\d+)\s*declined/i);
+    return {
+      purchasedKits: kp ? +kp[1] : null, recommendedKits: kp ? +kp[2] : null,
+      purchasedBoxes: bx ? +bx[1] : null, recommendedBoxes: bx ? +bx[2] : null,
+      remainingKits: rd ? +rd[1] : null, deferredKits: rd ? +rd[2] : null, declinedKits: rd ? +rd[3] : null,
+    };
+  });
+  // Per-kit action helper (row-scoped so it is selector-robust): open the Nth
+  // kit row's form, choose eventType by VALUE, set boxes, submit.
+  const kitRow = (idx) => page.locator("li", { hasText: "catalog" }).nth(idx);
+  const act = async (idx, value, boxes, reason) => {
+    const row = kitRow(idx);
+    await row.waitFor({ timeout: 10000 });
+    await row.getByRole("button").first().click();
+    const sel = row.locator("select").first();
+    await sel.waitFor({ timeout: 8000 });
+    await sel.selectOption({ value });
+    if (boxes != null) { const b = row.locator('input[type="number"]').first(); if (await b.count()) await b.fill(String(boxes)); }
+    if (reason != null) { const n = row.locator('input[type="text"]').last(); if (await n.count()) await n.fill(reason); }
+    await row.getByRole("button").last().click();
+    await page.waitForTimeout(2000);
+  };
+  await assert(page, "tracker-enabled", async () => {
     const body = await page.content();
     if (body.includes("Purchase tracking is not enabled yet")) throw new Error("tracker not provisioned on this env");
     await page.getByRole("heading", { name: "Kit purchases & treatment" }).first().waitFor({ timeout: 15000 });
     return "tracker present";
   });
-  // Read baseline summary (boxes purchased) before acting.
-  const readPurchased = async () => page.evaluate(() => {
-    const m = document.body.innerText.match(/(\d+)\s*\/\s*(\d+)\s*boxes purchased/i); return m ? { purchased: +m[1], recommended: +m[2] } : null;
+  await assert(page, "exactly-4-recommended-kits", async () => {
+    const s = await readSummary();
+    const rows = await page.locator("li", { hasText: "catalog" }).count();
+    if (s.recommendedKits !== 4) throw new Error(`summary recommendedKits=${s.recommendedKits} (need exactly 4 — open a synthetic 4-kit approved plan)`);
+    if (rows !== 4) throw new Error(`found ${rows} kit rows (need 4)`);
+    return `recommendedKits=4, rows=4`;
   });
-  const before = await readPurchased();
-  record("tracker-summary-read", before ? "PASS" : "FAIL", before ? `purchased ${before.purchased}/${before.recommended} boxes` : "summary not parseable");
-
-  // Attempt a quantity record (ungated) on the first kit: Clinic confirmed purchase, 1 box.
-  await assert(page, "record-clinic-confirmed-purchase", async () => {
-    const toggles = page.getByRole("button", { name: /record|update|manage|purchase|action/i });
-    if (await toggles.count() === 0) throw new Error("no per-kit record toggle found");
-    await toggles.first().click();
-    const sel = page.locator("select").filter({ hasText: "Clinic confirmed purchase" }).first();
-    await sel.waitFor({ timeout: 8000 });
-    await sel.selectOption({ label: "Clinic confirmed purchase" });
-    const boxes = page.locator('input[type="number"]').first();
-    if (await boxes.count()) await boxes.fill("1");
-    const submit = page.getByRole("button", { name: /record|save|confirm/i }).last();
-    await submit.click();
-    await page.waitForTimeout(2500);
-    const after = await readPurchased();
-    if (before && after && after.purchased <= before.purchased) throw new Error(`purchased boxes did not increase (${before.purchased}->${after?.purchased})`);
-    return `purchased boxes ${before?.purchased ?? "?"} -> ${after?.purchased ?? "?"}`;
+  await assert(page, "record-two-purchases", async () => {
+    await act(0, "PURCHASE_CONFIRMED_BY_CLINIC", 1, null);
+    await act(1, "PURCHASE_CONFIRMED_BY_CLINIC", 1, null);
+    const s = await readSummary();
+    if (s.purchasedKits !== 2) throw new Error(`purchasedKits=${s.purchasedKits} after 2 purchases (need 2)`);
+    return `purchasedKits=2 · boxes=${s.purchasedBoxes}/${s.recommendedBoxes}`;
   });
-  await assert(page, "defer-remaining-kit", async () => {
-    const toggles = page.getByRole("button", { name: /record|update|manage|purchase|action/i });
-    await toggles.nth(Math.min(1, await toggles.count() - 1)).click();
-    const sel = page.locator("select").last();
-    await sel.selectOption({ label: /defer/i }).catch(async () => { await sel.selectOption({ value: "DEFERRED" }); });
-    const note = page.locator('input[type="text"]').last();
-    if (await note.count()) await note.fill(`${MARK} deferred`);
-    await page.getByRole("button", { name: /record|save|confirm/i }).last().click();
-    await page.waitForTimeout(2000);
-    const body = await page.content();
-    if (!/deferred/i.test(body)) throw new Error("no 'deferred' state visible after deferring");
-    return "a kit shows deferred";
+  await assert(page, "record-two-deferrals", async () => {
+    await act(2, "DEFERRED", null, `${MARK} deferred`);
+    await act(3, "DEFERRED", null, `${MARK} deferred`);
+    const s = await readSummary();
+    if (s.deferredKits !== 2) throw new Error(`deferredKits=${s.deferredKits} after 2 deferrals (need 2)`);
+    return `deferredKits=2`;
+  });
+  await assert(page, "remaining-quantities-correct", async () => {
+    const s = await readSummary();
+    if (s.purchasedKits !== 2 || s.deferredKits !== 2 || s.remainingKits !== 0)
+      throw new Error(`purchased=${s.purchasedKits} deferred=${s.deferredKits} remaining=${s.remainingKits} (need 2 / 2 / 0 of 4)`);
+    return `4 recommended → 2 purchased, 2 deferred, 0 remaining`;
   });
 
-  // Purchasing gate: checkout/payment/refund must be OFF (gated), not claimed PASS.
+  // Purchasing gate: checkout/payment/refund must be OFF. Money-path steps are
+  // NOT automated by this kit; they are reported MANUAL, never PASS.
   await assert(page, "purchasing-gated-off", async () => {
     const body = await page.content();
     const gated = /Purchasing is disabled|Checkout is not enabled|not enabled yet|Recording a sale amount is disabled/i.test(body);
-    if (PURCHASING_SCOPE === "approved") {
-      record("purchasing-scope", "info", "approved scope flag set by operator");
-      if (gated) throw new Error("--purchasing-scope approved but checkout still gated OFF");
-      return "purchasing enabled by approved scope";
-    }
     if (!gated) throw new Error("checkout did NOT show a gated/disabled state while purchasing is OFF");
     return "checkout correctly gated OFF";
   });
-  if (PURCHASING_SCOPE !== "approved") {
-    record("clinic-counter-payment", "SKIP", "gated: PURCHASING_ENABLED off (not claimed PASS)");
-    record("later-purchase", "SKIP", "gated: PURCHASING_ENABLED off");
-    record("refund", "SKIP", "gated: PURCHASING_ENABLED off");
-  }
+  record("clinic-counter-payment", "MANUAL", "money path not automated here; needs approved staging purchasing + human check");
+  record("later-purchase", "MANUAL", "money path not automated here");
+  record("refund", "MANUAL", "money path not automated here");
 
-  // Follow-up history on the patient profile.
-  await assert(page, "follow-up-history", async () => {
-    const link = page.getByRole("link", { name: /patient|profile|history|view/i }).first();
-    if (await link.count()) { await link.click().catch(() => {}); await page.waitForTimeout(1500); }
+  // Follow-up: navigate to the ACTUAL patient profile and assert note + history there.
+  await assert(page, "open-patient-profile", async () => {
+    let href = await page.evaluate(() => { const a = document.querySelector('a[href*="/doctor/patients/"]'); return a ? a.getAttribute("href") : null; });
+    if (!href) {
+      const pid = await page.evaluate(async () => {
+        try { const r = await fetch(location.pathname.replace("/doctor/reports/", "/api/doctor/journey/"), { credentials: "include" }); const j = await r.json(); return j?.patientId || j?.patient?.id || null; } catch { return null; }
+      });
+      if (pid) href = `/doctor/patients/${pid}`;
+    }
+    if (!href) throw new Error("could not resolve the patient profile link from the review page");
+    await page.goto(new URL(href, page.url()).toString(), { waitUntil: "domcontentloaded" });
+    await page.waitForURL(/\/doctor\/patients\/[^/]+/, { timeout: 15000 });
+    return new URL(page.url()).pathname;
+  });
+  await assert(page, "profile-shows-saved-note", async () => {
+    await page.getByText(MARK, { exact: false }).first().waitFor({ timeout: 20000 });
+    return "saved note visible on the patient profile";
+  });
+  await assert(page, "profile-shows-kit-history", async () => {
     const body = await page.content();
-    if (!/Treatment & purchases|kits purchased|Kit purchases & treatment/i.test(body)) throw new Error("treatment/purchase history not found");
-    return "history panel present";
+    if (!/Treatment & purchases|kits purchased/i.test(body)) throw new Error("kit/treatment history not found on profile");
+    return "treatment & purchase history present on profile";
   });
 
   await finish(browser);
@@ -285,8 +345,10 @@ async function finish(browser) {
   // Final guard: any prod-host contact fails the whole run.
   if (prodHostSeen) record("backend-no-production-contact", "FAIL", "page contacted the PRODUCTION Supabase host");
   else record("backend-no-production-contact", "PASS", "no production Supabase contact observed");
-  console.log(`\nDone. results.jsonl + screenshots in ${OUT}\n`);
   await browser.close().catch(() => {});
+  console.log(`\nDone. results.jsonl + screenshots in ${OUT}`);
+  console.log(hadFail ? "RESULT: FAIL — one or more mandatory checks failed (exit 1)\n" : "RESULT: PASS — no mandatory failures; MANUAL/SKIP items noted (exit 0)\n");
+  process.exit(hadFail ? 1 : 0);   // mandatory FAIL => nonzero; SKIP/MANUAL never count as PASS
 }
 
 run().catch(async (e) => { console.error(e); process.exit(1); });
