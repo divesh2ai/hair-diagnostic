@@ -12,11 +12,13 @@
 --
 -- Net effect:
 --   * anon / PUBLIC        -> NO privileges on any Release-2 table.
---   * authenticated        -> SELECT only on the three FINANCIAL tables
---                             (KitPurchaseLine / KitPurchaseEvent / KitPurchaseTransaction);
---                             writes to financial facts are server-only (service_role).
---                           -> SELECT, INSERT, UPDATE on ConsultationNote (clinic-scoped
---                             doctor authoring under RLS); no DELETE / TRUNCATE / structural.
+--   * authenticated        -> SELECT only on ALL FOUR Release-2 tables, including
+--                             ConsultationNote. The browser-held authenticated JWT can
+--                             read (clinic-scoped under RLS) but can never write directly.
+--                             Server-side note authoring/amend + auditing are UNAFFECTED:
+--                             the app writes ConsultationNote via Prisma raw SQL over
+--                             DATABASE_URL (a direct privileged Postgres role), and the
+--                             server runtime uses service_role — neither is `authenticated`.
 --   * service_role         -> full access (server runtime).
 --
 -- Idempotent and non-destructive: only GRANT/REVOKE, no data touched. Safe to
@@ -40,10 +42,11 @@ GRANT SELECT ON TABLE "KitPurchaseLine"        TO authenticated;
 GRANT SELECT ON TABLE "KitPurchaseEvent"       TO authenticated;
 GRANT SELECT ON TABLE "KitPurchaseTransaction" TO authenticated;
 
--- 3) Clinical notes: authenticated may read + author under clinic-scoped RLS,
---    but never delete, truncate, or alter structure.
+-- 3) Clinical notes: authenticated may READ only (clinic-scoped under RLS).
+--    All note writes (create/amend) are performed server-side via Prisma over
+--    DATABASE_URL / service_role, never by the browser authenticated JWT.
 REVOKE ALL ON TABLE "ConsultationNote" FROM authenticated;
-GRANT SELECT, INSERT, UPDATE ON TABLE "ConsultationNote" TO authenticated;
+GRANT SELECT ON TABLE "ConsultationNote" TO authenticated;
 
 -- 4) Server runtime retains full access.
 GRANT ALL ON TABLE "ConsultationNote", "KitPurchaseLine", "KitPurchaseEvent", "KitPurchaseTransaction" TO service_role;

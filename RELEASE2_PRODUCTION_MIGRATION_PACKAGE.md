@@ -19,16 +19,24 @@ which only B creates; A alone is not schema-compatible with the application.
 Self-contained SQL lives in `release2-production-package/`. Apply in this order. A and B are
 **byte-identical** to the reviewed PR #35 artifacts at head `0b0c8c5`.
 
-| # | Supabase migration name | File | SHA-256 | Txn-wrapped |
-|---|---|---|---|---|
-| A | `20261023_doctor_notes_and_partial_kit` | `01_20261023_doctor_notes_and_partial_kit.sql` | `427d8f28d5a3b0a3a445495775d84a1fec0c12867e49aaf07e2f5c0750863011` | **no** (see §5.1) |
-| B | `20261030_partial_checkout_transactions` | `02_20261030_partial_checkout_transactions.sql` | `5c1b4a4dd4f3394f17ed97744f94efb07764d6bcff2800c3572d8487a1555019` | yes (`BEGIN/COMMIT`) |
-| C | `20261031_release2_grant_hardening` | `03_20261031_release2_grant_hardening.sql` | `b931a3d02736f59388200c0729c6a09d88502371af0a483ab0efc51032aaf88c` | yes (`BEGIN/COMMIT`) |
+**APPLY THIS ARTIFACT (recommended):** `00_release2_atomic.sql` — A + B + C in **one transaction**
+(see §5, closes the inter-step exposure window).
 
-- A's checksum **matches the PR #35 staging-verification banner** (`427d8f28…863011`) → the exact SQL
-  verified on staging is what applies to production.
-- Verify before execution: `sha256sum release2-production-package/0{1,2,3}_*.sql` must reproduce the
-  three values above.
+| # | Supabase migration name | File | SHA-256 |
+|---|---|---|---|
+| **BUNDLE** | `20261031_release2_atomic` (records A,B,C) | `00_release2_atomic.sql` | `56f6d242e9b452ccc7ddff4ce2ca0ec3745fe0a855e27e2791b9ac15bfbef36d` |
+| A | `20261023_doctor_notes_and_partial_kit` | `01_…_doctor_notes_and_partial_kit.sql` | `427d8f28d5a3b0a3a445495775d84a1fec0c12867e49aaf07e2f5c0750863011` |
+| B | `20261030_partial_checkout_transactions` | `02_…_partial_checkout_transactions.sql` | `5c1b4a4dd4f3394f17ed97744f94efb07764d6bcff2800c3572d8487a1555019` |
+| C | `20261031_release2_grant_hardening` | `03_…_release2_grant_hardening.sql` | `5151ca639e5663cfd3a2f62394257c07335a367bcd7ad87bb7af84953866e02f` |
+
+- A and B are **byte-identical** to the reviewed PR #35 artifacts; A's checksum **matches the PR #35
+  staging-verification banner** (`427d8f28…863011`). C changed (ConsultationNote tightened to
+  SELECT-only, §2); new checksum above.
+- The bundle is A+B+C concatenated under a single `BEGIN/COMMIT` (each component's inner
+  `BEGIN/COMMIT`/`SET LOCAL` removed; one wrapper sets `lock_timeout=3s`, `statement_timeout=60s`).
+  Component files are retained for provenance/review.
+- Verify before execution: `sha256sum release2-production-package/0{0,1,2,3}_*.sql` must reproduce the
+  four values above.
 
 ---
 
@@ -54,15 +62,16 @@ Migration C reproduces the hardened financial-table posture **and closes the `Co
 leak staging still carries.** Resulting production posture:
 
 - `anon` / `PUBLIC` → **no privileges** on any Release-2 table.
-- `authenticated` → **SELECT only** on the three financial tables (writes are server-only via
-  `service_role`); **SELECT, INSERT, UPDATE** on `ConsultationNote` (clinic-scoped doctor authoring
-  under RLS; no DELETE/TRUNCATE/structural).
+- `authenticated` → **SELECT only** on **all four** Release-2 tables, **including `ConsultationNote`**.
+  A browser JWT can read (clinic-scoped under RLS) but can never write directly.
 - `service_role` → full (server runtime).
 
-> The app connects to Postgres over a direct/server role and scopes every query by `clinicId` (per
-> migration A's header), so SELECT-only for `authenticated` does not break note-saving or kit tracking.
-> **Optional tightening:** if you confirm the app never writes `ConsultationNote` via the browser
-> `authenticated` JWT, we can reduce it to SELECT-only too. Default here is the non-breaking grant.
+> **Correction #1 (done, precondition verified):** `ConsultationNote` is now SELECT-only for
+> `authenticated`. This does **not** break note saving/amend/auditing because the app writes
+> `ConsultationNote` via **Prisma raw SQL over `DATABASE_URL`** (a direct privileged Postgres role),
+> and the server runtime uses `service_role` — neither is the browser `authenticated` role. Verified in
+> `apps/patient-portal/src/lib/notes/noteStore.ts` (`prisma.$queryRaw`/`$transaction` INSERT/UPDATE)
+> and `lib/prisma.ts` (datasource = `DATABASE_URL`).
 
 ---
 
@@ -85,8 +94,13 @@ env kill-switch** (PR #28), not a DB value — so no migration here reads or cha
 
 - The `KitPurchaseTransaction` table may exist, but `authenticated` has **SELECT only**; a browser JWT
   **cannot self-assert `PAID`** (money transitions are `service_role`-only by design).
-- **Pre-condition:** confirm `PURCHASING_ENABLED` is unset/`false` in the production Vercel env **before
-  and after** apply. Creating the empty table is not enabling checkout; settlement stays disabled.
+- **Verification attempt (correction #3):** I tried to read the flag via the Vercel API and got **403
+  Forbidden** — this session's Vercel access cannot list project env vars, and the error says not to
+  retry. So this is a **user-confirmed PASS/FAIL gate** (no secret values are to be printed): in
+  Vercel → project `hairos` → Settings → Environment Variables, **Production** target, confirm
+  `PURCHASING_ENABLED` is **absent or `false`** (the PR #28 kill-switch enables purchasing only when the
+  value is exactly `true`). Confirm **before and after** apply. Creating the empty table is not enabling
+  checkout; `authenticated` has SELECT-only on it and money transitions are `service_role`-only.
 
 ---
 
@@ -100,19 +114,27 @@ part of this release. Changes are applied and recorded through the Supabase migr
 (`supabase_migrations.schema_migrations`), the same channel that applied the last 3 production changes
 (`20260918122223`, `20261014053200`, `20261029093800`).
 
-**Apply order & method** (each via Supabase `apply_migration`, which records name + runs as a unit):
+**Apply as ONE transaction via `00_release2_atomic.sql`** (correction #2 — no inter-step exposure):
 
-1. **C-dependency note:** C references the tables A and B create, so order is strictly **A → B → C**.
-2. **A** — `20261023_doctor_notes_and_partial_kit`.
-   - §5.1 **A is not `BEGIN/COMMIT`-wrapped in the reviewed file.** To keep A's checksum identical to
-     staging, do **not** edit the file; instead apply it through a runner that wraps the whole file in
-     one transaction (Supabase `apply_migration` executes the migration as a single unit). If the
-     chosen execution path does **not** auto-wrap, apply A inside an explicit `BEGIN; … COMMIT;` at
-     execution time (the wrapper is operational, the reviewed body/checksum is unchanged). All-or-nothing
-     matters because A enables RLS and then creates policies; a mid-file abort must roll back cleanly.
-3. **B** — `20261030_partial_checkout_transactions` (already `BEGIN/COMMIT`, `lock_timeout=3s`,
-   `statement_timeout=30s`).
-4. **C** — `20261031_release2_grant_hardening` (`BEGIN/COMMIT`, same timeouts).
+- **The risk being closed:** if A, B, C were applied as three *separately committed* migrations, then
+  after A commits its new tables carry production's default `anon`/`authenticated` ALL grants until C
+  commits. RLS already blocks `anon` entirely in that window (A/B create policies only `TO
+  authenticated`, so `anon` has no policy and is denied), but an `authenticated` clinic-member JWT could
+  in that window write financial facts directly, bypassing server logic — until C revokes it.
+- **The fix:** apply A→B→C inside a **single transaction** (`00_release2_atomic.sql`). The new tables are
+  invisible to every other session until the one `COMMIT`, by which point C's REVOKEs are already in
+  effect. There is **no committed intermediate state** with write exposure. Order is strictly A→B→C
+  (C references A/B objects; B references A's enum/tables).
+- **Runner transaction behavior (verified-by-design):** the bundle owns its transaction with an explicit
+  `BEGIN … COMMIT`. Run it through a path that executes the batch as-is — the Supabase **SQL editor
+  "Run"** or `psql -1 -f 00_release2_atomic.sql` — so that explicit transaction governs. Do **not** feed
+  it to a runner that adds its own outer transaction wrapper (nested `COMMIT` would misbehave); in
+  particular do not split it back into three `apply_migration` calls. `apply_migration` is used only
+  afterward to **record** the three migration names in the Supabase ledger (metadata only).
+- **Fail-safe recovery:** any failed statement aborts the whole bundle → `ROLLBACK` → zero tables
+  created, zero partial grants, nothing to clean up. Re-run after addressing the cause. `lock_timeout=3s`
+  makes the two `ADD CONSTRAINT … UNIQUE` statements on `KitOrderIntent`/`Assessment` fail fast rather
+  than queue behind traffic; on a lock timeout the whole bundle rolls back — re-run in a quiet window.
 
 **Lock impact to expect (B):** `ALTER TABLE "KitOrderIntent" ADD CONSTRAINT … UNIQUE(id,clinicId,assessmentId)`
 and the same on `Assessment` take a brief `ACCESS EXCLUSIVE` lock to build a new unique index. Both are
@@ -235,8 +257,8 @@ WHERE table_schema='public'
   AND table_name IN ('ConsultationNote','KitPurchaseLine','KitPurchaseEvent','KitPurchaseTransaction')
   AND grantee IN ('anon','authenticated','service_role')
 GROUP BY 1,2 ORDER BY 1,2;
--- EXPECT: no 'anon' rows at all; authenticated = SELECT on the 3 financial tables;
---         authenticated = SELECT,INSERT,UPDATE on ConsultationNote; service_role full.
+-- EXPECT: no 'anon' rows at all; authenticated = SELECT on ALL FOUR tables
+--         (incl. ConsultationNote); service_role full.
 ```
 ### 8.4 Isolation smoke (read-only, crafted + rolled back)
 Attempt a cross-tenant insert as a Clinic-B context inside a transaction and confirm it raises
@@ -250,7 +272,7 @@ Attempt a cross-tenant insert as a Clinic-B context inside a transaction and con
 ## 9. Go / No-Go criteria
 
 **GO only if ALL hold:**
-- [ ] §1 checksums reproduce exactly (A=`427d8f28…`, B=`5c1b4a4d…`, C=`b931a3d0…`).
+- [ ] §1 checksums reproduce exactly (BUNDLE=`56f6d242…`, A=`427d8f28…`, B=`5c1b4a4d…`, C=`5151ca63…`).
 - [ ] §7 backup/PITR evidence attached and restorable.
 - [ ] `PURCHASING_ENABLED` confirmed OFF in production Vercel env.
 - [ ] Apply ran A→B→C, each recorded in the Supabase ledger; Prisma ledger untouched.
@@ -274,10 +296,16 @@ or the isolation smoke persists a row.
 
 ---
 
-## 11. What I need to proceed to execution
-1. Explicit authorization to apply **A→B→C** to `pykoyxbleowxwechotth`.
-2. §7 backup/PITR evidence recorded.
-3. Confirmation `PURCHASING_ENABLED` is OFF in the production env.
-4. (Optional) decision on the §2 ConsultationNote `authenticated` tightening.
+## 11. Remaining PASS/FAIL prerequisites before execution
 
-Until 1–3 are provided, nothing in §5 runs.
+| # | Prerequisite | Who | Status |
+|---|---|---|---|
+| 1 | ConsultationNote hardened to `authenticated` SELECT-only; server writes preserved (Prisma/`DATABASE_URL` + `service_role`) | me | ✅ **PASS** (done + verified in code) |
+| 2 | A/B/C cannot leave tables with inter-step direct-write exposure (single-txn atomic bundle; fail-safe rollback) | me | ✅ **PASS** (bundle `56f6d242…`) |
+| 3 | Checksums reproduce (BUNDLE/A/B/C) | me | ✅ **PASS** |
+| 4 | Prisma failed row `20260626_phase3_admin` left unchanged; no `prisma migrate deploy` | me | ✅ **PASS** (untouched) |
+| 5 | `PURCHASING_ENABLED` absent/`false` on Vercel **Production** | **you** | ⛔ **PENDING** — I got 403 listing env vars; confirm in dashboard (no secret values needed) |
+| 6 | Recoverable backup/PITR evidence (Supabase Database → Backups), not WAL config | **you** | ⛔ **PENDING** — no backup-read tool in this session; dashboard evidence required |
+| 7 | Explicit authorization to apply the bundle to `pykoyxbleowxwechotth` | **you** | ⛔ **PENDING** |
+
+Nothing in §5 runs until 5, 6, 7 are satisfied.
