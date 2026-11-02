@@ -1,4 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
+// Root tsc has no JSX support; Vitest and the portal's own tsc compile this page.
+// @ts-expect-error TS6142: the root project deliberately excludes the Next app.
 import RootPage, { dynamic } from '../apps/patient-portal/src/app/page';
 
 // Exercise Next's real redirect control flow, as the post-login tests do.
