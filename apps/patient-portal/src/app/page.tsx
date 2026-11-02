@@ -7,18 +7,10 @@ import { isValidClinicSlug } from '@/lib/clinic/slug';
  *
  * The platform has no home page of its own. Patients arrive by scanning one
  * clinic's QR code and staff arrive at /login, so `/` exists only so that a
- * bare hostname lands somewhere useful — which means it has to name a clinic,
- * and which clinic that is differs per deployment.
- *
- * It was hardcoded to the demo seed's `drfact-mumbai`, a clinic that has never
- * existed in staging, so every Preview visitor hit `/q/drfact-mumbai` and got
- * the landing page's `notFound()`. The slug is configuration, not a constant.
- *
- * `DEFAULT_CLINIC_SLUG` supplies it. When unset the fallback below applies, so
- * production behaves exactly as it did before this file changed; staging sets
- * the variable to its own clinic and no staging value is written into the code.
+ * bare hostname lands somewhere useful. A deployment can explicitly select a
+ * clinic with `DEFAULT_CLINIC_SLUG`; otherwise visitors go to staff login.
+ * Never guess a clinic: a demo slug may not exist in this environment.
  */
-const FALLBACK_CLINIC_SLUG = 'drfact-mumbai';
 
 /**
  * Read at request time rather than baked into a static prerender, so the
@@ -27,14 +19,15 @@ const FALLBACK_CLINIC_SLUG = 'drfact-mumbai';
  */
 export const dynamic = 'force-dynamic';
 
-function defaultClinicSlug(): string {
+function defaultClinicSlug(): string | null {
   const configured = (process.env.DEFAULT_CLINIC_SLUG ?? '').trim().toLowerCase();
   // Validated, not trusted: a malformed or path-bearing value would otherwise
   // become a redirect to a route that cannot exist — or off this origin
-  // entirely. A bad value falls back rather than propagating.
-  return isValidClinicSlug(configured) ? configured : FALLBACK_CLINIC_SLUG;
+  // entirely. A bad value sends the visitor to login instead.
+  return isValidClinicSlug(configured) ? configured : null;
 }
 
 export default function RootPage() {
-  redirect(`/q/${defaultClinicSlug()}`);
+  const clinicSlug = defaultClinicSlug();
+  redirect(clinicSlug ? `/q/${clinicSlug}` : '/login');
 }
