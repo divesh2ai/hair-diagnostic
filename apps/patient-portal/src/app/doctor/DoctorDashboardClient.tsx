@@ -18,6 +18,7 @@ import {
   type AttentionItem,
 } from "@/components/doctor/dashboard/AttentionPanel";
 import { buildDashboardAttention } from "@/lib/doctor/dashboardAttention";
+import { doctorHeroName } from "@/lib/doctor/heroGreeting";
 
 // Doctor Dashboard V4 — a clinical command centre.
 //
@@ -31,7 +32,7 @@ import { buildDashboardAttention } from "@/lib/doctor/dashboardAttention";
 // in the queue's own FIFO order; the full backlog stays on /doctor/reports, one
 // click away.
 //
-// ── What changed in V4 ──────────────────────────────────────────────────────
+// ── What changed in V4 ──────────────────────────────────────────────────────────
 // The five day counts moved from a pale strip at the BOTTOM of the page into
 // the band at the top, where they are read; the greeting header and that strip
 // are gone as separate components. The page adopts the Doctor token layer
@@ -39,7 +40,7 @@ import { buildDashboardAttention } from "@/lib/doctor/dashboardAttention";
 // page instead of a second, colder grey theme. And the page no longer opens on
 // a skeleton: `initialStats` is server-rendered — see page.tsx.
 //
-// ── Data ────────────────────────────────────────────────────────────────────
+// ── Data ──────────────────────────────────────────────────────────────────────
 // Still exactly one endpoint. /api/doctor/stats (one Promise.all: counts +
 // queue + in-clinic), polled every 15s while visible. Identity now arrives as
 // props from the server render instead of a second /api/doctor/me request. No
@@ -106,8 +107,6 @@ export function DoctorDashboardClient({
   const inClinic = stats?.inClinic ?? [];
   const inClinicTotal = stats?.inClinicTotal ?? counts.inProgress ?? inClinic.length;
 
-  const firstName = useMemo(() => firstNameOf(doctorName), [doctorName]);
-
   // Greeting and date are clock- and locale-dependent, so the server's render
   // and the browser's can differ; both carry `suppressHydrationWarning` where
   // they are printed, exactly as the previous header did. They are courtesies,
@@ -118,7 +117,10 @@ export function DoctorDashboardClient({
     const hour = new Date().getHours();
     return hour < 12 ? "Good morning" : hour < 17 ? "Good afternoon" : "Good evening";
   }, []);
-  const heroName = firstName ? `Dr ${firstName}` : "Doctor";
+  // Honorific-aware greeting name — see lib/doctor/heroGreeting. Fixes the
+  // "Dr Mrs.." P0 where a non-"Dr" stored title (e.g. "Mrs. Meha Mhatre") was
+  // treated as the first name. CommandBand still appends the trailing stop.
+  const heroName = useMemo(() => doctorHeroName(doctorName), [doctorName]);
 
   const dateLabel = new Date().toLocaleDateString(undefined, {
     weekday: "short",
@@ -199,15 +201,15 @@ export function DoctorDashboardClient({
           </div>
         )}
 
-        {/* ── 1 · WHO AM I, WHERE AM I WORKING ──────────────────────────── */}
+        {/* ── 1 · WHO AM I, WHERE AM I WORKING ──────────────── */}
         {/* Identity (photo, clinic, settings) lives once in the app-shell
             header and sidebar — this band is just the dated welcome. */}
         <CommandBand greetingTime={greetingTime} name={heroName} dateLabel={dateLabel} />
 
-        {/* ── 2 · WHO NEEDS ME, AND WHAT ELSE IS IN FLIGHT ──────────────── */}
+        {/* ── 2 · WHO NEEDS ME, AND WHAT ELSE IS IN FLIGHT ──────── */}
         <DashboardStatusFilters counts={statusCounts} />
 
-        {/* ── 3 · WHO DO I REVIEW NEXT? ─────────────────────────────────── */}
+        {/* ── 3 · WHO DO I REVIEW NEXT? ────────────────────── */}
         <section aria-label="Patient deck" className="space-y-3">
           <div className="flex items-end justify-between gap-4">
             <div>
@@ -236,7 +238,7 @@ export function DoctorDashboardClient({
           />
         </section>
 
-        {/* ── 3 · LIVE IN CLINIC · 4 · NEEDS ATTENTION ──────────────────── */}
+        {/* ── 3 · LIVE IN CLINIC · 4 · NEEDS ATTENTION ────────── */}
         <div className="grid gap-5 lg:grid-cols-2">
           <LiveClinicPanel visits={inClinic} total={inClinicTotal} tick={minuteTick} />
           <AttentionPanel items={attentionItems} />
@@ -244,11 +246,4 @@ export function DoctorDashboardClient({
       </div>
     </div>
   );
-}
-
-function firstNameOf(name: string | null | undefined): string | null {
-  if (!name) return null;
-  const cleaned = name.replace(/^\s*dr\.?\s+/i, "").trim();
-  const first = cleaned.split(/\s+/)[0];
-  return first || null;
 }

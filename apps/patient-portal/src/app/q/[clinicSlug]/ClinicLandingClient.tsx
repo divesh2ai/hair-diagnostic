@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { useAssessmentStore } from '@/stores/useAssessmentStore';
@@ -48,13 +48,6 @@ const FEATURES = [
   { icon: Leaf, title: 'Personalized Recovery Plan', body: 'A plan designed around the patient’s condition, history, lifestyle and hair goals.' },
 ];
 
-const STEPS = [
-  { n: '01', title: 'Answer the assessment', body: 'A guided, three-minute conversation about your hair, health, and lifestyle. No account needed.' },
-  { n: '02', title: 'AI maps the root cause', body: 'Your signals are cross-referenced against clinical patterns — hormones, nutrition, stress, genetics.' },
-  { n: '03', title: 'A doctor reviews it', body: 'Every analysis is validated by a clinician before anything is recommended to you.' },
-  { n: '04', title: 'Your recovery plan', body: 'A personalized protocol built for your biology — treatments that work from the inside out.' },
-];
-
 const SCIENCE_PILLARS = [
   { icon: FlaskConical, title: 'Follicle biology', body: 'Every hair concern traces to a specific layer of the follicle — growth cycle, blood supply, or hormonal signalling.' },
   { icon: ScanSearch, title: 'Signal mapping', body: '18+ clinical signals are weighed together, because hair loss is rarely caused by one thing alone.' },
@@ -95,6 +88,47 @@ function MetricChip({
   );
 }
 
+/**
+ * Professional placeholder shown when a clinic has no doctor photo configured,
+ * or when the configured photo URL fails to load. Never a broken image.
+ */
+function DoctorPhotoFallback() {
+  return (
+    <div
+      className="relative flex aspect-[4/5] w-full items-center justify-center rounded-[1.5rem] border"
+      style={{ borderColor: 'rgba(219,197,140,0.4)', background: 'rgba(8,18,9,0.5)' }}
+    >
+      <Stethoscope className="h-16 w-16" style={{ color: MUTED }} aria-hidden="true" />
+    </div>
+  );
+}
+
+/**
+ * Doctor photograph with a safe loading fallback. The src is an arbitrary
+ * stored URL (Supabase storage); if it is invalid, deleted, or unreachable the
+ * `onError` handler swaps in the professional placeholder instead of leaving a
+ * broken image. Mounted with a `key` of its src by the parent, so each clinic's
+ * photo gets its own fresh attempt.
+ */
+function DoctorPhoto({ src, alt }: { src: string; alt: string }) {
+  const [failed, setFailed] = useState(false);
+
+  if (failed) {
+    return <DoctorPhotoFallback />;
+  }
+
+  return (
+    /* eslint-disable-next-line @next/next/no-img-element */
+    <img
+      src={src}
+      alt={alt}
+      onError={() => setFailed(true)}
+      className="relative aspect-[4/5] w-full rounded-[1.5rem] border object-cover object-top"
+      style={{ borderColor: 'rgba(219,197,140,0.4)' }}
+    />
+  );
+}
+
 interface ClinicLandingClientProps {
   clinic: ClinicLandingData;
 }
@@ -125,6 +159,8 @@ export default function ClinicLandingClient({ clinic }: ClinicLandingClientProps
     reset,
   ]);
 
+  const doctorPhotoUrl = clinic.leadDoctor?.photoUrl ?? null;
+
   const startAssessment = () => router.push(`/q/${clinic.slug}/assessment-v3`);
   const openScience = () => router.push(`/q/${clinic.slug}/science`);
 
@@ -153,10 +189,9 @@ export default function ClinicLandingClient({ clinic }: ClinicLandingClientProps
           </div>
 
           <nav className="hidden items-center gap-8 text-[13px] lg:flex" style={{ color: MUTED }}>
-            <a href="#how-it-works" className="transition-colors hover:text-[#F4EFE2]">How It Works</a>
+            <a href="#about" className="transition-colors hover:text-[#F4EFE2]">Your Doctor</a>
             <a href="#science" className="transition-colors hover:text-[#F4EFE2]">The Science</a>
             <a href="#results" className="transition-colors hover:text-[#F4EFE2]">Results</a>
-            <a href="#about" className="transition-colors hover:text-[#F4EFE2]">About Us</a>
           </nav>
 
           <div className="flex shrink-0 items-center gap-2 sm:gap-3">
@@ -311,55 +346,130 @@ export default function ClinicLandingClient({ clinic }: ClinicLandingClientProps
         </div>
       </section>
 
-      {/* ── HOW IT WORKS ────────────────────────────────────────── */}
-      <section id="how-it-works" className="relative py-24" style={{ background: DEEP }}>
-        <div className="mx-auto w-full max-w-7xl px-6">
-          <motion.div {...fadeUp} className="mx-auto max-w-xl text-center">
-            <p className="text-[10.5px] font-semibold uppercase tracking-[0.3em]" style={{ color: GOLD }}>
-              — How It Works —
-            </p>
-            <h2
-              className="mt-4 font-[family-name:var(--font-fraunces)] text-[34px] font-medium leading-tight md:text-[46px]"
-              style={{ color: CREAM }}
-            >
-              From your answers to your answer.
-            </h2>
-            <p className="mt-4 text-[15px] leading-[1.7]" style={{ color: MUTED }}>
-              Three minutes of honest questions. One clinically validated map
-              of what your hair is actually telling you.
-            </p>
-          </motion.div>
+      {/* ── YOUR DOCTOR ─────────────────────────────────────────── */}
+      {/*
+        Personalized, premium doctor introduction. Replaces the old generic
+        "How It Works" explainer. Everything here is driven by the clinic's
+        own resolved lead doctor (isPrimary first, else oldest active — see
+        getClinicLandingData), so each clinic shows its own clinician and
+        never another clinic's. Falls back gracefully when a photo or profile
+        has not been configured.
+      */}
+      <section id="about" className="relative py-24" style={{ background: DEEP }}>
+        <div className="mx-auto w-full max-w-6xl px-6">
+          <motion.div
+            {...fadeUp}
+            className="relative grid gap-10 overflow-hidden rounded-[2rem] border p-7 sm:p-10 md:grid-cols-[0.82fr_1fr] md:items-center md:gap-14 md:p-14"
+            style={{ borderColor: LINE, background: PANEL }}
+          >
+            <div
+              className="pointer-events-none absolute -right-32 -top-32 h-72 w-72 rounded-full blur-3xl"
+              style={{ background: 'rgba(217,188,122,0.1)' }}
+              aria-hidden="true"
+            />
 
-          <div className="mt-14 grid gap-5 md:grid-cols-4">
-            {STEPS.map((s, i) => (
-              <motion.div
-                key={s.n}
-                initial={{ opacity: 0, y: 28 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true, margin: '-60px' }}
-                transition={{ duration: 0.7, delay: i * 0.1, ease: easeOut }}
-                className="rounded-2xl border p-7"
-                style={{ borderColor: LINE, background: PANEL }}
+            {/* Doctor photograph — the primary visual element */}
+            <div className="relative mx-auto w-full max-w-[320px] md:mx-0">
+              <div
+                className="pointer-events-none absolute -inset-3 rounded-[1.75rem] blur-2xl"
+                style={{ background: 'rgba(217,188,122,0.12)' }}
+                aria-hidden="true"
+              />
+              {doctorPhotoUrl ? (
+                /*
+                  Keyed by the URL so a client-side navigation to another
+                  clinic remounts the photo and re-attempts its own image
+                  rather than inheriting the previous clinic's failure state.
+                */
+                <DoctorPhoto
+                  key={doctorPhotoUrl}
+                  src={doctorPhotoUrl}
+                  alt={clinic.leadDoctor?.name ?? clinic.name}
+                />
+              ) : (
+                <DoctorPhotoFallback />
+              )}
+            </div>
+
+            {/* Doctor identity + assessment CTA */}
+            <div className="relative min-w-0 text-center md:text-left">
+              <p className="text-[10.5px] font-semibold uppercase tracking-[0.3em]" style={{ color: GOLD }}>
+                — Your Doctor —
+              </p>
+              <h2
+                className="mt-4 font-[family-name:var(--font-fraunces)] text-[32px] font-medium leading-tight md:text-[44px]"
+                style={{ color: CREAM }}
               >
-                <p className="font-[family-name:var(--font-fraunces)] text-[30px] font-light" style={{ color: GOLD }}>
-                  {s.n}
-                </p>
-                <h3 className="mt-4 text-[16px] font-semibold" style={{ color: CREAM }}>{s.title}</h3>
-                <p className="mt-2.5 text-[13px] leading-[1.65]" style={{ color: MUTED }}>{s.body}</p>
-              </motion.div>
-            ))}
-          </div>
+                {clinic.leadDoctor?.name ?? clinic.name}
+              </h2>
 
-          <motion.div {...fadeUp} className="mt-12 flex justify-center">
-            <button
-              type="button"
-              onClick={startAssessment}
-              className="group inline-flex items-center gap-2 rounded-full border px-7 py-3.5 text-[13.5px] font-medium transition-all hover:-translate-y-px"
-              style={{ borderColor: 'rgba(219,197,140,0.4)', color: GOLD_SOFT }}
-            >
-              Begin the three-minute assessment
-              <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
-            </button>
+              {clinic.leadDoctor?.credentials && (
+                <p className="mt-2 text-[12px] uppercase tracking-[0.18em]" style={{ color: GOLD }}>
+                  {clinic.leadDoctor.credentials}
+                </p>
+              )}
+              {clinic.leadDoctor?.specialization && (
+                <p className="mt-2 text-[15px]" style={{ color: MUTED }}>
+                  {clinic.leadDoctor.specialization}
+                </p>
+              )}
+
+              <p className="mt-3 text-[12.5px] font-semibold uppercase tracking-[0.2em]" style={{ color: GOLD_SOFT }}>
+                {clinic.name}
+              </p>
+
+              {clinic.leadDoctor?.bio && (
+                <p className="mx-auto mt-5 max-w-xl text-[14.5px] leading-[1.75] md:mx-0" style={{ color: MUTED }}>
+                  {clinic.leadDoctor.bio}
+                </p>
+              )}
+
+              {clinic.tagline && (
+                <p className="mx-auto mt-5 max-w-xl text-[14px] italic leading-relaxed md:mx-0" style={{ color: MUTED }}>
+                  &ldquo;{clinic.tagline}&rdquo;
+                </p>
+              )}
+
+              {clinic.address && (
+                <p className="mt-4 text-[11px] uppercase tracking-[0.18em]" style={{ color: 'rgba(214,222,208,0.4)' }}>
+                  {clinic.address}
+                </p>
+              )}
+
+              <div className="mt-8 flex justify-center md:justify-start">
+                <button
+                  type="button"
+                  onClick={startAssessment}
+                  className="group inline-flex items-center gap-3 rounded-full px-8 py-4 text-[14.5px] font-semibold transition-all hover:-translate-y-0.5"
+                  style={{
+                    background: `linear-gradient(135deg, ${GOLD_SOFT} 0%, ${GOLD} 100%)`,
+                    color: '#1A2415',
+                    boxShadow: '0 18px 50px -14px rgba(217,188,122,0.55)',
+                  }}
+                >
+                  Start My Hair Assessment
+                  <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
+                </button>
+              </div>
+
+              <div
+                className="mt-7 flex flex-wrap items-center justify-center gap-2.5 text-[11px] md:justify-start"
+                style={{ color: MUTED }}
+              >
+                <span className="inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5" style={{ borderColor: LINE }}>
+                  <Clock className="h-3 w-3" style={{ color: GOLD }} aria-hidden="true" />
+                  ~3 minutes
+                </span>
+                <span className="inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5" style={{ borderColor: LINE }}>
+                  <Lock className="h-3 w-3" style={{ color: GOLD }} aria-hidden="true" />
+                  Private &amp; encrypted
+                </span>
+                <span className="inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5" style={{ borderColor: LINE }}>
+                  <Stethoscope className="h-3 w-3" style={{ color: GOLD }} aria-hidden="true" />
+                  Clinician-reviewed
+                </span>
+              </div>
+            </div>
           </motion.div>
         </div>
       </section>
@@ -452,159 +562,6 @@ export default function ClinicLandingClient({ clinic }: ClinicLandingClientProps
             ))}
           </div>
           <p className="mx-auto mt-8 max-w-3xl text-center text-[12px] leading-[1.7]" style={{ color: MUTED }}>Real patient cases shown with permission. Individual outcomes vary according to the underlying cause, adherence, duration of care and other clinical factors.</p>
-        </div>
-      </section>
-
-      {/* ── ABOUT / CLINICIAN ──────────────────────────────────── */}
-      <section id="about" className="relative py-24">
-        <div className="mx-auto w-full max-w-5xl px-6">
-          <motion.div
-            {...fadeUp}
-            className="relative overflow-hidden rounded-[2rem] border p-8 md:p-12"
-            style={{ borderColor: LINE, background: PANEL }}
-          >
-            <div
-              className="pointer-events-none absolute -right-32 -top-32 h-72 w-72 rounded-full blur-3xl"
-              style={{ background: 'rgba(217,188,122,0.1)' }}
-            />
-
-            <p className="text-[10.5px] font-semibold uppercase tracking-[0.3em]" style={{ color: GOLD }}>
-              — About Us —
-            </p>
-
-            {clinic.leadDoctor ? (
-              <div className="relative mt-6 grid gap-8 md:grid-cols-[150px_1fr] md:items-start">
-                {clinic.leadDoctor.photoUrl ? (
-                  /* eslint-disable-next-line @next/next/no-img-element */
-                  <img
-                    src={clinic.leadDoctor.photoUrl}
-                    alt={clinic.leadDoctor.name}
-                    className="h-32 w-32 rounded-full border object-cover md:h-36 md:w-36"
-                    style={{ borderColor: 'rgba(219,197,140,0.4)' }}
-                  />
-                ) : (
-                  <div
-                    className="flex h-32 w-32 items-center justify-center rounded-full border md:h-36 md:w-36"
-                    style={{ borderColor: 'rgba(219,197,140,0.4)', background: 'rgba(8,18,9,0.5)' }}
-                  >
-                    <Stethoscope className="h-11 w-11" style={{ color: MUTED }} />
-                  </div>
-                )}
-                <div className="min-w-0">
-                  <h3
-                    className="font-[family-name:var(--font-fraunces)] text-[26px] font-medium leading-tight md:text-[32px]"
-                    style={{ color: CREAM }}
-                  >
-                    {clinic.leadDoctor.name}
-                  </h3>
-                  {clinic.leadDoctor.credentials && (
-                    <p className="mt-1 text-[11.5px] uppercase tracking-[0.18em]" style={{ color: GOLD }}>
-                      {clinic.leadDoctor.credentials}
-                    </p>
-                  )}
-                  {clinic.leadDoctor.specialization && (
-                    <p className="mt-1 text-[14px]" style={{ color: MUTED }}>
-                      {clinic.leadDoctor.specialization}
-                    </p>
-                  )}
-                  {clinic.leadDoctor.bio && (
-                    <p className="mt-5 text-[14.5px] leading-[1.75]" style={{ color: MUTED }}>
-                      {clinic.leadDoctor.bio}
-                    </p>
-                  )}
-                  {(clinic.address || clinic.tagline) && (
-                    <div className="mt-6 space-y-2 border-t pt-5" style={{ borderColor: LINE }}>
-                      {clinic.tagline && (
-                        <p className="text-[13px] italic leading-relaxed" style={{ color: MUTED }}>
-                          &ldquo;{clinic.tagline}&rdquo;
-                        </p>
-                      )}
-                      {clinic.address && (
-                        <p className="text-[11px] uppercase tracking-[0.18em]" style={{ color: 'rgba(214,222,208,0.4)' }}>
-                          {clinic.address}
-                        </p>
-                      )}
-                    </div>
-                  )}
-                </div>
-              </div>
-            ) : (
-              <div className="relative mt-6">
-                <h3
-                  className="font-[family-name:var(--font-fraunces)] text-[26px] font-medium leading-tight md:text-[32px]"
-                  style={{ color: CREAM }}
-                >
-                  {clinic.name}
-                </h3>
-                {clinic.tagline && (
-                  <p className="mt-3 text-[14.5px] italic leading-relaxed" style={{ color: MUTED }}>
-                    &ldquo;{clinic.tagline}&rdquo;
-                  </p>
-                )}
-                {clinic.address && (
-                  <p className="mt-4 text-[11px] uppercase tracking-[0.18em]" style={{ color: 'rgba(214,222,208,0.4)' }}>
-                    {clinic.address}
-                  </p>
-                )}
-              </div>
-            )}
-          </motion.div>
-        </div>
-      </section>
-
-      {/* ── FINAL CTA ──────────────────────────────────────────── */}
-      <section className="relative overflow-hidden py-24" style={{ background: DEEP }}>
-        <div
-          className="pointer-events-none absolute inset-0"
-          style={{ background: 'radial-gradient(700px 400px at 50% 100%, rgba(217,188,122,0.14) 0%, transparent 60%)' }}
-        />
-        <div className="relative mx-auto w-full max-w-3xl px-6 text-center">
-          <motion.div {...fadeUp}>
-            <p className="text-[10.5px] font-semibold uppercase tracking-[0.3em]" style={{ color: GOLD }}>
-              Ready when you are
-            </p>
-            <h2
-              className="mt-5 font-[family-name:var(--font-fraunces)] text-[36px] font-medium leading-[1.08] md:text-[54px]"
-              style={{ color: CREAM }}
-            >
-              Three minutes to
-              <br />
-              your root cause.
-            </h2>
-            <p className="mx-auto mt-5 max-w-md text-[15px] leading-[1.7]" style={{ color: MUTED }}>
-              No account. No commitment. Just answer honestly and let the
-              biology speak for itself.
-            </p>
-
-            <button
-              type="button"
-              onClick={startAssessment}
-              className="group mt-10 inline-flex items-center gap-3 rounded-full px-9 py-4 text-[15px] font-semibold transition-all hover:-translate-y-0.5"
-              style={{
-                background: `linear-gradient(135deg, ${GOLD_SOFT} 0%, ${GOLD} 100%)`,
-                color: '#1A2415',
-                boxShadow: '0 18px 50px -14px rgba(217,188,122,0.55)',
-              }}
-            >
-              Start Your Hair Analysis
-              <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
-            </button>
-
-            <div className="mt-8 flex flex-wrap items-center justify-center gap-2.5 text-[11px]" style={{ color: MUTED }}>
-              <span className="inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5" style={{ borderColor: LINE }}>
-                <Clock className="h-3 w-3" style={{ color: GOLD }} />
-                ~3 minutes
-              </span>
-              <span className="inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5" style={{ borderColor: LINE }}>
-                <Lock className="h-3 w-3" style={{ color: GOLD }} />
-                Private &amp; encrypted
-              </span>
-              <span className="inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5" style={{ borderColor: LINE }}>
-                <Stethoscope className="h-3 w-3" style={{ color: GOLD }} />
-                Clinician-reviewed
-              </span>
-            </div>
-          </motion.div>
         </div>
       </section>
 
