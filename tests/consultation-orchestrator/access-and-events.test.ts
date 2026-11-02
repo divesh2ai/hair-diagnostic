@@ -195,6 +195,114 @@ describe("ConsultationOrchestrator — cross-clinic access (W1)", () => {
   });
 });
 
+describe("ConsultationOrchestrator — pipeline consultation recovery (consultation-stage 'Cross-clinic access denied')", () => {
+  // Regression for the P0 production defect. The assessment pipeline composes
+  // the canonical consultation presenting the assessment's OWN clinic as the
+  // access context (ensureConsultation.ts reads Assessment.clinicId from the
+  // DB). It passes the clinic-equality guard because the clinic MATCHES — never
+  // because role "SYSTEM" is privileged (it is not; there is no SYSTEM bypass).
+  // Historically the pipeline passed clinicId:null expecting super-admin, which
+  // the orchestrator never granted, so the guard denied EVERY assessment and no
+  // consultation was ever persisted eagerly.
+  //
+  // These exercise the COMPOSE path (no stored version → composeAndStore →
+  // assertCanReadClinic), the exact method that threw. A LEGACY_DEGRADED
+  // assessment short-circuits composeAndStore right AFTER the clinic guard and
+  // BEFORE the clinical engines, so a caller that passes the guard fails with
+  // `not_composable` rather than `forbidden` — letting us assert the guard
+  // outcome without running the engines.
+  const sys = (clinicId: string | null) => ({
+    actorId: "system:assessment-pipeline",
+    role: "SYSTEM",
+    clinicId,
+  });
+
+  function makeComposeOrch(assessmentClinicId: string) {
+    const repo: ConsultationRepo = {
+      async getLatestByAssessment() {
+        return null; // nothing persisted → force composeAndStore
+      },
+      async getVersion() {
+        return null;
+      },
+      async createWithInitialVersion() {
+        throw new Error("should not reach persistence in a LEGACY_DEGRADED compose");
+      },
+      async appendVersion() {
+        throw new Error("not used");
+      },
+      async setApproval() {
+        throw new Error("not used");
+      },
+    };
+    const assessments: AssessmentLoader = {
+      load: async () =>
+        ({
+          id: ASSESSMENT_ID,
+          clinicId: assessmentClinicId,
+          patientId: "pat-1",
+          composability: "LEGACY_DEGRADED",
+          degradedReasons: ["no stored questionnaire"],
+        }) as never,
+    };
+    return new ConsultationOrchestrator({ ...loaders, assessments, repo, bus });
+  }
+
+  async function codeOf(p: Promise<unknown>): Promise<string> {
+    try {
+      await p;
+      return "NO_THROW";
+    } catch (e) {
+      return e instanceof OrchestratorError ? e.code : `OTHER:${String(e)}`;
+    }
+  }
+
+  it("pipeline actor carrying the assessment's own clinic passes the compose guard", async () => {
+    const orch = makeComposeOrch(CLINIC_A);
+    // Clinic matches → guard passes → fails later as not_composable, NOT forbidden.
+    await expect(
+      codeOf(orch.getOrCreate({ assessmentId: ASSESSMENT_ID, ctx: sys(CLINIC_A) as never })),
+    ).resolves.toBe("not_composable");
+  });
+
+  it("pipeline actor with a DIFFERENT clinic is denied cross-clinic (no SYSTEM privilege)", async () => {
+    const orch = makeComposeOrch(CLINIC_A);
+    await expect(
+      orch.getOrCreate({ assessmentId: ASSESSMENT_ID, ctx: sys(CLINIC_B) as never }),
+    ).rejects.toMatchObject({ code: "forbidden", message: "Cross-clinic access denied" });
+  });
+
+  it("pipeline actor with no clinic is denied — SYSTEM grants nothing on its own", async () => {
+    // A null clinic only arises for a missing assessment (loader → not_found
+    // before the guard); a present assessment always yields its real clinic.
+    // This pins that SYSTEM+null is NOT a backdoor.
+    const orch = makeComposeOrch(CLINIC_A);
+    await expect(
+      orch.getOrCreate({ assessmentId: ASSESSMENT_ID, ctx: sys(null) as never }),
+    ).rejects.toMatchObject({ code: "forbidden", message: "Cross-clinic access denied" });
+  });
+
+  it("a wrong-clinic doctor is still denied cross-clinic on compose", async () => {
+    const orch = makeComposeOrch(CLINIC_A);
+    await expect(
+      orch.getOrCreate({
+        assessmentId: ASSESSMENT_ID,
+        ctx: { actorId: "doc-B", role: "DOCTOR", clinicId: CLINIC_B },
+      }),
+    ).rejects.toMatchObject({ code: "forbidden", message: "Cross-clinic access denied" });
+  });
+
+  it("the pipeline actor may create but never revise/approve — revise stays forbidden", async () => {
+    // Even carrying the correct clinic, role "SYSTEM" is absent from
+    // REVISE_ROLES, so it can never revise or approve (no auto-approval).
+    const { repo } = makeRepo(seedVersion(CLINIC_A));
+    const orch = makeOrch(repo);
+    await expect(
+      orch.revise({ assessmentId: ASSESSMENT_ID, ctx: sys(CLINIC_A) as never, doctorNotes: [] }),
+    ).rejects.toMatchObject({ code: "forbidden" });
+  });
+});
+
 describe("ConsultationOrchestrator — doctor edits do not signal approval (W4)", () => {
   it("PATCH emits CONSULTATION_UPDATED{kind:DOCTOR_EDIT} and no APPROVED events", async () => {
     const { repo, eventsWritten } = makeRepo(seedVersion(CLINIC_A));

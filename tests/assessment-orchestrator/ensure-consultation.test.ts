@@ -24,19 +24,32 @@ jest.mock("../../src/packages/consultation-orchestrator", () => {
 import {
   ensureConsultationForAssessment,
   ensureConsultationGuarded,
+  consultationStageOutcome,
   PIPELINE_ACTOR_ID,
 } from "../../src/packages/assessment-orchestrator/persistence/ensureConsultation";
 import { OrchestratorError } from "../../src/packages/consultation-orchestrator";
 
 const ASSESSMENT = "cmu5c7ee9000610h74z0nbpl3";
 const CONSULTATION = "cons-1";
+// Matches storedVersion().clinicId — the clinic that owns the assessment.
+const CLINIC = "cmt74rliq0002246pswtdxyyj";
 
 /**
  * Minimal Prisma stand-in. `existing` models what is already on disk for the
- * assessment: null = nothing, or a row with/without a currentVersionId.
+ * assessment's consultation: null = nothing, or a row with/without a
+ * currentVersionId. `clinicId` is the assessment row's server-verified clinic
+ * (null models a missing assessment).
  */
-function makePrisma(existing: { id: string; currentVersionId: string | null } | null) {
+function makePrisma(
+  existing: { id: string; currentVersionId: string | null } | null,
+  clinicId: string | null = CLINIC,
+) {
   return {
+    assessment: {
+      findUnique: jest
+        .fn<(...args: any[]) => Promise<any>>()
+        .mockResolvedValue(clinicId ? { clinicId } : null),
+    },
     consultation: {
       findUnique: jest.fn<(...args: any[]) => Promise<any>>().mockResolvedValue(existing),
     },
@@ -82,16 +95,19 @@ describe("ensureConsultationForAssessment", () => {
     expect(result.contentVersion).toBe(1);
   });
 
-  it("goes through the consultation orchestrator as a system super-admin actor", async () => {
+  it("presents the assessment's own server-verified clinic as the access context", async () => {
     getOrCreateDetailed.mockResolvedValue(storedVersion(1));
 
     await ensureConsultationForAssessment(makePrisma(null), ASSESSMENT);
 
     expect(getOrCreateDetailed).toHaveBeenCalledWith({
       assessmentId: ASSESSMENT,
-      // clinicId null = super-admin in AccessContext: the pipeline is not
-      // acting for any one clinic member, so it must not be clinic-scoped.
-      ctx: { actorId: PIPELINE_ACTOR_ID, role: "SYSTEM", clinicId: null },
+      // The pipeline passes the assessment's OWN clinicId (read from the DB row)
+      // so the orchestrator's existing clinic-equality guard passes legitimately
+      // — not a cross-clinic bypass. role "SYSTEM" is provenance only and carries
+      // no read privilege; the real guard is pinned in
+      // tests/consultation-orchestrator/access-and-events.test.ts.
+      ctx: { actorId: PIPELINE_ACTOR_ID, role: "SYSTEM", clinicId: CLINIC },
     });
   });
 
@@ -123,20 +139,51 @@ describe("ensureConsultationForAssessment", () => {
     expect(retry.contentVersion).toBe(first.contentVersion);
   });
 
-  it("does not branch on clinic organizationId / cohort / slug", async () => {
-    // The real clinic carries organizationId + {cohort:"v1"}; the test clinic
-    // carries neither. Persistence must be identical for both — the original
-    // 22/0 vs 29/24 split was doctor activity, never clinic shape.
+  it("scopes to each assessment's own clinic and does not branch on cohort / slug", async () => {
+    // Two different clinics own two different assessments. Persistence must be
+    // identical in shape for both — the only difference is each ctx carrying its
+    // OWN assessment's clinicId (server-verified), never a cohort/slug branch.
     getOrCreateDetailed.mockResolvedValue(storedVersion(1));
 
-    const realClinic = await ensureConsultationForAssessment(makePrisma(null), ASSESSMENT);
-    const testClinic = await ensureConsultationForAssessment(makePrisma(null), "cmu2dzwnk000214fd8b06msjg");
+    const CLINIC_OTHER = "cmu2dzwnk000214fd8b06msjg";
+    const a1 = await ensureConsultationForAssessment(makePrisma(null, CLINIC), ASSESSMENT);
+    const a2 = await ensureConsultationForAssessment(
+      makePrisma(null, CLINIC_OTHER),
+      "cmu2dzwnk000214fd8b06msjg",
+    );
 
-    expect(realClinic.status).toBe("created");
-    expect(testClinic.status).toBe("created");
-    // Same call shape both times — no clinic-derived argument at all.
+    expect(a1.status).toBe("created");
+    expect(a2.status).toBe("created");
     const [firstCall, secondCall] = getOrCreateDetailed.mock.calls as any[];
-    expect(firstCall[0].ctx).toEqual(secondCall[0].ctx);
+    expect(firstCall[0].ctx.clinicId).toBe(CLINIC);
+    expect(secondCall[0].ctx.clinicId).toBe(CLINIC_OTHER);
+    // Identical in every respect except the assessment's own clinic.
+    expect(firstCall[0].ctx.role).toBe("SYSTEM");
+    expect(secondCall[0].ctx.role).toBe("SYSTEM");
+    expect(firstCall[0].ctx.actorId).toBe(secondCall[0].ctx.actorId);
+  });
+});
+
+describe("consultationStageOutcome — honest stage status (no false success)", () => {
+  it("created / existing → SUCCESS", () => {
+    expect(consultationStageOutcome({ status: "created", consultationId: "c" })).toEqual({
+      status: "SUCCESS",
+    });
+    expect(consultationStageOutcome({ status: "existing", consultationId: "c" })).toEqual({
+      status: "SUCCESS",
+    });
+  });
+
+  it("failed (swallowed persistence error) → FAILED, never SUCCESS", () => {
+    expect(consultationStageOutcome({ status: "failed", reason: "Cross-clinic access denied" })).toEqual(
+      { status: "FAILED", error: "Cross-clinic access denied" },
+    );
+  });
+
+  it("skipped (not_composable) → SKIPPED, not SUCCESS", () => {
+    const out = consultationStageOutcome({ status: "skipped", reason: "no stored questionnaire" });
+    expect(out.status).toBe("SKIPPED");
+    expect(out.status).not.toBe("SUCCESS");
   });
 });
 

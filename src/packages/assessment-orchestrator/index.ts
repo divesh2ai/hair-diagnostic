@@ -29,7 +29,10 @@ import type { AssessmentArtifact } from "@shared/types/assessment";
 import { buildNarrative } from "../ai-engine/explanations/builders/buildNarrative";
 import type { ExplanationContext } from "../ai-engine/explanations/types";
 import { persistNarrativeArtifact } from "./persistence/persistArtifacts";
-import { ensureConsultationGuarded } from "./persistence/ensureConsultation";
+import {
+  ensureConsultationGuarded,
+  consultationStageOutcome,
+} from "./persistence/ensureConsultation";
 import { assembleAssessmentNarratives } from "./narratives/assembleNarratives";
 import { buildClinicalReport } from "../ai-engine/report-engine";
 import { buildClinicalFacts } from "../ai-engine/clinical-facts";
@@ -113,6 +116,13 @@ async function runStage<T>(
   phase: PhaseRecorder,
   stage: string,
   fn: (t: StageTimer) => Promise<T> | T,
+  // Optional honest-outcome mapper. By default a stage that returns without
+  // throwing is SUCCESS. A stage whose work can "fail soft" — complete the
+  // callback without throwing yet not achieve its effect — supplies this so the
+  // single OrchestrationLog row reflects what actually happened rather than
+  // "the callback did not throw". See the consultation stage: a swallowed
+  // persistence error must never be logged as SUCCESS.
+  outcome?: (result: T) => { status: string; error?: string },
 ): Promise<T> {
   const t = new StageTimer(stage);
   try {
@@ -120,14 +130,16 @@ async function runStage<T>(
     const m = t.finish();
     phase.record(m);
     logStage(ctx.assessmentId, m);
+    const settled = outcome ? outcome(result) : { status: "SUCCESS" as const };
     // Single OrchestrationLog row per stage (was previously two — RUNNING +
     // SUCCESS — that doubled write count for pure observability).
     await prisma.orchestrationLog.create({
       data: {
         assessmentId: ctx.assessmentId,
         stage,
-        status: "SUCCESS",
+        status: settled.status,
         durationMs: m.durationMs,
+        error: settled.error,
         metadata: t.asMetadata(),
       },
     });
@@ -415,33 +427,34 @@ async function runPhaseA(ctx: PipelineContext): Promise<PhaseRecorder> {
   // clinical outputs are final, instead of only once a doctor happens to open
   // the case. See persistence/ensureConsultation.ts for why this runs after
   // the CLINICAL_READY checkpoint and why it never fails the assessment.
-  await runStage(ctx, phase, "consultation", async (t) => {
-    const result = await ensureConsultationGuarded(prisma, ctx.assessmentId);
-    t.tick("db");
+  await runStage(
+    ctx,
+    phase,
+    "consultation",
+    async (t) => {
+      const result = await ensureConsultationGuarded(prisma, ctx.assessmentId);
+      t.tick("db");
 
-    if (result.status === "failed") {
-      // Surface it through the same channel every other stage reports through.
-      // Deliberately not rethrown: lazy creation on doctor read is still a
-      // working fallback, and a good clinical run must not be discarded.
-      await prisma.orchestrationLog
-        .create({
-          data: {
-            assessmentId: ctx.assessmentId,
-            stage: "consultation",
-            status: "FAILED",
-            durationMs: 0,
-            error: result.reason ?? "unknown",
-          },
-        })
-        .catch(() => {});
-      await logAssessmentEvent(prisma, ctx.assessmentId, "FAILED", {
-        stage: "consultation",
-        message: result.reason ?? "unknown",
-      }).catch(() => {});
-    }
+      if (result.status === "failed") {
+        // Deliberately not rethrown: lazy creation on doctor read is still a
+        // working fallback, and a good clinical run must not be discarded. The
+        // OrchestrationLog row is written once by runStage via the outcome
+        // mapper below (status FAILED), so it is NOT duplicated here. The event
+        // stream still records the failure for the journey timeline.
+        await logAssessmentEvent(prisma, ctx.assessmentId, "FAILED", {
+          stage: "consultation",
+          message: result.reason ?? "unknown",
+        }).catch(() => {});
+      }
 
-    return result;
-  });
+      return result;
+    },
+    // Honest stage status: SUCCESS only when a consultation was actually
+    // persisted (created or already existing). A swallowed persistence error
+    // (failed) or an un-composable record (skipped — no questionnaire, so no
+    // consultation can or should exist) must NOT be logged as SUCCESS.
+    consultationStageOutcome,
+  );
 
   phase.finish();
   logPhase(ctx.assessmentId, phase.metrics);
