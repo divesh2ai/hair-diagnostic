@@ -91,6 +91,9 @@ jobs:
       - name: Localisation, doctor, report and commerce suites
         run: |
           npx vitest run \
+            tests/root-route.test.ts \
+            tests/admin-route-guard.test.ts \
+            tests/auth/post-login-identity.test.ts \
             tests/localisation \
             tests/reports \
             tests/doctor/clinical-attention-advice.test.ts \
