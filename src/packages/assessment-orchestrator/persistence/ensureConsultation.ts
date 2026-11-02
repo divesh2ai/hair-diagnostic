@@ -53,8 +53,13 @@ export interface EnsureConsultationResult {
  * violation and adopts half-built orphans. A pipeline retry therefore never
  * produces a duplicate Consultation or a duplicate identical version.
  *
- * Runs as a system actor (`clinicId: null` = super-admin in AccessContext),
- * because the pipeline is not acting on behalf of any one clinic member.
+ * Runs as the trusted platform actor (role `SYSTEM`, `clinicId: null`), because
+ * the pipeline is not acting on behalf of any one clinic member. The
+ * orchestrator recognises `SYSTEM` as a platform actor for compose/read only
+ * (see `isTrustedPlatformSystem` in orchestrator.ts); the role is a server-side
+ * constant that never originates from client input, so this does not widen any
+ * clinic member's access. SYSTEM may create the canonical record but — by its
+ * exclusion from REVISE_ROLES — can never revise or approve it.
  */
 export async function ensureConsultationForAssessment(
   prisma: PrismaClient,

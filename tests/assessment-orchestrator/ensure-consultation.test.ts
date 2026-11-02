@@ -82,15 +82,19 @@ describe("ensureConsultationForAssessment", () => {
     expect(result.contentVersion).toBe(1);
   });
 
-  it("goes through the consultation orchestrator as a system super-admin actor", async () => {
+  it("goes through the consultation orchestrator as the trusted SYSTEM platform actor", async () => {
     getOrCreateDetailed.mockResolvedValue(storedVersion(1));
 
     await ensureConsultationForAssessment(makePrisma(null), ASSESSMENT);
 
     expect(getOrCreateDetailed).toHaveBeenCalledWith({
       assessmentId: ASSESSMENT,
-      // clinicId null = super-admin in AccessContext: the pipeline is not
-      // acting for any one clinic member, so it must not be clinic-scoped.
+      // role "SYSTEM" is the trusted platform actor the orchestrator recognises
+      // for compose/read (isTrustedPlatformSystem) — NOT clinic-scoped, and
+      // never derived from client input. The clinic guard in the real
+      // orchestrator is pinned in
+      // tests/consultation-orchestrator/access-and-events.test.ts; this file
+      // mocks getOrCreateDetailed so it only asserts the call shape.
       ctx: { actorId: PIPELINE_ACTOR_ID, role: "SYSTEM", clinicId: null },
     });
   });
