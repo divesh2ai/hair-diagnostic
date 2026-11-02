@@ -90,23 +90,34 @@ branch and is not this failure.)
 orchestrator guard never ran against the `SYSTEM` actor. The test even encoded the wrong assumption
 (`clinicId: null` = super-admin). The pipeline→real-orchestrator integration was never exercised.
 
-### Fix applied (this round) — minimal, isolation-preserving
+### Fix applied — minimal, **no new privilege** (revised per Phase-A gate #1)
 
-- `orchestrator.ts`: introduced `isTrustedPlatformSystem(role)` (`role === "SYSTEM"`) and `isPlatformActor()`
-  (super-admin **or** trusted system). The two read guards now allow a platform actor. `SYSTEM` is a
-  **server-side constant** emitted only by the pipeline — it is **never** derived from client input or a JWT
-  (verified: no source path outside the pipeline sets `role: "SYSTEM"`; all client roles come from
-  `requireDoctorContext`). `SYSTEM` is **deliberately excluded from `REVISE_ROLES`** → it may *create* the
-  canonical record but can **never revise or approve** it (honours "do not auto-approve during repair").
-- `ensureConsultation.ts`: corrected the stale comment.
-- **Tests:** added a real-orchestrator regression block in
-  `tests/consultation-orchestrator/access-and-events.test.ts` proving (a) the `SYSTEM` actor **passes** the
-  clinic guard on the compose path (fails later only as `not_composable`, never `forbidden`), (b) a
-  wrong-clinic `DOCTOR` **still** gets `Cross-clinic access denied`, (c) `SYSTEM` revise is still `forbidden`.
-  **Result: 19/19 in the two affected suites; 84/84 across the jest orchestrator suites. No regressions.**
+The orchestrator's clinic guard is left **exactly as it was** (super-admin bypass only; no `SYSTEM`
+special-case). Instead the pipeline presents the **assessment's own, database-verified clinic** as its access
+context, so it passes the existing clinic-equality guard legitimately and is scoped to precisely the one
+clinic that owns the assessment:
 
-**Cross-clinic isolation is preserved**: only a server-minted platform actor is admitted; every clinic member
-remains scoped to their own clinic.
+- `ensureConsultation.ts`: reads `Assessment.clinicId` from the row and passes
+  `ctx = { actorId: PIPELINE_ACTOR_ID, role: "SYSTEM", clinicId: <verified> }`. A missing assessment yields a
+  null clinic → the loader throws `not_found` before the guard (unchanged behaviour). `role: "SYSTEM"` is
+  **provenance only** (recorded as `createdBy`); it carries **no read privilege** and — by exclusion from
+  `REVISE_ROLES` — can **never revise or approve** (honours "no auto-approval during repair").
+- `orchestrator.ts`: reverted to the original `isSuperAdmin`-only guards — **zero change to isolation**.
+- **Gate #2 — honest stage status:** the consultation stage no longer logs `SUCCESS` when the eager
+  persistence failed. `runStage` now takes an outcome mapper; `consultationStageOutcome` maps
+  created/existing → `SUCCESS`, `failed` (swallowed error) → `FAILED`, `skipped` (not_composable) →
+  `SKIPPED`. The duplicate FAILED row is removed (one honest row per stage). A swallowed error can no longer
+  create false-success evidence.
+- **Tests (gate #3):** `access-and-events.test.ts` — pipeline actor with the assessment's own clinic passes
+  compose (fails later only as `not_composable`); a **different** clinic or a **null** clinic is denied
+  `Cross-clinic access denied` (proving there is **no SYSTEM backdoor**); a wrong-clinic `DOCTOR` still
+  denied; the pipeline actor can **never revise/approve**. `ensure-consultation.test.ts` — real creation,
+  persistence, existing/idempotent retry, failed creation, per-assessment clinic scoping, and
+  `consultationStageOutcome` (SUCCESS only when persisted). **Result: 24/24 in the two affected suites; 89/89
+  across the jest orchestrator suites; `tsc` clean on the changed files. No regressions.**
+
+**Cross-clinic isolation is preserved and unchanged**: the guard is byte-identical to production; the pipeline
+simply supplies the correct, server-verified clinic for the assessment it already owns.
 
 > ⛔ **Not done (held for authorization):** re-running the (now-fixed) pipeline consultation step for the 10
 > missing cases is a **production write** to immutable clinical records. It is idempotent and preserves

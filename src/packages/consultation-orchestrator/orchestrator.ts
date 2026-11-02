@@ -467,7 +467,7 @@ export class ConsultationOrchestrator {
   // ── Permissions ──────────────────────────────────────────────────────────
 
   private assertCanRead(v: StoredVersion, ctx: AccessContext) {
-    if (isPlatformActor(ctx.role)) return;
+    if (isSuperAdmin(ctx.role)) return;
     if (!ctx.clinicId) {
       throw new OrchestratorError("forbidden", "Missing clinic context");
     }
@@ -477,7 +477,7 @@ export class ConsultationOrchestrator {
   }
 
   private assertCanReadClinic(clinicId: string, ctx: AccessContext) {
-    if (isPlatformActor(ctx.role)) return;
+    if (isSuperAdmin(ctx.role)) return;
     if (ctx.clinicId !== clinicId) {
       throw new OrchestratorError("forbidden", "Cross-clinic access denied");
     }
@@ -523,33 +523,6 @@ const ADVISORY_ACKNOWLEDGED_NO_JUSTIFICATION =
 
 function isSuperAdmin(role: string): boolean {
   return role.toUpperCase() === "SUPER_ADMIN";
-}
-
-// The non-interactive assessment pipeline (see
-// assessment-orchestrator/persistence/ensureConsultation.ts) composes and
-// persists the canonical Consultation for the single assessment it was handed,
-// as soon as the clinical outputs are final — rather than waiting for a doctor
-// to open the case. It runs as a trusted platform actor, role "SYSTEM", which
-// is a server-side constant and is NEVER derived from client input or a JWT
-// (clinic members always carry DOCTOR / CLINIC_ADMIN / ORG_ADMIN / SUPER_ADMIN
-// from their verified identity). Treating it as a platform actor for READ /
-// compose therefore cannot let one clinic reach another clinic's patients — it
-// only lets the platform build the record it is already responsible for.
-//
-// Historically this check keyed solely off SUPER_ADMIN, so the pipeline's
-// { role: "SYSTEM", clinicId: null } actor failed the clinic-equality guard
-// with "Cross-clinic access denied" for EVERY assessment — the canonical
-// consultation was then only ever created lazily on a doctor's first read.
-//
-// SYSTEM is deliberately absent from REVISE_ROLES: the platform may CREATE the
-// record, but only a human/clinic actor (or the signed TOKEN_REVIEWER) may
-// revise or approve it.
-function isTrustedPlatformSystem(role: string): boolean {
-  return role.toUpperCase() === "SYSTEM";
-}
-
-function isPlatformActor(role: string): boolean {
-  return isSuperAdmin(role) || isTrustedPlatformSystem(role);
 }
 
 function applyBranding(c: Consultation, branding: { name: string } | null): Consultation {
