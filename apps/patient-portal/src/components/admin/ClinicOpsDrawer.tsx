@@ -9,6 +9,7 @@ import {
   relativeTime,
   absoluteTime,
   formatInrFromMinor,
+  REPORT_READINESS_LABEL,
 } from "@/lib/admin/opsDashboard/format";
 
 // The clinic operational drilldown. Opened from a row in the operations table;
@@ -38,6 +39,14 @@ function NotConnected() {
   return (
     <StatusBadge tone="neutral">Not connected</StatusBadge>
   );
+}
+
+function snapshotLabel(s: "PRESENT" | "ABSENT" | "UNKNOWN"): string {
+  return s === "PRESENT" ? "present" : s === "ABSENT" ? "absent" : "unknown";
+}
+
+function retrievalLabel(r: "VERIFIED" | "FAILED" | "NOT_TESTED"): string {
+  return r === "VERIFIED" ? "verified" : r === "FAILED" ? "failed" : "—";
 }
 
 export function ClinicOpsDrawer({
@@ -193,13 +202,49 @@ export function ClinicOpsDrawer({
               </p>
             </Section>
 
-            {/* 4. Reports */}
+            {/* 4. Reports — availability separated into its distinct facets */}
             <Section title="Reports">
-              <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
-                <Stat label="Available (approved)" value={detail.reports.available} />
-                <Stat label="PNG queue · ready" value={detail.reports.renderQueue.counts.ready} />
-                <Stat label="PNG queue · failed" value={detail.reports.renderQueue.counts.failed} />
+              <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+                <Stat label="Clinically approved" value={detail.reports.approved} />
+                <Stat label="Dossier ready" value={detail.reports.dossiersReady} />
+                <Stat
+                  label="One-pager snapshots"
+                  value={
+                    detail.reports.storageState === "CONNECTED"
+                      ? detail.reports.snapshotsPresent
+                      : <NotConnected />
+                  }
+                />
+                <Stat
+                  label="Retrieval verified"
+                  value={
+                    detail.reports.storageState === "CONNECTED"
+                      ? detail.reports.retrievalVerified
+                      : <NotConnected />
+                  }
+                />
               </div>
+
+              {/* Per-assessment matrix — the evidence behind the counts above.
+                  Clinically approved / snapshot / dossier / retrieval are each
+                  shown on their own; none is inferred from another. */}
+              <RecentTable
+                rows={detail.reports.matrix.map((m) => ({
+                  key: `${m.assessmentId}-v${m.contentVersion}`,
+                  cols: [
+                    m.patientName,
+                    `v${m.contentVersion}`,
+                    snapshotLabel(m.onePagerSnapshot),
+                    m.dossierReady ? "ready" : "—",
+                    retrievalLabel(m.retrieval),
+                    m.reportAssetStatus ?? "—",
+                    REPORT_READINESS_LABEL[m.readiness] ?? m.readiness,
+                  ],
+                }))}
+                headers={["Patient", "Ver", "Snapshot", "Dossier", "Retrieval", "PNG asset", "Readiness"]}
+                empty="No approved reports for this clinic yet."
+              />
+
               <div className="flex flex-wrap gap-1.5">
                 {(["pending", "queued", "rendering", "ready", "failed"] as const).map((k) => (
                   <span
@@ -211,9 +256,54 @@ export function ClinicOpsDrawer({
                 ))}
               </div>
               <p className="text-xs text-muted-foreground">
-                Availability is the approved dossier + one-pager (written at approval). The PNG
-                render queue is a separate background pipeline, shown here but not the sole source
-                of availability.
+                Clinically approved is the doctor sign-off; the one-pager snapshot (a storage
+                object), the dossier asset and a verified byte retrieval are checked separately and
+                never inferred from the approval. The PNG render queue above is a background
+                pipeline, shown for context only.
+                {detail.reports.storageState === "NOT_CONNECTED" && (
+                  <>
+                    {" "}
+                    Snapshot storage could not be read here, so snapshot/retrieval show{" "}
+                    <em>Not connected</em> rather than a fabricated count.
+                  </>
+                )}
+              </p>
+            </Section>
+
+            {/* 4b. Pipeline attention — COMPLETED assessments with no consultation */}
+            <Section title="Pipeline attention">
+              <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+                <Stat label="Completed assessments" value={detail.pipeline.completedAssessments} />
+                <Stat label="Missing consultation" value={detail.pipeline.assessmentsWithoutConsultation} />
+              </div>
+              <RecentTable
+                rows={detail.pipeline.missing.map((m) => ({
+                  key: m.assessmentId,
+                  cols: [m.patientName, m.status, relativeTime(m.submittedAt)],
+                }))}
+                headers={["Patient", "Pipeline status", "Submitted"]}
+                empty="Every completed assessment has a consultation."
+              />
+              <p className="text-xs text-muted-foreground">
+                A completed assessment with no consultation is a pipeline gap, not doctor inaction —
+                the consultation the doctor would review was never produced.
+              </p>
+            </Section>
+
+            {/* 4c. Reconciliation — approved-version / reviewDecision conflicts */}
+            <Section title="Reconciliation discrepancies">
+              <Stat label="Conflicts" value={detail.reconciliation.discrepancies} />
+              <RecentTable
+                rows={detail.reconciliation.cases.map((c) => ({
+                  key: c.assessmentId,
+                  cols: [c.patientName, c.approvalStatus, c.reviewDecision],
+                }))}
+                headers={["Patient", "Version approval", "Assessment.reviewDecision"]}
+                empty="No approval-state conflicts for this clinic."
+              />
+              <p className="text-xs text-muted-foreground">
+                An approved consultation version whose Assessment.reviewDecision disagrees. Reported
+                here for an operator to resolve; never reconciled automatically.
               </p>
             </Section>
 

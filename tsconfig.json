@@ -16,5 +16,20 @@
       "@shared/*": ["packages/shared/*"]
     }
   },
-  "exclude": ["node_modules", "legacy", "apps", "Dashboard"]
+  "exclude": [
+    "node_modules",
+    "legacy",
+    "apps",
+    "Dashboard",
+    // The root typecheck deliberately excludes `apps`, and its "@/*" → "src/*"
+    // alias therefore cannot resolve portal modules (there is no root src/lib).
+    // Portal-scoped suites import from apps/patient-portal via "@/…", so they
+    // are typechecked by the portal's own tsconfig and run by vitest (whose
+    // config aliases "@" to apps/patient-portal/src). Excluding this one new
+    // suite keeps the informational root audit free of the 3 unresolved-module
+    // diagnostics it would otherwise add, WITHOUT pulling apps source into the
+    // root program (which the exclude above is there to prevent). The sibling
+    // admin suites predate this file and are left as-is.
+    "tests/admin/ops-dashboard.test.ts"
+  ]
 }

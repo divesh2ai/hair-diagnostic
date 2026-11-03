@@ -68,9 +68,13 @@ export async function loadOpsOverview(window: TimeWindow): Promise<OpsOverview> 
     assessmentsAll,
     assessmentsWindow,
     assessmentsLastActivity,
+    completedAll,
+    missingConsultationAll,
+    reconciliationAll,
     approvedAll,
     approvedWindow,
     awaitingAll,
+    dossiersReadyAll,
     kitActiveAll,
     kitCancelledAll,
     auditLastActivity,
@@ -111,6 +115,31 @@ export async function loadOpsOverview(window: TimeWindow): Promise<OpsOverview> 
       where: { deletedAt: null },
       _max: { submittedAt: true },
     });
+    // COMPLETED = the AI pipeline finished. Counted and shown as its own
+    // figure, never conflated with an approval.
+    const completedAll = await tx.assessment.groupBy({
+      by: ["clinicId"],
+      where: { deletedAt: null, status: "COMPLETED" },
+      _count: { _all: true },
+    });
+    // Pipeline attention, NOT doctor inaction: a COMPLETED assessment that has
+    // no consultation at all. The doctor cannot review what was never created.
+    const missingConsultationAll = await tx.assessment.groupBy({
+      by: ["clinicId"],
+      where: { deletedAt: null, status: "COMPLETED", consultations: { none: {} } },
+      _count: { _all: true },
+    });
+    // Reconciliation discrepancy: an APPROVED consultation version whose
+    // Assessment.reviewDecision disagrees. A data-integrity signal — reported,
+    // never auto-reconciled.
+    const reconciliationAll = await tx.consultation.groupBy({
+      by: ["clinicId"],
+      where: {
+        currentVersion: { approvalStatus: "APPROVED" },
+        assessment: { reviewDecision: { not: "APPROVED" }, deletedAt: null },
+      },
+      _count: { _all: true },
+    });
     // APPROVAL = the authoritative post-approval model, never COMPLETED.
     const approvedAll = await tx.consultation.groupBy({
       by: ["clinicId"],
@@ -127,6 +156,13 @@ export async function loadOpsOverview(window: TimeWindow): Promise<OpsOverview> 
     const awaitingAll = await tx.consultation.groupBy({
       by: ["clinicId"],
       where: { currentVersion: { approvalStatus: "PENDING_REVIEW" } },
+      _count: { _all: true },
+    });
+    // Report AVAILABILITY of an asset is a MEASURED fact, not an inference from
+    // approval: a dossier is "ready" only when its ReportAsset row is READY.
+    const dossiersReadyAll = await tx.reportAsset.groupBy({
+      by: ["clinicId"],
+      where: { type: "PATIENT_REPORT_PDF", status: "READY" },
       _count: { _all: true },
     });
     // Kit INTENTS — a doctor authorization. Active = READY_FOR_FULFILMENT.
@@ -151,9 +187,13 @@ export async function loadOpsOverview(window: TimeWindow): Promise<OpsOverview> 
       assessmentsAll,
       assessmentsWindow,
       assessmentsLastActivity,
+      completedAll,
+      missingConsultationAll,
+      reconciliationAll,
       approvedAll,
       approvedWindow,
       awaitingAll,
+      dossiersReadyAll,
       kitActiveAll,
       kitCancelledAll,
       auditLastActivity,
@@ -173,9 +213,13 @@ export async function loadOpsOverview(window: TimeWindow): Promise<OpsOverview> 
   const patientCount = countMap(patientsByClinic);
   const assessAll = countMap(assessmentsAll);
   const assessWin = countMap(assessmentsWindow);
+  const completed = countMap(completedAll);
+  const missingConsultation = countMap(missingConsultationAll);
+  const reconciliation = countMap(reconciliationAll);
   const apprAll = countMap(approvedAll);
   const apprWin = countMap(approvedWindow);
   const awaiting = countMap(awaitingAll);
+  const dossiersReady = countMap(dossiersReadyAll);
   const kitActive = countMap(kitActiveAll);
   const kitCancelled = countMap(kitCancelledAll);
 
@@ -238,9 +282,13 @@ export async function loadOpsOverview(window: TimeWindow): Promise<OpsOverview> 
     const del = deliveries.byClinic.get(c.id);
 
     const assessmentsAllN = assessAll.get(c.id) ?? 0;
+    const completedN = completed.get(c.id) ?? 0;
+    const missingConsultationN = missingConsultation.get(c.id) ?? 0;
+    const reconciliationN = reconciliation.get(c.id) ?? 0;
     const approvalsAllN = apprAll.get(c.id) ?? 0;
     const awaitingN = awaiting.get(c.id) ?? 0;
-    const reportsAvailableN = approvalsAllN; // approved version ⇒ snapshot + dossier
+    // A CONFIRMED asset count (ReportAsset READY), never inferred from approval.
+    const dossiersReadyN = dossiersReady.get(c.id) ?? 0;
 
     const lastActivityAt = latest(
       assessActivity.get(c.id) ?? null,
@@ -255,10 +303,12 @@ export async function loadOpsOverview(window: TimeWindow): Promise<OpsOverview> 
       assessmentsAllTime: assessmentsAllN,
       approvalsAllTime: approvalsAllN,
       awaitingReview: awaitingN,
+      assessmentsWithoutConsultation: missingConsultationN,
+      reconciliationDiscrepancies: reconciliationN,
       deliveryConnected,
       reportsFailed: del?.reportsFailed ?? 0,
       reportsSent: del?.reportsSent ?? 0,
-      reportsAvailable: reportsAvailableN,
+      dossiersReady: dossiersReadyN,
       lastActivityAt,
       now,
     });
@@ -304,11 +354,14 @@ export async function loadOpsOverview(window: TimeWindow): Promise<OpsOverview> 
       lastSignInAt: docs?.lastSignInAt ? docs.lastSignInAt.toISOString() : null,
       assessments: { today: assessWin.get(c.id) ?? 0, allTime: assessmentsAllN },
       approvals: { today: apprWin.get(c.id) ?? 0, allTime: approvalsAllN },
+      completedAssessments: completedN,
       awaitingReview: awaitingN,
+      assessmentsWithoutConsultation: missingConsultationN,
+      reconciliationDiscrepancies: reconciliationN,
       kitIntents: kitActive.get(c.id) ?? 0,
       kitIntentsCancelled: kitCancelled.get(c.id) ?? 0,
       confirmedOrders,
-      reportsAvailable: reportsAvailableN,
+      reports: { approved: approvalsAllN, dossiersReady: dossiersReadyN },
       reportsSent,
       reportsDelivered,
       lastActivityAt: lastActivityAt ? lastActivityAt.toISOString() : null,
@@ -345,7 +398,11 @@ export async function loadOpsOverview(window: TimeWindow): Promise<OpsOverview> 
     doctorsSignedIn: roster.clinicians.filter((c) => c.lastSignInAt !== null).length,
     assessments: assessmentsKpi,
     approvals: approvalsKpi,
+    completedAssessments: sum((r) => r.completedAssessments),
     pendingReviews: sum((r) => r.awaitingReview),
+    assessmentsWithoutConsultation: sum((r) => r.assessmentsWithoutConsultation),
+    reconciliationDiscrepancies: sum((r) => r.reconciliationDiscrepancies),
+    dossiersReady: sum((r) => r.reports.dossiersReady),
     reportsSent: reportsSentKpi,
     reportsDelivered: reportsDeliveredKpi,
   };
