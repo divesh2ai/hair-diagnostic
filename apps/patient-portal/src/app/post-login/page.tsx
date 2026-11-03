@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { getClinicContext, UnauthorizedError } from "@/lib/auth";
 import { doctorAuthIdentityWhere } from "@/lib/auth/doctorIdentity";
 import { prisma } from "@/lib/prisma";
+import { safeReturnPath } from "@/lib/auth/safeReturnPath";
 
 export const dynamic = "force-dynamic";
 
@@ -36,7 +37,7 @@ export default async function PostLoginPage({
   }
 
   const params = await searchParams;
-  const next = params?.next;
+  const next = safeReturnPath(params?.next);
 
   // EITHER linked Supabase identity, not just `supabaseUserId`.
   //
@@ -75,7 +76,7 @@ export default async function PostLoginPage({
     return true;
   };
 
-  if (next && next.startsWith("/") && canEnter(next)) {
+  if (next && canEnter(next)) {
     redirect(next);
   }
 
