@@ -1,3 +1,4 @@
+import { CheckoutError } from "@/lib/commerce/partialCheckout";
 import { NextResponse } from "next/server";
 import { confirmPayment } from "@/lib/payments/confirmPayment";
 import {
@@ -159,6 +160,7 @@ export async function POST(
       mode: result.mode,
     });
   } catch (err) {
+    if (err instanceof CheckoutError) return NextResponse.json({error:err.code},{status:err.status});
     if (err instanceof PaymentNotProvisionedError) {
       // 503, deliberately, so the gateway RETRIES. This is the one failure
       // here that a retry genuinely fixes: the migration gets applied and the

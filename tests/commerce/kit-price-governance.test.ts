@@ -11,6 +11,7 @@ import {
   rupeesToMinor,
   type KitPrice,
 } from "@/lib/commerce/kitPricing";
+import { KIT_PRICE_INR } from "@/lib/pricing/kitPrices";
 import {
   canSellToPatient,
   evaluateKitForPatientSale,
@@ -298,6 +299,39 @@ describe("kit pricing authority", () => {
 
   it("7d. GI_GOLD's approved price matches the workbook exactly (2026-10-14 sheet)", () => {
     expect(getKitPrice("GI_GOLD").amountMinor).toBe(rupeesToMinor(3655));
+  });
+
+  it("7e. EARLY_GREYING_CARE_GOLD is the clinic-confirmed ₹3,647/box, governed and identical across surfaces", () => {
+    // User-confirmed MRP for Early Greying Care Gold is ₹3,647 per box. It must
+    // resolve to that one governed figure wherever a surface asks for the
+    // price — the doctor clinical order, the purchase tracker (whose
+    // catalogUnitMinor is this same engine), the patient cart and the report —
+    // and never via an invented fallback.
+    const id = "EARLY_GREYING_CARE_GOLD";
+    expect(CANONICAL_KIT_IDS).toContain(id);
+
+    // Authoritative source — the governed approved table.
+    expect(APPROVED_KIT_PRICES_MINOR[id]).toBe(rupeesToMinor(3647));
+    const price = getKitPrice(id);
+    expect(price.status).toBe("PRICE_APPROVED");
+    expect(price.amountMinor).toBe(rupeesToMinor(3647)); // 364700 paise
+
+    // Patient cart / purchase paths route through sellability → getKitPrice.
+    const sale = evaluateKitForPatientSale(id);
+    expect(sale.sellable).toBe(true);
+    expect(sale.chargeableAmountMinor).toBe(rupeesToMinor(3647));
+    const order = evaluateOrderForPatientCharge([id]);
+    expect(order.chargeable).toBe(true);
+    expect(order.totalAmountMinor).toBe(rupeesToMinor(3647));
+
+    // The doctor add-list / estimate display map mirrors the governed figure,
+    // so the doctor never sees a number that differs from the patient charge.
+    expect(KIT_PRICE_INR[id]).toBe(3647);
+
+    // Exact identity/variant: there is no separate veg variant to confuse it
+    // with, and the canonical id resolves to itself.
+    expect(CANONICAL_KIT_IDS).not.toContain("EARLY_GREYING_CARE_GOLD_VEG");
+    expect(resolveKitIdentity(id).canonicalKitId).toBe(id);
   });
 });
 

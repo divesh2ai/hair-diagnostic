@@ -105,10 +105,16 @@ export async function PATCH(
     [kitId]: quantity,
   };
 
-  await prisma.kitOrderIntent.update({
-    where: { id: approved.intentId },
-    data: { quantities: nextQuantities },
+  const changed = await prisma.$transaction(async tx => {
+    await tx.$queryRaw`SELECT id FROM "KitOrderIntent" WHERE id=${approved.intentId} AND "clinicId"=${doctor.clinicId} FOR UPDATE`;
+    const tracked = await tx.$queryRaw<Array<{id:string}>>`SELECT id FROM "KitPurchaseLine" WHERE "kitOrderIntentId"=${approved.intentId}
+      UNION ALL SELECT id FROM "KitPurchaseTransaction" WHERE "kitOrderIntentId"=${approved.intentId} LIMIT 1`;
+    if (tracked.length) return false;
+    await tx.kitOrderIntent.update({where:{id:approved.intentId},data:{quantities:nextQuantities}});
+    return true;
   });
+  if (!changed) return errorResponse(409,"USE_SELECTED_TRANSACTION","Choose boxes for this purchase without changing the approved plan.",requestId);
+
 
   await writeAuditLog({
     action: "CLINIC_ORDER_QUANTITY_UPDATED",

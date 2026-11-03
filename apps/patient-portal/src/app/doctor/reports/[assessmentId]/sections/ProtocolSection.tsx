@@ -6,11 +6,22 @@ import type { Consultation, TreatmentPhase } from "@shared/types/consultation";
 import { KitLineupEditor, type SavedConsultation } from "../KitLineupEditor";
 import { TopicalsCard } from "@/components/consultation";
 import { ProductImage } from "@/components/kits/ProductImage";
+import { PartialKitCheckout } from "@/components/doctor/PartialKitCheckout";
 import { useKitCatalog } from "@/lib/doctor/kitCatalog";
 import {
   buildProtocolItems,
   summarizeProtocol,
 } from "@/lib/doctor/protocolModel";
+import { getKitPrice, formatInrFromMinor } from "@/lib/commerce/kitPricing";
+import {
+  EVENT_LABEL,
+  RecordForm,
+  STATUS_LABEL,
+  fmtDate,
+  fmtINR,
+  statusTone,
+  type PurchaseLedgerState,
+} from "@/components/doctor/purchaseLedger";
 import { CollapsibleText } from "./CollapsibleText";
 
 // WHAT ARE WE TREATING? — the protocol, the reasoning that produced it, and the
@@ -75,6 +86,15 @@ export interface ProtocolSectionProps {
   onCloseAdjust?: () => void;
   /** Hand the case back for regeneration — the escalation from adjusting. */
   onEscalate?: () => void;
+  /**
+   * The purchase ledger for the approved order, when one exists. Null/idle
+   * before approval. When present and a kit has a matching ledger line, the row
+   * gains its purchase facts (recommended / purchased / remaining boxes,
+   * deferred/declined status, Record action, and dated history) so the clinical
+   * order and its purchases are ONE surface and each kit appears exactly once.
+   * Recording never mutates the approved plan above.
+   */
+  purchase?: PurchaseLedgerState;
 }
 
 export function ProtocolSection({
@@ -88,6 +108,7 @@ export function ProtocolSection({
   adjustOpen = false,
   onCloseAdjust,
   onEscalate,
+  purchase,
 }: ProtocolSectionProps) {
   const { byKitId } = useKitCatalog();
   const phases = consultation.treatmentPlan.kitPhases;
@@ -101,6 +122,27 @@ export function ProtocolSection({
   const [removeIndex, setRemoveIndex] = useState<number | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Which kit's purchase recorder is open. Only one at a time, keyed by kitId.
+  const [openPurchaseKit, setOpenPurchaseKit] = useState<string | null>(null);
+
+  // The purchase ledger is present only once the approved order exists; before
+  // that it is idle (no lines). `hasLedger` gates every purchase affordance.
+  const ledger = purchase;
+  const hasLedger = !!ledger && ledger.lines.length > 0;
+  const purchaseKits = ledger ? ledger.lines.map((l) => ({ id: l.kitId, label: l.kitLabel })) : [];
+
+  /**
+   * Governed MRP per box for a kit, in minor units. Post-approval the
+   * authoritative figure is the ledger line's server-resolved catalog price;
+   * otherwise the governed catalogue (getKitPrice). Never a fabricated
+   * fallback — null means "no governed price", which the row states plainly.
+   */
+  const mrpMinorFor = (kitId: string): number | null => {
+    const fromLedger = ledger?.byKitId.get(kitId)?.catalogUnitMinor;
+    if (fromLedger != null) return fromLedger;
+    return getKitPrice(kitId).amountMinor;
+  };
 
   const closePanels = () => {
     setRemoveIndex(null);
@@ -191,14 +233,18 @@ export function ProtocolSection({
     <section aria-labelledby="protocol-heading" className="space-y-4">
       <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
         <h2 id="protocol-heading" className="hd-story-title">
-          Suggested treatment
+          Clinical Order &amp; Purchases
         </h2>
         <p className="text-xs text-[color:var(--hd-text-muted)]">
           <span className="font-medium text-[color:var(--hd-text-secondary)]">
-            {summary.count === 0
-              ? "No interventions selected"
-              : `${summary.count} intervention${summary.count === 1 ? "" : "s"}`}
+            {isApproved ? "Approved order" : "Suggested plan — not yet approved"}
           </span>
+          {summary.count > 0 && (
+            <>
+              {" · "}
+              {summary.count} intervention{summary.count === 1 ? "" : "s"}
+            </>
+          )}
           {summary.addedByDoctor > 0 && (
             <span className="text-[color:var(--hd-primary-dark)]">
               {" · "}
@@ -207,6 +253,29 @@ export function ProtocolSection({
           )}
         </p>
       </div>
+
+      {/* Purchase roll-up — only once an order exists. The approved plan above
+          is immutable; these are dated facts about what the patient obtained. */}
+      {hasLedger && ledger?.summary && (
+        <div className="flex flex-wrap gap-x-6 gap-y-1 rounded-xl border border-[color:var(--hd-border)] bg-[color:var(--hd-surface-alt)] px-4 py-2.5 text-sm text-[color:var(--hd-text-secondary)]">
+          <span>
+            <strong className="text-[color:var(--hd-text)]">
+              {ledger.summary.purchasedKits}/{ledger.summary.recommendedKits}
+            </strong>{" "}
+            kits purchased
+          </span>
+          <span>
+            <strong className="text-[color:var(--hd-text)]">
+              {ledger.summary.purchasedBoxes}/{ledger.summary.recommendedBoxes}
+            </strong>{" "}
+            boxes purchased
+          </span>
+          <span>
+            {ledger.summary.remainingKits} remaining · {ledger.summary.deferredKits} deferred ·{" "}
+            {ledger.summary.declinedKits} declined
+          </span>
+        </div>
+      )}
 
       {items.length === 0 ? (
         <p className="rounded-xl border border-dashed border-[color:var(--hd-border-strong)] bg-[color:var(--hd-surface-alt)] px-4 py-5 text-sm text-[color:var(--hd-text-secondary)]">
@@ -259,6 +328,35 @@ export function ProtocolSection({
                         </span>
                       )}
                     </div>
+
+                    {/* Catalogue identity + governed MRP per box. The identity
+                        is the exact canonical kit id the cart and purchase
+                        ledger resolve against; the MRP is the governed figure,
+                        never an invented fallback. */}
+                    {(() => {
+                      const mrpMinor = mrpMinorFor(item.kitId);
+                      const line = ledger?.byKitId.get(item.kitId);
+                      return (
+                        <p className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[11px] text-[color:var(--hd-text-muted)]">
+                          <span className="font-mono">{item.kitId}</span>
+                          <span aria-hidden>·</span>
+                          <span className="font-medium text-[color:var(--hd-text-secondary)]">
+                            {mrpMinor != null
+                              ? `MRP ${formatInrFromMinor(mrpMinor)} / box`
+                              : "Pricing to confirm"}
+                          </span>
+                          {line && (
+                            <>
+                              <span aria-hidden>·</span>
+                              <span>
+                                {line.recommendedBoxes} box
+                                {line.recommendedBoxes === 1 ? "" : "es"} recommended
+                              </span>
+                            </>
+                          )}
+                        </p>
+                      );
+                    })()}
 
                     {item.objective && (
                       <p className="mt-1 text-sm leading-relaxed text-[color:var(--hd-text-secondary)]">
@@ -390,12 +488,139 @@ export function ProtocolSection({
                         </div>
                       </div>
                     )}
+
+                    {/* PURCHASES for this kit — present only once the approved
+                        order exists. Recording a purchase is a dated fact and
+                        never edits the approved plan above. */}
+                    {hasLedger &&
+                      (() => {
+                        const line = ledger?.byKitId.get(item.kitId);
+                        if (!line) return null;
+                        const d = line.derived;
+                        return (
+                          <div className="mt-3 border-t border-[color:var(--hd-border)] pt-3">
+                            <div className="flex flex-wrap items-center justify-between gap-2">
+                              <p className="text-sm text-[color:var(--hd-text-secondary)]">
+                                <strong className="text-[color:var(--hd-text)]">
+                                  {d.purchasedBoxes}/{line.recommendedBoxes}
+                                </strong>{" "}
+                                boxes purchased
+                                {d.remainingBoxes > 0 &&
+                                  !["DECLINED", "SUBSTITUTED", "DISCONTINUED"].includes(
+                                    d.status,
+                                  ) && <> · {d.remainingBoxes} remaining</>}
+                                {d.patientReportedBoxes > 0 && (
+                                  <>
+                                    {" · "}
+                                    <span className="text-amber-700">
+                                      patient-reported {d.patientReportedBoxes} (unconfirmed)
+                                    </span>
+                                  </>
+                                )}
+                                {d.externallyObtainedBoxes > 0 && (
+                                  <> · externally obtained {d.externallyObtainedBoxes} (no clinic charge)</>
+                                )}
+                                {d.dispensedBoxes > 0 && <> · dispensed {d.dispensedBoxes}</>}
+                                {d.treatmentStarted && d.treatmentStartedAt && (
+                                  <> · started {fmtDate(d.treatmentStartedAt)}</>
+                                )}
+                              </p>
+                              <span
+                                className={`inline-flex items-center rounded-md border px-2 py-0.5 text-sm font-medium ${statusTone(
+                                  d.status,
+                                )}`}
+                              >
+                                {STATUS_LABEL[d.status]}
+                              </span>
+                            </div>
+
+                            <div className="mt-2 flex flex-wrap gap-1.5">
+                              <button
+                                type="button"
+                                disabled={ledger?.busy}
+                                onClick={() =>
+                                  setOpenPurchaseKit(
+                                    openPurchaseKit === item.kitId ? null : item.kitId,
+                                  )
+                                }
+                                className="rounded-md border border-stone-300 bg-white min-h-11 px-3 py-2 text-sm font-medium text-slate-700 hover:bg-stone-50 disabled:opacity-50"
+                              >
+                                {openPurchaseKit === item.kitId ? "Close" : "Record purchase…"}
+                              </button>
+                            </div>
+
+                            {openPurchaseKit === item.kitId && ledger && (
+                              <RecordForm
+                                kits={purchaseKits}
+                                currentKitId={item.kitId}
+                                defaultBoxes={Math.max(1, d.remainingBoxes || line.recommendedBoxes)}
+                                busy={ledger.busy}
+                                onCancel={() => setOpenPurchaseKit(null)}
+                                onSubmit={async (payload) => {
+                                  await ledger.postEvent(item.kitId, payload);
+                                  setOpenPurchaseKit(null);
+                                }}
+                              />
+                            )}
+
+                            {line.events.length > 0 && (
+                              <ul className="mt-2 space-y-1 border-l-2 border-stone-100 pl-3">
+                                {[...line.events]
+                                  .sort((a, b) => a.occurredAt.localeCompare(b.occurredAt))
+                                  .map((e) => (
+                                    <li key={e.id} className="text-sm text-slate-600">
+                                      <span className="text-slate-400">{fmtDate(e.occurredAt)}</span>{" "}
+                                      · {EVENT_LABEL[e.eventType]}
+                                      {e.boxes != null && (
+                                        <> · {e.boxes} box{e.boxes === 1 ? "" : "es"}</>
+                                      )}
+                                      {e.saleValueMinor != null && <> · sale {fmtINR(e.saleValueMinor)}</>}
+                                      {e.transactionId && (
+                                        <span className="break-all"> · transaction {e.transactionId}</span>
+                                      )}
+                                      {e.note && <> · {e.note}</>}
+                                    </li>
+                                  ))}
+                              </ul>
+                            )}
+                          </div>
+                        );
+                      })()}
                   </div>
                 </div>
               </li>
             );
           })}
         </ol>
+      )}
+
+      {/* Purchase error + fulfilment, shown once beneath the order. The
+          approved lineup is never changed by anything here. */}
+      {ledger?.unavailable && (
+        <p className="rounded-xl border border-[color:var(--hd-border)] bg-[color:var(--hd-surface-alt)] px-4 py-2.5 text-sm text-[color:var(--hd-text-secondary)]">
+          Purchase tracking is not enabled yet in this environment.
+        </p>
+      )}
+      {ledger?.error && (
+        <p role="alert" className="text-sm text-[color:var(--hd-critical-ink)]">
+          {ledger.error}
+        </p>
+      )}
+      {hasLedger && !ledger?.loading && ledger?.intentId && (
+        <PartialKitCheckout
+          endpoint={`/api/doctor/orders/${ledger.intentId}/transactions`}
+          doctor
+          quantitiesAreRemaining
+          onChanged={() => void ledger?.reload()}
+          items={(ledger?.lines ?? []).map((l) => ({
+            kitId: l.kitId,
+            label: l.kitLabel,
+            unitMinor: l.catalogUnitMinor,
+            maxBoxes: ["DECLINED", "DISCONTINUED", "SUBSTITUTED"].includes(l.lineStatus)
+              ? 0
+              : Math.max(0, l.derived.remainingBoxes - (l.derived.externallyObtainedBoxes ?? 0)),
+          }))}
+        />
       )}
 
       {topicals.length > 0 && (

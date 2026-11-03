@@ -32,13 +32,25 @@ export interface PatientRow {
   lastStatus: string | null;
   /** ReviewDecision — whether the doctor signed off. Drives the green mark. */
   lastReviewDecision: string | null;
+  /** ClinicLocation id of the latest assessment's branch. Null = unattributed. */
+  lastBranchId: string | null;
+  /** Human branch label for display, e.g. "Mulund". Null = unattributed. */
+  lastBranchName: string | null;
   nextAppointment: NextAppointment | null;
+}
+
+/** A clinic branch the registry can filter by. */
+export interface BranchOption {
+  id: string;
+  branchName: string;
 }
 
 export interface PatientsPayload {
   timeZone: string;
   appointmentsProvisioned: boolean;
   truncated: boolean;
+  /** The clinic's branches. Empty or length-1 → the branch filter is hidden. */
+  branches: BranchOption[];
   patients: PatientRow[];
 }
 

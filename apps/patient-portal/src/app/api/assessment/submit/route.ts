@@ -10,6 +10,7 @@ import {
   withLocaleMetadata,
 } from './persistence';
 import { resolvePatientForIntake, toRelationship } from '@/lib/patient/identity';
+import { resolveClinicBranch } from '@/lib/clinics/branches';
 import { setPatientWhatsappConsent } from '@/lib/patient/whatsappConsent';
 import { resolveVisitType, toRelationshipState } from '@/lib/patient/visit';
 import { readIntakeSessionForLinking } from '@/lib/patient/intakeSession';
@@ -96,6 +97,17 @@ interface SubmitBody {
    * flows with no intake gate (skin), which persist null rather than a guess.
    */
   visitType?: string;
+  /**
+   * The physical branch the patient reached this clinic through, as the QR or
+   * link carried it (a branch slug like "bandra", or a ClinicLocation id).
+   * Advisory and operational, exactly like `visitType`: the server re-resolves
+   * it against THIS clinic's own branches and records only a branch that
+   * actually belongs here. A value naming another clinic's branch, a closed
+   * branch, or nothing real resolves to null — the assessment is still filed,
+   * attributed to no branch. It is never a tenant boundary; `clinicSlug`
+   * remains the only thing that selects the clinic.
+   */
+  branch?: string;
   /**
    * The signed intake session the patient started under, when they came
    * through the intake gate. Used for exactly one thing: closing the
@@ -257,6 +269,16 @@ export async function POST(req: Request) {
 
     console.log('[SUBMIT] CLINIC', clinic.id);
 
+    // ── STEP 2a-bis: Resolve + validate the branch, scoped to THIS clinic ─────
+    // Read before the transaction — it is a stable lookup, not part of the
+    // write invariant. resolveClinicBranch returns a branch only when it
+    // belongs to `clinic.id`; a param naming another clinic's branch, a closed
+    // branch or nothing real yields null and the assessment files unattributed.
+    // This is the single point at which clinicLocationId becomes "validated":
+    // it is never trusted from the request as-is.
+    const branch = await resolveClinicBranch(prisma, clinic.id, body.branch);
+    console.log('[SUBMIT] BRANCH', branch?.id ?? null);
+
     // ── STEP 2b: Reviewing doctor — deliberately NOT assigned here ────────────
     //
     // This used to be `doctor.findFirst({ clinicId, isActive })`, which handed
@@ -393,6 +415,9 @@ export async function POST(req: Request) {
       const newAssessment = await tx.assessment.create({
         data: {
           clinicId:          clinic.id,
+          // Scope only — never derived from clinicLocationId, which is why both
+          // are written side by side and clinicId is taken from the slug alone.
+          clinicLocationId:  branch?.id ?? null,
           patientId:         resolved.patientId,
           reviewingDoctorId: null,
           status:            AssessmentStatus.PENDING,

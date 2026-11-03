@@ -24,6 +24,13 @@ interface AssessmentV3ClientProps {
    * as one who arrived via the landing page.
    */
   clinic: { id: string; name: string; language: string; supportedLanguages: string[] } | null;
+  /**
+   * Branch handle from the URL's `?branch=`, forwarded straight to the submit
+   * route, which validates it against this clinic. Lives as a prop for the
+   * whole client lifecycle, so it survives the language gate and intake gate
+   * without a store round-trip; a reload keeps it because it is in the URL.
+   */
+  branch?: string | null;
 }
 
 /**
@@ -51,7 +58,7 @@ interface AssessmentV3ClientProps {
  * time it renders here the choice is already confirmed, so that branch is a
  * no-op.
  */
-export function AssessmentV3Client({ clinic, clinicSlug }: AssessmentV3ClientProps) {
+export function AssessmentV3Client({ clinic, clinicSlug, branch }: AssessmentV3ClientProps) {
   const concern = useAssessmentStore((state) => state.concern);
   const setConcern = useAssessmentStore((state) => state.setConcern);
   const setClinicData = useAssessmentStore((state) => state.setClinicData);
@@ -148,6 +155,8 @@ export function AssessmentV3Client({ clinic, clinicSlug }: AssessmentV3ClientPro
       // Closes the In Clinic entry opened at intake, in the same server
       // workflow that creates the Assessment.
       intakeToken={intake.intakeToken}
+      // Branch the QR/link named; the submit route validates it per-clinic.
+      branch={branch}
     />
   );
 }
