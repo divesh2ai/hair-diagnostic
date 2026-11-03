@@ -2,273 +2,404 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { Plus, ArrowRight } from "lucide-react";
+import { Building2, ArrowRight } from "lucide-react";
 import { PageContainer } from "@/components/app-shell";
 import { SearchBox } from "@/components/ui/search-box";
+import { FilterBar } from "@/components/ui/filter-bar";
+import { MetricCard } from "@/components/ui/metric-card";
 import { StatusBadge } from "@/components/ui/status-badge";
-import { Avatar } from "@/components/ui/avatar";
-import { Button } from "@/components/ui/button";
+import { DataTable, type Column } from "@/components/ui/data-table";
 import { LoadingState, ErrorState } from "@/components/ui/states";
-import { MiniStat } from "@/components/admin/DashboardSections";
+import { Button, buttonVariants } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
+import { ClinicOpsDrawer } from "@/components/admin/ClinicOpsDrawer";
+import type { OpsOverview, ClinicOpsRow, GatedKpi } from "@/lib/admin/opsDashboard/types";
+import {
+  relativeTime,
+  STATUS_LABEL,
+  STATUS_TONE,
+  FILTER_OPTIONS,
+  type ClinicFilterKey,
+} from "@/lib/admin/opsDashboard/format";
 
-// ── Phase 1: Clinic Activation Overview ──────────────────────────────────────
-// Deliberately simplified. The seven-section command centre and the MapLibre
-// India network have been removed from the main dashboard for Phase 1 — the
-// geographic code is preserved (src/components/admin/IndiaClinicNetwork.tsx,
-// /api/admin/network) for a future release once the network passes ~50 clinics.
-// This page answers one question for the Super Admin: which clinics are
-// registered, and which are switched on.
-//
-// Counts come from the existing authenticated /api/admin/dashboard (clinicsTotal
-// and clinicsActive); the register comes from the existing /api/admin/clinics.
-// No new tables, no new endpoints, no clinic records are modified here.
-//
-// Definitions (must not drift):
-//   • Active   = Clinic.status === "ACTIVE"
-//   • Inactive = non-archived clinic whose status is not ACTIVE (e.g. SUSPENDED)
-//   • Archived / soft-deleted (deletedAt set) is excluded by the APIs above and
-//     never counts as either Active or Inactive.
-// Activation here is a DATABASE state only. It does NOT assert the clinic is
-// clinically verified or that a doctor can log in — see the caveat rendered
-// below, which must stay.
+// ── Super Admin operations control centre ────────────────────────────────────
+// Replaces the Phase 1 "clinic activation" overview. Activation (a database
+// flag) is now one column among many, not the whole dashboard; full clinic
+// management stays one click away at /admin/clinics. Every number here is
+// computed server-side from the live database by /api/admin/operations-overview
+// with honest semantics (see lib/admin/opsDashboard): approvals are the
+// post-approval model (never COMPLETED); kit intents are authorizations (never
+// paid orders); revenue and delivery read "Not connected" where their migration
+// is absent; last-sign-in is the authoritative auth.users value, or "Unknown"
+// when that cannot be read.
 
-type DashboardMetrics = {
-  clinicsTotal: number;
-  clinicsActive: number;
-};
-
-type ClinicRow = {
-  id: string;
-  name: string;
-  slug: string;
-  logoUrl: string | null;
-  status: string;
-  createdAt: string;
-};
-
-type Filter = "all" | "active" | "inactive";
-
-// A clinic is active iff its status is exactly ACTIVE. Everything else returned
-// by /api/admin/clinics (which already excludes archived/soft-deleted rows) is
-// inactive. ARCHIVED is excluded here too, defensively, so a stray archived row
-// can never be rendered or counted.
-function isActive(status: string): boolean {
-  return status === "ACTIVE";
+function gatedToday(k: GatedKpi): string {
+  return k.state === "CONNECTED" ? String(k.today ?? 0) : "—";
 }
-function isArchived(status: string): boolean {
-  return status === "ARCHIVED";
+function gatedHint(k: GatedKpi, label: string): string {
+  return k.state === "CONNECTED"
+    ? `${k.allTime ?? 0} ${label} all-time`
+    : "Not connected — migration not applied";
 }
 
-export default function AdminClinicActivationPage() {
-  const [metrics, setMetrics] = useState<DashboardMetrics | null>(null);
-  const [clinics, setClinics] = useState<ClinicRow[] | null>(null);
+function matchesFilter(row: ClinicOpsRow, filter: ClinicFilterKey): boolean {
+  switch (filter) {
+    case "all":
+      return true;
+    case "neverLoggedIn":
+      return row.flags.neverLoggedIn;
+    case "noAssessments":
+      return row.flags.noAssessments;
+    case "pendingReview":
+      return row.flags.pendingReview;
+    case "reportDeliveryAttention":
+      return row.flags.reportDeliveryAttention;
+    case "activelyUsing":
+      return row.flags.activelyUsing;
+    default:
+      return true;
+  }
+}
+
+export default function AdminOperationsPage() {
+  const [data, setData] = useState<OpsOverview | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [search, setSearch] = useState("");
-  const [filter, setFilter] = useState<Filter>("all");
+  // Derived loading (orders-page pattern): the effect never calls setState
+  // synchronously — it sets a loaded-key only after the fetch resolves, and
+  // `loading` is computed from it. This satisfies react-hooks/set-state-in-effect.
+  const [loadedKey, setLoadedKey] = useState<string | null>(null);
+  const [reloadNonce, setReloadNonce] = useState(0);
+
+  const [from, setFrom] = useState("");
+  const [to, setTo] = useState("");
+  const [filter, setFilter] = useState<ClinicFilterKey>("all");
+  const [q, setQ] = useState("");
+
+  const [openClinicId, setOpenClinicId] = useState<string | null>(null);
+  const [drawerOpen, setDrawerOpen] = useState(false);
+
+  const fetchKey = `${from}|${to}|${reloadNonce}`;
+  const loading = loadedKey !== fetchKey;
+  const reload = () => setReloadNonce((n) => n + 1);
 
   useEffect(() => {
-    // Authoritative counts. The register below can corroborate them, but these
-    // are the numbers the dashboard reports.
-    fetch("/api/admin/dashboard", { cache: "no-store" })
-      .then((r) => (r.ok ? r.json() : Promise.reject(r.statusText)))
-      .then((d) =>
-        setMetrics({
-          clinicsTotal: d.metrics.clinicsTotal,
-          clinicsActive: d.metrics.clinicsActive,
-        }),
-      )
-      .catch((e) => setError(String(e)));
+    let cancelled = false;
+    (async () => {
+      const params = new URLSearchParams();
+      if (from) params.set("from", from);
+      if (to) params.set("to", to);
+      const qs = params.toString();
+      try {
+        const r = await fetch(`/api/admin/operations-overview${qs ? `?${qs}` : ""}`, {
+          cache: "no-store",
+        });
+        if (!r.ok) throw new Error(`HTTP ${r.status}`);
+        const j: OpsOverview = await r.json();
+        if (!cancelled) {
+          setData(j);
+          setError(null);
+        }
+      } catch (e) {
+        if (!cancelled) setError((e as Error).message);
+      } finally {
+        if (!cancelled) setLoadedKey(fetchKey);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+    // fetchKey captures from/to/reloadNonce.
+  }, [fetchKey, from, to]);
 
-    // The full non-archived register. Phase 1 is < 50 clinics by design, so a
-    // single page (limit 200) holds the whole list and search/filter happen
-    // client-side. "Inactive" spans several statuses, which the single-equals
-    // `status` query param can't express, so we fetch all and classify here.
-    fetch("/api/admin/clinics?limit=200", { cache: "no-store" })
-      .then((r) => (r.ok ? r.json() : Promise.reject(r.statusText)))
-      .then((d) =>
-        setClinics(
-          (d.rows as ClinicRow[]).filter((c) => !isArchived(c.status)),
+  const authReadable = data?.capabilities.authReadable ?? true;
+
+  const filtered = useMemo(() => {
+    if (!data) return [];
+    const needle = q.trim().toLowerCase();
+    return data.clinics.filter(
+      (c) =>
+        matchesFilter(c, filter) &&
+        (needle === "" ||
+          c.name.toLowerCase().includes(needle) ||
+          c.slug.toLowerCase().includes(needle)),
+    );
+  }, [data, filter, q]);
+
+  const columns = useMemo<Column<ClinicOpsRow>[]>(
+    () => [
+      {
+        key: "clinic",
+        header: "Clinic",
+        cell: (c) => (
+          <div className="min-w-0">
+            <div className="truncate font-medium">{c.name}</div>
+            <div className="truncate text-xs text-muted-foreground">
+              {c.primaryBranch ?? "No branch set"}
+              {c.branchCount > 1 ? ` +${c.branchCount - 1}` : ""} · {c.status}
+            </div>
+          </div>
         ),
-      )
-      .catch((e) => setError(String(e)));
-  }, []);
-
-  // Counts: prefer the dashboard's authoritative numbers; fall back to the
-  // register if the dashboard call failed but the list succeeded.
-  const counts = useMemo(() => {
-    if (metrics) {
-      return {
-        total: metrics.clinicsTotal,
-        active: metrics.clinicsActive,
-        inactive: Math.max(metrics.clinicsTotal - metrics.clinicsActive, 0),
-      };
-    }
-    if (clinics) {
-      const active = clinics.filter((c) => isActive(c.status)).length;
-      return { total: clinics.length, active, inactive: clinics.length - active };
-    }
-    return null;
-  }, [metrics, clinics]);
-
-  const visible = useMemo(() => {
-    if (!clinics) return [];
-    const q = search.trim().toLowerCase();
-    return clinics.filter((c) => {
-      if (filter === "active" && !isActive(c.status)) return false;
-      if (filter === "inactive" && isActive(c.status)) return false;
-      if (q && !c.name.toLowerCase().includes(q) && !c.slug.toLowerCase().includes(q))
-        return false;
-      return true;
-    });
-  }, [clinics, search, filter]);
+      },
+      {
+        key: "doctors",
+        header: "Doctors · last login",
+        cell: (c) => {
+          const login = !authReadable
+            ? "sign-in unknown"
+            : c.lastSignInAt
+              ? relativeTime(c.lastSignInAt)
+              : "never signed in";
+          return (
+            <div className="min-w-0">
+              <div className="tabular-nums">{c.doctorCount} doctor{c.doctorCount === 1 ? "" : "s"}</div>
+              <div className="truncate text-xs text-muted-foreground">
+                {c.topDoctor ? `${c.topDoctor.name} · ${login}` : login}
+              </div>
+            </div>
+          );
+        },
+      },
+      {
+        key: "assessments",
+        header: "Assessments",
+        align: "right",
+        cell: (c) => (
+          <div className="tabular-nums">
+            <span className="font-medium">{c.assessments.today}</span>
+            <span className="text-muted-foreground"> / {c.assessments.allTime}</span>
+          </div>
+        ),
+      },
+      {
+        key: "review",
+        header: "Approved · awaiting",
+        align: "right",
+        cell: (c) => (
+          <div className="tabular-nums">
+            <span className="font-medium">{c.approvals.allTime}</span>
+            <span className="text-muted-foreground"> · </span>
+            <span className={c.awaitingReview > 0 ? "text-amber-600 dark:text-amber-400" : "text-muted-foreground"}>
+              {c.awaitingReview}
+            </span>
+          </div>
+        ),
+      },
+      {
+        key: "kits",
+        header: "Intents · orders",
+        align: "right",
+        cell: (c) => (
+          <div className="tabular-nums">
+            <span className="font-medium">{c.kitIntents}</span>
+            <span className="text-muted-foreground"> · </span>
+            {c.confirmedOrders.state === "CONNECTED" ? (
+              <span className="text-muted-foreground">{c.confirmedOrders.allTime} paid</span>
+            ) : (
+              <span className="text-muted-foreground">n/c</span>
+            )}
+          </div>
+        ),
+      },
+      {
+        key: "reports",
+        header: "Reports (avail · sent · deliv)",
+        align: "right",
+        cell: (c) => (
+          <div className="tabular-nums text-xs">
+            <span className="font-medium">{c.reportsAvailable}</span>
+            <span className="text-muted-foreground">
+              {" · "}
+              {c.reportsSent.state === "CONNECTED" ? c.reportsSent.allTime : "n/c"}
+              {" · "}
+              {c.reportsDelivered.state === "CONNECTED" ? c.reportsDelivered.allTime : "n/c"}
+            </span>
+          </div>
+        ),
+      },
+      {
+        key: "activity",
+        header: "Last activity",
+        align: "right",
+        cell: (c) => <span className="text-xs text-muted-foreground">{relativeTime(c.lastActivityAt)}</span>,
+      },
+      {
+        key: "status",
+        header: "Operational status",
+        cell: (c) => <StatusBadge tone={STATUS_TONE[c.primaryStatus]}>{STATUS_LABEL[c.primaryStatus]}</StatusBadge>,
+      },
+    ],
+    [authReadable],
+  );
 
   if (error) {
     return (
-      <PageContainer>
-        <ErrorState title="Couldn't load clinic overview" description={error} />
-      </PageContainer>
-    );
-  }
-  if (!counts || !clinics) {
-    return (
-      <PageContainer>
-        <LoadingState />
+      <PageContainer className="space-y-5">
+        <Header />
+        <ErrorState title="Couldn't load the operations overview" description={error} action={<Button onClick={reload}>Retry</Button>} />
       </PageContainer>
     );
   }
 
   return (
-    <PageContainer className="space-y-6">
-      {/* ── Header ──────────────────────────────────────────────────────── */}
-      <div className="flex items-end justify-between gap-4 flex-wrap">
-        <div>
-          <h1 className="text-2xl font-semibold tracking-tight">
-            Clinic activation
-          </h1>
-          <p className="text-sm text-muted-foreground">
-            {counts.active} of {counts.total}{" "}
-            {counts.total === 1 ? "clinic" : "clinics"} active
-          </p>
-        </div>
-        <Link href="/admin/clinics/new">
-          <Button>
-            <Plus />
-            Create clinic
-          </Button>
-        </Link>
-      </div>
+    <PageContainer className="space-y-5">
+      <Header />
 
-      {/* ── Activation counts ───────────────────────────────────────────── */}
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-        <MiniStat label="Registered clinics" value={counts.total} hint="non-archived" />
-        <MiniStat label="Active" value={counts.active} hint="status ACTIVE" />
-        <MiniStat label="Inactive" value={counts.inactive} hint="e.g. suspended" />
-      </div>
+      {!data ? (
+        <LoadingState />
+      ) : (
+        <>
+          <KpiStrip data={data} />
+          <CapabilityNote data={data} />
 
-      {/* ── Honesty caveat (must stay) ──────────────────────────────────────
-          "Active" is a database status only. It must never be read as a
-          clinical sign-off or as proof a doctor can log in. */}
-      <p className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900 dark:border-amber-900/40 dark:bg-amber-950/30 dark:text-amber-200">
-        Activation reflects the clinic&rsquo;s database status only. It is{" "}
-        <strong>not</strong> a clinical verification and does not confirm that a
-        doctor can log in.
-      </p>
-
-      {/* ── Register: search + Active/Inactive filter ───────────────────── */}
-      <section aria-labelledby="register-heading" className="space-y-3">
-        <div className="flex flex-wrap items-center justify-between gap-2">
-          <h2 id="register-heading" className="text-sm font-semibold tracking-tight">
-            Clinics
-          </h2>
-          <Link
-            href="/admin/clinics"
-            className="inline-flex items-center gap-1 rounded-sm text-xs text-muted-foreground underline-offset-2 hover:text-foreground hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
+          <FilterBar
+            onClear={() => {
+              setFrom("");
+              setTo("");
+              setFilter("all");
+              setQ("");
+            }}
           >
-            Manage clinics
-            <ArrowRight className="size-3" />
-          </Link>
-        </div>
-
-        <div className="flex flex-wrap items-center gap-2">
-          <SearchBox
-            value={search}
-            onChange={setSearch}
-            placeholder="Search by clinic name"
-            className="min-w-[260px] flex-1"
-          />
-          <div
-            role="group"
-            aria-label="Filter by activation"
-            className="inline-flex rounded-lg border border-border bg-background p-0.5 text-sm font-medium"
-          >
-            {(
-              [
-                ["all", "All"],
-                ["active", "Active"],
-                ["inactive", "Inactive"],
-              ] as [Filter, string][]
-            ).map(([value, label]) => (
-              <button
-                key={value}
-                type="button"
-                onClick={() => setFilter(value)}
-                aria-pressed={filter === value}
-                className={`rounded-md px-3 py-1 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-ring/50 ${
-                  filter === value
-                    ? "bg-foreground text-background"
-                    : "text-muted-foreground hover:text-foreground"
-                }`}
+            <SearchBox value={q} onChange={setQ} placeholder="Search clinics…" className="min-w-[220px]" />
+            <label className="flex items-center gap-1.5 text-sm text-muted-foreground">
+              <span className="text-[11px] uppercase tracking-wide">Status</span>
+              <select
+                value={filter}
+                onChange={(e) => setFilter(e.target.value as ClinicFilterKey)}
+                className="h-9 rounded-lg border border-border bg-background px-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring/40"
               >
-                {label}
-              </button>
-            ))}
+                {FILTER_OPTIONS.map((o) => (
+                  <option key={o.value} value={o.value}>
+                    {o.label}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="flex items-center gap-1.5 text-sm text-muted-foreground">
+              <span className="text-[11px] uppercase tracking-wide">From</span>
+              <input
+                type="date"
+                value={from}
+                onChange={(e) => setFrom(e.target.value)}
+                className="h-9 rounded-lg border border-border bg-background px-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring/40"
+              />
+            </label>
+            <label className="flex items-center gap-1.5 text-sm text-muted-foreground">
+              <span className="text-[11px] uppercase tracking-wide">To</span>
+              <input
+                type="date"
+                value={to}
+                onChange={(e) => setTo(e.target.value)}
+                className="h-9 rounded-lg border border-border bg-background px-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring/40"
+              />
+            </label>
+          </FilterBar>
+
+          <div className="flex items-center justify-between text-xs text-muted-foreground">
+            <span>
+              Showing {filtered.length} of {data.clinics.length} clinic{data.clinics.length === 1 ? "" : "s"} · window:{" "}
+              {data.window.label}
+            </span>
+            <span>Today&apos;s figures use the clinic-day in Asia/Kolkata.</span>
           </div>
-        </div>
 
-        <div className="divide-y divide-border overflow-hidden rounded-lg border border-border">
-          {visible.length === 0 ? (
-            <p className="px-4 py-8 text-center text-sm text-muted-foreground">
-              {clinics.length === 0
-                ? "No clinics registered yet."
-                : "No clinics match this search or filter."}
-            </p>
-          ) : (
-            visible.map((c) => (
-              <Link
-                key={c.id}
-                href={`/admin/clinics/${c.id}/edit`}
-                className="flex items-center gap-3 px-4 py-3 hover:bg-muted focus:outline-none focus-visible:bg-muted"
-              >
-                {c.logoUrl ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img
-                    src={c.logoUrl}
-                    alt=""
-                    className="size-9 rounded-md object-cover"
-                  />
-                ) : (
-                  <Avatar name={c.name} size="sm" />
-                )}
-                <div className="min-w-0 flex-1">
-                  <div className="truncate text-sm font-medium">{c.name}</div>
-                  <div className="truncate text-xs text-muted-foreground">
-                    {c.slug}
-                  </div>
-                </div>
-                <StatusBadge tone={isActive(c.status) ? "success" : "neutral"}>
-                  {isActive(c.status) ? "Active" : "Inactive"}
-                </StatusBadge>
-              </Link>
-            ))
-          )}
-        </div>
-        {visible.length > 0 && (
-          <p className="text-xs text-muted-foreground">
-            Showing {visible.length} of {clinics.length} registered{" "}
-            {clinics.length === 1 ? "clinic" : "clinics"}.
-          </p>
-        )}
-      </section>
+          <DataTable
+            columns={columns}
+            rows={filtered}
+            rowKey={(c) => c.clinicId}
+            loading={loading}
+            onRowClick={(c) => {
+              setOpenClinicId(c.clinicId);
+              setDrawerOpen(true);
+            }}
+            emptyTitle="No clinics match these filters"
+            emptyDescription="Clear the filters to see every registered clinic."
+          />
+        </>
+      )}
+
+      <ClinicOpsDrawer clinicId={openClinicId} open={drawerOpen} onOpenChange={setDrawerOpen} />
     </PageContainer>
+  );
+}
+
+function Header() {
+  return (
+    <div className="flex flex-wrap items-start justify-between gap-3">
+      <div>
+        <h1 className="text-2xl font-semibold tracking-tight">Operations control centre</h1>
+        <p className="text-sm text-muted-foreground">
+          Live operational state for every HairOS clinic — adoption, review, reports and delivery.
+        </p>
+      </div>
+      <Link href="/admin/clinics" className={cn(buttonVariants({ variant: "outline", size: "sm" }))}>
+        <Building2 /> Clinic management <ArrowRight />
+      </Link>
+    </div>
+  );
+}
+
+function KpiStrip({ data }: { data: OpsOverview }) {
+  const k = data.kpis;
+  return (
+    <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+      <MetricCard
+        label="Registered clinics"
+        value={k.clinicsRegistered}
+        hint={`${k.clinicsOperational} actively using HairOS`}
+      />
+      <MetricCard
+        label="Doctors signed in"
+        value={data.capabilities.authReadable ? k.doctorsSignedIn : "—"}
+        hint={
+          data.capabilities.authReadable
+            ? `of ${k.doctorsTotal} onboarded`
+            : `sign-in unknown · ${k.doctorsTotal} onboarded`
+        }
+      />
+      <MetricCard
+        label={`Assessments · ${data.window.label}`}
+        value={k.assessments.today}
+        hint={`${k.assessments.allTime} all-time`}
+      />
+      <MetricCard
+        label={`Approvals · ${data.window.label}`}
+        value={k.approvals.today}
+        hint={`${k.approvals.allTime} all-time · ${k.pendingReviews} pending review`}
+      />
+      <MetricCard
+        label={`Reports sent · ${data.window.label}`}
+        value={gatedToday(k.reportsSent)}
+        hint={gatedHint(k.reportsSent, "sent")}
+      />
+      <MetricCard
+        label={`Reports delivered · ${data.window.label}`}
+        value={gatedToday(k.reportsDelivered)}
+        hint={gatedHint(k.reportsDelivered, "delivered")}
+      />
+      <MetricCard label="Pending doctor review" value={k.pendingReviews} hint="awaiting a doctor across all clinics" />
+      <MetricCard
+        label="Operationally using"
+        value={k.clinicsOperational}
+        hint={`${k.clinicsRegistered - k.clinicsOperational} not yet active`}
+      />
+    </div>
+  );
+}
+
+function CapabilityNote({ data }: { data: OpsOverview }) {
+  const notes: string[] = [];
+  if (data.capabilities.payments === "NOT_CONNECTED")
+    notes.push("Confirmed orders & revenue: Not connected (payment migration not applied here).");
+  if (data.capabilities.delivery === "NOT_CONNECTED")
+    notes.push("Report delivery: Not connected (delivery migration not applied here).");
+  if (!data.capabilities.authReadable)
+    notes.push("Doctor sign-in telemetry (auth.users) could not be read — last-login shows Unknown, not Never.");
+  if (notes.length === 0) return null;
+  return (
+    <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900 dark:border-amber-900/40 dark:bg-amber-950/30 dark:text-amber-200">
+      {notes.map((n) => (
+        <div key={n}>• {n}</div>
+      ))}
+    </div>
   );
 }
