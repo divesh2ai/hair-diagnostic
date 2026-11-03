@@ -124,6 +124,13 @@ export const AUDIT_ACTION_GROUPS = {
     // Doctor row — a link, not a denial, and not the same event as
     // DOCTOR_PHONE_LOGIN_LINKED, which is a first login onto an unlinked row.
     "DOCTOR_PHONE_IDENTITY_ATTACHED",
+    // A controlled admin/ops migration attaching a doctor's Google identity as
+    // the new canonical `supabaseUserId` while preserving their existing phone
+    // identity in `supabasePhoneUserId`. Distinct from the self-service login
+    // events above: it is written once, out-of-band, by the Google-login
+    // migration procedure (see docs/launch/acube-avinash-google-login-migration.md),
+    // not by a doctor signing in. Present here so the audit console can filter it.
+    "DOCTOR_GOOGLE_IDENTITY_LINKED",
   ],
 } as const;
 

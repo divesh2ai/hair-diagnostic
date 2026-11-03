@@ -318,30 +318,42 @@ function LoginInner() {
           </div>
         </div>
 
-        <div className="grid grid-cols-2 gap-1 rounded-lg bg-stone-200/70 p-1">
-          <button
-            type="button"
-            onClick={() => setChannel("email")}
-            className={`inline-flex h-9 items-center justify-center gap-1.5 rounded-md text-xs font-semibold transition-colors ${
-              channel === "email"
-                ? "bg-white text-slate-900 shadow-sm"
-                : "text-stone-600 hover:text-stone-900"
-            }`}
-          >
-            <Mail className="h-3.5 w-3.5" /> Email
-          </button>
-          <button
-            type="button"
-            onClick={() => setChannel("phone")}
-            className={`inline-flex h-9 items-center justify-center gap-1.5 rounded-md text-xs font-semibold transition-colors ${
-              channel === "phone"
-                ? "bg-white text-slate-900 shadow-sm"
-                : "text-stone-600 hover:text-stone-900"
-            }`}
-          >
-            <Smartphone className="h-3.5 w-3.5" /> Mobile
-          </button>
-        </div>
+        {/* Channel switcher. The Mobile (phone OTP) tab is offered ONLY once
+            the live probe confirms the Supabase SMS provider is actually
+            configured (phoneOtpAvailable === true). While the probe is still
+            pending (null) or has reported the provider disabled (false) — the
+            current Twilio-less state for doctor logins — the switcher is hidden
+            entirely rather than shown as a tab that dead-ends on an
+            "unavailable" message. Google stays primary and Email is the
+            fallback; `channel` defaults to "email", and the only setter to
+            "phone" lives inside this block, so a hidden Mobile tab cannot leave
+            the form stuck on an unusable channel. */}
+        {phoneOtpAvailable === true && (
+          <div className="grid grid-cols-2 gap-1 rounded-lg bg-stone-200/70 p-1">
+            <button
+              type="button"
+              onClick={() => setChannel("email")}
+              className={`inline-flex h-9 items-center justify-center gap-1.5 rounded-md text-xs font-semibold transition-colors ${
+                channel === "email"
+                  ? "bg-white text-slate-900 shadow-sm"
+                  : "text-stone-600 hover:text-stone-900"
+              }`}
+            >
+              <Mail className="h-3.5 w-3.5" /> Email
+            </button>
+            <button
+              type="button"
+              onClick={() => setChannel("phone")}
+              className={`inline-flex h-9 items-center justify-center gap-1.5 rounded-md text-xs font-semibold transition-colors ${
+                channel === "phone"
+                  ? "bg-white text-slate-900 shadow-sm"
+                  : "text-stone-600 hover:text-stone-900"
+              }`}
+            >
+              <Smartphone className="h-3.5 w-3.5" /> Mobile
+            </button>
+          </div>
+        )}
 
         {channel === "email" && errorMsg && (
           <div className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-900">
