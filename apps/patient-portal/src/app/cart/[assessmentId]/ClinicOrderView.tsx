@@ -1,5 +1,6 @@
 "use client";
 
+import { PartialKitCheckout } from "@/components/doctor/PartialKitCheckout";
 import { useMemo, useState } from "react";
 import Link from "next/link";
 import {
@@ -243,24 +244,8 @@ export function ClinicOrderView({ cart: initial }: { cart: CartData }) {
             </p>
           )}
 
-          <button
-            type="button"
-            onClick={confirmOrder}
-            disabled={confirming || !cart.chargeable}
-            className="v2-btn v2-btn-primary mt-2 w-full"
-          >
-            {confirming ? (
-              <Loader2 className="size-4 animate-spin" aria-hidden />
-            ) : (
-              <ClipboardCheck className="size-4" aria-hidden />
-            )}
-            {confirming ? "Confirming…" : "Confirm clinic order"}
-          </button>
-          {!cart.chargeable && (
-            <p className="text-center text-xs text-[color:var(--ink-tertiary)]">
-              Resolve pricing/catalog mapping on every line to confirm.
-            </p>
-          )}
+          <PartialKitCheckout endpoint={`/api/doctor/orders/${cart.order.id}/transactions`} doctor
+            items={cart.lineItems.map(l=>({kitId:l.kitId,label:l.displayName??l.kitId,unitMinor:l.unitPriceMinor,maxBoxes:l.quantity}))} />
         </div>
       </div>
     </div>
@@ -323,29 +308,7 @@ function ClinicOrderLine({
 
         <div className="mt-2.5 flex items-center gap-3">
           <span className="text-xs font-medium text-[color:var(--ink-tertiary)]">Order quantity</span>
-          <div className="inline-flex items-center gap-1 rounded-full border" style={{ borderColor: "var(--v2-border-strong)" }}>
-            <button
-              type="button"
-              onClick={() => onQuantityChange(item.quantity - 1)}
-              disabled={busy || item.quantity <= 1}
-              aria-label={`Decrease quantity for ${label}`}
-              className="flex size-10 items-center justify-center rounded-full text-[color:var(--ink-primary)] transition-colors hover:bg-[color:var(--surface-muted)] disabled:cursor-not-allowed disabled:opacity-40"
-            >
-              <Minus className="size-4" aria-hidden />
-            </button>
-            <span className="w-7 text-center text-sm font-medium tabular-nums text-[color:var(--ink-primary)]">
-              {busy ? <Loader2 className="mx-auto size-3.5 animate-spin" aria-hidden /> : item.quantity}
-            </span>
-            <button
-              type="button"
-              onClick={() => onQuantityChange(item.quantity + 1)}
-              disabled={busy || item.quantity >= 99}
-              aria-label={`Increase quantity for ${label}`}
-              className="flex size-10 items-center justify-center rounded-full text-[color:var(--ink-primary)] transition-colors hover:bg-[color:var(--surface-muted)] disabled:cursor-not-allowed disabled:opacity-40"
-            >
-              <Plus className="size-4" aria-hidden />
-            </button>
-          </div>
+          <span className="text-sm">{item.quantity} boxes recommended</span>
         </div>
 
         <p className="mt-2 text-xs text-[color:var(--ink-tertiary)]">Approved treatment</p>

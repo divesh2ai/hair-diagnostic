@@ -1,3 +1,4 @@
+import { CheckoutError } from "@/lib/commerce/partialCheckout";
 import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { isSchemaDriftError } from "@/lib/prismaErrors";
@@ -248,8 +249,13 @@ export async function markPaid(input: MarkPaidInput): Promise<MarkPaidResult> {
   // async function's return as `{ outcome: string; … }` — the two literal
   // branches widen to `string` — and the union no longer satisfies
   // MarkPaidResult. Naming it keeps each branch discriminated.
-  return guardedPayment<MarkPaidResult>(async () => {
-    const rows = await prisma.$queryRaw<RawRow[]>(Prisma.sql`
+  return guardedPayment<MarkPaidResult>(() => prisma.$transaction(async (tx) => {
+    await tx.$queryRaw`SELECT id FROM "KitOrderIntent" WHERE id=${input.kitOrderIntentId} AND "clinicId"=${input.clinicId} FOR UPDATE`;
+    const [provisioned] = await tx.$queryRaw<Array<{present:boolean}>>`SELECT to_regclass('public."KitPurchaseTransaction"') IS NOT NULL AS present`;
+    const partial = provisioned.present ? await tx.$queryRaw<Array<{id:string}>>`SELECT id FROM "KitPurchaseTransaction"
+      WHERE "kitOrderIntentId"=${input.kitOrderIntentId} AND "clinicId"=${input.clinicId} LIMIT 1` : [];
+    if (partial.length) throw new CheckoutError("use_selected_transaction");
+    const rows = await tx.$queryRaw<RawRow[]>(Prisma.sql`
       INSERT INTO "KitOrderPayment" (
         "id", "kitOrderIntentId", "clinicId", "assessmentId", "status", "source",
         "amountMinor", "currency", "provider", "providerRef",
@@ -277,7 +283,7 @@ export async function markPaid(input: MarkPaidInput): Promise<MarkPaidResult> {
       return { outcome: "paid", payment: toRecord(rows[0]) } satisfies MarkPaidResult;
     }
 
-    const existing = await prisma.$queryRaw<RawRow[]>(Prisma.sql`
+    const existing = await tx.$queryRaw<RawRow[]>(Prisma.sql`
       SELECT ${COLS} FROM "KitOrderPayment"
        WHERE "kitOrderIntentId" = ${input.kitOrderIntentId}
     `);
@@ -286,7 +292,7 @@ export async function markPaid(input: MarkPaidInput): Promise<MarkPaidResult> {
       outcome: "already_paid",
       payment: toRecord(existing[0]),
     } satisfies MarkPaidResult;
-  }).catch((err): MarkPaidResult => {
+  })).catch((err): MarkPaidResult => {
     // A unique violation that ISN'T the order key is the reference collision
     // described on MarkPaidResult. Distinguished here rather than at the two
     // call sites so both cannot disagree about what it means.

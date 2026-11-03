@@ -5,6 +5,7 @@ import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 // each route's downstream collaborators are mocked, so a 403 proves the guard
 // fired before any mutation, and the mutation spies prove nothing was written.
 
+const createPurchaseTransaction = vi.fn();
 const startCheckout = vi.fn();
 const confirmPayment = vi.fn();
 const resolveApprovedOrder = vi.fn();
@@ -50,6 +51,11 @@ vi.mock("@/lib/commerce/sellability", () => ({
   evaluateOrderForPatientCharge: (...a: unknown[]) => evaluateOrderForPatientCharge(...a),
 }));
 
+vi.mock("@/lib/commerce/transactionStore", () => ({
+  createPurchaseTransaction: (...a: unknown[]) => createPurchaseTransaction(...a),
+  listPurchaseTransactions: vi.fn(),
+}));
+
 const ORIG = process.env.PURCHASING_ENABLED;
 beforeEach(() => {
   vi.clearAllMocks();
@@ -73,12 +79,12 @@ describe("purchasing disabled — endpoints refuse and mutate nothing", () => {
   it("POST /cart/[id]/checkout → 403, no checkout started", async () => {
     const { POST } = await import("@/app/api/cart/[assessmentId]/checkout/route");
     const res = await POST(
-      new Request("http://localhost/api/cart/asm/checkout?t=tok", { method: "POST" }),
+      new Request("http://localhost/api/cart/asm/checkout?t=tok", { method: "POST", body:body({selection:[{kitId:"TE_GOLD",boxes:1}],clientTransactionId:"checkout-test-id-1",status:"PAID"}) }),
       { params: Promise.resolve({ assessmentId: "asm" }) },
     );
     expect(res.status).toBe(403);
     expect((await res.json()).error).toBe("PURCHASING_DISABLED");
-    expect(startCheckout).not.toHaveBeenCalled();
+    expect(createPurchaseTransaction).not.toHaveBeenCalled();
   });
 
   it("POST /cart/[id]/confirm → 403, no audit write", async () => {
@@ -140,19 +146,15 @@ describe("purchasing enabled — the gate does not block", () => {
       lines: [],
       blockingReasons: [],
     });
-    startCheckout.mockResolvedValue({
-      status: "PENDING",
-      checkoutStartedAt: new Date(),
-      paidAt: null,
-      amountMinor: null,
-      source: null,
-    });
+    createPurchaseTransaction.mockResolvedValue({transaction:{id:"transaction-1",status:"PENDING",amountMinor:311400},created:true});
     const { POST } = await import("@/app/api/cart/[assessmentId]/checkout/route");
     const res = await POST(
-      new Request("http://localhost/api/cart/asm/checkout?t=tok", { method: "POST" }),
+      new Request("http://localhost/api/cart/asm/checkout?t=tok", { method: "POST", body:body({selection:[{kitId:"TE_GOLD",boxes:1}],clientTransactionId:"checkout-test-id-1",status:"PAID"}) }),
       { params: Promise.resolve({ assessmentId: "asm" }) },
     );
     expect(res.status).not.toBe(403);
-    expect(startCheckout).toHaveBeenCalledTimes(1);
+    expect(createPurchaseTransaction).toHaveBeenCalledTimes(1);
+    expect(createPurchaseTransaction).toHaveBeenCalledWith({clinicId:"cl1",intentId:"koi",clientTransactionId:"checkout-test-id-1",selection:[{kitId:"TE_GOLD",boxes:1}]});
+    expect((await res.json()).transaction.status).toBe("PENDING");
   });
 });

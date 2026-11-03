@@ -1,4 +1,5 @@
 import Image from "next/image";
+import { PartialKitCheckout } from "@/components/doctor/PartialKitCheckout";
 import { ShieldCheck } from "lucide-react";
 import { ProductImage } from "@/components/kits/ProductImage";
 import { protocolMonthsLabel } from "@/lib/commerce/kitQuantity";
@@ -12,7 +13,7 @@ import type { CartData } from "@/lib/cart/loadCartData";
 // up. Server-rendered, no client JS: there is nothing here for the patient to
 // do, so there is nothing here to hydrate.
 
-export function PatientPlanView({ cart }: { cart: CartData }) {
+export function PatientPlanView({ cart, checkoutEndpoint }: { cart: CartData; checkoutEndpoint?: string }) {
   const labelOf = (li: CartData["lineItems"][number]) => li.displayName ?? li.sourceIdentifierSnapshot;
 
   return (
@@ -92,9 +93,11 @@ export function PatientPlanView({ cart }: { cart: CartData }) {
           ))}
         </section>
 
+        {checkoutEndpoint && <div className="mt-6"><PartialKitCheckout endpoint={checkoutEndpoint}
+          items={cart.lineItems.map(l=>({kitId:l.kitId,label:labelOf(l),unitMinor:l.unitPriceMinor,maxBoxes:l.quantity}))} /></div>}
         <section className="mt-4 rounded-2xl border border-stone-200 bg-white p-4">
           <div className="flex items-baseline justify-between">
-            <span className="text-base text-stone-700">Total</span>
+            <span className="text-base text-stone-700">Full recommendation value</span>
             {cart.subtotalMinor === null ? (
               <span className="text-sm font-medium text-amber-700">Confirming with clinic</span>
             ) : (
