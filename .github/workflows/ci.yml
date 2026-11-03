@@ -88,7 +88,7 @@ jobs:
       - name: Generate Prisma client
         run: npx prisma generate
 
-      - name: Localisation, doctor, report and commerce suites
+      - name: Localisation, doctor, report, commerce and admin-ops suites
         run: |
           npx vitest run \
             tests/root-route.test.ts \
@@ -96,6 +96,7 @@ jobs:
             tests/auth/post-login-identity.test.ts \
             tests/localisation \
             tests/reports \
+            tests/admin/ops-dashboard.test.ts \
             tests/doctor/clinical-attention-advice.test.ts \
             tests/doctor/clinical-attention-soft-hidden.test.ts \
             tests/doctor/clinical-signals.test.ts \

@@ -46,7 +46,9 @@ export function formatInrFromMinor(amountMinor: number): string {
 export const STATUS_LABEL: Record<ClinicPrimaryStatus, string> = {
   NEVER_LOGGED_IN: "Never logged in",
   NO_ASSESSMENTS: "No assessments",
-  PENDING_REVIEW: "Pending doctor review",
+  RECONCILIATION_DISCREPANCY: "Reconciliation discrepancy",
+  MISSING_CONSULTATION: "Missing consultation",
+  PENDING_REVIEW: "Awaiting doctor review",
   REPORT_DELIVERY_ATTENTION: "Report / delivery attention",
   ACTIVELY_USING: "Actively using HairOS",
   ONBOARDING_IDLE: "Onboarding / idle",
@@ -59,6 +61,8 @@ export type BadgeTone = "success" | "warning" | "danger" | "neutral" | "info" | 
 export const STATUS_TONE: Record<ClinicPrimaryStatus, BadgeTone> = {
   NEVER_LOGGED_IN: "neutral",
   NO_ASSESSMENTS: "neutral",
+  RECONCILIATION_DISCREPANCY: "danger",
+  MISSING_CONSULTATION: "warning",
   PENDING_REVIEW: "warning",
   REPORT_DELIVERY_ATTENTION: "danger",
   ACTIVELY_USING: "success",
@@ -73,6 +77,8 @@ export type ClinicFilterKey =
   | "neverLoggedIn"
   | "noAssessments"
   | "pendingReview"
+  | "missingConsultation"
+  | "reconciliationDiscrepancy"
   | "reportDeliveryAttention"
   | "activelyUsing";
 
@@ -80,7 +86,18 @@ export const FILTER_OPTIONS: { value: ClinicFilterKey; label: string }[] = [
   { value: "all", label: "All clinics" },
   { value: "neverLoggedIn", label: "Never logged in" },
   { value: "noAssessments", label: "No assessments" },
-  { value: "pendingReview", label: "Pending doctor review" },
+  { value: "pendingReview", label: "Awaiting doctor review" },
+  { value: "missingConsultation", label: "Missing consultation / pipeline attention" },
+  { value: "reconciliationDiscrepancy", label: "Reconciliation discrepancies" },
   { value: "reportDeliveryAttention", label: "Report / delivery attention" },
   { value: "activelyUsing", label: "Actively using HairOS" },
 ];
+
+/** Human labels for the per-report readiness verdict (drilldown matrix). */
+export const REPORT_READINESS_LABEL: Record<string, string> = {
+  NOT_APPROVED: "Not approved",
+  AVAILABLE: "Available",
+  RETRIEVAL_FAILED: "Retrieval failed",
+  ASSET_MISSING: "Asset missing",
+  UNVERIFIABLE: "Unverifiable (storage)",
+};

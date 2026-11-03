@@ -11,6 +11,33 @@
 import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import type { CapabilityState } from "./types";
+import {
+  classifyReportReadiness,
+  type ReportReadiness,
+  type SnapshotState,
+  type RetrievalState,
+} from "./classify";
+import { probeOnePagerSnapshots, type SnapshotProbe } from "./snapshots";
+
+/** One approved assessment's report, with every availability facet separate. */
+export interface ReportMatrixRow {
+  assessmentId: string;
+  patientName: string;
+  contentVersion: number;
+  approvedAt: string | null;
+  /** Clinically approved — always true for a matrix row (the matrix is the approved set). */
+  approved: boolean;
+  /** One-pager snapshot object presence. UNKNOWN when storage is unreadable. */
+  onePagerSnapshot: SnapshotState;
+  /** ReportAsset PATIENT_REPORT_PDF is READY for this version. */
+  dossierReady: boolean;
+  /** Byte-retrieval result for the snapshot, where testable. */
+  retrieval: RetrievalState;
+  /** Optional background one-pager render queue status for this version. */
+  reportAssetStatus: string | null;
+  /** The honest readiness verdict derived from the facets above. */
+  readiness: ReportReadiness;
+}
 
 export interface ClinicDetail {
   clinic: {
@@ -62,14 +89,53 @@ export interface ClinicDetail {
     revenueMinor: number | null;
   };
   reports: {
-    // Report availability: an approved consultation version ⇒ the one-pager
-    // snapshot and dossier PDF were written. This is the authoritative
-    // availability signal, independent of the background render queue below.
-    available: number;
+    /**
+     * Report accounting with the four facets kept SEPARATE, because asset
+     * existence must never be inferred from a clinical approval:
+     *   • approved          — approved consultation versions (the sign-off).
+     *   • dossiersReady      — ReportAsset PATIENT_REPORT_PDF rows that are READY.
+     *   • snapshotsPresent   — one-pager snapshot objects found in storage; null
+     *                          when storage could not be read (NOT_CONNECTED).
+     *   • retrievalVerified  — snapshots whose bytes actually downloaded; null
+     *                          when storage could not be read.
+     * The per-assessment `matrix` is the evidence behind these totals and is
+     * what the overview's figures reconcile against.
+     */
+    approved: number;
+    dossiersReady: number;
+    snapshotsPresent: number | null;
+    retrievalVerified: number | null;
+    /** How the one-pager snapshot store responded for this clinic's set. */
+    storageState: CapabilityState;
+    matrix: ReportMatrixRow[];
     renderQueue: {
       state: CapabilityState;
       counts: { pending: number; queued: number; rendering: number; ready: number; failed: number };
     };
+  };
+  /**
+   * Pipeline attention — COMPLETED assessments that have no consultation.
+   * Separated from the doctor queue so it is never read as doctor inaction.
+   */
+  pipeline: {
+    completedAssessments: number;
+    assessmentsWithoutConsultation: number;
+    missing: {
+      assessmentId: string;
+      patientName: string;
+      status: string;
+      submittedAt: string | null;
+    }[];
+  };
+  /** Approved-version / Assessment.reviewDecision conflicts, reported verbatim. */
+  reconciliation: {
+    discrepancies: number;
+    cases: {
+      assessmentId: string;
+      patientName: string;
+      approvalStatus: string;
+      reviewDecision: string;
+    }[];
   };
   delivery: {
     state: CapabilityState;
@@ -154,6 +220,11 @@ export async function loadClinicDetail(clinicId: string): Promise<ClinicDetail> 
     kitCancelled,
     recentIntents,
     reportAssetsByStatus,
+    completedCount,
+    missingConsultationCount,
+    missingConsultationRows,
+    reconciliationRows,
+    approvedForMatrix,
   ] = await prisma.$transaction([
     prisma.patient.count({ where: { clinicId, deletedAt: null } }),
     prisma.assessment.count({ where: { clinicId, deletedAt: null } }),
@@ -210,7 +281,133 @@ export async function loadClinicDetail(clinicId: string): Promise<ClinicDetail> 
       orderBy: { status: "asc" },
       _count: { _all: true },
     }),
+    // Total COMPLETED assessments (the AI pipeline finished) — its own figure,
+    // never conflated with approval.
+    prisma.assessment.count({
+      where: { clinicId, deletedAt: null, status: "COMPLETED" },
+    }),
+    // Pipeline attention: COMPLETED assessments with no consultation. Counted in
+    // full, then a bounded sample listed as evidence.
+    prisma.assessment.count({
+      where: { clinicId, deletedAt: null, status: "COMPLETED", consultations: { none: {} } },
+    }),
+    prisma.assessment.findMany({
+      where: { clinicId, deletedAt: null, status: "COMPLETED", consultations: { none: {} } },
+      orderBy: { submittedAt: "desc" },
+      take: 15,
+      select: {
+        id: true,
+        status: true,
+        submittedAt: true,
+        patient: { select: { name: true } },
+      },
+    }),
+    // Reconciliation discrepancies: APPROVED current version, reviewDecision not
+    // APPROVED. Listed verbatim so an operator can see exactly which case.
+    // No `take`: reconciliation conflicts are rare (a data-integrity signal) and
+    // the drilldown figure must match the overview's exactly.
+    prisma.consultation.findMany({
+      where: {
+        clinicId,
+        currentVersion: { approvalStatus: "APPROVED" },
+        assessment: { reviewDecision: { not: "APPROVED" }, deletedAt: null },
+      },
+      orderBy: { updatedAt: "desc" },
+      select: {
+        assessmentId: true,
+        patient: { select: { name: true } },
+        currentVersion: { select: { approvalStatus: true } },
+        assessment: { select: { reviewDecision: true } },
+      },
+    }),
+    // The full approved set, for the per-assessment report matrix. Each carries
+    // its approved version id + number so storage and dossier can be probed per
+    // version rather than inferred.
+    prisma.consultation.findMany({
+      where: { clinicId, currentVersion: { approvalStatus: "APPROVED" } },
+      orderBy: { updatedAt: "desc" },
+      select: {
+        assessmentId: true,
+        patient: { select: { name: true } },
+        currentVersion: { select: { id: true, contentVersion: true, approvedAt: true } },
+      },
+    }),
   ]);
+
+  // ReportAsset rows for the approved versions — the CONFIRMED asset facts
+  // (dossier READY, and the optional background one-pager render status). Never
+  // inferred from the approval.
+  const approvedVersionIds = approvedForMatrix
+    .map((c) => c.currentVersion?.id)
+    .filter((v): v is string => Boolean(v));
+  const reportAssetsForVersions =
+    approvedVersionIds.length > 0
+      ? await prisma.reportAsset.findMany({
+          where: { consultationVersionId: { in: approvedVersionIds } },
+          select: { consultationVersionId: true, type: true, status: true },
+        })
+      : [];
+  const dossierReadyByVersion = new Map<string, boolean>();
+  const onePagerStatusByVersion = new Map<string, string>();
+  for (const a of reportAssetsForVersions) {
+    if (a.type === "PATIENT_REPORT_PDF" && a.status === "READY") {
+      dossierReadyByVersion.set(a.consultationVersionId, true);
+    }
+    if (a.type === "ONE_PAGER_PNG" || a.type === "ONE_PAGER_PDF") {
+      // Keep the most "advanced" status if several exist; READY wins.
+      const prev = onePagerStatusByVersion.get(a.consultationVersionId);
+      if (!prev || a.status === "READY") onePagerStatusByVersion.set(a.consultationVersionId, a.status);
+    }
+  }
+
+  // Probe the one-pager snapshot store for the approved set — existence AND
+  // byte retrieval, where storage is reachable. Capability-gated, never fatal.
+  const probes: SnapshotProbe[] = approvedForMatrix
+    .filter((c) => c.currentVersion)
+    .map((c) => ({
+      assessmentId: c.assessmentId,
+      contentVersion: c.currentVersion!.contentVersion,
+    }));
+  const snapshots = await probeOnePagerSnapshots(probes);
+
+  const matrix: ReportMatrixRow[] = approvedForMatrix.map((c) => {
+    const versionId = c.currentVersion?.id ?? null;
+    const contentVersion = c.currentVersion?.contentVersion ?? 0;
+    const snap = snapshots.byAssessment.get(c.assessmentId);
+    const onePagerSnapshot: SnapshotState =
+      snapshots.state === "NOT_CONNECTED" ? "UNKNOWN" : snap?.exists ?? "UNKNOWN";
+    const retrieval: RetrievalState =
+      snapshots.state === "NOT_CONNECTED" ? "NOT_TESTED" : snap?.retrieval ?? "NOT_TESTED";
+    const dossierReady = versionId ? dossierReadyByVersion.get(versionId) ?? false : false;
+    const reportAssetStatus = versionId ? onePagerStatusByVersion.get(versionId) ?? null : null;
+    return {
+      assessmentId: c.assessmentId,
+      patientName: c.patient.name,
+      contentVersion,
+      approvedAt: c.currentVersion?.approvedAt ? c.currentVersion.approvedAt.toISOString() : null,
+      approved: true,
+      onePagerSnapshot,
+      dossierReady,
+      retrieval,
+      reportAssetStatus,
+      readiness: classifyReportReadiness({
+        approved: true,
+        onePagerSnapshot,
+        dossierReady,
+        retrieval,
+      }),
+    };
+  });
+
+  const dossiersReady = matrix.filter((r) => r.dossierReady).length;
+  const snapshotsPresent =
+    snapshots.state === "NOT_CONNECTED"
+      ? null
+      : matrix.filter((r) => r.onePagerSnapshot === "PRESENT").length;
+  const retrievalVerified =
+    snapshots.state === "NOT_CONNECTED"
+      ? null
+      : matrix.filter((r) => r.retrieval === "VERIFIED").length;
 
   const recentAudit = await prisma.auditLog.findMany({
     where: { clinicId },
@@ -281,11 +478,35 @@ export async function loadClinicDetail(clinicId: string): Promise<ClinicDetail> 
     },
     orders,
     reports: {
-      available: approved,
+      approved,
+      dossiersReady,
+      snapshotsPresent,
+      retrievalVerified,
+      storageState: snapshots.state,
+      matrix,
       renderQueue: {
         state: "CONNECTED",
         counts: queueCounts,
       },
+    },
+    pipeline: {
+      completedAssessments: completedCount,
+      assessmentsWithoutConsultation: missingConsultationCount,
+      missing: missingConsultationRows.map((a) => ({
+        assessmentId: a.id,
+        patientName: a.patient.name,
+        status: a.status,
+        submittedAt: a.submittedAt ? a.submittedAt.toISOString() : null,
+      })),
+    },
+    reconciliation: {
+      discrepancies: reconciliationRows.length,
+      cases: reconciliationRows.map((c) => ({
+        assessmentId: c.assessmentId,
+        patientName: c.patient.name,
+        approvalStatus: c.currentVersion?.approvalStatus ?? "APPROVED",
+        reviewDecision: c.assessment.reviewDecision,
+      })),
     },
     delivery,
     audit: {

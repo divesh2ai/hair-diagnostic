@@ -52,6 +52,10 @@ function matchesFilter(row: ClinicOpsRow, filter: ClinicFilterKey): boolean {
       return row.flags.noAssessments;
     case "pendingReview":
       return row.flags.pendingReview;
+    case "missingConsultation":
+      return row.flags.missingConsultation;
+    case "reconciliationDiscrepancy":
+      return row.flags.reconciliationDiscrepancy;
     case "reportDeliveryAttention":
       return row.flags.reportDeliveryAttention;
     case "activelyUsing":
@@ -185,6 +189,36 @@ export default function AdminOperationsPage() {
         ),
       },
       {
+        key: "pipeline",
+        header: "Pipeline",
+        align: "right",
+        cell: (c) => {
+          // Missing consultation (pipeline gap) and reconciliation conflicts are
+          // shown apart from the doctor queue — a missing consultation is never
+          // doctor inaction.
+          const hasMissing = c.assessmentsWithoutConsultation > 0;
+          const hasConflict = c.reconciliationDiscrepancies > 0;
+          if (!hasMissing && !hasConflict) {
+            return <div className="tabular-nums text-xs"><span className="text-muted-foreground">—</span></div>;
+          }
+          return (
+            <div className="tabular-nums text-xs">
+              {hasMissing && (
+                <span className="text-amber-600 dark:text-amber-400" title="COMPLETED assessments with no consultation">
+                  {c.assessmentsWithoutConsultation} no-consult
+                </span>
+              )}
+              {hasMissing && hasConflict && <span className="text-muted-foreground"> · </span>}
+              {hasConflict && (
+                <span className="text-red-600 dark:text-red-400" title="Approved-version / reviewDecision conflicts">
+                  {c.reconciliationDiscrepancies} conflict
+                </span>
+              )}
+            </div>
+          );
+        },
+      },
+      {
         key: "kits",
         header: "Intents · orders",
         align: "right",
@@ -202,19 +236,32 @@ export default function AdminOperationsPage() {
       },
       {
         key: "reports",
-        header: "Reports (avail · sent · deliv)",
+        header: "Reports (appr · dossier · sent · deliv)",
         align: "right",
-        cell: (c) => (
-          <div className="tabular-nums text-xs">
-            <span className="font-medium">{c.reportsAvailable}</span>
-            <span className="text-muted-foreground">
-              {" · "}
-              {c.reportsSent.state === "CONNECTED" ? c.reportsSent.allTime : "n/c"}
-              {" · "}
-              {c.reportsDelivered.state === "CONNECTED" ? c.reportsDelivered.allTime : "n/c"}
-            </span>
-          </div>
-        ),
+        cell: (c) => {
+          // Approval and the rendered dossier asset are kept distinct: a gap
+          // between them (dossier < approved) is surfaced, never hidden by
+          // treating approval as availability.
+          const gap = c.reports.dossiersReady < c.reports.approved;
+          return (
+            <div className="tabular-nums text-xs">
+              <span className="font-medium">{c.reports.approved}</span>
+              <span className="text-muted-foreground"> · </span>
+              <span
+                className={gap ? "text-amber-600 dark:text-amber-400" : "text-muted-foreground"}
+                title="ReportAsset PATIENT_REPORT_PDF rows that are READY (a confirmed asset, not inferred from approval)"
+              >
+                {c.reports.dossiersReady}
+              </span>
+              <span className="text-muted-foreground">
+                {" · "}
+                {c.reportsSent.state === "CONNECTED" ? c.reportsSent.allTime : "n/c"}
+                {" · "}
+                {c.reportsDelivered.state === "CONNECTED" ? c.reportsDelivered.allTime : "n/c"}
+              </span>
+            </div>
+          );
+        },
       },
       {
         key: "activity",
@@ -364,7 +411,27 @@ function KpiStrip({ data }: { data: OpsOverview }) {
       <MetricCard
         label={`Approvals · ${data.window.label}`}
         value={k.approvals.today}
-        hint={`${k.approvals.allTime} all-time · ${k.pendingReviews} pending review`}
+        hint={`${k.approvals.allTime} approved · ${k.completedAssessments} completed (pipeline)`}
+      />
+      <MetricCard
+        label="Awaiting doctor review"
+        value={k.pendingReviews}
+        hint="consultation versions pending a doctor"
+      />
+      <MetricCard
+        label="Missing consultation"
+        value={k.assessmentsWithoutConsultation}
+        hint="completed assessments, no consultation — pipeline, not doctor"
+      />
+      <MetricCard
+        label="Reconciliation discrepancies"
+        value={k.reconciliationDiscrepancies}
+        hint="approved-version / reviewDecision conflicts"
+      />
+      <MetricCard
+        label="Dossiers ready"
+        value={k.dossiersReady}
+        hint={`of ${k.approvals.allTime} approved — asset confirmed, not inferred`}
       />
       <MetricCard
         label={`Reports sent · ${data.window.label}`}
@@ -376,7 +443,6 @@ function KpiStrip({ data }: { data: OpsOverview }) {
         value={gatedToday(k.reportsDelivered)}
         hint={gatedHint(k.reportsDelivered, "delivered")}
       />
-      <MetricCard label="Pending doctor review" value={k.pendingReviews} hint="awaiting a doctor across all clinics" />
       <MetricCard
         label="Operationally using"
         value={k.clinicsOperational}
