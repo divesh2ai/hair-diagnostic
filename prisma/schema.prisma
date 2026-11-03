@@ -1060,6 +1060,7 @@ model Assessment {
   // "Today's kit-fulfilment visits at this clinic" and the returning-patient
   // split, without scanning the clinic's whole assessment history.
   @@index([clinicId, visitType])
+  @@unique([id, clinicId, patientId], map: "r2_assessment_clinic_patient_key")
 }
 
 model AssessmentResponse {
@@ -1677,6 +1678,7 @@ model KitOrderIntent {
   @@index([doctorId])
   @@index([assessmentId])
   @@index([clinicId, treatmentStartedAt])
+  @@unique([id, clinicId, assessmentId], map: "r2_order_clinic_assessment_key")
 }
 
 enum KitOrderStatus {
@@ -1844,6 +1846,245 @@ model ClinicKitFulfilment {
   /// The Ops queue: everything unfinished, oldest first, across tenants.
   @@index([status, requestedAt])
   @@index([assessmentId])
+}
+
+//////////////////////////////////////////////////////
+// PHASE 1 — doctor consultation notes + partial kit tracking
+//
+// Migration: prisma/migrations/20261023_doctor_notes_and_partial_kit (NOT
+// APPLIED — same baseline-freeze precedent as 20260829_post_approval_workflow).
+// Every reader talks to these objects over raw SQL (lib/notes/noteStore.ts,
+// lib/commerce/purchaseStore.ts) so the app compiles and boots whether or not
+// the tables exist; the surfaces answer "not provisioned" (503) until applied.
+//
+// These models carry scalar tenant/entity keys but DECLARE NO Prisma relations
+// on purpose: the foreign keys are enforced in the migration SQL, and leaving
+// the relations off keeps this an additive change that does not touch Patient,
+// Clinic, Assessment, Doctor or KitOrderIntent.
+//////////////////////////////////////////////////////
+
+/// How a note's text was captured. DICTATION = Web Speech transcript the doctor
+/// then edited; TYPED = keyboard. Recorded for provenance only — never a
+/// clinical signal, never read by the engine.
+enum ConsultationNoteInputMode {
+  DICTATION
+  TYPED
+}
+
+/// Lifecycle of a routine visit note. A note is never hard-edited in place:
+/// a correction supersedes the prior note (ACTIVE -> AMENDED) so the record of
+/// what was written, and when, survives.
+enum ConsultationNoteStatus {
+  ACTIVE
+  AMENDED
+  DELETED
+}
+
+/// Routine, dated, authored doctor visit note.
+///
+/// Deliberately SEPARATE from ConsultationVersion: a visit note is clinic
+/// documentation, not part of the approved AI snapshot or its approval
+/// lifecycle, and saving one must not mint a new version or emit a
+/// ConsultationEvent. Raw audio is never stored — only the edited transcript.
+model ConsultationNote {
+  id             String @id @default(cuid())
+
+  // Tenant + subject keys. clinicId is always the authenticated doctor's
+  // clinic, set server-side; it is the scope on every read and the RLS policy.
+  clinicId       String
+  patientId      String
+  // The visit this note belongs to. Nullable so a note can be written against a
+  // patient outside a specific assessment, but normally set.
+  assessmentId   String?
+  // Soft pointer to the consultation, for convenience joins. NEVER written into
+  // the consultation's content/version.
+  consultationId String?
+
+  // Authorship. authorName is snapshotted so attribution survives later edits
+  // to the Doctor row, mirroring AuditLog.actorName.
+  authorDoctorId String
+  authorName     String
+
+  // The clinical date of the note. Defaults to now; a doctor may set an earlier
+  // visit date. Distinct from createdAt (when the row was written).
+  noteDate  DateTime @default(now())
+
+  body      String
+  inputMode ConsultationNoteInputMode @default(TYPED)
+  // BCP-47 tag used for dictation, e.g. "en-IN". Provenance only.
+  language  String                    @default("en-IN")
+
+  status       ConsultationNoteStatus @default(ACTIVE)
+  // When this row is a correction, the note it replaces. The superseded row is
+  // moved to AMENDED in the same transaction.
+  supersedesId String?
+
+  // Visibility of the audio capture. Always false in Phase 1 — no raw audio is
+  // persisted. The column exists so a future opt-in has a home without a
+  // migration, but the writer hard-codes false.
+  audioRetained Boolean @default(false)
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  @@index([clinicId, patientId, noteDate])
+  @@index([assessmentId])
+  @@index([clinicId, noteDate])
+}
+
+/// Per-item purchase lifecycle for ONE recommended kit.
+///
+/// RECOMMENDED            — on the approved plan, nothing bought yet (default)
+/// PARTIALLY_PURCHASED    — some but not all recommended boxes bought
+/// PURCHASED              — all recommended boxes bought
+/// DEFERRED               — patient intends to buy later (reason required)
+/// DECLINED               — patient will not buy (reason required)
+/// SUBSTITUTED            — replaced by another kit (substitute + reason)
+/// DISCONTINUED           — stopped on clinical grounds (reason required)
+enum KitPurchaseLineStatus {
+  RECOMMENDED
+  PARTIALLY_PURCHASED
+  PURCHASED
+  DEFERRED
+  DECLINED
+  SUBSTITUTED
+  DISCONTINUED
+}
+
+/// A dated event in a kit's purchase/treatment history. The authoritative
+/// distinctions the clinic cares about are modelled as DISTINCT types rather
+/// than one "purchased" flag, so "the patient says they bought it" is never
+/// silently promoted to "the clinic sold it" or "money was taken":
+///
+///   PURCHASE_REPORTED_BY_PATIENT — patient-stated; informational, NOT counted
+///   PURCHASE_CONFIRMED_BY_CLINIC — an authenticated clinic user confirmed a sale
+///   PAYMENT_RECORDED             — money recorded (links KitOrderPayment)
+///   DISPENSED                    — physically handed to the patient
+///   TREATMENT_STARTED            — patient began this kit (per-kit; the
+///                                  order-level anchor stays on KitOrderIntent)
+///   DEFERRED | DECLINED | SUBSTITUTED | DISCONTINUED — clinical/commercial state
+///   REFUNDED | RETURNED          — reversals (negative to the counted total)
+enum KitPurchaseEventType {
+  EXTERNALLY_OBTAINED
+  CONTINUED
+  PURCHASE_REPORTED_BY_PATIENT
+  PURCHASE_CONFIRMED_BY_CLINIC
+  PAYMENT_RECORDED
+  DISPENSED
+  TREATMENT_STARTED
+  DEFERRED
+  DECLINED
+  SUBSTITUTED
+  DISCONTINUED
+  REFUNDED
+  RETURNED
+}
+
+/// One line per recommended kit on an approved order. Preserves the full plan:
+/// a line exists for every kit in KitOrderIntent.kitIds, created at RECOMMENDED,
+/// and is never deleted — so an unpurchased kit stays visible without being
+/// treated as paid, delivered, or an outstanding invoice.
+///
+/// `recommendedBoxes` is the BOX quantity for this one kit (KitOrderIntent
+/// .quantities[kitId] ?? DEFAULT_KIT_QUANTITY). The number of distinct KITS in
+/// the plan is the count of lines — the two are tracked separately on purpose.
+model KitPurchaseLine {
+  id               String @id @default(cuid())
+
+  kitOrderIntentId String
+  clinicId         String
+  assessmentId     String
+  patientId        String
+
+  // Matches a value in KitOrderIntent.kitIds verbatim — raw/approved identifier,
+  // never re-derived (identity + pricing resolution stays with the existing
+  // kitIdentity/orderPricing code). Preserved exactly per decision: do not
+  // invent kit ids or prices.
+  kitId          String
+  kitLabel       String
+  recommendedBoxes Int
+
+  lineStatus      KitPurchaseLineStatus @default(RECOMMENDED)
+  substituteKitId String?
+  controlReason   String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([kitOrderIntentId, kitId])
+  @@index([clinicId, patientId])
+  @@index([assessmentId])
+}
+
+/// Append-only dated ledger. Purchased boxes and what remains are DERIVED from
+/// these events (see lib/commerce/kitPurchaseModel.ts), never stored as a
+/// mutable total — so a later purchase on a new date is just a new row, with no
+/// duplicate order and no double counting.
+model KitPurchaseTransaction {
+  id String @id
+  kitOrderIntentId String
+  clinicId String
+  assessmentId String
+  clientTransactionId String
+  selection Json
+  amountMinor Int
+  currency String @default("INR")
+  status String @default("PENDING")
+  reference String?
+  recordedByDoctorId String?
+  reason String?
+  createdAt DateTime @default(now())
+  paidAt DateTime?
+  refundedAt DateTime?
+  updatedAt DateTime @updatedAt
+
+  @@unique([kitOrderIntentId, clientTransactionId])
+  @@unique([clinicId, reference])
+  @@index([clinicId, kitOrderIntentId, createdAt], map: "KitPurchaseTransaction_clinic_intent_idx")
+}
+
+model KitPurchaseEvent {
+  substituteKitId String?
+  transactionId String?
+  id                String @id @default(cuid())
+
+  kitPurchaseLineId String
+  clinicId          String
+  assessmentId      String
+
+  eventType KitPurchaseEventType
+
+  // Boxes this event moves, for quantity-bearing types (purchase/dispense/
+  // refund/return). Null for state-only events (defer/decline/etc).
+  boxes Int?
+
+  // Money in minor units (paise), mirroring KitOrderPayment.amountMinor.
+  // catalogUnitMinor is the GOVERNED price snapshot (from the pricing layer);
+  // saleValueMinor is what was actually recorded. Both nullable — a dispensing
+  // record carries no money, and no price is ever invented.
+  catalogUnitMinor Int?
+  saleValueMinor   Int?
+  currency         String  @default("INR")
+  // Optional link to the order-level payment row this event corresponds to.
+  kitOrderPaymentId String?
+
+  // The event DATE (supports later purchases); distinct from createdAt.
+  occurredAt         DateTime
+  recordedByDoctorId String
+  note               String?
+
+  // Idempotency key supplied by the client. A retried submit with the same key
+  // does not create a second row (ON CONFLICT DO NOTHING on the unique index).
+  clientEventId String?
+
+  createdAt DateTime @default(now())
+
+  @@unique([kitPurchaseLineId, clientEventId])
+  @@index([transactionId])
+  @@index([kitPurchaseLineId, occurredAt])
+  @@index([assessmentId, occurredAt])
+  @@index([clinicId, occurredAt])
 }
 
 // Structured doctor feedback on a specific consultation version. Never mutates

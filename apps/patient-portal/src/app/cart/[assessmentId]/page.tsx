@@ -1,3 +1,4 @@
+import { isPurchasingEnabled } from "@/lib/commerce/purchasingGate";
 import { ShoppingBag } from "lucide-react";
 import { prisma } from "@/lib/prisma";
 import { resolveCartCaller, loadCartData } from "@/lib/cart/loadCartData";
@@ -45,7 +46,7 @@ export default async function CartOrClinicOrderPage({
   if (cart.viewer === "doctor") {
     return <ClinicOrderView cart={cart} />;
   }
-  return <PatientPlanView cart={cart} />;
+  return <PatientPlanView cart={cart} checkoutEndpoint={isPurchasingEnabled() && t ? `/api/cart/${assessmentId}/checkout?t=${encodeURIComponent(t)}` : undefined} />;
 }
 
 function NotReady() {

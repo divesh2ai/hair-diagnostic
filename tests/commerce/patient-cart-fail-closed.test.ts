@@ -1,3 +1,4 @@
+import { priceSelection } from "@/lib/commerce/partialCheckout";
 import { describe, it, expect } from "vitest";
 import { readFileSync } from "node:fs";
 import path from "node:path";
@@ -297,20 +298,17 @@ describe("no misleading total, no monetary progression", () => {
     }
   });
 
-  it("the checkout endpoint gates on the same decision, not on the UI", () => {
-    const src = read(CHECKOUT_ROUTE);
-    expect(src).toMatch(/evaluateOrderForPatientCharge/);
-    expect(src).toMatch(/ORDER_NOT_CHARGEABLE/);
-    expect(src).toMatch(/if \(!commercial\.chargeable\)/);
+  it("the checkout delegates to server-priced selected transactions", () => {
+    expect(read(CHECKOUT_ROUTE)).toContain("createPurchaseTransaction");
+    const selectionSource=read("apps/patient-portal/src/lib/commerce/partialCheckout.ts");
+    expect(selectionSource).toContain("evaluateOrderForPatientCharge");
+    expect(selectionSource).toContain("if (!pricing.chargeable)");
   });
 
-  it("the clinic order gates its confirm button on the server flag", () => {
-    // Confirming the order is the doctor's action, on the doctor-only
-    // ClinicOrderView; the confirm button is disabled unless the server says
-    // the whole order is chargeable. (That the patient's PatientPlanView has no
-    // quantity control or order action at all is pinned in
-    // p0-launch-invariants.)
-    expect(read(CART_CLINIC_VIEW)).toMatch(/!cart\.chargeable/);
+  it("partial purchase blocks an unpriced selection but does not bill an unselected kit", () => {
+    // A blocked recommendation must not poison an unrelated approved purchase.
+    expect(()=>priceSelection(["TE_GOLD","POST_MENOPAUSE"],[{kitId:"POST_MENOPAUSE",boxes:1}])).toThrow("ORDER_NOT_CHARGEABLE");
+    expect(priceSelection(["TE_GOLD","POST_MENOPAUSE"],[{kitId:"TE_GOLD",boxes:1}]).amountMinor).toBe(311400);
   });
 
   it("the loader emits a subtotal only when the whole order is chargeable", () => {

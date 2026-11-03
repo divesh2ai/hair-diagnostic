@@ -31,6 +31,10 @@ export const AUDIT_ACTION_GROUPS = {
     "CLINICAL_PROCESSING_COMPLETED",
     "CLINICAL_PROCESSING_FAILED",
     "DOCTOR_NOTE_SAVED",
+    // A routine visit note amended (a correction that supersedes the prior
+    // note). Distinct from DOCTOR_NOTE_SAVED (the first write) so the audit
+    // trail shows corrections as their own event.
+    "DOCTOR_NOTE_AMENDED",
     "CONSULTATION_UPDATED",
     "CONSULTATION_APPROVED",
     "CONSULTATION_NEEDS_REVISION",
@@ -63,6 +67,13 @@ export const AUDIT_ACTION_GROUPS = {
     "KIT_FULFILMENT_STATE_CHANGED",
     "KIT_FULFILMENT_TRANSITION_REJECTED",
     "TREATMENT_START_RECORDED",
+    // Partial kit purchase tracking (Phase 1). Item-level, distinct from the
+    // order-level events above: a per-kit purchase/dispense/defer ledger entry,
+    // a line's control-status change, and the one-time backfill of lines from
+    // an approved order.
+    "KIT_PURCHASE_LINES_BACKFILLED",
+    "KIT_PURCHASE_EVENT_RECORDED",
+    "KIT_PURCHASE_LINE_STATUS_CHANGED",
   ],
   "Patient delivery": [
     "PATIENT_REPORT_SHARED",
