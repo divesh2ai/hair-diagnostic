@@ -2,12 +2,11 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
-import { ArrowLeft, Check, Flag } from "lucide-react";
+import { ArrowLeft } from "lucide-react";
 import { toast } from "sonner";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
-import { useHydrated } from "@/lib/format/useHydrated";
 import "@/styles/doctor-tokens.css";
-import type { Consultation, DoctorNote } from "@shared/types/consultation";
+import type { Consultation } from "@shared/types/consultation";
 import type {
   ConsultationMeta,
   ConsultationOperationalState,
@@ -22,16 +21,14 @@ import { extractSafetyFlags } from "@/lib/doctor/clinicalAttention";
 import { summarizeProtocol, kitDisplayNameForPhase } from "@/lib/doctor/protocolModel";
 import { cartHref } from "@/lib/doctor/cartHref";
 import { PatientJourney } from "@/components/doctor/PatientJourney";
-import { PatientTreatmentHistory } from "@/components/doctor/PatientTreatmentHistory";
 import { ConsultationNotesPanel } from "@/components/doctor/ConsultationNotesPanel";
-import { KitPurchaseTracker } from "@/components/doctor/KitPurchaseTracker";
+import { usePurchaseLedger } from "@/components/doctor/purchaseLedger";
 import { ReviewHeader } from "./sections/ReviewHeader";
 import { ClinicalAttentionSection } from "./sections/ClinicalAttentionSection";
 import { ProtocolSection } from "./sections/ProtocolSection";
 import type { SavedConsultation } from "./KitLineupEditor";
-import { SecondaryDetail } from "./sections/SecondaryDetail";
+import { ClinicalDetails } from "./sections/ClinicalDetails";
 import { ClinicalSummarySection } from "./sections/ClinicalSummarySection";
-import { OnePagerBlock } from "./sections/OnePagerBlock";
 import {
   DecisionBar,
   resolveWhatsappSendUiState,
@@ -308,9 +305,13 @@ export function DoctorReviewClient({
    */
   const [adjustOpen, setAdjustOpen] = useState(false);
 
-  // ── Notes / feedback (clinical supporting actions) ────────────────────────
-  const [note, setNote] = useState("");
-  const [savingNote, setSavingNote] = useState(false);
+  // ── Feedback (clinical supporting action) ─────────────────────────────────
+  //
+  // Notes are no longer entered here: the single note-taking surface is the
+  // ConsultationNotesPanel below (dictation + typing + dated, authored
+  // history). The old "Doctor notes" textarea that wrote consultation
+  // doctorNotes has been removed as a duplicate; existing doctorNotes stay
+  // visible read-only in Clinical details as the decision/approval record.
   const [revisionOpen, setRevisionOpen] = useState(false);
   const [feedbackOpen, setFeedbackOpen] = useState(false);
 
@@ -487,56 +488,10 @@ export function DoctorReviewClient({
     el.focus({ preventScroll: true });
   }, [adjustOpen]);
 
-  const addNote = useCallback(async () => {
-    if (!consultation || !meta) return;
-    if (note.trim().length === 0) {
-      toast.error("Write a note first");
-      return;
-    }
-    setSavingNote(true);
-    try {
-      const newNote: DoctorNote = {
-        id:
-          typeof crypto !== "undefined" && "randomUUID" in crypto
-            ? crypto.randomUUID()
-            : `note-${Date.now()}`,
-        doctorId: meta.createdBy ?? "",
-        body: note.trim(),
-        createdAt: new Date().toISOString(),
-        visibleToPatient: false,
-      };
-      const res = await fetch(`/api/consultation/${assessmentId}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          doctorNotes: [...consultation.doctorNotes, newNote],
-          expectedContentVersion: meta.contentVersion,
-        }),
-      });
-      if (res.status === 409) {
-        toast.error(
-          "This consultation changed while you were editing. Reload before saving.",
-        );
-        await load();
-        return;
-      }
-      if (!res.ok) {
-        const j = await res.json().catch(() => ({}));
-        toast.error(j.message ?? "Could not save note");
-        return;
-      }
-      const saved = (await res.json().catch(() => ({}))) as Partial<SavedConsultation>;
-      toast.success("Note saved — new version created");
-      setNote("");
-      if (saved.consultation && saved.meta) {
-        applySaved({ consultation: saved.consultation, meta: saved.meta });
-      } else {
-        await load();
-      }
-    } finally {
-      setSavingNote(false);
-    }
-  }, [assessmentId, consultation, meta, note, load, applySaved]);
+  // The approved order's purchase ledger. Idle until an order exists (pre-
+  // approval orderIntentId is null), so the merged Clinical Order & Purchases
+  // surface simply shows no purchase controls until approval creates the order.
+  const purchaseLedger = usePurchaseLedger(operational?.orderIntentId ?? null);
 
   /**
    * Approve, and create the kit order.
@@ -645,7 +600,6 @@ export function DoctorReviewClient({
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             expectedContentVersion: meta.contentVersion,
-            notes: note.trim() || undefined,
             readinessOverrideReason: readinessOverrideReason || undefined,
           }),
         });
@@ -657,7 +611,6 @@ export function DoctorReviewClient({
               ? "Approved · kit order created"
               : "Approved · kit order already existed",
           );
-          setNote("");
           // Apply the order endpoint's OWN authoritative response — the approved
           // consultation and its meta (approvalStatus APPROVED, new
           // contentVersion) — instead of a second full getOrCreateDetailed
@@ -737,7 +690,6 @@ export function DoctorReviewClient({
     [
       assessmentId,
       meta,
-      note,
       load,
       applySaved,
       refreshOperational,
@@ -990,8 +942,12 @@ export function DoctorReviewClient({
               safety={safetyFlags}
             />
 
-            {/* THE SUGGESTED TREATMENT — clinical rows with inline
-                Replace / Remove. */}
+            {/* CLINICAL ORDER & PURCHASES — one surface. The approved kits
+                (image, name, catalogue identity, protocol, governed MRP/box and
+                recommended quantity) and, once the order exists, their purchase
+                facts (purchased/remaining boxes, deferred/declined status,
+                Record purchase and dated history) — each kit exactly once.
+                Recording never mutates the approved plan. */}
             <ProtocolSection
               consultation={consultation}
               assessmentId={assessmentId}
@@ -1007,37 +963,24 @@ export function DoctorReviewClient({
               adjustOpen={adjustOpen}
               onCloseAdjust={lineupDirty ? undefined : () => setAdjustOpen(false)}
               onEscalate={() => setRevisionOpen(true)}
+              purchase={purchaseLedger}
             />
 
-            {/* PARTIAL-KIT TRACKING — directly beneath the approved plan, and
-                only once an order exists. Records what the patient actually
-                purchased/started; never mutates the approved lineup. */}
-            {operational?.orderIntentId && (
-              <KitPurchaseTracker intentId={operational.orderIntentId} patientId={patient.id} />
-            )}
+            {/* CONSULTATION NOTES — the single note-taking surface: dictation or
+                typing, saved with author and timestamp, with dated history
+                visible across follow-up visits. */}
+            <ConsultationNotesPanel patientId={patient.id} assessmentId={assessmentId} />
 
-            {/* THE SUPPORTING RECORD — one-pager, guidance, safety, audit. */}
-            <div className="space-y-6 border-t border-[color:var(--hd-border)] pt-8">
-              <OnePagerBlock assessmentId={assessmentId} />
-              <SecondaryDetail consultation={consultation} />
-            </div>
-
-            {/* Clinical supporting actions — notes and engine feedback. Not the
-                decision, and deliberately not in the rail. */}
-            <DoctorNotesBlock
-              note={note}
-              onNoteChange={setNote}
-              onSave={addNote}
-              saving={savingNote}
-              notes={consultation.doctorNotes}
+            {/* CLINICAL DETAILS — follow-up, previous treatment, recovery,
+                lifestyle, the safety disclosures (on expansion) and the
+                supporting record. Safety-critical alerts stay above in Clinical
+                attention. */}
+            <ClinicalDetails
+              consultation={consultation}
+              assessmentId={assessmentId}
+              patientId={patient.id}
               onFlagIssue={() => setFeedbackOpen(true)}
             />
-
-            {/* ROUTINE VISIT NOTES — dictation + dated history. Deliberately
-                separate from the approval-rationale notes above and from the
-                approved snapshot: saving one never creates a ConsultationVersion. */}
-            <PatientTreatmentHistory patientId={patient.id} />
-            <ConsultationNotesPanel patientId={patient.id} assessmentId={assessmentId} />
 
             {/* WHAT HAPPENS AFTER APPROVAL — report and delivery sit AFTER the
                 clinical decision and are plainly separate from it. */}
@@ -1102,91 +1045,6 @@ export function DoctorReviewClient({
         />
       )}
     </div>
-  );
-}
-
-// ── Doctor notes & feedback ─────────────────────────────────────────────────
-//
-// Supporting clinical actions, kept apart from the decision itself. Mixing
-// "save a note" into the same button group as "approve this treatment plan"
-// flattens a clinical commitment into an admin task.
-
-function DoctorNotesBlock({
-  note,
-  onNoteChange,
-  onSave,
-  saving,
-  notes,
-  onFlagIssue,
-}: {
-  note: string;
-  onNoteChange: (v: string) => void;
-  onSave: () => void;
-  saving: boolean;
-  notes: DoctorNote[];
-  onFlagIssue: () => void;
-}) {
-  // Note timestamps are locale- and time-zone-formatted, so the browser
-  // renders them, not the server. Now that this page server-renders, a
-  // consultation that already carries notes would otherwise emit the SERVER's
-  // reading of the moment — and the server runs in UTC, so a doctor would read
-  // a UTC time as their own.
-  const hydrated = useHydrated();
-
-  return (
-    <section aria-labelledby="notes-heading" className="space-y-3">
-      <h2
-        id="notes-heading"
-        className="text-[11px] font-semibold uppercase tracking-[0.16em] text-stone-500"
-      >
-        Doctor notes
-      </h2>
-
-      <textarea
-        value={note}
-        onChange={(e) => onNoteChange(e.target.value)}
-        placeholder="Optional note attached to your decision…"
-        rows={3}
-        maxLength={2000}
-        aria-label="Doctor note"
-        className="w-full rounded-xl border border-stone-200 px-3 py-2 text-sm text-slate-800 focus:border-sky-500 focus:outline-none focus:ring-2 focus:ring-sky-500/15"
-      />
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <span className="text-[11px] text-stone-400">{note.length}/2000</span>
-        <div className="flex flex-wrap gap-2">
-          <button
-            type="button"
-            onClick={onFlagIssue}
-            className="inline-flex items-center gap-1.5 rounded-lg border border-stone-200 bg-white px-3 py-1.5 text-xs font-medium text-stone-700 hover:bg-stone-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-500"
-          >
-            <Flag className="h-3.5 w-3.5" aria-hidden />
-            Flag recommendation issue
-          </button>
-          <button
-            type="button"
-            onClick={onSave}
-            disabled={saving || note.trim().length === 0}
-            className="inline-flex items-center gap-1.5 rounded-lg border border-stone-300 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-stone-50 disabled:opacity-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-500"
-          >
-            <Check className="h-3.5 w-3.5" aria-hidden />
-            {saving ? "Saving…" : "Save note"}
-          </button>
-        </div>
-      </div>
-
-      {notes.length > 0 && (
-        <ul className="space-y-2 border-t border-stone-100 pt-3">
-          {notes.map((n) => (
-            <li key={n.id} className="text-xs text-slate-700">
-              <p className="max-w-prose">{n.body}</p>
-              <p className="text-[10px] text-stone-400">
-                {hydrated ? new Date(n.createdAt).toLocaleString() : null}
-              </p>
-            </li>
-          ))}
-        </ul>
-      )}
-    </section>
   );
 }
 
