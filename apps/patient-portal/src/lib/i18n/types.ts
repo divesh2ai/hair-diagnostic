@@ -55,7 +55,10 @@ export type Dictionary = {
   };
   nav: {
     dashboard: string;
+    overview: string;
     clinics: string;
+    networkMap: string;
+    doctorsAccess: string;
     doctors: string;
     patients: string;
     queue: string;

@@ -1,6 +1,7 @@
 import {
   LayoutDashboard,
   Building2,
+  MapPinned,
   Stethoscope,
   Users,
   ListChecks,
@@ -22,6 +23,7 @@ import type { NavIcon } from "./nav";
 export const NAV_ICONS: Record<NavIcon, ComponentType<{ className?: string }>> = {
   dashboard: LayoutDashboard,
   clinics: Building2,
+  network: MapPinned,
   doctors: Stethoscope,
   patients: Users,
   queue: ListChecks,

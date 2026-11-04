@@ -33,6 +33,9 @@ export const gu: Dictionary = {
   },
   nav: {
     dashboard: "ડેશબોર્ડ",
+    overview: "ઝાંખી",
+    networkMap: "ભારત નેટવર્ક",
+    doctorsAccess: "ડોક્ટર્સ અને ઍક્સેસ",
     clinics: "ક્લિનિક્સ",
     doctors: "ડોક્ટર્સ",
     patients: "દર્દીઓ",
@@ -54,7 +57,7 @@ export const gu: Dictionary = {
     fulfilment: "પૂર્તિ",
     operations: "કામગીરી",
     auditSecurity: "ઑડિટ અને સુરક્ષા",
-    sectionNetwork: "નેટવર્ક",
+    sectionNetwork: "ક્લિનિક્સ અને નેટવર્ક",
     sectionOperations: "કામગીરી",
     sectionGovernance: "શાસન",
     sectionSystem: "સિસ્ટમ",

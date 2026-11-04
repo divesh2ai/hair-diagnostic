@@ -33,6 +33,9 @@ export const pa: Dictionary = {
   },
   nav: {
     dashboard: "ਡੈਸ਼ਬੋਰਡ",
+    overview: "ਸੰਖੇਪ ਜਾਣਕਾਰੀ",
+    networkMap: "ਭਾਰਤ ਨੈੱਟਵਰਕ",
+    doctorsAccess: "ਡਾਕਟਰ ਅਤੇ ਪਹੁੰਚ",
     clinics: "ਕਲੀਨਿਕਸ",
     doctors: "ਡਾਕਟਰ",
     patients: "ਮਰੀਜ਼",
@@ -54,7 +57,7 @@ export const pa: Dictionary = {
     fulfilment: "ਪੂਰਤੀ",
     operations: "ਕਾਰਵਾਈਆਂ",
     auditSecurity: "ਆਡਿਟ ਅਤੇ ਸੁਰੱਖਿਆ",
-    sectionNetwork: "ਨੈੱਟਵਰਕ",
+    sectionNetwork: "ਕਲੀਨਿਕਸ ਅਤੇ ਨੈੱਟਵਰਕ",
     sectionOperations: "ਕਾਰਵਾਈਆਂ",
     sectionGovernance: "ਪ੍ਰਸ਼ਾਸਨ",
     sectionSystem: "ਸਿਸਟਮ",

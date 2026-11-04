@@ -25,6 +25,7 @@ export type NavSection = {
 export type NavIcon =
   | "dashboard"
   | "clinics"
+  | "network"
   | "doctors"
   | "patients"
   | "queue"
@@ -44,70 +45,65 @@ export type NavBadgeChannel =
   | "platformAlerts"
   | "supportUnread";
 
-// Super Admin navigation — seven destinations, five groups.
+// Super Admin navigation — the seven-section command-centre IA.
 //
-// ── Why this shrank from ten items to seven ─────────────────────────────────
-// The sidebar had grown to expose the system's internal boundaries: Action
-// Centre, Kit Orders, Fulfilment and Review Queue were four separate top-level
-// entries describing four services rather than four jobs. A Super Admin should
-// not have to know how the platform is built in order to run it.
+//   1. Overview ............ what is happening, and what needs me?   (/admin)
+//   2. Clinics & Network ... who is on the platform, and where is it physically?
+//   3. Doctors & Access .... who can sign in, and are they login-ready?
+//   4. Operations .......... what is moving, stuck or waiting?
+//   5. Clinical Governance . what clinical decisions were made?
+//   6. Audit & Security .... who did what, and is the platform safe?
+//   7. Settings ............ how is the system configured? (Help & Support here)
 //
-// The test each destination now answers:
-//   Dashboard ............ what is happening, and what needs me?
-//   Clinics / People ..... who is on the platform, and what can they reach?
-//   Operations ........... what is moving, stuck or waiting?
-//   Governance ........... what was decided, and who did what?
-//   Platform Settings .... how is the system configured?
-//
-// Action Centre is gone from the sidebar because its content now leads the
-// Dashboard — the exceptions belong where the operator already looks first,
-// not one click away. Its route and API survive untouched as a deep dive.
+// Rendered as four visual blocks: Overview (top, headerless), a "Clinics &
+// Network" group (Clinics + the India network map — previously reachable only
+// via the dashboard embed's "View full" link), the four standalone primaries
+// in one tight headerless block, and a "Settings" group carrying Help &
+// Support. Action Centre, Orders and Fulfilment remain deep-links/tabs, not
+// top-level entries — their routes and APIs are untouched.
 const NAV_SUPER_ADMIN: NavSection[] = [
   {
     labelKey: null,
-    items: [{ href: "/admin", labelKey: "nav.dashboard", icon: "dashboard" }],
+    items: [{ href: "/admin", labelKey: "nav.overview", icon: "dashboard" }],
   },
   {
+    // "Clinics & Network" — the directory and the national clinic map together.
     labelKey: "nav.sectionNetwork",
     items: [
       { href: "/admin/clinics", labelKey: "nav.clinics", icon: "clinics" },
-      { href: "/admin/people", labelKey: "nav.people", icon: "doctors" },
+      { href: "/admin/network", labelKey: "nav.networkMap", icon: "network" },
     ],
   },
   {
-    labelKey: "nav.sectionOperations",
+    labelKey: null,
     items: [
+      { href: "/admin/people", labelKey: "nav.doctorsAccess", icon: "doctors" },
       // One destination, tabbed inside. Orders and Fulfilment keep their own
       // routes as deep links; they are simply no longer top-level concepts.
       { href: "/admin/operations", labelKey: "nav.operations", icon: "queue" },
-    ],
-  },
-  {
-    labelKey: "nav.sectionGovernance",
-    items: [
       {
         href: "/admin/clinical-governance",
         labelKey: "nav.clinicalGovernance",
         icon: "audit",
       },
       { href: "/admin/audit", labelKey: "nav.auditSecurity", icon: "audit" },
-      {
-        href: "/admin/support",
-        labelKey: "nav.support",
-        icon: "help",
-        badgeChannel: "supportUnread",
-      },
     ],
   },
   {
-    // Configuration, not daily work. Its own group so it reads as a different
-    // kind of destination rather than the tenth thing in a list.
-    labelKey: "nav.sectionSystem",
+    // Configuration, not daily work. Help & Support lives here rather than as
+    // its own top-level destination.
+    labelKey: "common.settings",
     items: [
       {
         href: "/admin/settings",
         labelKey: "nav.platformSettings",
         icon: "settings",
+      },
+      {
+        href: "/admin/support",
+        labelKey: "nav.support",
+        icon: "help",
+        badgeChannel: "supportUnread",
       },
     ],
   },

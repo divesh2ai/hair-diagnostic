@@ -33,6 +33,9 @@ export const ta: Dictionary = {
   },
   nav: {
     dashboard: "டாஷ்போர்டு",
+    overview: "கண்ணோட்டம்",
+    networkMap: "இந்தியா வலையமைப்பு",
+    doctorsAccess: "டாக்டர்கள் & அணுகல்",
     clinics: "கிளினிக்குகள்",
     doctors: "டாக்டர்கள்",
     patients: "நோயாளிகள்",
@@ -54,7 +57,7 @@ export const ta: Dictionary = {
     fulfilment: "நிறைவேற்றம்",
     operations: "செயல்பாடுகள்",
     auditSecurity: "தணிக்கை & பாதுகாப்பு",
-    sectionNetwork: "வலையமைப்பு",
+    sectionNetwork: "கிளினிக்குகள் & வலையமைப்பு",
     sectionOperations: "செயல்பாடுகள்",
     sectionGovernance: "நிர்வாகம்",
     sectionSystem: "அமைப்பு",

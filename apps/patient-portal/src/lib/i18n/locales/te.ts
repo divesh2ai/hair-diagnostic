@@ -33,6 +33,9 @@ export const te: Dictionary = {
   },
   nav: {
     dashboard: "డాష్‌బోర్డ్",
+    overview: "అవలోకనం",
+    networkMap: "భారత నెట్‌వర్క్",
+    doctorsAccess: "డాక్టర్లు & యాక్సెస్",
     clinics: "క్లినిక్స్",
     doctors: "డాక్టర్లు",
     patients: "రోగులు",
@@ -54,7 +57,7 @@ export const te: Dictionary = {
     fulfilment: "పూర్తి",
     operations: "కార్యకలాపాలు",
     auditSecurity: "ఆడిట్ & భద్రత",
-    sectionNetwork: "నెట్‌వర్క్",
+    sectionNetwork: "క్లినిక్స్ & నెట్‌వర్క్",
     sectionOperations: "కార్యకలాపాలు",
     sectionGovernance: "పాలన",
     sectionSystem: "సిస్టమ్",
