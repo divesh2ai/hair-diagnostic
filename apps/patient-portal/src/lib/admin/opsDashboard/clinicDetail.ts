@@ -10,6 +10,7 @@
 
 import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
+import { resolveDoctorSignIn } from "./identity";
 import type { CapabilityState } from "./types";
 import {
   classifyReportReadiness,
@@ -48,6 +49,25 @@ export interface ClinicDetail {
     branches: { branchName: string; isPrimary: boolean; status: string; city: string | null }[];
   };
   patients: { total: number };
+  /**
+   * Per-doctor access, login and clinical activity for this clinic — the
+   * drilldown answer to "which doctors have working access and who actually
+   * reviews patients". Access is one of: a linked Supabase identity, onboarding
+   * still pending, or unknown. Login is resolved across BOTH identity mappings
+   * (e-mail/Google + phone). When auth.users could not be read, sign-in shows
+   * Unknown (authReadable=false), never a fabricated "never".
+   */
+  doctors: {
+    authReadable: boolean;
+    list: {
+      doctorId: string;
+      name: string;
+      access: "LINKED" | "ONBOARDING_PENDING" | "UNKNOWN";
+      hasAccount: boolean;
+      lastSignInAt: string | null;
+      lastActivityAt: string | null;
+    }[];
+  };
   assessments: {
     total: number;
     byStatus: { status: string; count: number }[];
@@ -64,6 +84,12 @@ export interface ClinicDetail {
     pendingReview: number;
     revisionRequested: number;
     rejected: number;
+    /**
+     * Distinct cases a doctor actually reviewed = approved + revisionRequested +
+     * rejected. PENDING is excluded (not a completed review). The honest
+     * "doctor reviewed patients" figure.
+     */
+    reviewed: number;
     recentApprovals: {
       assessmentId: string;
       patientName: string;
@@ -205,6 +231,8 @@ export async function loadClinicDetail(clinicId: string): Promise<ClinicDetail> 
     },
   });
   if (!clinic) throw new ClinicNotFoundError();
+
+  const doctors = await loadClinicDoctors(clinicId);
 
   const [
     patientTotal,
@@ -441,6 +469,7 @@ export async function loadClinicDetail(clinicId: string): Promise<ClinicDetail> 
       branches: clinic.locations,
     },
     patients: { total: patientTotal },
+    doctors,
     assessments: {
       total: assessmentTotal,
       byStatus: assessmentsByStatus.map((s) => ({ status: s.status, count: allCount(s._count) })),
@@ -457,6 +486,7 @@ export async function loadClinicDetail(clinicId: string): Promise<ClinicDetail> 
       pendingReview,
       revisionRequested,
       rejected,
+      reviewed: approved + revisionRequested + rejected,
       recentApprovals: recentApprovals.map((c) => ({
         assessmentId: c.assessmentId,
         patientName: c.patient.name,
@@ -519,6 +549,104 @@ export async function loadClinicDetail(clinicId: string): Promise<ClinicDetail> 
       })),
     },
   };
+}
+
+interface ClinicAuthUserRow {
+  id: string;
+  last_sign_in_at: Date | null;
+}
+
+/**
+ * Per-doctor access, login and clinical activity for one clinic.
+ *
+ * Login is resolved across BOTH Supabase identity mappings (e-mail/Google +
+ * phone), exactly as the roster does, so a doctor who signs in by phone is
+ * never mis-reported as "never signed in". When auth.users cannot be read the
+ * whole section reports Unknown (authReadable=false) rather than a fabricated
+ * "never". Per-doctor clinical activity is the most recent AUDITED action by
+ * that doctor's auth identity — system/background/Super Admin actions carry a
+ * different actorId and are excluded.
+ */
+async function loadClinicDoctors(clinicId: string): Promise<ClinicDetail["doctors"]> {
+  const docs = await prisma.doctor.findMany({
+    where: { clinicId, deletedAt: null },
+    orderBy: [{ isPrimary: "desc" }, { name: "asc" }],
+    select: {
+      id: true,
+      name: true,
+      supabaseUserId: true,
+      supabasePhoneUserId: true,
+      provisioningStatus: true,
+    },
+  });
+
+  const authIds = Array.from(
+    new Set(
+      docs
+        .flatMap((d) => [d.supabaseUserId, d.supabasePhoneUserId])
+        .filter((v): v is string => v !== null),
+    ),
+  );
+
+  let lastSignIn = new Map<string, Date | null>();
+  let authReadable = true;
+  if (authIds.length > 0) {
+    try {
+      const rows = await prisma.$queryRaw<ClinicAuthUserRow[]>`
+        SELECT id::text AS id, last_sign_in_at
+        FROM auth.users
+        WHERE id::text = ANY(${authIds}::text[])
+      `;
+      lastSignIn = new Map(rows.map((r) => [r.id, r.last_sign_in_at]));
+    } catch {
+      authReadable = false;
+    }
+  }
+
+  // Most recent audited action per auth identity (actorId). Doctor actions carry
+  // the doctor's auth uid; system/Super Admin actions do not, so this is a
+  // clean per-doctor clinical-activity clock.
+  const activityByActor = new Map<string, Date>();
+  if (authIds.length > 0) {
+    const rows = await prisma.auditLog.groupBy({
+      by: ["actorId"],
+      where: { actorId: { in: authIds }, actorType: "doctor" },
+      _max: { createdAt: true },
+    });
+    for (const r of rows) {
+      if (r.actorId && r._max.createdAt) activityByActor.set(r.actorId, r._max.createdAt);
+    }
+  }
+
+  const list = docs.map((d) => {
+    const { lastSignInAt, hasAccount } = resolveDoctorSignIn(
+      { emailUserId: d.supabaseUserId, phoneUserId: d.supabasePhoneUserId },
+      lastSignIn,
+    );
+    // Access: a linked identity if an auth account exists; else onboarding
+    // pending while provisioning is in progress; else unknown.
+    const access: "LINKED" | "ONBOARDING_PENDING" | "UNKNOWN" = hasAccount
+      ? "LINKED"
+      : d.provisioningStatus === "ACTIVE"
+        ? "UNKNOWN"
+        : "ONBOARDING_PENDING";
+    let lastActivity: Date | null = null;
+    for (const id of [d.supabaseUserId, d.supabasePhoneUserId]) {
+      if (!id) continue;
+      const at = activityByActor.get(id);
+      if (at && (!lastActivity || at.getTime() > lastActivity.getTime())) lastActivity = at;
+    }
+    return {
+      doctorId: d.id,
+      name: d.name,
+      access,
+      hasAccount,
+      lastSignInAt: lastSignInAt ? lastSignInAt.toISOString() : null,
+      lastActivityAt: lastActivity ? lastActivity.toISOString() : null,
+    };
+  });
+
+  return { authReadable, list };
 }
 
 async function loadClinicOrders(clinicId: string): Promise<ClinicDetail["orders"]> {

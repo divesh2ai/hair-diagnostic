@@ -59,6 +59,16 @@ export interface DashboardKpis {
   doctorsSignedIn: number;
   assessments: Kpi;
   approvals: Kpi;
+  /**
+   * Distinct cases a doctor actually reviewed — a consultation whose current
+   * version carries a COMPLETED decision: APPROVED, REVISION_REQUESTED (the
+   * "needs revision" decision) or REJECTED. PENDING_REVIEW is NOT a completed
+   * review and is excluded. This is the honest adoption signal: a rejection or
+   * a revision request is genuine clinical work, where an approval count alone
+   * would hide it. One consultation per case, so repeated actions never inflate
+   * the total.
+   */
+  reviewedCases: Kpi;
   /** AssessmentStatus.COMPLETED — the AI pipeline finished, NOT a doctor sign-off. */
   completedAssessments: number;
   /** Consultation currentVersion.approvalStatus = PENDING_REVIEW — awaiting a doctor. */
@@ -99,6 +109,23 @@ export interface ClinicFlags {
   reconciliationDiscrepancy: boolean;
   reportDeliveryAttention: boolean;
   activelyUsing: boolean;
+  /**
+   * A doctor has signed in but there is no genuine clinical work yet (no
+   * reviewed case). "Logged in" is not "using" — a login alone does not prove
+   * clinical work.
+   */
+  loggedInNoActivity: boolean;
+  /**
+   * The clinic DID genuine clinical work before, but nothing recent — the
+   * "stopped using HairOS" signal. Distinct from never-started.
+   */
+  noRecentActivity: boolean;
+  /**
+   * Adoption cannot be established because the authentication/activity evidence
+   * could not be read (e.g. auth.users unreadable) and no clinical signal is
+   * present. Reported as Unknown, never as a confident "never" or zero.
+   */
+  trackingUnavailable: boolean;
 }
 
 export type ClinicPrimaryStatus =
@@ -109,6 +136,13 @@ export type ClinicPrimaryStatus =
   | "PENDING_REVIEW"
   | "REPORT_DELIVERY_ATTENTION"
   | "ACTIVELY_USING"
+  // The doctor can get in but has not started clinical work yet.
+  | "LOGGED_IN_NO_ACTIVITY"
+  // Was adopted; has gone quiet — i.e. appears to have stopped using HairOS.
+  | "NO_RECENT_ACTIVITY"
+  // Can't be determined from the evidence available here.
+  | "UNKNOWN_TRACKING"
+  // Provisioned but not yet past onboarding (no login, no work).
   | "ONBOARDING_IDLE"
   | "SUSPENDED"
   | "ARCHIVED";
@@ -136,6 +170,12 @@ export interface ClinicOpsRow {
   lastSignInAt: string | null;
   assessments: Kpi;
   approvals: Kpi;
+  /**
+   * Distinct cases reviewed by a doctor (APPROVED / REVISION_REQUESTED /
+   * REJECTED). The genuine "a doctor actually reviewed patients" figure, kept
+   * separate from the approval-only count.
+   */
+  reviewedCases: Kpi;
   /** AssessmentStatus.COMPLETED count (pipeline finished, NOT approved). */
   completedAssessments: number;
   awaitingReview: number;
@@ -160,7 +200,20 @@ export interface ClinicOpsRow {
   };
   reportsSent: GatedKpi;
   reportsDelivered: GatedKpi;
+  /**
+   * The most recent activity of ANY kind (patient submission or audited event)
+   * — used for the general "last activity" column.
+   */
   lastActivityAt: string | null;
+  /**
+   * The most recent AUTHENTICATED DOCTOR clinical action (an approval, or an
+   * audited doctor action — review, note, treatment update). System jobs,
+   * background pipelines and Super Admin activity are excluded. Null when no
+   * such action is recorded. This, not the patient-submission clock, is what
+   * decides recent clinical activity — so a doctor with an older sign-in but
+   * recent clinical work still reads as using HairOS.
+   */
+  lastDoctorActivityAt: string | null;
   primaryStatus: ClinicPrimaryStatus;
   flags: ClinicFlags;
 }

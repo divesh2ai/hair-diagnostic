@@ -28,6 +28,11 @@ import {
   describeDoctorProvisioning,
   type DoctorProvisioningView,
 } from "@/lib/doctor/provisioning";
+import { resolveDoctorSignIn } from "@/lib/admin/opsDashboard/identity";
+
+// Re-exported so existing importers of the roster keep working; the pure
+// implementation lives in opsDashboard/identity.ts (no Prisma, unit-testable).
+export { resolveDoctorSignIn } from "@/lib/admin/opsDashboard/identity";
 
 export interface ClinicianRow extends DoctorProvisioningView {
   doctorId: string;
@@ -111,10 +116,16 @@ export async function loadClinicianRoster(): Promise<ClinicianRoster> {
   });
 
   // Narrow read: the ids we already hold, and one timestamp. Nothing else from
-  // auth.users belongs in an operations screen.
-  const linkedIds = doctors
-    .map((d) => d.supabaseUserId)
-    .filter((v): v is string => v !== null);
+  // auth.users belongs in an operations screen. BOTH identity mappings are
+  // collected — the canonical (e-mail/Google) and the phone identity — so a
+  // doctor who signs in by phone is never mis-reported as "never signed in".
+  const linkedIds = Array.from(
+    new Set(
+      doctors
+        .flatMap((d) => [d.supabaseUserId, d.supabasePhoneUserId])
+        .filter((v): v is string => v !== null),
+    ),
+  );
 
   let lastSignIn = new Map<string, Date | null>();
   let authReadable = true;
@@ -141,7 +152,11 @@ export async function loadClinicianRoster(): Promise<ClinicianRoster> {
       deletedAt: d.deletedAt,
       provisioningStatus: d.provisioningStatus,
     });
-    const signIn = d.supabaseUserId ? lastSignIn.get(d.supabaseUserId) : null;
+    // Latest sign-in across EITHER linked identity (e-mail/Google or phone).
+    const { lastSignInAt } = resolveDoctorSignIn(
+      { emailUserId: d.supabaseUserId, phoneUserId: d.supabasePhoneUserId },
+      lastSignIn,
+    );
     return {
       ...view,
       doctorId: d.id,
@@ -155,7 +170,7 @@ export async function loadClinicianRoster(): Promise<ClinicianRoster> {
       organizationName: d.clinic.organization?.name ?? null,
       locations: d.clinic.locations,
       locationCount: d.clinic.locations.length,
-      lastSignInAt: signIn ? signIn.toISOString() : null,
+      lastSignInAt: lastSignInAt ? lastSignInAt.toISOString() : null,
       provisioningSource: d.provisioningSource,
       provisionedAt: d.provisionedAt ? d.provisionedAt.toISOString() : null,
       createdAt: d.createdAt.toISOString(),

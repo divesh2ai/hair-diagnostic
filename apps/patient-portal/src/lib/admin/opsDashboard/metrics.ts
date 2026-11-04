@@ -73,6 +73,10 @@ export async function loadOpsOverview(window: TimeWindow): Promise<OpsOverview> 
     reconciliationAll,
     approvedAll,
     approvedWindow,
+    reviewedAll,
+    reviewedWindow,
+    approvedActivity,
+    doctorAuditActivity,
     awaitingAll,
     dossiersReadyAll,
     kitActiveAll,
@@ -153,6 +157,47 @@ export async function loadOpsOverview(window: TimeWindow): Promise<OpsOverview> 
       },
       _count: { _all: true },
     });
+    // REVIEWED CASES — distinct cases a doctor actually reviewed. A completed
+    // decision is APPROVED, REVISION_REQUESTED or REJECTED; PENDING_REVIEW is
+    // NOT a completed review and DRAFT never reached a doctor. One consultation
+    // per case (unique on assessmentId), so repeated actions on the same case
+    // never inflate the total. This is the genuine adoption signal — a
+    // rejection or a revision request is real clinical work that an approval
+    // count alone would hide.
+    const REVIEWED = ["APPROVED", "REVISION_REQUESTED", "REJECTED"] as const;
+    const reviewedAll = await tx.consultation.groupBy({
+      by: ["clinicId"],
+      where: { currentVersion: { approvalStatus: { in: [...REVIEWED] } } },
+      _count: { _all: true },
+    });
+    // Windowed reviewed cases: the consultation's own updatedAt is the decision
+    // clock (the pointer moves to the decided version on review). approvedAt
+    // only exists for approvals, so updatedAt is the one timestamp shared by all
+    // three decisions — labelled honestly as "reviewed in period".
+    const reviewedWindow = await tx.consultation.groupBy({
+      by: ["clinicId"],
+      where: {
+        currentVersion: { approvalStatus: { in: [...REVIEWED] } },
+        updatedAt: { gte: from, lt: to },
+      },
+      _count: { _all: true },
+    });
+    // Last authenticated doctor clinical action, signal 1 of 2: the most recent
+    // approval timestamp per clinic (a definite doctor action). Joined via the
+    // consultation so it is clinic-scoped.
+    const approvedActivity = await tx.consultation.findMany({
+      where: { currentVersion: { approvalStatus: "APPROVED", approvedAt: { not: null } } },
+      select: { clinicId: true, currentVersion: { select: { approvedAt: true } } },
+    });
+    // Signal 2 of 2: the most recent AUDITED doctor action per clinic
+    // (rejections, revision requests, saved notes, treatment updates). Scoped to
+    // actorType = 'doctor' so background jobs, system actors and Super Admin
+    // activity are excluded from the doctor-usage clock.
+    const doctorAuditActivity = await tx.auditLog.groupBy({
+      by: ["clinicId"],
+      where: { clinicId: { not: null }, actorType: "doctor" },
+      _max: { createdAt: true },
+    });
     const awaitingAll = await tx.consultation.groupBy({
       by: ["clinicId"],
       where: { currentVersion: { approvalStatus: "PENDING_REVIEW" } },
@@ -192,6 +237,10 @@ export async function loadOpsOverview(window: TimeWindow): Promise<OpsOverview> 
       reconciliationAll,
       approvedAll,
       approvedWindow,
+      reviewedAll,
+      reviewedWindow,
+      approvedActivity,
+      doctorAuditActivity,
       awaitingAll,
       dossiersReadyAll,
       kitActiveAll,
@@ -218,6 +267,8 @@ export async function loadOpsOverview(window: TimeWindow): Promise<OpsOverview> 
   const reconciliation = countMap(reconciliationAll);
   const apprAll = countMap(approvedAll);
   const apprWin = countMap(approvedWindow);
+  const reviewedAllMap = countMap(reviewedAll);
+  const reviewedWinMap = countMap(reviewedWindow);
   const awaiting = countMap(awaitingAll);
   const dossiersReady = countMap(dossiersReadyAll);
   const kitActive = countMap(kitActiveAll);
@@ -230,6 +281,24 @@ export async function loadOpsOverview(window: TimeWindow): Promise<OpsOverview> 
   const auditActivity = new Map<string, Date | null>();
   for (const r of auditLastActivity) {
     if (r.clinicId) auditActivity.set(r.clinicId, r._max.createdAt ?? null);
+  }
+
+  // Last authenticated doctor clinical activity per clinic = latest of the two
+  // measured signals: the most recent approval, and the most recent audited
+  // doctor action. System/background/Super Admin activity is already excluded
+  // (approvals are a doctor action; the audit read is scoped to actorType
+  // 'doctor'). This is the clock adoption recency is measured against.
+  const doctorActivity = new Map<string, Date | null>();
+  for (const c of approvedActivity) {
+    const at = c.currentVersion?.approvedAt ?? null;
+    if (c.clinicId && at) {
+      doctorActivity.set(c.clinicId, latest(doctorActivity.get(c.clinicId) ?? null, at));
+    }
+  }
+  for (const r of doctorAuditActivity) {
+    if (r.clinicId && r._max.createdAt) {
+      doctorActivity.set(r.clinicId, latest(doctorActivity.get(r.clinicId) ?? null, r._max.createdAt));
+    }
   }
 
   // Doctors grouped by clinic.
@@ -290,6 +359,9 @@ export async function loadOpsOverview(window: TimeWindow): Promise<OpsOverview> 
     // A CONFIRMED asset count (ReportAsset READY), never inferred from approval.
     const dossiersReadyN = dossiersReady.get(c.id) ?? 0;
 
+    const reviewedAllN = reviewedAllMap.get(c.id) ?? 0;
+    const lastDoctorActivityAt = doctorActivity.get(c.id) ?? null;
+
     const lastActivityAt = latest(
       assessActivity.get(c.id) ?? null,
       auditActivity.get(c.id) ?? null,
@@ -302,6 +374,7 @@ export async function loadOpsOverview(window: TimeWindow): Promise<OpsOverview> 
       authReadable: roster.authReadable,
       assessmentsAllTime: assessmentsAllN,
       approvalsAllTime: approvalsAllN,
+      reviewedCasesAllTime: reviewedAllN,
       awaitingReview: awaitingN,
       assessmentsWithoutConsultation: missingConsultationN,
       reconciliationDiscrepancies: reconciliationN,
@@ -310,6 +383,7 @@ export async function loadOpsOverview(window: TimeWindow): Promise<OpsOverview> 
       reportsSent: del?.reportsSent ?? 0,
       dossiersReady: dossiersReadyN,
       lastActivityAt,
+      lastDoctorActivityAt,
       now,
     });
 
@@ -354,6 +428,7 @@ export async function loadOpsOverview(window: TimeWindow): Promise<OpsOverview> 
       lastSignInAt: docs?.lastSignInAt ? docs.lastSignInAt.toISOString() : null,
       assessments: { today: assessWin.get(c.id) ?? 0, allTime: assessmentsAllN },
       approvals: { today: apprWin.get(c.id) ?? 0, allTime: approvalsAllN },
+      reviewedCases: { today: reviewedWinMap.get(c.id) ?? 0, allTime: reviewedAllN },
       completedAssessments: completedN,
       awaitingReview: awaitingN,
       assessmentsWithoutConsultation: missingConsultationN,
@@ -365,6 +440,7 @@ export async function loadOpsOverview(window: TimeWindow): Promise<OpsOverview> 
       reportsSent,
       reportsDelivered,
       lastActivityAt: lastActivityAt ? lastActivityAt.toISOString() : null,
+      lastDoctorActivityAt: lastDoctorActivityAt ? lastDoctorActivityAt.toISOString() : null,
       primaryStatus,
       flags,
     };
@@ -375,6 +451,7 @@ export async function loadOpsOverview(window: TimeWindow): Promise<OpsOverview> 
 
   const assessmentsKpi = { today: sum((r) => r.assessments.today), allTime: sum((r) => r.assessments.allTime) };
   const approvalsKpi = { today: sum((r) => r.approvals.today), allTime: sum((r) => r.approvals.allTime) };
+  const reviewedCasesKpi = { today: sum((r) => r.reviewedCases.today), allTime: sum((r) => r.reviewedCases.allTime) };
 
   const reportsSentKpi: GatedKpi = deliveryConnected
     ? {
@@ -398,6 +475,7 @@ export async function loadOpsOverview(window: TimeWindow): Promise<OpsOverview> 
     doctorsSignedIn: roster.clinicians.filter((c) => c.lastSignInAt !== null).length,
     assessments: assessmentsKpi,
     approvals: approvalsKpi,
+    reviewedCases: reviewedCasesKpi,
     completedAssessments: sum((r) => r.completedAssessments),
     pendingReviews: sum((r) => r.awaitingReview),
     assessmentsWithoutConsultation: sum((r) => r.assessmentsWithoutConsultation),
