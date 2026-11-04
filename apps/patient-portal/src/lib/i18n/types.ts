@@ -81,6 +81,11 @@ export type Dictionary = {
     sectionGovernance: string;
     sectionSystem: string;
     support: string;
+    // Phase 1 Super Admin console destinations (see lib/navigation/nav.ts).
+    overview: string;
+    doctorsAccess: string;
+    operationsReports: string;
+    sectionSettingsAudit: string;
   };
   shell: {
     searchPlaceholder: string;

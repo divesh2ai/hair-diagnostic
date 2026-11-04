@@ -1,10 +1,12 @@
-// Super Admin information architecture — the sidebar contract.
+// Super Admin information architecture — the sidebar contract (HairOS Phase 1).
 //
-// The sidebar had grown to ten top-level entries that described the system's
-// internal services rather than the operator's jobs. This locks the
-// consolidated shape so a future change has to be deliberate rather than
-// accidental: destinations creep back one at a time, and each one always looks
-// individually reasonable.
+// Phase 1 fixes the console to four primary destinations the operator lives in
+// — Overview, Clinics, Doctors & Access, Operations & Reports — plus one
+// grouped "Settings & Audit" shelf (clinical governance, audit & security,
+// support, platform settings). India Network is deliberately NOT a Phase 1
+// destination. This locks that shape so a future change has to be deliberate
+// rather than accidental: destinations creep back one at a time, and each one
+// always looks individually reasonable.
 //
 // Runner: JEST. `npm test` is vitest and will mis-report this file.
 //   npx jest tests/admin/super-admin-nav.test.ts
@@ -19,8 +21,8 @@ const nav = navForRole("SUPER_ADMIN");
 const hrefs = nav.flatMap((s) => s.items.map((i) => i.href));
 
 describe("Super Admin primary navigation", () => {
-  it("exposes exactly seven destinations", () => {
-    expect(hrefs).toHaveLength(7);
+  it("exposes exactly eight destinations", () => {
+    expect(hrefs).toHaveLength(8);
   });
 
   it("exposes exactly the agreed destinations, in order", () => {
@@ -31,26 +33,49 @@ describe("Super Admin primary navigation", () => {
       "/admin/operations",
       "/admin/clinical-governance",
       "/admin/audit",
+      "/admin/support",
       "/admin/settings",
     ]);
   });
 
+  it("leads the Overview with the four primary jobs, in order", () => {
+    // Overview, Clinics, Doctors & Access, Operations & Reports — the four
+    // destinations the operator lives in, as a single unlabelled group.
+    expect(nav[0]!.items.map((i) => i.href)).toEqual([
+      "/admin",
+      "/admin/clinics",
+      "/admin/people",
+      "/admin/operations",
+    ]);
+  });
+
+  it("labels the first four destinations for the Phase 1 jobs", () => {
+    const byHref = Object.fromEntries(
+      nav.flatMap((s) => s.items).map((i) => [i.href, i.labelKey]),
+    );
+    expect(byHref["/admin"]).toBe("nav.overview");
+    expect(byHref["/admin/clinics"]).toBe("nav.clinics");
+    expect(byHref["/admin/people"]).toBe("nav.doctorsAccess");
+    expect(byHref["/admin/operations"]).toBe("nav.operationsReports");
+  });
+
   it.each([
-    ["/admin/action-centre", "its content now leads the Dashboard"],
-    ["/admin/orders", "it is a tab inside Operations"],
-    ["/admin/fulfilment", "it is a tab inside Operations"],
+    ["/admin/action-centre", "its content now leads the Overview"],
+    ["/admin/orders", "it is a tab inside Operations & Reports"],
+    ["/admin/fulfilment", "it is a tab inside Operations & Reports"],
     ["/admin/knowledge-review", "it belongs under Clinical Governance"],
+    ["/admin/network", "India Network is out of Phase 1 scope"],
   ])("does not surface %s as a top-level destination (%s)", (href) => {
     expect(hrefs).not.toContain(href);
   });
 
-  it("groups destinations rather than listing ten flat items", () => {
-    // Five groups: unlabelled Dashboard, Network, Operations, Governance,
-    // System. The first is intentionally unlabelled — a single item does not
-    // need a heading above it.
-    expect(nav).toHaveLength(5);
+  it("groups destinations into the four primary jobs plus a settings shelf", () => {
+    // Two groups: an unlabelled lead group of the four primary destinations,
+    // and a labelled "Settings & Audit" shelf for configuration and the audit
+    // trail. The first is intentionally unlabelled.
+    expect(nav).toHaveLength(2);
     expect(nav[0]!.labelKey).toBeNull();
-    expect(nav.slice(1).every((s) => s.labelKey !== null)).toBe(true);
+    expect(nav[1]!.labelKey).toBe("nav.sectionSettingsAudit");
   });
 
   it("keeps every group non-empty", () => {

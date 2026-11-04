@@ -58,6 +58,10 @@ export const en: Dictionary = {
     sectionGovernance: "Governance",
     sectionSystem: "System",
     support: "Help & Support",
+    overview: "Overview",
+    doctorsAccess: "Doctors & Access",
+    operationsReports: "Operations & Reports",
+    sectionSettingsAudit: "Settings & Audit",
   },
   shell: {
     searchPlaceholder: "Search patients, reports, clinics…",
