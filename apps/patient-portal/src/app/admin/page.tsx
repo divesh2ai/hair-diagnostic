@@ -46,8 +46,12 @@ function matchesFilter(row: ClinicOpsRow, filter: ClinicFilterKey): boolean {
   switch (filter) {
     case "all":
       return true;
+    case "onboardingPending":
+      return row.primaryStatus === "ONBOARDING_IDLE";
     case "neverLoggedIn":
       return row.flags.neverLoggedIn;
+    case "loggedInNoActivity":
+      return row.flags.loggedInNoActivity;
     case "noAssessments":
       return row.flags.noAssessments;
     case "pendingReview":
@@ -60,10 +64,21 @@ function matchesFilter(row: ClinicOpsRow, filter: ClinicFilterKey): boolean {
       return row.flags.reportDeliveryAttention;
     case "activelyUsing":
       return row.flags.activelyUsing;
+    case "noRecentActivity":
+      return row.flags.noRecentActivity;
     default:
       return true;
   }
 }
+
+// Named period presets (Today / Last 7 days / Last 30 days / All time). A
+// preset drives the ?range query param; choosing a custom From/To clears it.
+const RANGE_PRESETS: { value: string; label: string }[] = [
+  { value: "today", label: "Today" },
+  { value: "7d", label: "Last 7 days" },
+  { value: "30d", label: "Last 30 days" },
+  { value: "all", label: "All time" },
+];
 
 export default function AdminOperationsPage() {
   const [data, setData] = useState<OpsOverview | null>(null);
@@ -74,6 +89,8 @@ export default function AdminOperationsPage() {
   const [loadedKey, setLoadedKey] = useState<string | null>(null);
   const [reloadNonce, setReloadNonce] = useState(0);
 
+  // range = a named preset ("today" by default); "" means a custom from/to.
+  const [range, setRange] = useState<string>("today");
   const [from, setFrom] = useState("");
   const [to, setTo] = useState("");
   const [filter, setFilter] = useState<ClinicFilterKey>("all");
@@ -82,16 +99,34 @@ export default function AdminOperationsPage() {
   const [openClinicId, setOpenClinicId] = useState<string | null>(null);
   const [drawerOpen, setDrawerOpen] = useState(false);
 
-  const fetchKey = `${from}|${to}|${reloadNonce}`;
+  const fetchKey = `${range}|${from}|${to}|${reloadNonce}`;
   const loading = loadedKey !== fetchKey;
   const reload = () => setReloadNonce((n) => n + 1);
+
+  // A custom date clears the preset; a preset clears the custom dates.
+  const pickRange = (r: string) => {
+    setRange(r);
+    setFrom("");
+    setTo("");
+  };
+  const pickFrom = (v: string) => {
+    setRange("");
+    setFrom(v);
+  };
+  const pickTo = (v: string) => {
+    setRange("");
+    setTo(v);
+  };
 
   useEffect(() => {
     let cancelled = false;
     (async () => {
       const params = new URLSearchParams();
-      if (from) params.set("from", from);
-      if (to) params.set("to", to);
+      if (range) params.set("range", range);
+      else {
+        if (from) params.set("from", from);
+        if (to) params.set("to", to);
+      }
       const qs = params.toString();
       try {
         const r = await fetch(`/api/admin/operations-overview${qs ? `?${qs}` : ""}`, {
@@ -112,8 +147,8 @@ export default function AdminOperationsPage() {
     return () => {
       cancelled = true;
     };
-    // fetchKey captures from/to/reloadNonce.
-  }, [fetchKey, from, to]);
+    // fetchKey captures range/from/to/reloadNonce.
+  }, [fetchKey, range, from, to]);
 
   const authReadable = data?.capabilities.authReadable ?? true;
 
@@ -171,6 +206,20 @@ export default function AdminOperationsPage() {
           <div className="tabular-nums">
             <span className="font-medium">{c.assessments.today}</span>
             <span className="text-muted-foreground"> / {c.assessments.allTime}</span>
+          </div>
+        ),
+      },
+      {
+        key: "reviewed",
+        header: "Cases reviewed",
+        align: "right",
+        cell: (c) => (
+          <div
+            className="tabular-nums"
+            title="Distinct cases a doctor reviewed (approved, rejected or revision-requested) — not just approvals"
+          >
+            <span className="font-medium">{c.reviewedCases.today}</span>
+            <span className="text-muted-foreground"> / {c.reviewedCases.allTime}</span>
           </div>
         ),
       },
@@ -265,9 +314,16 @@ export default function AdminOperationsPage() {
       },
       {
         key: "activity",
-        header: "Last activity",
+        header: "Last activity (any · doctor)",
         align: "right",
-        cell: (c) => <span className="text-xs text-muted-foreground">{relativeTime(c.lastActivityAt)}</span>,
+        cell: (c) => (
+          <div className="text-xs text-muted-foreground">
+            <div>{relativeTime(c.lastActivityAt)}</div>
+            <div title="Last authenticated doctor clinical action (excludes system & Super Admin)">
+              dr: {relativeTime(c.lastDoctorActivityAt)}
+            </div>
+          </div>
+        ),
       },
       {
         key: "status",
@@ -298,8 +354,32 @@ export default function AdminOperationsPage() {
           <KpiStrip data={data} />
           <CapabilityNote data={data} />
 
+          <div className="flex flex-wrap items-center gap-1.5">
+            <span className="text-[11px] uppercase tracking-wide text-muted-foreground">Period</span>
+            {RANGE_PRESETS.map((p) => (
+              <button
+                key={p.value}
+                type="button"
+                onClick={() => pickRange(p.value)}
+                aria-pressed={range === p.value}
+                className={cn(
+                  "h-8 rounded-lg border px-2.5 text-xs font-medium transition-colors",
+                  range === p.value
+                    ? "border-transparent bg-primary text-primary-foreground"
+                    : "border-border bg-background text-muted-foreground hover:bg-muted/50",
+                )}
+              >
+                {p.label}
+              </button>
+            ))}
+            {!range && (
+              <span className="text-xs text-muted-foreground">Custom range</span>
+            )}
+          </div>
+
           <FilterBar
             onClear={() => {
+              setRange("today");
               setFrom("");
               setTo("");
               setFilter("all");
@@ -326,7 +406,7 @@ export default function AdminOperationsPage() {
               <input
                 type="date"
                 value={from}
-                onChange={(e) => setFrom(e.target.value)}
+                onChange={(e) => pickFrom(e.target.value)}
                 className="h-9 rounded-lg border border-border bg-background px-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring/40"
               />
             </label>
@@ -335,7 +415,7 @@ export default function AdminOperationsPage() {
               <input
                 type="date"
                 value={to}
-                onChange={(e) => setTo(e.target.value)}
+                onChange={(e) => pickTo(e.target.value)}
                 className="h-9 rounded-lg border border-border bg-background px-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring/40"
               />
             </label>
@@ -407,6 +487,11 @@ function KpiStrip({ data }: { data: OpsOverview }) {
         label={`Assessments · ${data.window.label}`}
         value={k.assessments.today}
         hint={`${k.assessments.allTime} all-time`}
+      />
+      <MetricCard
+        label={`Cases reviewed · ${data.window.label}`}
+        value={k.reviewedCases.today}
+        hint={`${k.reviewedCases.allTime} reviewed all-time — approved, rejected or revision`}
       />
       <MetricCard
         label={`Approvals · ${data.window.label}`}

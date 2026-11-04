@@ -48,10 +48,13 @@ export const STATUS_LABEL: Record<ClinicPrimaryStatus, string> = {
   NO_ASSESSMENTS: "No assessments",
   RECONCILIATION_DISCREPANCY: "Reconciliation discrepancy",
   MISSING_CONSULTATION: "Missing consultation",
-  PENDING_REVIEW: "Awaiting doctor review",
+  PENDING_REVIEW: "Patients waiting for review",
   REPORT_DELIVERY_ATTENTION: "Report / delivery attention",
-  ACTIVELY_USING: "Actively using HairOS",
-  ONBOARDING_IDLE: "Onboarding / idle",
+  ACTIVELY_USING: "Using HairOS",
+  LOGGED_IN_NO_ACTIVITY: "Logged in · work not started",
+  NO_RECENT_ACTIVITY: "No recent activity",
+  UNKNOWN_TRACKING: "Unknown · tracking unavailable",
+  ONBOARDING_IDLE: "Onboarding pending",
   SUSPENDED: "Suspended",
   ARCHIVED: "Archived",
 };
@@ -66,6 +69,9 @@ export const STATUS_TONE: Record<ClinicPrimaryStatus, BadgeTone> = {
   PENDING_REVIEW: "warning",
   REPORT_DELIVERY_ATTENTION: "danger",
   ACTIVELY_USING: "success",
+  LOGGED_IN_NO_ACTIVITY: "info",
+  NO_RECENT_ACTIVITY: "warning",
+  UNKNOWN_TRACKING: "neutral",
   ONBOARDING_IDLE: "info",
   SUSPENDED: "warning",
   ARCHIVED: "neutral",
@@ -74,23 +80,29 @@ export const STATUS_TONE: Record<ClinicPrimaryStatus, BadgeTone> = {
 /** The filter keys the clinic table exposes. */
 export type ClinicFilterKey =
   | "all"
+  | "onboardingPending"
   | "neverLoggedIn"
+  | "loggedInNoActivity"
   | "noAssessments"
   | "pendingReview"
   | "missingConsultation"
   | "reconciliationDiscrepancy"
   | "reportDeliveryAttention"
-  | "activelyUsing";
+  | "activelyUsing"
+  | "noRecentActivity";
 
 export const FILTER_OPTIONS: { value: ClinicFilterKey; label: string }[] = [
   { value: "all", label: "All clinics" },
-  { value: "neverLoggedIn", label: "Never logged in" },
+  { value: "onboardingPending", label: "Onboarding pending" },
+  { value: "neverLoggedIn", label: "Never logged in (established)" },
+  { value: "loggedInNoActivity", label: "Logged in · no clinical activity" },
   { value: "noAssessments", label: "No assessments" },
-  { value: "pendingReview", label: "Awaiting doctor review" },
+  { value: "pendingReview", label: "Patients waiting for review" },
   { value: "missingConsultation", label: "Missing consultation / pipeline attention" },
   { value: "reconciliationDiscrepancy", label: "Reconciliation discrepancies" },
   { value: "reportDeliveryAttention", label: "Report / delivery attention" },
-  { value: "activelyUsing", label: "Actively using HairOS" },
+  { value: "activelyUsing", label: "Using HairOS" },
+  { value: "noRecentActivity", label: "No recent activity (stopped)" },
 ];
 
 /** Human labels for the per-report readiness verdict (drilldown matrix). */

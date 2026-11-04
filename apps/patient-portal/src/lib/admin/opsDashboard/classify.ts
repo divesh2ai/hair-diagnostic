@@ -27,6 +27,16 @@ export interface ClassifyInput {
    * finished. A clinic can have many COMPLETED assessments and zero approvals.
    */
   approvalsAllTime: number;
+  /**
+   * Distinct cases a doctor actually reviewed — a consultation whose current
+   * version is APPROVED, REVISION_REQUESTED or REJECTED. This is the genuine
+   * "clinical work happened" signal and drives adoption, NOT the approval count
+   * alone: a rejection or a requested revision is real review work. PENDING is
+   * excluded (not a completed review). Zero here with assessments present means
+   * patients submitted but no doctor has reviewed — a login alone, or patient
+   * submissions alone, never count as adoption.
+   */
+  reviewedCasesAllTime: number;
   awaitingReview: number;
   /**
    * COMPLETED assessments with no consultation row. Pipeline attention — the
@@ -46,7 +56,20 @@ export interface ClassifyInput {
    * a version was approved.
    */
   dossiersReady: number;
+  /**
+   * The most recent activity of any kind (patient submission or audited event).
+   * Retained for the general "last activity" display and as a fallback recency
+   * signal; it is NOT what proves doctor adoption.
+   */
   lastActivityAt: Date | null;
+  /**
+   * The most recent AUTHENTICATED DOCTOR clinical action (approval, or audited
+   * doctor review / note / treatment update), system & Super Admin activity
+   * excluded. This — not the patient-submission clock — decides whether clinical
+   * activity is "recent", so an older sign-in with recent clinical work still
+   * reads as actively using. Null when no such action was recorded.
+   */
+  lastDoctorActivityAt: Date | null;
   now?: Date;
 }
 
@@ -102,16 +125,44 @@ export function classifyClinic(input: ClassifyInput): Classification {
       (input.dossiersReady > 0 && input.reportsSent === 0));
   const reportDeliveryAttention = assetGap || deliveryFault;
 
+  // Genuine clinical work: a doctor has reviewed at least one case (approved,
+  // rejected or asked for a revision). This — not an approval count, not a
+  // login, not a patient submission — is the bar for adoption. Clinical work
+  // implies authenticated access, so it stands even if the recorded sign-in is
+  // old or (when auth is unreadable) unknown.
+  const hasClinicalWork = input.reviewedCasesAllTime > 0;
+
+  // Clinical recency is measured against the last DOCTOR activity, never the
+  // patient-submission clock: a clinic whose patients keep submitting but whose
+  // doctor stopped reviewing is NOT "recently active".
+  const clinicalRecent =
+    input.lastDoctorActivityAt !== null &&
+    input.lastDoctorActivityAt.getTime() >= recencyCutoff.getTime();
+
   // Adoption, deliberately distinct from activation (ClinicStatus.ACTIVE):
-  // real throughput — a signed-in doctor, assessments, at least one approval,
-  // and recent activity.
-  const activelyUsing =
+  // genuine clinical work AND recent clinical activity.
+  const activelyUsing = !isArchived && hasClinicalWork && clinicalRecent;
+
+  // Had clinical work, but not recently — the "stopped using HairOS" signal.
+  const noRecentActivity = !isArchived && hasClinicalWork && !clinicalRecent;
+
+  // A doctor can sign in but has not started clinical work. Only asserted when
+  // sign-in is POSITIVELY established (authReadable), so it is never confused
+  // with the unknown case below.
+  const loggedInNoActivity =
     !isArchived &&
-    input.assessmentsAllTime > 0 &&
-    input.approvalsAllTime > 0 &&
-    input.signedInCount > 0 &&
-    input.lastActivityAt !== null &&
-    input.lastActivityAt.getTime() >= recencyCutoff.getTime();
+    !hasClinicalWork &&
+    input.authReadable &&
+    input.signedInCount > 0;
+
+  // Adoption cannot be established: no clinical signal AND the sign-in evidence
+  // is unreadable, for a clinic that is actually staffed. Reported as Unknown,
+  // never as a confident "never" or a fabricated zero.
+  const trackingUnavailable =
+    !isArchived &&
+    !hasClinicalWork &&
+    !input.authReadable &&
+    input.doctorCount > 0;
 
   const flags: ClinicFlags = {
     neverLoggedIn,
@@ -121,6 +172,9 @@ export function classifyClinic(input: ClassifyInput): Classification {
     reconciliationDiscrepancy,
     reportDeliveryAttention,
     activelyUsing,
+    loggedInNoActivity,
+    noRecentActivity,
+    trackingUnavailable,
   };
 
   // Primary chip: lifecycle first, then the most operationally-urgent facet.
@@ -138,6 +192,13 @@ export function classifyClinic(input: ClassifyInput): Classification {
   else if (pendingReview) primaryStatus = "PENDING_REVIEW";
   else if (reportDeliveryAttention) primaryStatus = "REPORT_DELIVERY_ATTENTION";
   else if (activelyUsing) primaryStatus = "ACTIVELY_USING";
+  // A clinic that did real clinical work but has gone quiet is "no recent
+  // activity" (stopped), never conflated with one that never started.
+  else if (noRecentActivity) primaryStatus = "NO_RECENT_ACTIVITY";
+  // No clinical signal: if we cannot even read the sign-in evidence, say so.
+  else if (trackingUnavailable) primaryStatus = "UNKNOWN_TRACKING";
+  // A doctor can log in but has not started clinical work.
+  else if (loggedInNoActivity) primaryStatus = "LOGGED_IN_NO_ACTIVITY";
   else primaryStatus = "ONBOARDING_IDLE";
 
   return { flags, primaryStatus };

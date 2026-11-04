@@ -155,9 +155,47 @@ export function ClinicOpsDrawer({
               />
             </Section>
 
+            {/* 1b. Per-doctor access, login & activity */}
+            <Section title="Doctors — access, login & activity">
+              {detail.doctors.list.length === 0 ? (
+                <p className="text-xs text-muted-foreground">No doctors are provisioned at this clinic yet.</p>
+              ) : (
+                <RecentTable
+                  rows={detail.doctors.list.map((d) => ({
+                    key: d.doctorId,
+                    cols: [
+                      d.name,
+                      d.access === "LINKED"
+                        ? "linked identity"
+                        : d.access === "ONBOARDING_PENDING"
+                          ? "onboarding pending"
+                          : "unknown",
+                      !detail.doctors.authReadable
+                        ? "unknown"
+                        : d.lastSignInAt
+                          ? relativeTime(d.lastSignInAt)
+                          : d.hasAccount
+                            ? "never"
+                            : "no account",
+                      d.lastActivityAt ? relativeTime(d.lastActivityAt) : "—",
+                    ],
+                  }))}
+                  headers={["Doctor", "Access", "Last login", "Last clinical activity"]}
+                  empty="No doctors provisioned."
+                />
+              )}
+              <p className="text-xs text-muted-foreground">
+                Login is resolved across both supported identities (email/Google + phone).
+                {!detail.doctors.authReadable && (
+                  <> Sign-in telemetry could not be read here, so last login shows <em>unknown</em>, not <em>never</em>.</>
+                )}
+              </p>
+            </Section>
+
             {/* 2. Doctor review & approvals */}
             <Section title="Doctor review & approvals">
-              <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+              <div className="grid grid-cols-2 gap-2 sm:grid-cols-5">
+                <Stat label="Cases reviewed" value={detail.review.reviewed} />
                 <Stat label="Approved" value={detail.review.approved} />
                 <Stat label="Pending review" value={detail.review.pendingReview} />
                 <Stat label="Revision req." value={detail.review.revisionRequested} />
@@ -172,8 +210,9 @@ export function ClinicOpsDrawer({
                 empty="No approved consultations yet."
               />
               <p className="text-xs text-muted-foreground">
-                Approval = an approved consultation version (the authoritative sign-off), not a
-                completed AI pipeline.
+                Cases reviewed counts every completed doctor decision — approved, revision-requested
+                or rejected (PENDING is not a completed review). Approval = an approved consultation
+                version (the authoritative sign-off), not a completed AI pipeline.
               </p>
             </Section>
 

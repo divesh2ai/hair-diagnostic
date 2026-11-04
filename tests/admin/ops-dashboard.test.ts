@@ -6,9 +6,11 @@ import {
   type ClassifyInput,
   type ReportAssetFacts,
 } from "@/lib/admin/opsDashboard/classify";
-import { resolveWindow } from "@/lib/admin/opsDashboard/window";
+import { resolveWindow, resolveRange, parseRange } from "@/lib/admin/opsDashboard/window";
+import { resolveDoctorSignIn } from "@/lib/admin/opsDashboard/identity";
 import {
   STATUS_LABEL,
+  STATUS_TONE,
   FILTER_OPTIONS,
   REPORT_READINESS_LABEL,
   formatInrFromMinor,
@@ -27,6 +29,7 @@ function base(overrides: Partial<ClassifyInput> = {}): ClassifyInput {
     authReadable: true,
     assessmentsAllTime: 10,
     approvalsAllTime: 5,
+    reviewedCasesAllTime: 5,
     awaitingReview: 0,
     assessmentsWithoutConsultation: 0,
     reconciliationDiscrepancies: 0,
@@ -35,6 +38,7 @@ function base(overrides: Partial<ClassifyInput> = {}): ClassifyInput {
     reportsSent: 5,
     dossiersReady: 5,
     lastActivityAt: new Date("2026-01-28T00:00:00.000Z"), // 4 days before NOW
+    lastDoctorActivityAt: new Date("2026-01-28T00:00:00.000Z"), // recent doctor work
     now: NOW,
     ...overrides,
   };
@@ -43,7 +47,15 @@ function base(overrides: Partial<ClassifyInput> = {}): ClassifyInput {
 describe("classifyClinic — adoption is not activation", () => {
   it("an ACTIVE clinic that nobody has used is NOT actively using", () => {
     const { flags, primaryStatus } = classifyClinic(
-      base({ assessmentsAllTime: 0, approvalsAllTime: 0, signedInCount: 0, reportsSent: 0, dossiersReady: 0 }),
+      base({
+        assessmentsAllTime: 0,
+        approvalsAllTime: 0,
+        reviewedCasesAllTime: 0,
+        signedInCount: 0,
+        reportsSent: 0,
+        dossiersReady: 0,
+        lastDoctorActivityAt: null,
+      }),
     );
     expect(flags.activelyUsing).toBe(false);
     expect(primaryStatus).not.toBe("ACTIVELY_USING");
@@ -59,7 +71,14 @@ describe("classifyClinic — adoption is not activation", () => {
 describe("classifyClinic — COMPLETED is not APPROVED", () => {
   it("assessments completed but zero approvals ⇒ not actively using, and pending if awaiting", () => {
     const { flags, primaryStatus } = classifyClinic(
-      base({ assessmentsAllTime: 20, approvalsAllTime: 0, awaitingReview: 7, dossiersReady: 0, reportsSent: 0 }),
+      base({
+        assessmentsAllTime: 20,
+        approvalsAllTime: 0,
+        reviewedCasesAllTime: 0,
+        awaitingReview: 7,
+        dossiersReady: 0,
+        reportsSent: 0,
+      }),
     );
     expect(flags.activelyUsing).toBe(false);
     expect(flags.pendingReview).toBe(true);
@@ -151,9 +170,14 @@ describe("classifyClinic — report attention is measured, never inferred from a
 });
 
 describe("classifyClinic — recency and lifecycle priority", () => {
-  it("activity older than 30 days ⇒ not actively using", () => {
-    const { flags } = classifyClinic(base({ lastActivityAt: new Date("2025-12-01T00:00:00.000Z") }));
+  it("doctor activity older than 30 days ⇒ not actively using (stopped)", () => {
+    const old = new Date("2025-12-01T00:00:00.000Z");
+    const { flags, primaryStatus } = classifyClinic(
+      base({ lastActivityAt: old, lastDoctorActivityAt: old }),
+    );
     expect(flags.activelyUsing).toBe(false);
+    expect(flags.noRecentActivity).toBe(true);
+    expect(primaryStatus).toBe("NO_RECENT_ACTIVITY");
   });
 
   it("archived clinics carry no operational flags and chip ARCHIVED", () => {
@@ -177,6 +201,170 @@ describe("classifyClinic — recency and lifecycle priority", () => {
   it("missing consultation outranks pending review in the primary chip", () => {
     const { primaryStatus } = classifyClinic(base({ awaitingReview: 2, assessmentsWithoutConsultation: 5 }));
     expect(primaryStatus).toBe("MISSING_CONSULTATION");
+  });
+});
+
+describe("classifyClinic — genuine reviews are not only approvals", () => {
+  it("rejections and revision requests are clinical work: reviewed>0 + recent ⇒ actively using even with zero approvals", () => {
+    // A doctor who has only REJECTED or asked for REVISION has done genuine
+    // clinical work; an approval-only count would miss this. dossiersReady=0 is
+    // consistent (no approvals) and must NOT raise a report-attention flag,
+    // because assetGap requires approvals>0.
+    const { flags, primaryStatus } = classifyClinic(
+      base({ approvalsAllTime: 0, reviewedCasesAllTime: 4, dossiersReady: 0, reportsSent: 0 }),
+    );
+    expect(flags.activelyUsing).toBe(true);
+    expect(flags.reportDeliveryAttention).toBe(false);
+    expect(primaryStatus).toBe("ACTIVELY_USING");
+  });
+});
+
+describe("classifyClinic — adoption follows clinical activity, not the sign-in clock", () => {
+  it("an old sign-in but recent clinical activity still counts as using HairOS", () => {
+    // classify takes no last-sign-in input at all: recency is the DOCTOR
+    // activity clock. A doctor whose recorded sign-in is ancient but who
+    // reviewed a case yesterday is actively using.
+    const { flags, primaryStatus } = classifyClinic(
+      base({ signedInCount: 1, lastActivityAt: new Date("2024-01-01T00:00:00.000Z") }),
+    );
+    expect(flags.activelyUsing).toBe(true);
+    expect(primaryStatus).toBe("ACTIVELY_USING");
+  });
+
+  it("recent PATIENT submissions do not prove adoption when the doctor has gone quiet", () => {
+    // Patients keep submitting (lastActivityAt recent) but the doctor's last
+    // clinical action is months old → not actively using; stopped.
+    const { flags, primaryStatus } = classifyClinic(
+      base({
+        lastActivityAt: NOW,
+        lastDoctorActivityAt: new Date("2025-11-01T00:00:00.000Z"),
+      }),
+    );
+    expect(flags.activelyUsing).toBe(false);
+    expect(flags.noRecentActivity).toBe(true);
+    expect(primaryStatus).toBe("NO_RECENT_ACTIVITY");
+  });
+});
+
+describe("classifyClinic — logged in but no clinical work yet", () => {
+  it("a signed-in doctor with assessments but no reviewed case ⇒ logged in, work not started", () => {
+    const { flags, primaryStatus } = classifyClinic(
+      base({
+        signedInCount: 1,
+        assessmentsAllTime: 3,
+        approvalsAllTime: 0,
+        reviewedCasesAllTime: 0,
+        awaitingReview: 0,
+        dossiersReady: 0,
+        reportsSent: 0,
+        lastDoctorActivityAt: null,
+      }),
+    );
+    expect(flags.loggedInNoActivity).toBe(true);
+    expect(flags.activelyUsing).toBe(false);
+    expect(primaryStatus).toBe("LOGGED_IN_NO_ACTIVITY");
+  });
+});
+
+describe("classifyClinic — unknown is not the same as a confident zero", () => {
+  it("auth unreadable, no clinical signal, staffed clinic ⇒ UNKNOWN_TRACKING, never 'never logged in'", () => {
+    const { flags, primaryStatus } = classifyClinic(
+      base({
+        authReadable: false,
+        signedInCount: 0,
+        assessmentsAllTime: 5,
+        approvalsAllTime: 0,
+        reviewedCasesAllTime: 0,
+        awaitingReview: 0,
+        dossiersReady: 0,
+        reportsSent: 0,
+        lastDoctorActivityAt: null,
+      }),
+    );
+    expect(flags.neverLoggedIn).toBe(false);
+    expect(flags.trackingUnavailable).toBe(true);
+    expect(primaryStatus).toBe("UNKNOWN_TRACKING");
+  });
+
+  it("once a clinical signal exists, adoption is knowable even if auth is unreadable", () => {
+    // reviewedCases>0 is itself proof of authenticated clinical work, so an
+    // unreadable auth table does not make adoption Unknown.
+    const { flags, primaryStatus } = classifyClinic(
+      base({ authReadable: false, signedInCount: 0, reviewedCasesAllTime: 3 }),
+    );
+    expect(flags.trackingUnavailable).toBe(false);
+    expect(primaryStatus).toBe("ACTIVELY_USING");
+  });
+});
+
+describe("resolveDoctorSignIn — login across supported identity mappings", () => {
+  const EMAIL = "auth-email-uid";
+  const PHONE = "auth-phone-uid";
+  const t = (iso: string) => new Date(iso);
+
+  it("resolves a sign-in recorded against the PHONE identity, not just the canonical one", () => {
+    const map = new Map<string, Date | null>([[PHONE, t("2026-01-10T00:00:00Z")]]);
+    const r = resolveDoctorSignIn({ emailUserId: EMAIL, phoneUserId: PHONE }, map);
+    expect(r.hasAccount).toBe(true);
+    expect(r.lastSignInAt?.toISOString()).toBe("2026-01-10T00:00:00.000Z");
+  });
+
+  it("takes the LATEST across both identities", () => {
+    const map = new Map<string, Date | null>([
+      [EMAIL, t("2026-01-05T00:00:00Z")],
+      [PHONE, t("2026-02-01T00:00:00Z")],
+    ]);
+    const r = resolveDoctorSignIn({ emailUserId: EMAIL, phoneUserId: PHONE }, map);
+    expect(r.lastSignInAt?.toISOString()).toBe("2026-02-01T00:00:00.000Z");
+  });
+
+  it("an account that exists but was never used ⇒ hasAccount true, lastSignInAt null (not 'never' vs no account)", () => {
+    const map = new Map<string, Date | null>([[EMAIL, null]]);
+    const r = resolveDoctorSignIn({ emailUserId: EMAIL, phoneUserId: null }, map);
+    expect(r.hasAccount).toBe(true);
+    expect(r.lastSignInAt).toBeNull();
+  });
+
+  it("no linked identity at all ⇒ hasAccount false", () => {
+    const r = resolveDoctorSignIn({ emailUserId: null, phoneUserId: null }, new Map());
+    expect(r.hasAccount).toBe(false);
+    expect(r.lastSignInAt).toBeNull();
+  });
+});
+
+describe("resolveRange — Today / Last 7 days / Last 30 days / All time presets", () => {
+  it("every preset parses and produces a forward window", () => {
+    for (const r of ["today", "7d", "30d", "all"] as const) {
+      const w = resolveRange(r);
+      expect(new Date(w.fromIso).getTime()).toBeLessThan(new Date(w.toIso).getTime());
+    }
+  });
+
+  it("labels are human and distinct", () => {
+    expect(resolveRange("today").label).toBe("Today");
+    expect(resolveRange("7d").label).toBe("Last 7 days");
+    expect(resolveRange("30d").label).toBe("Last 30 days");
+    expect(resolveRange("all").label).toBe("All time");
+  });
+
+  it("'all time' starts no later than the year 2000 so it covers every real row", () => {
+    const w = resolveRange("all");
+    expect(new Date(w.fromIso).getTime()).toBeLessThanOrEqual(new Date("2000-01-02T00:00:00Z").getTime());
+  });
+
+  it("'7d' spans seven IST days and shares the same exclusive end as 'today'", () => {
+    const seven = resolveRange("7d");
+    const today = resolveRange("today");
+    expect(seven.toIso).toBe(today.toIso);
+    const days = (new Date(seven.toIso).getTime() - new Date(seven.fromIso).getTime()) / 86_400_000;
+    expect(days).toBe(7);
+  });
+
+  it("parseRange only accepts known presets", () => {
+    expect(parseRange("7d")).toBe("7d");
+    expect(parseRange("all")).toBe("all");
+    expect(parseRange("nonsense")).toBeNull();
+    expect(parseRange(null)).toBeNull();
   });
 });
 
@@ -282,11 +470,27 @@ describe("format helpers", () => {
     }
   });
 
-  it("the three new queue filters are offered", () => {
+  it("every primary status also has a badge tone", () => {
+    for (const key of Object.keys(STATUS_LABEL)) {
+      expect(STATUS_TONE[key as keyof typeof STATUS_TONE]).toBeTruthy();
+    }
+  });
+
+  it("the honest usage statuses the task names are all labelled", () => {
+    expect(STATUS_LABEL.LOGGED_IN_NO_ACTIVITY).toBeTruthy();
+    expect(STATUS_LABEL.NO_RECENT_ACTIVITY).toBeTruthy();
+    expect(STATUS_LABEL.UNKNOWN_TRACKING.toLowerCase()).toContain("unknown");
+    expect(STATUS_LABEL.ONBOARDING_IDLE.toLowerCase()).toContain("onboarding");
+  });
+
+  it("the queue and usage filters the task names are offered", () => {
     const values = FILTER_OPTIONS.map((o) => o.value);
     expect(values).toContain("pendingReview");
     expect(values).toContain("missingConsultation");
     expect(values).toContain("reconciliationDiscrepancy");
+    expect(values).toContain("onboardingPending");
+    expect(values).toContain("loggedInNoActivity");
+    expect(values).toContain("noRecentActivity");
   });
 
   it("missing consultation is labelled as pipeline attention, not doctor inaction", () => {

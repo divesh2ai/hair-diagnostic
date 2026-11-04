@@ -8,7 +8,7 @@
 import { NextResponse } from "next/server";
 import { assertSuperAdmin, handleAuthError } from "@/lib/auth";
 import { loadOpsOverview } from "@/lib/admin/opsDashboard/metrics";
-import { resolveWindow } from "@/lib/admin/opsDashboard/window";
+import { resolveWindow, resolveRange, parseRange } from "@/lib/admin/opsDashboard/window";
 
 export const dynamic = "force-dynamic";
 
@@ -16,7 +16,12 @@ export async function GET(req: Request) {
   try {
     await assertSuperAdmin();
     const url = new URL(req.url);
-    const window = resolveWindow(url.searchParams.get("from"), url.searchParams.get("to"));
+    // A named preset (?range=today|7d|30d|all) takes precedence; otherwise fall
+    // back to an explicit ?from/?to custom range (defaulting to today).
+    const range = parseRange(url.searchParams.get("range"));
+    const window = range
+      ? resolveRange(range)
+      : resolveWindow(url.searchParams.get("from"), url.searchParams.get("to"));
     const overview = await loadOpsOverview(window);
     return NextResponse.json(overview);
   } catch (err) {
