@@ -16,8 +16,21 @@ import {
   emailsMatch,
   inviteRoleLabel,
   inviteCallbackNext,
+  decodeJwtClaims,
+  hasClinicRoleClaims,
 } from "@/lib/auth/inviteOnboarding";
 import { safeReturnPath } from "@/lib/auth/safeReturnPath";
+
+// Build an unsigned JWT-shaped token with the given payload (header.payload.sig).
+function jwtWith(payload: Record<string, unknown>): string {
+  const b64url = (o: unknown) =>
+    Buffer.from(JSON.stringify(o))
+      .toString("base64")
+      .replace(/\+/g, "-")
+      .replace(/\//g, "_")
+      .replace(/=+$/, "");
+  return `${b64url({ alg: "HS256", typ: "JWT" })}.${b64url(payload)}.sig`;
+}
 
 const future = () => new Date(Date.now() + 60_000);
 const past = () => new Date(Date.now() - 60_000);
@@ -90,5 +103,38 @@ describe("OAuth return contract (sign in, then back to acceptance, pre-link)", (
     expect(safeReturnPath("//evil.example.com")).toBeNull();
     expect(safeReturnPath("https://evil.example.com/invite/x")).toBeNull();
     expect(safeReturnPath("javascript:alert(1)")).toBeNull();
+  });
+});
+
+describe("post-link claim verification (do not navigate before DOCTOR/clinic claims)", () => {
+  it("decodes the claims from a well-formed token", () => {
+    const token = jwtWith({ sub: "uid-1", user_role: "DOCTOR", clinic_id: "clinic-a" });
+    expect(decodeJwtClaims(token)).toEqual({
+      sub: "uid-1",
+      user_role: "DOCTOR",
+      clinic_id: "clinic-a",
+    });
+  });
+  it("returns null for malformed / missing tokens", () => {
+    expect(decodeJwtClaims(null)).toBeNull();
+    expect(decodeJwtClaims("")).toBeNull();
+    expect(decodeJwtClaims("not-a-jwt")).toBeNull();
+    expect(decodeJwtClaims("a.b")).toBeNull();
+    expect(decodeJwtClaims("a.%%%.c")).toBeNull();
+  });
+  it("accepts DOCTOR or CLINIC_ADMIN with a clinic_id", () => {
+    expect(hasClinicRoleClaims({ user_role: "DOCTOR", clinic_id: "c" })).toBe(true);
+    expect(hasClinicRoleClaims({ user_role: "CLINIC_ADMIN", clinic_id: "c" })).toBe(true);
+  });
+  it("rejects a token with no clinic role claim yet (the bounce we must avoid)", () => {
+    expect(hasClinicRoleClaims(null)).toBe(false);
+    expect(hasClinicRoleClaims({ sub: "uid-1" })).toBe(false); // role not activated
+    expect(hasClinicRoleClaims({ user_role: "DOCTOR" })).toBe(false); // no clinic_id
+    expect(hasClinicRoleClaims({ user_role: "SUPER_ADMIN", clinic_id: "" })).toBe(false);
+    expect(hasClinicRoleClaims({ user_role: "PATIENT", clinic_id: "c" })).toBe(false);
+  });
+  it("round-trips through decode + verify", () => {
+    expect(hasClinicRoleClaims(decodeJwtClaims(jwtWith({ user_role: "DOCTOR", clinic_id: "x" })))).toBe(true);
+    expect(hasClinicRoleClaims(decodeJwtClaims(jwtWith({ sub: "only" })))).toBe(false);
   });
 });

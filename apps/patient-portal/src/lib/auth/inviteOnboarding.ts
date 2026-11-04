@@ -79,6 +79,57 @@ export function inviteRoleLabel(role: string): string {
   }
 }
 
+/** The subset of JWT claims the invite page checks after linking. */
+export type TokenClaims = {
+  user_role?: string;
+  clinic_id?: string;
+  sub?: string;
+} | null;
+
+/**
+ * Decode a Supabase access token's claims WITHOUT verifying its signature —
+ * client-side, purely to decide where to navigate after accept. The server
+ * (getClinicContext) re-verifies the JWT via JWKS on the next request, so a
+ * forged token gains nothing here; this only prevents navigating a session
+ * whose claims have not yet activated. Returns null on any malformed input.
+ */
+export function decodeJwtClaims(accessToken: string | null | undefined): TokenClaims {
+  if (!accessToken) return null;
+  const parts = accessToken.split(".");
+  if (parts.length !== 3) return null;
+  try {
+    let b64 = parts[1]!.replace(/-/g, "+").replace(/_/g, "/");
+    b64 += "=".repeat((4 - (b64.length % 4)) % 4);
+    const json =
+      typeof atob === "function"
+        ? atob(b64)
+        : Buffer.from(b64, "base64").toString("binary");
+    const parsed = JSON.parse(json) as Record<string, unknown>;
+    return {
+      user_role: typeof parsed.user_role === "string" ? parsed.user_role : undefined,
+      clinic_id: typeof parsed.clinic_id === "string" ? parsed.clinic_id : undefined,
+      sub: typeof parsed.sub === "string" ? parsed.sub : undefined,
+    };
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * True when the freshly-refreshed token actually carries a clinic-scoped
+ * clinician role. After acceptInvitation links the Doctor UID, the access-token
+ * hook emits user_role=DOCTOR (or CLINIC_ADMIN for a solo clinic-admin) plus a
+ * clinic_id. Navigating before this is present would bounce the doctor at
+ * /post-login (no role claim → Unauthorized → /login), so the invite page waits
+ * for this to be true and otherwise tells the user plainly.
+ */
+export function hasClinicRoleClaims(claims: TokenClaims): boolean {
+  if (!claims) return false;
+  const role = claims.user_role;
+  const clinicScoped = role === "DOCTOR" || role === "CLINIC_ADMIN";
+  return clinicScoped && typeof claims.clinic_id === "string" && claims.clinic_id.length > 0;
+}
+
 /**
  * The redirect target handed to Supabase OAuth from the invite page. Returning
  * to `/invite/<token>` (NOT via /post-login) is deliberate: the recipient has

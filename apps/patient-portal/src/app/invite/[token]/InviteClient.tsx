@@ -2,7 +2,12 @@
 
 import { useState } from "react";
 import { createBrowserClient } from "@supabase/ssr";
-import { inviteCallbackNext, type InviteStatus } from "@/lib/auth/inviteOnboarding";
+import {
+  inviteCallbackNext,
+  decodeJwtClaims,
+  hasClinicRoleClaims,
+  type InviteStatus,
+} from "@/lib/auth/inviteOnboarding";
 
 // Multi-colour Google "G" (inlined — lucide ships no brand marks). Mirrors the
 // login page so the button reads as the same trusted control.
@@ -38,6 +43,8 @@ function acceptErrorMessage(code: string | undefined): string {
       return "This invitation has expired. Ask your clinic admin to resend it.";
     case "revoked":
       return "This invitation was cancelled. Ask your clinic admin for a new one.";
+    case "identity_conflict":
+      return "This clinician record (or your account) is already linked to a different sign-in identity. Contact your clinic admin — this needs a Super Admin to resolve, and we won't overwrite an existing link.";
     case "already_accepted":
       return "This invitation has already been accepted. You can sign in.";
     case "not_found":
@@ -121,13 +128,41 @@ export function InviteClient(props: Props) {
         return;
       }
       // Linked. Refresh the token so the access-token hook re-runs and emits
-      // the DOCTOR claim now that the UID is linked, then let /post-login route
-      // by role (DOCTOR → /doctor).
+      // the DOCTOR + clinic claim now that the UID is linked. Do NOT navigate
+      // until that claim is actually present: /post-login treats a missing
+      // user_role as unauthenticated and bounces to /login, which would read as
+      // "activation failed" right after a successful link.
+      let refreshErr: unknown = null;
+      let accessToken: string | null = null;
       try {
-        await supabase.auth.refreshSession();
-      } catch {
-        /* best-effort — post-login re-reads server-side anyway */
+        const { data, error: rErr } = await supabase.auth.refreshSession();
+        refreshErr = rErr;
+        accessToken = data?.session?.access_token ?? null;
+      } catch (e) {
+        refreshErr = e;
       }
+
+      if (refreshErr || !accessToken) {
+        // The link succeeded server-side; only the local session is stale.
+        setError(
+          "Your account is activated, but we couldn't refresh this browser session. Please sign in again to finish.",
+        );
+        setBusy(false);
+        return;
+      }
+
+      if (!hasClinicRoleClaims(decodeJwtClaims(accessToken))) {
+        // Linked, token refreshed, but the clinician role claim has not
+        // appeared yet (e.g. the Doctor row is not active, or the hook has not
+        // picked up the link). Say so plainly rather than bounce to a forbidden
+        // page.
+        setError(
+          "Your account is linked, but clinical access hasn't activated yet. Try signing in again in a moment; if it persists, contact your clinic admin.",
+        );
+        setBusy(false);
+        return;
+      }
+
       window.location.assign("/post-login");
     } catch {
       setError("We couldn't complete activation. Please try again.");

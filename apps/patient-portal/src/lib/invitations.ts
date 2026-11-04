@@ -70,6 +70,7 @@ export class InvitationError extends Error {
       | "cancelled"
       | "revoked"
       | "identity_mismatch"
+      | "identity_conflict"
       | "resend_cooldown"
       | "resend_limit"
       | "invitation_changed",
@@ -684,33 +685,92 @@ export async function acceptInvitation(
       let membershipId: string;
 
       if (inv.clinicId && inv.role === SystemRole.DOCTOR) {
+        // ── Server-side Doctor/clinic identity binding (P0 hardening) ─────────
+        // Two failure modes this must prevent, both independent of the invite's
+        // email matching the row:
+        //   • OVERWRITING an occupied mapping — an existing Doctor already bound
+        //     to a DIFFERENT Supabase identity must never be silently re-pointed
+        //     at this one. Re-accepting with the SAME uid is idempotent and fine.
+        //   • DUPLICATE creation / cross-link — this Supabase uid may already be
+        //     linked to a Doctor (possibly another clinic). Creating a second
+        //     Doctor, or linking a second row to the same uid, is refused; both
+        //     identity columns are @unique, but we fail cleanly with a clear
+        //     error rather than letting the DB raise a unique violation.
+        const alreadyLinked = await tx.doctor.findFirst({
+          where: {
+            OR: [
+              { supabaseUserId: input.supabaseUserId },
+              { supabasePhoneUserId: input.supabaseUserId },
+            ],
+          },
+          select: { id: true, clinicId: true },
+        });
+
         const existing = memberEmail
           ? await tx.doctor.findFirst({
               where: { clinicId: inv.clinicId, email: memberEmail },
             })
           : null;
-        const doctor = existing
-          ? await tx.doctor.update({
-              where: { id: existing.id },
-              data: {
-                supabaseUserId: input.supabaseUserId,
-                name: existing.name || input.name,
-                phone: existing.phone ?? memberPhone,
-                isActive: true,
-                deletedAt: null,
-              },
-            })
-          : await tx.doctor.create({
-              data: {
-                clinicId: inv.clinicId,
-                email: memberEmail ?? `${input.supabaseUserId}@no-email.invalid`,
-                phone: memberPhone,
-                name: input.name,
-                supabaseUserId: input.supabaseUserId,
-              },
-            });
+
+        let doctorId: string;
+
+        if (existing) {
+          const boundToOther =
+            (existing.supabaseUserId && existing.supabaseUserId !== input.supabaseUserId) ||
+            (existing.supabasePhoneUserId &&
+              existing.supabasePhoneUserId !== input.supabaseUserId);
+          if (boundToOther) {
+            throw new InvitationError(
+              "identity_conflict",
+              "this clinician record is already linked to a different sign-in identity",
+            );
+          }
+          if (alreadyLinked && alreadyLinked.id !== existing.id) {
+            throw new InvitationError(
+              "identity_conflict",
+              "this account is already linked to another clinician record",
+            );
+          }
+          // Safe to (idempotently) link the EXISTING row — id, clinic and all
+          // clinical history preserved. Never clears an already-set identity.
+          const doctor = await tx.doctor.update({
+            where: { id: existing.id },
+            data: {
+              supabaseUserId: existing.supabaseUserId ?? input.supabaseUserId,
+              name: existing.name || input.name,
+              phone: existing.phone ?? memberPhone,
+              isActive: true,
+              deletedAt: null,
+            },
+          });
+          doctorId = doctor.id;
+        } else if (alreadyLinked) {
+          // No row matches the invite email, but this uid is already a Doctor.
+          // Do NOT create a duplicate. If it is this very clinic, the account is
+          // effectively already onboarded (idempotent); otherwise refuse rather
+          // than cross-link one identity to two clinics.
+          if (alreadyLinked.clinicId !== inv.clinicId) {
+            throw new InvitationError(
+              "identity_conflict",
+              "this account is already linked to a clinician record in another clinic",
+            );
+          }
+          doctorId = alreadyLinked.id;
+        } else {
+          // Genuinely new, unlinked clinician — create and link.
+          const doctor = await tx.doctor.create({
+            data: {
+              clinicId: inv.clinicId,
+              email: memberEmail ?? `${input.supabaseUserId}@no-email.invalid`,
+              phone: memberPhone,
+              name: input.name,
+              supabaseUserId: input.supabaseUserId,
+            },
+          });
+          doctorId = doctor.id;
+        }
         membershipType = "doctor";
-        membershipId = doctor.id;
+        membershipId = doctorId;
       } else if (inv.clinicId) {
         const member = await tx.clinicMember.upsert({
           where: {
