@@ -124,6 +124,12 @@ export const AUDIT_ACTION_GROUPS = {
     // Doctor row — a link, not a denial, and not the same event as
     // DOCTOR_PHONE_LOGIN_LINKED, which is a first login onto an unlinked row.
     "DOCTOR_PHONE_IDENTITY_ATTACHED",
+    // A platform SUPER_ADMIN signing in by phone OTP. Unlike a doctor they
+    // hold no Doctor row, so the login route skips clinical linking entirely —
+    // this records that privileged, Doctor-less sign-in so a reviewer can see
+    // every admin entry, not just doctor logins. The /admin surface still
+    // re-checks the role server-side; this is the audit trail, not the gate.
+    "SUPER_ADMIN_PHONE_LOGIN",
   ],
 } as const;
 

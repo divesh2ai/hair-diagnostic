@@ -93,6 +93,7 @@ jobs:
           npx vitest run \
             tests/localisation \
             tests/reports \
+            tests/auth/super-admin-phone-login.test.ts \
             tests/doctor/clinical-attention-advice.test.ts \
             tests/doctor/clinical-attention-soft-hidden.test.ts \
             tests/doctor/clinical-signals.test.ts \
