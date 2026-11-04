@@ -49,6 +49,7 @@ on:
       - main
       - master
       - 'release/**'
+      - 'codex/doctor-phase1-completion'
   pull_request:
     branches:
       - main
