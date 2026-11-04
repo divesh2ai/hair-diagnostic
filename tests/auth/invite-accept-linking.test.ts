@@ -4,12 +4,8 @@
 // acceptInvitation() logic, but over an in-memory JS stub of the Prisma client
 // (no SQL engine, no database). It is NOT authenticated-acceptance evidence and
 // NOT real-PostgreSQL evidence — it verifies only the branching/decision logic
-// of acceptInvitation. Real-PostgreSQL coverage of the same invariants (the
-// Doctor identity-column UNIQUE constraints and seeded link/refusal cases) is
-// captured against the actual isolated STAGING database via SQL, and the
-// end-to-end authenticated journey (real Google sign-in, dashboard, reload,
-// logout, login, cross-clinic denial) is a human-run step on staging — both are
-// recorded in the onboarding runbook, not here.
+// of acceptInvitation. Real PostgreSQL and authenticated Google acceptance
+// remain separate, unverified gates; these tests establish neither.
 //
 // Invariants checked here:
 //   • an EXISTING Doctor is linked (never duplicated), its id/clinic preserved;
@@ -35,7 +31,8 @@ const h = vi.hoisted(() => {
     invitation: Record<string, unknown> | null;
     created: Doctor[];
     seq: number;
-  } = { doctors: [], invitation: null, created: [], seq: 0 };
+    clinic: { id: string; isActive: boolean; deletedAt: Date | null; status: string } | null;
+  } = { doctors: [], invitation: null, created: [], seq: 0, clinic: null };
 
   const matchesDoctor = (where: Record<string, unknown>) => {
     if (Array.isArray((where as { OR?: unknown[] }).OR)) {
@@ -52,6 +49,7 @@ const h = vi.hoisted(() => {
   };
 
   const tx = {
+    clinic: { findUnique: vi.fn(async () => store.clinic ? { ...store.clinic } : null) },
     clinicInvitation: {
       findUnique: vi.fn(async ({ where }: { where: { tokenHash: string } }) =>
         store.invitation && store.invitation.tokenHash === where.tokenHash
@@ -64,6 +62,8 @@ const h = vi.hoisted(() => {
       }),
     },
     doctor: {
+      findMany: vi.fn(async ({ where }: { where: { OR: Record<string, string>[] } }) =>
+        store.doctors.filter(d => where.OR.some(c => Object.entries(c).every(([k,v]) => (d as Record<string, unknown>)[k] === v))).map(d => ({ ...d }))),
       findFirst: vi.fn(async ({ where }: { where: Record<string, unknown> }) => {
         const d = matchesDoctor(where);
         return d ? { ...d } : null;
@@ -147,7 +147,55 @@ beforeEach(() => {
   h.store.invitation = null;
   h.store.created = [];
   h.store.seq = 0;
+  h.store.clinic = { id: CLINIC, isActive: true, deletedAt: null, status: "ACTIVE" };
   vi.clearAllMocks();
+});
+
+describe("onboarding regressions", () => {
+  it.each([
+    { isActive: false, deletedAt: null },
+    { isActive: true, deletedAt: new Date("2026-01-01") },
+  ])("rejects a non-live Doctor without changing its state: %o", async (state) => {
+    seedInvitation();
+    h.store.doctors = [doctor({ id: "disabled", ...state }) as never];
+    await expect(acceptInvitation({ rawToken: RAW, supabaseUserId: "uid-1", email: GMAIL, name: "test" })).rejects.toMatchObject({ code: "inactive_scope" });
+    expect(h.store.doctors[0]).toMatchObject({ ...state, supabaseUserId: null });
+    expect(h.store.invitation!.status).toBe("PENDING");
+    expect(h.store.created).toHaveLength(0);
+  });
+  it.each(["missing", "inactive", "deleted", "suspended", "archived"])("rejects %s clinic before linking", async (kind) => {
+    seedInvitation();
+    h.store.doctors = [doctor({ id: "target" }) as never];
+    if (kind === "missing") h.store.clinic = null;
+    else if (kind === "inactive") h.store.clinic!.isActive = false;
+    else if (kind === "deleted") h.store.clinic!.deletedAt = new Date("2026-01-01");
+    else h.store.clinic!.status = kind.toUpperCase();
+    await expect(acceptInvitation({ rawToken: RAW, supabaseUserId: "uid-1", email: GMAIL, name: "test" })).rejects.toMatchObject({ code: "inactive_scope" });
+    expect(h.store.doctors[0]!.supabaseUserId).toBeNull();
+    expect(h.store.invitation!.status).toBe("PENDING");
+    expect(h.store.created).toHaveLength(0);
+  });
+  it.each([false, true])("rejects ANY other cross-column UID owner regardless of return order: %s", async (reverse) => {
+    seedInvitation();
+    const rows = [doctor({ id: "intended", supabaseUserId: "uid-1" }), doctor({ id: "other", clinicId: "clinic-b", email: "other@example.invalid", supabasePhoneUserId: "uid-1" })];
+    h.store.doctors = (reverse ? rows.reverse() : rows) as never;
+    await expect(acceptInvitation({ rawToken: RAW, supabaseUserId: "uid-1", email: GMAIL, name: "test" })).rejects.toMatchObject({ code: "identity_conflict" });
+    expect(h.store.invitation!.status).toBe("PENDING");
+    expect(h.store.created).toHaveLength(0);
+  });
+  it.each([null, "uid-1"])("preserves separate legacy phone UID with canonical %s", async (canonical) => {
+    seedInvitation();
+    h.store.doctors = [doctor({ id: "dual", supabaseUserId: canonical, supabasePhoneUserId: "legacy-phone" }) as never];
+    await expect(acceptInvitation({ rawToken: RAW, supabaseUserId: "uid-1", email: GMAIL, name: "test" })).resolves.toMatchObject({ membershipId: "dual" });
+    expect(h.store.doctors[0]).toMatchObject({ supabaseUserId: "uid-1", supabasePhoneUserId: "legacy-phone" });
+    expect(h.store.created).toHaveLength(0);
+  });
+  it("never overwrites another canonical identity even if the phone identity matches", async () => {
+    seedInvitation();
+    h.store.doctors = [doctor({ id: "dual", supabaseUserId: "occupied", supabasePhoneUserId: "uid-1" }) as never];
+    await expect(acceptInvitation({ rawToken: RAW, supabaseUserId: "uid-1", email: GMAIL, name: "test" })).rejects.toMatchObject({ code: "identity_conflict" });
+    expect(h.store.doctors[0]).toMatchObject({ supabaseUserId: "occupied", supabasePhoneUserId: "uid-1" });
+  });
 });
 
 describe("acceptInvitation — existing Doctor linking", () => {
