@@ -212,6 +212,24 @@ describe("acceptInvitation — refuses to overwrite / cross-link an occupied ide
     expect(h.store.created).toHaveLength(0);
   });
 
+  it("refuses when the account is already a PHONE identity on another Doctor (cross-column)", async () => {
+    // The two UNIQUE indexes are per-column; they do NOT stop one uid from being
+    // supabaseUserId on one row and supabasePhoneUserId on another. The app-level
+    // check (OR over both columns) is what prevents this cross-column collision.
+    seedInvitation(); // invite email GMAIL → matches doc-sumit
+    h.store.doctors = [
+      doctor({ id: "doc-sumit", email: GMAIL, supabaseUserId: null, supabasePhoneUserId: null }) as never,
+      doctor({ id: "doc-phone", email: "p@x.com", supabaseUserId: null, supabasePhoneUserId: "uid-1" }) as never,
+    ];
+
+    await expect(
+      acceptInvitation({ rawToken: RAW, supabaseUserId: "uid-1", email: GMAIL, name: "x" }),
+    ).rejects.toMatchObject({ code: "identity_conflict" });
+
+    expect(h.store.doctors.find((d) => d.id === "doc-sumit")!.supabaseUserId).toBeNull();
+    expect(h.store.created).toHaveLength(0);
+  });
+
   it("refuses to cross-link an account already tied to a Doctor in ANOTHER clinic", async () => {
     seedInvitation(); // clinic-a, email GMAIL (no clinic-a doctor with that email)
     h.store.doctors = [doctor({ id: "doc-b", clinicId: "clinic-b", email: "b@x.com", supabaseUserId: "uid-1" }) as never];
