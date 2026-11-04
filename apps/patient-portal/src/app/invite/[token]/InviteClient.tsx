@@ -5,7 +5,7 @@ import { createBrowserClient } from "@supabase/ssr";
 import {
   inviteCallbackNext,
   decodeJwtClaims,
-  hasClinicRoleClaims,
+  hasActivatedRoleClaims,
   type InviteStatus,
 } from "@/lib/auth/inviteOnboarding";
 
@@ -78,6 +78,11 @@ export function InviteClient(props: Props) {
   // Google OAuth that RETURNS to this invite page (not /post-login): the
   // recipient has no role yet, so the role gate would bounce them. The server
   // callback honours ?next and safeReturnPath permits same-origin /invite/...
+  //
+  // `prompt: 'select_account'` forces Google's account chooser every time, so
+  // an invitee already signed into the WRONG Google account in this browser is
+  // offered the picker instead of being silently carried back in as that
+  // account (the core of the wrong-account-switch fix).
   const signInWithGoogle = async () => {
     if (busy) return;
     setBusy(true);
@@ -88,7 +93,7 @@ export function InviteClient(props: Props) {
       )}`;
       const { error: err } = await supabase.auth.signInWithOAuth({
         provider: "google",
-        options: { redirectTo },
+        options: { redirectTo, queryParams: { prompt: "select_account" } },
       });
       if (err) throw err;
       // Success navigates to Google; nothing below runs.
@@ -98,16 +103,32 @@ export function InviteClient(props: Props) {
     }
   };
 
+  // Switch account: clear the current Supabase session first, then re-open
+  // Google WITH the account chooser. signOut() returns {error} rather than
+  // throwing for an API failure, so that is handled explicitly — a failed
+  // sign-out must NOT fall through to a new OAuth that would re-bind the same
+  // wrong account.
   const switchAccount = async () => {
     if (busy) return;
     setBusy(true);
     setError(null);
+    let signOutError: unknown = null;
     try {
-      await supabase.auth.signOut();
-    } catch {
-      /* ignore */
+      const { error: soErr } = await supabase.auth.signOut();
+      signOutError = soErr;
+    } catch (e) {
+      signOutError = e;
     }
-    // Re-start Google OAuth so the invitee can pick the correct account.
+    if (signOutError) {
+      setBusy(false);
+      setError(
+        "We couldn't sign out of the current account. Please try again, or sign out from your account menu and reopen this link.",
+      );
+      return;
+    }
+    // Session cleared — re-start Google OAuth so the invitee picks the correct
+    // account (signInWithGoogle manages its own busy/error state).
+    setBusy(false);
     await signInWithGoogle();
   };
 
@@ -151,13 +172,14 @@ export function InviteClient(props: Props) {
         return;
       }
 
-      if (!hasClinicRoleClaims(decodeJwtClaims(accessToken))) {
-        // Linked, token refreshed, but the clinician role claim has not
-        // appeared yet (e.g. the Doctor row is not active, or the hook has not
-        // picked up the link). Say so plainly rather than bounce to a forbidden
-        // page.
+      if (!hasActivatedRoleClaims(decodeJwtClaims(accessToken))) {
+        // Linked, token refreshed, but the role claim for this invitation's
+        // surface has not appeared yet (e.g. the membership row is not active,
+        // or the hook has not picked up the link). Say so plainly rather than
+        // bounce to a forbidden page. Role-aware: a clinic role needs clinic_id,
+        // an org role needs organization_id.
         setError(
-          "Your account is linked, but clinical access hasn't activated yet. Try signing in again in a moment; if it persists, contact your clinic admin.",
+          "Your account is linked, but access hasn't activated yet. Try signing in again in a moment; if it persists, contact your administrator.",
         );
         setBusy(false);
         return;

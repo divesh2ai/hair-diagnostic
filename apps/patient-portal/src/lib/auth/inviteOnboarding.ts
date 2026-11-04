@@ -83,6 +83,7 @@ export function inviteRoleLabel(role: string): string {
 export type TokenClaims = {
   user_role?: string;
   clinic_id?: string;
+  organization_id?: string;
   sub?: string;
 } | null;
 
@@ -108,6 +109,8 @@ export function decodeJwtClaims(accessToken: string | null | undefined): TokenCl
     return {
       user_role: typeof parsed.user_role === "string" ? parsed.user_role : undefined,
       clinic_id: typeof parsed.clinic_id === "string" ? parsed.clinic_id : undefined,
+      organization_id:
+        typeof parsed.organization_id === "string" ? parsed.organization_id : undefined,
       sub: typeof parsed.sub === "string" ? parsed.sub : undefined,
     };
   } catch {
@@ -116,18 +119,34 @@ export function decodeJwtClaims(accessToken: string | null | undefined): TokenCl
 }
 
 /**
- * True when the freshly-refreshed token actually carries a clinic-scoped
- * clinician role. After acceptInvitation links the Doctor UID, the access-token
- * hook emits user_role=DOCTOR (or CLINIC_ADMIN for a solo clinic-admin) plus a
- * clinic_id. Navigating before this is present would bounce the doctor at
- * /post-login (no role claim → Unauthorized → /login), so the invite page waits
- * for this to be true and otherwise tells the user plainly.
+ * True when the freshly-refreshed token carries an ACTIVATED role claim for the
+ * surface the invitee is headed to — role-aware so every invitation journey is
+ * preserved, not just Doctor. After acceptInvitation links the identity, the
+ * access-token hook emits:
+ *   • DOCTOR / CLINIC_ADMIN / STAFF  → clinic-scoped, requires clinic_id
+ *   • ORG_ADMIN / SUPER_ADMIN        → org-scoped, requires organization_id
+ * Navigating before the claim is present would bounce the user at /post-login
+ * (no user_role → Unauthorized → /login), so the invite page waits for this and
+ * otherwise says so plainly. This is only a client-side gate on WHEN to
+ * navigate; server authorization (getClinicContext / assert* guards) remains
+ * authoritative on every subsequent request.
  */
-export function hasClinicRoleClaims(claims: TokenClaims): boolean {
-  if (!claims) return false;
-  const role = claims.user_role;
-  const clinicScoped = role === "DOCTOR" || role === "CLINIC_ADMIN";
-  return clinicScoped && typeof claims.clinic_id === "string" && claims.clinic_id.length > 0;
+export function hasActivatedRoleClaims(claims: TokenClaims): boolean {
+  if (!claims || typeof claims.user_role !== "string") return false;
+  switch (claims.user_role) {
+    case "DOCTOR":
+    case "CLINIC_ADMIN":
+    case "STAFF":
+      return typeof claims.clinic_id === "string" && claims.clinic_id.length > 0;
+    case "ORG_ADMIN":
+    case "SUPER_ADMIN":
+      return (
+        typeof claims.organization_id === "string" && claims.organization_id.length > 0
+      );
+    default:
+      // PATIENT or an unknown role must not satisfy a staff/clinician invite.
+      return false;
+  }
 }
 
 /**

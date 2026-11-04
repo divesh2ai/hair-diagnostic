@@ -17,7 +17,7 @@ import {
   inviteRoleLabel,
   inviteCallbackNext,
   decodeJwtClaims,
-  hasClinicRoleClaims,
+  hasActivatedRoleClaims,
 } from "@/lib/auth/inviteOnboarding";
 import { safeReturnPath } from "@/lib/auth/safeReturnPath";
 
@@ -106,13 +106,19 @@ describe("OAuth return contract (sign in, then back to acceptance, pre-link)", (
   });
 });
 
-describe("post-link claim verification (do not navigate before DOCTOR/clinic claims)", () => {
-  it("decodes the claims from a well-formed token", () => {
-    const token = jwtWith({ sub: "uid-1", user_role: "DOCTOR", clinic_id: "clinic-a" });
-    expect(decodeJwtClaims(token)).toEqual({
+describe("post-link claim verification (role-aware; do not navigate before claims)", () => {
+  it("decodes clinic and organization claims from a well-formed token", () => {
+    expect(decodeJwtClaims(jwtWith({ sub: "uid-1", user_role: "DOCTOR", clinic_id: "clinic-a" }))).toEqual({
       sub: "uid-1",
       user_role: "DOCTOR",
       clinic_id: "clinic-a",
+      organization_id: undefined,
+    });
+    expect(decodeJwtClaims(jwtWith({ user_role: "ORG_ADMIN", organization_id: "org-a" }))).toEqual({
+      sub: undefined,
+      user_role: "ORG_ADMIN",
+      clinic_id: undefined,
+      organization_id: "org-a",
     });
   });
   it("returns null for malformed / missing tokens", () => {
@@ -122,19 +128,27 @@ describe("post-link claim verification (do not navigate before DOCTOR/clinic cla
     expect(decodeJwtClaims("a.b")).toBeNull();
     expect(decodeJwtClaims("a.%%%.c")).toBeNull();
   });
-  it("accepts DOCTOR or CLINIC_ADMIN with a clinic_id", () => {
-    expect(hasClinicRoleClaims({ user_role: "DOCTOR", clinic_id: "c" })).toBe(true);
-    expect(hasClinicRoleClaims({ user_role: "CLINIC_ADMIN", clinic_id: "c" })).toBe(true);
+  it("accepts clinic roles (DOCTOR/CLINIC_ADMIN/STAFF) with a clinic_id", () => {
+    expect(hasActivatedRoleClaims({ user_role: "DOCTOR", clinic_id: "c" })).toBe(true);
+    expect(hasActivatedRoleClaims({ user_role: "CLINIC_ADMIN", clinic_id: "c" })).toBe(true);
+    expect(hasActivatedRoleClaims({ user_role: "STAFF", clinic_id: "c" })).toBe(true);
   });
-  it("rejects a token with no clinic role claim yet (the bounce we must avoid)", () => {
-    expect(hasClinicRoleClaims(null)).toBe(false);
-    expect(hasClinicRoleClaims({ sub: "uid-1" })).toBe(false); // role not activated
-    expect(hasClinicRoleClaims({ user_role: "DOCTOR" })).toBe(false); // no clinic_id
-    expect(hasClinicRoleClaims({ user_role: "SUPER_ADMIN", clinic_id: "" })).toBe(false);
-    expect(hasClinicRoleClaims({ user_role: "PATIENT", clinic_id: "c" })).toBe(false);
+  it("accepts org roles (ORG_ADMIN/SUPER_ADMIN) with an organization_id", () => {
+    expect(hasActivatedRoleClaims({ user_role: "ORG_ADMIN", organization_id: "o" })).toBe(true);
+    expect(hasActivatedRoleClaims({ user_role: "SUPER_ADMIN", organization_id: "o" })).toBe(true);
+  });
+  it("rejects tokens whose role has not activated for its surface (the bounce we must avoid)", () => {
+    expect(hasActivatedRoleClaims(null)).toBe(false);
+    expect(hasActivatedRoleClaims({ sub: "uid-1" })).toBe(false); // no role
+    expect(hasActivatedRoleClaims({ user_role: "DOCTOR" })).toBe(false); // clinic role, no clinic_id
+    expect(hasActivatedRoleClaims({ user_role: "STAFF", clinic_id: "" })).toBe(false);
+    expect(hasActivatedRoleClaims({ user_role: "ORG_ADMIN" })).toBe(false); // org role, no org_id
+    expect(hasActivatedRoleClaims({ user_role: "SUPER_ADMIN", clinic_id: "c" })).toBe(false); // wrong scope claim
+    expect(hasActivatedRoleClaims({ user_role: "PATIENT", clinic_id: "c" })).toBe(false);
   });
   it("round-trips through decode + verify", () => {
-    expect(hasClinicRoleClaims(decodeJwtClaims(jwtWith({ user_role: "DOCTOR", clinic_id: "x" })))).toBe(true);
-    expect(hasClinicRoleClaims(decodeJwtClaims(jwtWith({ sub: "only" })))).toBe(false);
+    expect(hasActivatedRoleClaims(decodeJwtClaims(jwtWith({ user_role: "DOCTOR", clinic_id: "x" })))).toBe(true);
+    expect(hasActivatedRoleClaims(decodeJwtClaims(jwtWith({ user_role: "ORG_ADMIN", organization_id: "o" })))).toBe(true);
+    expect(hasActivatedRoleClaims(decodeJwtClaims(jwtWith({ sub: "only" })))).toBe(false);
   });
 });

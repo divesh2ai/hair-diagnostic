@@ -1,8 +1,17 @@
 // Server-side Doctor/clinic identity binding on invitation accept (P0 #1).
 //
-// Runs the REAL acceptInvitation() over an in-memory transactional Prisma so
-// the linking decisions are exercised exactly as production would, with no
-// external DB. Proves the two invariants the review asked for:
+// SCOPE / LABEL: this is a MOCKED integration test. It runs the real
+// acceptInvitation() logic, but over an in-memory JS stub of the Prisma client
+// (no SQL engine, no database). It is NOT authenticated-acceptance evidence and
+// NOT real-PostgreSQL evidence — it verifies only the branching/decision logic
+// of acceptInvitation. Real-PostgreSQL coverage of the same invariants (the
+// Doctor identity-column UNIQUE constraints and seeded link/refusal cases) is
+// captured against the actual isolated STAGING database via SQL, and the
+// end-to-end authenticated journey (real Google sign-in, dashboard, reload,
+// logout, login, cross-clinic denial) is a human-run step on staging — both are
+// recorded in the onboarding runbook, not here.
+//
+// Invariants checked here:
 //   • an EXISTING Doctor is linked (never duplicated), its id/clinic preserved;
 //   • an OCCUPIED identity mapping is never overwritten or cross-linked.
 
