@@ -59,6 +59,10 @@ export const te: Dictionary = {
     sectionGovernance: "పాలన",
     sectionSystem: "సిస్టమ్",
     support: "Help & Support",
+    overview: "అవలోకనం",
+    doctorsAccess: "డాక్టర్లు & యాక్సెస్",
+    operationsReports: "ఆపరేషన్లు & నివేదికలు",
+    sectionSettingsAudit: "సెట్టింగ్‌లు & ఆడిట్",
   },
   shell: {
     searchPlaceholder: "రోగులు, నివేదికలు, క్లినిక్‌లను వెతకండి…",

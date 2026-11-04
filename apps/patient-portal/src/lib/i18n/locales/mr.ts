@@ -59,6 +59,10 @@ export const mr: Dictionary = {
     sectionGovernance: "प्रशासन",
     sectionSystem: "सिस्टम",
     support: "Help & Support",
+    overview: "आढावा",
+    doctorsAccess: "डॉक्टर आणि प्रवेश",
+    operationsReports: "कामकाज आणि अहवाल",
+    sectionSettingsAudit: "सेटिंग्ज आणि ऑडिट",
   },
   shell: {
     searchPlaceholder: "रुग्ण, अहवाल, क्लिनिक्स शोधा…",

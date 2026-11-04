@@ -59,6 +59,10 @@ export const ta: Dictionary = {
     sectionGovernance: "நிர்வாகம்",
     sectionSystem: "அமைப்பு",
     support: "Help & Support",
+    overview: "கண்ணோட்டம்",
+    doctorsAccess: "மருத்துவர்கள் & அணுகல்",
+    operationsReports: "செயல்பாடுகள் & அறிக்கைகள்",
+    sectionSettingsAudit: "அமைப்புகள் & தணிக்கை",
   },
   shell: {
     searchPlaceholder: "நோயாளிகள், அறிக்கைகள், கிளினிக்குகளைத் தேடவும்…",

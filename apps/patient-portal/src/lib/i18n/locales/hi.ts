@@ -58,6 +58,10 @@ export const hi: Dictionary = {
     sectionGovernance: "अभिशासन",
     sectionSystem: "सिस्टम",
     support: "Help & Support",
+    overview: "अवलोकन",
+    doctorsAccess: "डॉक्टर और पहुँच",
+    operationsReports: "संचालन और रिपोर्ट",
+    sectionSettingsAudit: "सेटिंग्स और ऑडिट",
   },
   shell: {
     searchPlaceholder: "रोगी, रिपोर्ट, क्लीनिक खोजें…",

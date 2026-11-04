@@ -44,46 +44,51 @@ export type NavBadgeChannel =
   | "platformAlerts"
   | "supportUnread";
 
-// Super Admin navigation — seven destinations, five groups.
+// Super Admin navigation — HairOS Phase 1.
 //
-// ── Why this shrank from ten items to seven ─────────────────────────────────
-// The sidebar had grown to expose the system's internal boundaries: Action
-// Centre, Kit Orders, Fulfilment and Review Queue were four separate top-level
-// entries describing four services rather than four jobs. A Super Admin should
-// not have to know how the platform is built in order to run it.
+// Four primary destinations the operator lives in, plus one grouped
+// "Settings & Audit" shelf for configuration and the audit trail. The spec
+// for Phase 1 names exactly these: Overview, Clinics, Doctors & Access,
+// Operations & Reports, and Settings / Audit as needed.
 //
-// The test each destination now answers:
-//   Dashboard ............ what is happening, and what needs me?
-//   Clinics / People ..... who is on the platform, and what can they reach?
-//   Operations ........... what is moving, stuck or waiting?
-//   Governance ........... what was decided, and who did what?
-//   Platform Settings .... how is the system configured?
+// The test each destination answers:
+//   Overview ............. what is happening across every clinic, and what
+//                          needs me? (the operations control centre)
+//   Clinics .............. which clinics are registered, and what is each
+//                          one's operational state? (management + drilldown)
+//   Doctors & Access ..... which doctors and accounts exist, who has a linked
+//                          identity, and who has actually signed in?
+//   Operations & Reports . what is moving, stuck, or waiting — assessments,
+//                          the review pipeline, reports and fulfilment?
+//   Settings & Audit ..... how is the system configured, and what was decided
+//                          and by whom? (platform settings, governance, audit,
+//                          support)
 //
-// Action Centre is gone from the sidebar because its content now leads the
-// Dashboard — the exceptions belong where the operator already looks first,
-// not one click away. Its route and API survive untouched as a deep dive.
+// India Network is deliberately NOT a Phase 1 destination: the /admin/network
+// map and its launch-readiness surface are out of scope for Phase 1 and are
+// not linked here. Action Centre, Kit Orders and Fulfilment keep their routes
+// as deep links but are no longer top-level concepts — their content leads the
+// Overview and lives inside Operations & Reports.
 const NAV_SUPER_ADMIN: NavSection[] = [
   {
     labelKey: null,
-    items: [{ href: "/admin", labelKey: "nav.dashboard", icon: "dashboard" }],
-  },
-  {
-    labelKey: "nav.sectionNetwork",
     items: [
+      { href: "/admin", labelKey: "nav.overview", icon: "dashboard" },
       { href: "/admin/clinics", labelKey: "nav.clinics", icon: "clinics" },
-      { href: "/admin/people", labelKey: "nav.people", icon: "doctors" },
+      { href: "/admin/people", labelKey: "nav.doctorsAccess", icon: "doctors" },
+      {
+        // One destination, tabbed inside. Orders and Fulfilment keep their own
+        // routes as deep links; they are simply no longer top-level concepts.
+        href: "/admin/operations",
+        labelKey: "nav.operationsReports",
+        icon: "queue",
+      },
     ],
   },
   {
-    labelKey: "nav.sectionOperations",
-    items: [
-      // One destination, tabbed inside. Orders and Fulfilment keep their own
-      // routes as deep links; they are simply no longer top-level concepts.
-      { href: "/admin/operations", labelKey: "nav.operations", icon: "queue" },
-    ],
-  },
-  {
-    labelKey: "nav.sectionGovernance",
+    // Configuration and the audit trail — not daily work. Grouped so it reads
+    // as a different kind of destination than the four primary jobs above.
+    labelKey: "nav.sectionSettingsAudit",
     items: [
       {
         href: "/admin/clinical-governance",
@@ -97,13 +102,6 @@ const NAV_SUPER_ADMIN: NavSection[] = [
         icon: "help",
         badgeChannel: "supportUnread",
       },
-    ],
-  },
-  {
-    // Configuration, not daily work. Its own group so it reads as a different
-    // kind of destination rather than the tenth thing in a list.
-    labelKey: "nav.sectionSystem",
-    items: [
       {
         href: "/admin/settings",
         labelKey: "nav.platformSettings",

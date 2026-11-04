@@ -248,9 +248,10 @@ export default function PeoplePage() {
   return (
     <PageContainer className="space-y-5">
       <div>
-        <h1 className="text-2xl font-semibold tracking-tight">People &amp; Access</h1>
+        <h1 className="text-2xl font-semibold tracking-tight">Doctors &amp; Access</h1>
         <p className="text-sm text-muted-foreground">
-          Every account that can sign in, and what it can reach.
+          Every account that can sign in, which doctors have a linked identity,
+          and who has actually signed in — onboarding blockers at a glance.
         </p>
       </div>
 
