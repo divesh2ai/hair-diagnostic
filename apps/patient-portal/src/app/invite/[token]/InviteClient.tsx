@@ -45,6 +45,8 @@ function acceptErrorMessage(code: string | undefined): string {
       return "This invitation was cancelled. Ask your clinic admin for a new one.";
     case "identity_conflict":
       return "This clinician record (or your account) is already linked to a different sign-in identity. Contact your clinic admin — this needs a Super Admin to resolve, and we won't overwrite an existing link.";
+    case "inactive_scope":
+      return "This doctor or clinic is inactive. Contact your administrator; accepting an invitation cannot reactivate access.";
     case "already_accepted":
       return "This invitation has already been accepted. You can sign in.";
     case "not_found":
