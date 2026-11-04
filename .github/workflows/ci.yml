@@ -55,6 +55,7 @@ on:
       - master
       - 'release/**'
       - 'claude/acube-launch-fix'
+      - 'codex/phase-1-integrated-rc'
 
 jobs:
   # ── BLOCKING ───────────────────────────────────────────────────────────────
@@ -112,8 +113,10 @@ jobs:
             tests/doctor/kit-purchase-model.test.ts \
             tests/doctor/kit-purchase-corrections.test.ts \
             tests/doctor/partial-checkout-postgres.test.ts \
+            tests/doctor/production-doctor-sql.test.ts \
             tests/commerce/budget-substitution.test.ts \
             tests/commerce/kit-price-governance.test.ts \
+            tests/commerce/doctor-kit-catalogue.test.ts \
             tests/commerce/patient-cart-fail-closed.test.ts
           npx vitest run \
             tests/commerce/purchasing-disabled-gate.test.ts \

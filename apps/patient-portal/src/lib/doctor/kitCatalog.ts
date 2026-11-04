@@ -27,7 +27,7 @@ export interface KitCatalogItem {
   treatmentObjective: string | null;
   therapeuticStrategy: string[];
   formulationRationale: { group: string; ingredients: string[]; action: string }[];
-  priceInr: number;
+  priceInr: number | null;
   priceLabel: string;
 }
 

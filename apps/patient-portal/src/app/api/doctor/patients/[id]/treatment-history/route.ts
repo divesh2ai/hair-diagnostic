@@ -9,6 +9,7 @@
 // The purchase ledger (lines/events) is overlaid on top where it exists.
 
 import { NextResponse } from "next/server";
+import { getKitInfo } from "@hairos/packages/registries/kits/info";
 import { requireDoctorContext } from "@/lib/auth";
 import {
   deriveLineState,
@@ -47,6 +48,7 @@ export async function GET(_req: Request, ctx: { params: Promise<{ id: string }> 
     // (nothing purchased yet) or unprovisioned.
     let lines: PurchaseLineRecord[] = [];
     let events: PurchaseEventRecord[] = [];
+    let ledgerAvailable = true;
     try {
       [lines, events] = await Promise.all([
         listLinesByPatient(doctor.clinicId, patientId),
@@ -56,6 +58,7 @@ export async function GET(_req: Request, ctx: { params: Promise<{ id: string }> 
       // If the ledger tables aren't provisioned yet, still return the
       // recommendations rather than failing the whole history.
       if (!(err instanceof PurchaseNotProvisionedError)) throw err;
+      ledgerAvailable = false;
     }
 
     const eventsByLine = new Map<string, PurchaseEventRecord[]>();
@@ -78,7 +81,7 @@ export async function GET(_req: Request, ctx: { params: Promise<{ id: string }> 
         const lineStatus = (line?.lineStatus ?? "RECOMMENDED") as KitPurchaseLineStatus;
         return {
           kitId: kit.kitId,
-          kitLabel: line?.kitLabel ?? kit.kitId,
+          kitLabel: line?.kitLabel ?? getKitInfo(kit.kitId)?.displayName ?? kit.kitId,
           recommendedBoxes: kit.recommendedBoxes,
           lineStatus,
           controlReason: line?.controlReason ?? null,
@@ -104,7 +107,7 @@ export async function GET(_req: Request, ctx: { params: Promise<{ id: string }> 
       ),
     );
 
-    return NextResponse.json({ overall, assessments });
+    return NextResponse.json({ overall, assessments, ledgerAvailable });
   } catch (err) {
     if (err instanceof PurchaseNotProvisionedError) {
       return NextResponse.json({ error: PURCHASE_NOT_PROVISIONED }, { status: 503 });

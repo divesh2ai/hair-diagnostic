@@ -1,6 +1,11 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "framework": "nextjs",
+  "git": {
+    "deploymentEnabled": {
+      "codex/doctor-phase1-completion": false
+    }
+  },
   "installCommand": "cd ../.. && npm install && cd apps/patient-portal && npm install && npx prisma generate --schema ../../prisma/schema.prisma",
   "regions": ["bom1"],
   "crons": [

@@ -2,7 +2,8 @@ import { NextResponse } from "next/server";
 import { SystemRole } from "@prisma/client";
 import { requireRole } from "@/lib/auth";
 import { getKitInfo } from "@hairos/packages/registries/kits/info";
-import { KIT_PRICE_INR, priceForKit, formatInr } from "@/lib/pricing/kitPrices";
+import { KIT_PRICE_INR } from "@/lib/pricing/kitPrices";
+import { buildDoctorOrderPricing } from "@/lib/doctor/orderPricing";
 
 // GET /api/kits — the orderable kit catalog for the doctor's lineup editor.
 //
@@ -38,15 +39,19 @@ export async function GET() {
   const items = Object.keys(KIT_PRICE_INR)
     .map((kitId) => ({ kitId, info: getKitInfo(kitId) }))
     .filter((e): e is { kitId: string; info: NonNullable<typeof e.info> } => e.info !== null)
-    .map(({ kitId, info }) => ({
-      kitId,
-      displayName: info.displayName,
-      treatmentObjective: info.treatmentObjective ?? null,
-      therapeuticStrategy: info.therapeuticStrategy ?? [],
-      formulationRationale: info.formulationRationale ?? [],
-      priceInr: priceForKit(kitId),
-      priceLabel: formatInr(priceForKit(kitId)),
-    }));
+    .map(({ kitId, info }) => {
+      const price = buildDoctorOrderPricing([kitId]).lineItems[0]!;
+      return {
+        kitId,
+        displayName: info.displayName,
+        treatmentObjective: info.treatmentObjective ?? null,
+        therapeuticStrategy: info.therapeuticStrategy ?? [],
+        formulationRationale: info.formulationRationale ?? [],
+        priceInr: price.priceInr,
+        priceLabel: price.priceLabel ?? "Catalogue review required — approved price unavailable",
+        commercialState: price.commercialState,
+      };
+    });
 
   return NextResponse.json({ items });
 }
