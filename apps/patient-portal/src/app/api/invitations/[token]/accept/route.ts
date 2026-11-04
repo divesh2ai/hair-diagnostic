@@ -62,6 +62,8 @@ export async function POST(
         err.code === "not_found" ? 404 :
         err.code === "expired" || err.code === "revoked" ? 410 :
         err.code === "already_accepted" ? 409 :
+        err.code === "identity_conflict" ? 409 :
+        err.code === "inactive_scope" ? 403 :
         err.code === "identity_mismatch" ? 403 :
         400;
       return NextResponse.json({ error: err.code, message: err.message }, { status });
