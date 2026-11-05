@@ -116,11 +116,14 @@ export async function loadOpsOverview(window: TimeWindow): Promise<OpsOverview> 
       where: { deletedAt: null },
       _count: { _all: true },
     });
-    const assessmentsAll = await tx.assessment.groupBy({
-      by: ["clinicId"],
-      where: { deletedAt: null },
-      _count: { _all: true },
-    });
+    // Count assessment records and distinct assessed patients in one scan.
+    // Patient identifiers stay inside Postgres; only per-clinic totals leave it.
+    const assessmentsAll = await tx.$queryRaw<Array<{ clinicId: string; assessments: bigint; patients: bigint }>>`
+      SELECT "clinicId", COUNT(*) AS assessments, COUNT(DISTINCT "patientId") AS patients
+      FROM "Assessment"
+      WHERE "deletedAt" IS NULL
+      GROUP BY "clinicId"
+    `;
     const assessmentsWindow = await tx.assessment.groupBy({
       by: ["clinicId"],
       where: { deletedAt: null, submittedAt: { gte: from, lt: to } },
@@ -295,7 +298,8 @@ export async function loadOpsOverview(window: TimeWindow): Promise<OpsOverview> 
   ]);
 
   const patientCount = countMap(patientsByClinic);
-  const assessAll = countMap(assessmentsAll);
+  const assessAll = new Map(assessmentsAll.map((r) => [r.clinicId, Number(r.assessments)]));
+  const assessedPatients = new Map(assessmentsAll.map((r) => [r.clinicId, Number(r.patients)]));
   const assessWin = countMap(assessmentsWindow);
   const completed = countMap(completedAll);
   const missingConsultation = countMap(missingConsultationAll);
@@ -503,6 +507,7 @@ export async function loadOpsOverview(window: TimeWindow): Promise<OpsOverview> 
       branchCount: c.locations.length,
       doctorCount,
       patientCount: patientCount.get(c.id) ?? 0,
+      assessedPatientCount: assessedPatients.get(c.id) ?? 0,
       topDoctor: docs?.topDoctorId
         ? {
             doctorId: docs.topDoctorId,

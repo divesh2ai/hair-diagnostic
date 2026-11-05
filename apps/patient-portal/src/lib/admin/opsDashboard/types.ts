@@ -216,6 +216,8 @@ export interface ClinicOpsRow {
   branchCount: number;
   doctorCount: number;
   patientCount: number;
+  /** Distinct patients with a non-deleted assessment in this clinic. */
+  assessedPatientCount: number;
   /** The doctor who most recently signed in (for the "last login" column). */
   topDoctor: ClinicDoctorSummary | null;
   lastSignInAt: string | null;
@@ -289,6 +291,8 @@ export interface ClinicOpsRow {
 }
 
 export interface OpsOverview {
+  /** Actual configured dashboard data target, supplied by the overview API. */
+  dataEnvironment?: "STAGING" | "PRODUCTION" | "UNVERIFIED";
   window: TimeWindow;
   capabilities: DashboardCapabilities;
   kpis: DashboardKpis;
