@@ -1,274 +1,162 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
-import Link from "next/link";
-import { Plus, ArrowRight } from "lucide-react";
-import { PageContainer } from "@/components/app-shell";
-import { SearchBox } from "@/components/ui/search-box";
-import { StatusBadge } from "@/components/ui/status-badge";
-import { Avatar } from "@/components/ui/avatar";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { Search } from "lucide-react";
+import { PageContainer } from "@/components/app-shell/AppShell";
 import { Button } from "@/components/ui/button";
-import { LoadingState, ErrorState } from "@/components/ui/states";
-import { MiniStat } from "@/components/admin/DashboardSections";
+import { StatusBadge } from "@/components/ui/status-badge";
+import { EmptyState, ErrorState, LoadingState } from "@/components/ui/states";
+import { ClinicOpsDrawer } from "@/components/admin/ClinicOpsDrawer";
+import { AUTH_PROVIDER_LABEL } from "@/lib/admin/clinicMonitor/authProvider";
+import {
+  CLINIC_FILTERS, USAGE_LABEL, clinicUsage, monitorRows,
+  type ClinicMonitorFilter,
+} from "@/lib/admin/clinicMonitor/model";
+import type { ClinicOpsRow, OpsOverview } from "@/lib/admin/clinicMonitor/model";
+import styles from "./clinic-monitor.module.css";
 
-// ── Phase 1: Clinic Activation Overview ──────────────────────────────────────
-// Deliberately simplified. The seven-section command centre and the MapLibre
-// India network have been removed from the main dashboard for Phase 1 — the
-// geographic code is preserved (src/components/admin/IndiaClinicNetwork.tsx,
-// /api/admin/network) for a future release once the network passes ~50 clinics.
-// This page answers one question for the Super Admin: which clinics are
-// registered, and which are switched on.
-//
-// Counts come from the existing authenticated /api/admin/dashboard (clinicsTotal
-// and clinicsActive); the register comes from the existing /api/admin/clinics.
-// No new tables, no new endpoints, no clinic records are modified here.
-//
-// Definitions (must not drift):
-//   • Active   = Clinic.status === "ACTIVE"
-//   • Inactive = non-archived clinic whose status is not ACTIVE (e.g. SUSPENDED)
-//   • Archived / soft-deleted (deletedAt set) is excluded by the APIs above and
-//     never counts as either Active or Inactive.
-// Activation here is a DATABASE state only. It does NOT assert the clinic is
-// clinically verified or that a doctor can log in — see the caveat rendered
-// below, which must stay.
+const dateFormat = new Intl.DateTimeFormat("en-IN", {
+  day: "numeric", month: "short", year: "numeric", timeZone: "Asia/Kolkata",
+});
+const numberFormat = new Intl.NumberFormat("en-IN");
+const headings = [
+  ["Clinic / Doctor", "32%"], ["Login Method", "16%"], ["Patients Assessed", "15%"],
+  ["Last Recorded Assessment", "21%"], ["Usage Status", "16%"],
+];
 
-type DashboardMetrics = {
-  clinicsTotal: number;
-  clinicsActive: number;
-};
-
-type ClinicRow = {
-  id: string;
-  name: string;
-  slug: string;
-  logoUrl: string | null;
-  status: string;
-  createdAt: string;
-};
-
-type Filter = "all" | "active" | "inactive";
-
-// A clinic is active iff its status is exactly ACTIVE. Everything else returned
-// by /api/admin/clinics (which already excludes archived/soft-deleted rows) is
-// inactive. ARCHIVED is excluded here too, defensively, so a stray archived row
-// can never be rendered or counted.
-function isActive(status: string): boolean {
-  return status === "ACTIVE";
-}
-function isArchived(status: string): boolean {
-  return status === "ARCHIVED";
+function DateCell({ value, fallback }: { value: string | null; fallback: string }) {
+  return value ? <time dateTime={value}>{dateFormat.format(new Date(value))}</time> : fallback;
 }
 
-export default function AdminClinicActivationPage() {
-  const [metrics, setMetrics] = useState<DashboardMetrics | null>(null);
-  const [clinics, setClinics] = useState<ClinicRow[] | null>(null);
-  const [error, setError] = useState<string | null>(null);
+function Field({ label, children, numeric }: { label: string; children: ReactNode; numeric?: boolean }) {
+  return <td role="cell" className={numeric ? styles.number : undefined}>
+    <span aria-hidden="true" className={styles.fieldLabel}>{label}</span>
+    {children}
+  </td>;
+}
+
+export default function AdminOperationsPage() {
+  const [data, setData] = useState<OpsOverview | null>(null);
+  const [error, setError] = useState(false);
+  const [reload, setReload] = useState(0);
+  const [filter, setFilter] = useState<ClinicMonitorFilter>("all");
   const [search, setSearch] = useState("");
-  const [filter, setFilter] = useState<Filter>("all");
+  const [selected, setSelected] = useState<ClinicOpsRow | null>(null);
+  const [drawerOpen, setDrawerOpen] = useState(false);
 
   useEffect(() => {
-    // Authoritative counts. The register below can corroborate them, but these
-    // are the numbers the dashboard reports.
-    fetch("/api/admin/dashboard", { cache: "no-store" })
-      .then((r) => (r.ok ? r.json() : Promise.reject(r.statusText)))
-      .then((d) =>
-        setMetrics({
-          clinicsTotal: d.metrics.clinicsTotal,
-          clinicsActive: d.metrics.clinicsActive,
-        }),
-      )
-      .catch((e) => setError(String(e)));
+    const controller = new AbortController();
+    void (async () => {
+      try {
+        const response = await fetch("/api/admin/clinic-monitor", {
+          cache: "no-store", signal: controller.signal,
+        });
+        if (!response.ok) throw new Error("Overview unavailable");
+        const overview: OpsOverview = await response.json();
+        if (!controller.signal.aborted) setData(overview);
+      } catch {
+        if (!controller.signal.aborted) setError(true);
+      }
+    })();
+    return () => controller.abort();
+  }, [reload]);
 
-    // The full non-archived register. Phase 1 is < 50 clinics by design, so a
-    // single page (limit 200) holds the whole list and search/filter happen
-    // client-side. "Inactive" spans several statuses, which the single-equals
-    // `status` query param can't express, so we fetch all and classify here.
-    fetch("/api/admin/clinics?limit=200", { cache: "no-store" })
-      .then((r) => (r.ok ? r.json() : Promise.reject(r.statusText)))
-      .then((d) =>
-        setClinics(
-          (d.rows as ClinicRow[]).filter((c) => !isArchived(c.status)),
-        ),
-      )
-      .catch((e) => setError(String(e)));
-  }, []);
+  const rows = useMemo(() => monitorRows(data?.clinics ?? [], filter, search), [data, filter, search]);
+  const metrics = data ? [
+    ["Clinics", data.clinics.length],
+    ["With Assessments (last 7 days)", data.clinics.filter((row) => row.assessments7d > 0).length],
+    ["Doctors Logged In", data.kpis.doctorsLoggedIn],
+    ["Login Pending", data.kpis.loginPending],
+  ] as const : [];
 
-  // Counts: prefer the dashboard's authoritative numbers; fall back to the
-  // register if the dashboard call failed but the list succeeded.
-  const counts = useMemo(() => {
-    if (metrics) {
-      return {
-        total: metrics.clinicsTotal,
-        active: metrics.clinicsActive,
-        inactive: Math.max(metrics.clinicsTotal - metrics.clinicsActive, 0),
-      };
-    }
-    if (clinics) {
-      const active = clinics.filter((c) => isActive(c.status)).length;
-      return { total: clinics.length, active, inactive: clinics.length - active };
-    }
-    return null;
-  }, [metrics, clinics]);
-
-  const visible = useMemo(() => {
-    if (!clinics) return [];
-    const q = search.trim().toLowerCase();
-    return clinics.filter((c) => {
-      if (filter === "active" && !isActive(c.status)) return false;
-      if (filter === "inactive" && isActive(c.status)) return false;
-      if (q && !c.name.toLowerCase().includes(q) && !c.slug.toLowerCase().includes(q))
-        return false;
-      return true;
-    });
-  }, [clinics, search, filter]);
-
-  if (error) {
-    return (
-      <PageContainer>
-        <ErrorState title="Couldn't load clinic overview" description={error} />
-      </PageContainer>
-    );
-  }
-  if (!counts || !clinics) {
-    return (
-      <PageContainer>
-        <LoadingState />
-      </PageContainer>
-    );
-  }
+  const openDetails = (row: ClinicOpsRow) => {
+    setSelected(row);
+    setDrawerOpen(true);
+  };
 
   return (
-    <PageContainer className="space-y-6">
-      {/* ── Header ──────────────────────────────────────────────────────── */}
-      <div className="flex items-end justify-between gap-4 flex-wrap">
+    <PageContainer className="space-y-5">
+      <header className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight">
-            Clinic activation
-          </h1>
-          <p className="text-sm text-muted-foreground">
-            {counts.active} of {counts.total}{" "}
-            {counts.total === 1 ? "clinic" : "clinics"} active
-          </p>
+          <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">HairOS — Clinic Operations</h1>
+          <p className="mt-1 text-sm text-muted-foreground">Doctor access, patient assessments and reviews across clinics.</p>
         </div>
-        <Link href="/admin/clinics/new">
-          <Button>
-            <Plus />
-            Create clinic
-          </Button>
-        </Link>
-      </div>
+      </header>
 
-      {/* ── Activation counts ───────────────────────────────────────────── */}
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-        <MiniStat label="Registered clinics" value={counts.total} hint="non-archived" />
-        <MiniStat label="Active" value={counts.active} hint="status ACTIVE" />
-        <MiniStat label="Inactive" value={counts.inactive} hint="e.g. suspended" />
-      </div>
+      {!data && !error && <LoadingState title="Loading clinic monitoring…" />}
+      {error && <ErrorState title="Could not load clinic monitoring" action={
+        <Button variant="outline" onClick={() => { setError(false); setReload((n) => n + 1); }}>Retry</Button>
+      } />}
 
-      {/* ── Honesty caveat (must stay) ──────────────────────────────────────
-          "Active" is a database status only. It must never be read as a
-          clinical sign-off or as proof a doctor can log in. */}
-      <p className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900 dark:border-amber-900/40 dark:bg-amber-950/30 dark:text-amber-200">
-        Activation reflects the clinic&rsquo;s database status only. It is{" "}
-        <strong>not</strong> a clinical verification and does not confirm that a
-        doctor can log in.
-      </p>
+      {data && <>
+        <dl className="grid grid-cols-2 gap-2 sm:gap-3 lg:grid-cols-4">
+          {metrics.map(([label, value]) => (
+            <div key={label} className="flex flex-col justify-between gap-2 rounded-xl border border-border bg-card px-3 py-3 sm:px-4">
+              <dt className="text-xs font-medium text-muted-foreground sm:text-sm">{label}</dt>
+              <dd className="text-2xl font-semibold leading-none tabular-nums">
+                {value === null ? <span className="text-sm text-muted-foreground">Unavailable</span> : numberFormat.format(value)}
+              </dd>
+            </div>
+          ))}
+        </dl>
 
-      {/* ── Register: search + Active/Inactive filter ───────────────────── */}
-      <section aria-labelledby="register-heading" className="space-y-3">
-        <div className="flex flex-wrap items-center justify-between gap-2">
-          <h2 id="register-heading" className="text-sm font-semibold tracking-tight">
-            Clinics
-          </h2>
-          <Link
-            href="/admin/clinics"
-            className="inline-flex items-center gap-1 rounded-sm text-xs text-muted-foreground underline-offset-2 hover:text-foreground hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
-          >
-            Manage clinics
-            <ArrowRight className="size-3" />
-          </Link>
-        </div>
-
-        <div className="flex flex-wrap items-center gap-2">
-          <SearchBox
-            value={search}
-            onChange={setSearch}
-            placeholder="Search by clinic name"
-            className="min-w-[260px] flex-1"
-          />
-          <div
-            role="group"
-            aria-label="Filter by activation"
-            className="inline-flex rounded-lg border border-border bg-background p-0.5 text-sm font-medium"
-          >
-            {(
-              [
-                ["all", "All"],
-                ["active", "Active"],
-                ["inactive", "Inactive"],
-              ] as [Filter, string][]
-            ).map(([value, label]) => (
-              <button
-                key={value}
-                type="button"
-                onClick={() => setFilter(value)}
-                aria-pressed={filter === value}
-                className={`rounded-md px-3 py-1 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-ring/50 ${
-                  filter === value
-                    ? "bg-foreground text-background"
-                    : "text-muted-foreground hover:text-foreground"
-                }`}
-              >
-                {label}
-              </button>
-            ))}
+        <section aria-labelledby="clinic-register" className="min-w-0 overflow-hidden rounded-xl border border-border bg-card">
+          <div className="flex flex-wrap items-end justify-between gap-x-4 gap-y-3 border-b border-border px-3 py-3 sm:px-4">
+            <div className="min-w-0 flex-1">
+              <h2 id="clinic-register" className="text-base font-semibold">Clinic Monitoring Table</h2>
+              <p role="status" className="mt-0.5 text-xs text-muted-foreground">
+                {numberFormat.format(rows.length)} of {numberFormat.format(data.clinics.length)} · Follow-up first · Dates in IST
+              </p>
+            </div>
+            <div className="flex w-full flex-wrap gap-2 sm:w-auto">
+              <label className="flex min-w-0 flex-1 items-center gap-2 rounded-md border border-border bg-background px-2.5 focus-within:ring-2 focus-within:ring-ring sm:w-48">
+                <Search aria-hidden="true" className="size-4 shrink-0 text-muted-foreground" />
+                <span className="sr-only">Search clinics or doctors</span>
+                <input type="search" placeholder="Search clinics" value={search} onChange={(event) => setSearch(event.target.value)}
+                  className="h-9 w-full min-w-0 bg-transparent text-sm outline-none" />
+              </label>
+              <select aria-label="Filter clinics" value={filter}
+                onChange={(event) => setFilter(event.target.value as ClinicMonitorFilter)}
+                className="h-9 max-w-full rounded-md border border-border bg-background px-2 text-sm focus-visible:outline-2 focus-visible:outline-ring">
+                {CLINIC_FILTERS.map(([value, label]) => <option key={value} value={value}>{label}</option>)}
+              </select>
+            </div>
           </div>
-        </div>
 
-        <div className="divide-y divide-border overflow-hidden rounded-lg border border-border">
-          {visible.length === 0 ? (
-            <p className="px-4 py-8 text-center text-sm text-muted-foreground">
-              {clinics.length === 0
-                ? "No clinics registered yet."
-                : "No clinics match this search or filter."}
-            </p>
-          ) : (
-            visible.map((c) => (
-              <Link
-                key={c.id}
-                href={`/admin/clinics/${c.id}/edit`}
-                className="flex items-center gap-3 px-4 py-3 hover:bg-muted focus:outline-none focus-visible:bg-muted"
-              >
-                {c.logoUrl ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img
-                    src={c.logoUrl}
-                    alt=""
-                    className="size-9 rounded-md object-cover"
-                  />
-                ) : (
-                  <Avatar name={c.name} size="sm" />
-                )}
-                <div className="min-w-0 flex-1">
-                  <div className="truncate text-sm font-medium">{c.name}</div>
-                  <div className="truncate text-xs text-muted-foreground">
-                    {c.slug}
-                  </div>
-                </div>
-                <StatusBadge tone={isActive(c.status) ? "success" : "neutral"}>
-                  {isActive(c.status) ? "Active" : "Inactive"}
-                </StatusBadge>
-              </Link>
-            ))
+          {rows.length === 0 ? <div className="p-4"><EmptyState title="No matching clinics" action={
+            <Button variant="outline" size="sm" onClick={() => { setSearch(""); setFilter("all"); }}>Clear filters</Button>
+          } /></div> : (
+            <table aria-label="Clinic monitoring" className={styles.table} role="table">
+              <colgroup>{headings.map(([label, width]) => <col key={label} style={{ width }} />)}</colgroup>
+              <thead role="rowgroup"><tr role="row">
+                {headings.map(([label], index) => <th key={label} role="columnheader" scope="col" className={index === 2 ? styles.number : undefined}>{label}</th>)}
+              </tr></thead>
+              <tbody role="rowgroup">{rows.map((row) => {
+                const usage = clinicUsage(row);
+                return (
+                  <tr role="row" key={row.clinicId}>
+                    <th scope="row" role="rowheader" className={styles.identity}>
+                      <button type="button" onClick={() => openDetails(row)} className="text-left font-semibold hover:underline focus-visible:outline-2 focus-visible:outline-ring">
+                        {row.name}
+                      </button>
+                      <span className="mt-0.5 block text-xs font-normal text-muted-foreground">{row.topDoctor?.name ?? "No doctor recorded"}</span>
+                    </th>
+                    <Field label="Login Method">{AUTH_PROVIDER_LABEL[row.authProvider]}</Field>
+                    <Field label="Patients Assessed" numeric>{numberFormat.format(row.assessedPatientCount)}</Field>
+                    <Field label="Last Recorded Assessment"><DateCell value={row.lastAssessmentAt} fallback="—" /></Field>
+                    <td role="cell" className={styles.usage}>
+                      <StatusBadge tone={usage === "recent" ? "success" : usage === "followUp" ? "warning" : "neutral"}>
+                        {USAGE_LABEL[usage]}
+                      </StatusBadge>
+                    </td>
+                  </tr>
+                );
+              })}</tbody>
+            </table>
           )}
-        </div>
-        {visible.length > 0 && (
-          <p className="text-xs text-muted-foreground">
-            Showing {visible.length} of {clinics.length} registered{" "}
-            {clinics.length === 1 ? "clinic" : "clinics"}.
-          </p>
-        )}
-      </section>
+        </section>
+      </>}
+      <ClinicOpsDrawer row={selected} open={drawerOpen} onOpenChange={setDrawerOpen} />
     </PageContainer>
   );
 }
