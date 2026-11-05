@@ -6,13 +6,18 @@ import { StatusBadge } from "@/components/ui/status-badge";
 import { LoadingState, ErrorState } from "@/components/ui/states";
 import { Button } from "@/components/ui/button";
 import type { ClinicDetail } from "@/lib/admin/opsDashboard/clinicDetail";
+import type { ClinicOpsRow } from "@/lib/admin/opsDashboard/types";
 import {
   relativeTime,
   absoluteTime,
   formatInrFromMinor,
   REPORT_READINESS_LABEL,
+  ADOPTION_STATUS_TONE,
+  AUTH_PROVIDER_TONE,
   type BadgeTone,
 } from "@/lib/admin/opsDashboard/format";
+import { ADOPTION_STATUS_LABEL } from "@/lib/admin/opsDashboard/adoption";
+import { AUTH_PROVIDER_LABEL } from "@/lib/admin/opsDashboard/authProvider";
 import {
   MILESTONE_OUTCOMES,
   MILESTONE_OUTCOME_LABEL,
@@ -61,10 +66,13 @@ function retrievalLabel(r: "VERIFIED" | "FAILED" | "NOT_TESTED"): string {
 
 export function ClinicOpsDrawer({
   clinicId,
+  row,
   open,
   onOpenChange,
 }: {
   clinicId: string | null;
+  /** The overview row that opened the drawer — supplies the adoption summary. */
+  row?: ClinicOpsRow | null;
   open: boolean;
   onOpenChange: (v: boolean) => void;
 }) {
@@ -146,7 +154,42 @@ export function ClinicOpsDrawer({
               </div>
             )}
 
-            {/* 0. Rollout checklist — auto-evidence + manual sign-offs */}
+            {/* Adoption — the daily lens: auth method, logins, activity. */}
+            {row && (
+              <Section title="Adoption">
+                <div className="flex flex-wrap items-center gap-2">
+                  <StatusBadge tone={ADOPTION_STATUS_TONE[row.adoptionStatus]}>
+                    {ADOPTION_STATUS_LABEL[row.adoptionStatus]}
+                  </StatusBadge>
+                  <StatusBadge tone={AUTH_PROVIDER_TONE[row.authProvider]}>
+                    {AUTH_PROVIDER_LABEL[row.authProvider]}
+                  </StatusBadge>
+                  {row.followUp.priority !== null && (
+                    <span className="text-xs text-amber-600 dark:text-amber-400">
+                      P{row.followUp.priority}: {row.followUp.action}
+                    </span>
+                  )}
+                </div>
+                <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+                  <Stat label="Patients" value={row.patientCount} />
+                  <Stat label="7-day assessments" value={row.assessments7d} />
+                  <Stat
+                    label="Days since assessment"
+                    value={row.daysSinceLastAssessment === null ? "—" : row.daysSinceLastAssessment}
+                  />
+                  <Stat label="Doctor reviews" value={row.reviewedCases.allTime} />
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Last assessment {relativeTime(row.lastAssessmentAt)} · last completed{" "}
+                  {relativeTime(row.lastCompletedAssessmentAt)} · last login{" "}
+                  {row.lastSignInAt ? relativeTime(row.lastSignInAt) : "never/unknown"} · last doctor action{" "}
+                  {relativeTime(row.lastDoctorActivityAt)}.
+                  {row.followUp.priority !== null && <> {row.followUp.reason}</>}
+                </p>
+              </Section>
+            )}
+
+            {/* Rollout & follow-up — auto-evidence + manual sign-offs */}
             {clinicId && (
               <RolloutSection
                 clinicId={clinicId}
@@ -198,6 +241,7 @@ export function ClinicOpsDrawer({
                         : d.access === "ONBOARDING_PENDING"
                           ? "onboarding pending"
                           : "unknown",
+                      detail.doctors.identitiesReadable ? AUTH_PROVIDER_LABEL[d.authProvider] : "unknown",
                       !detail.doctors.authReadable
                         ? "unknown"
                         : d.lastSignInAt
@@ -208,7 +252,7 @@ export function ClinicOpsDrawer({
                       d.lastActivityAt ? relativeTime(d.lastActivityAt) : "—",
                     ],
                   }))}
-                  headers={["Doctor", "Access", "Last login", "Last clinical activity"]}
+                  headers={["Doctor", "Access", "Auth method", "Last login", "Last clinical activity"]}
                   empty="No doctors provisioned."
                 />
               )}

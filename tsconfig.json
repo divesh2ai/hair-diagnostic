@@ -33,6 +33,8 @@
     "tests/admin/ops-dashboard.test.ts",
     // Same reasoning as the sibling above: a portal-scoped suite that imports
     // via "@/…" (resolved by the portal tsconfig + vitest), not by the root.
-    "tests/admin/rollout.test.ts"
+    "tests/admin/rollout.test.ts",
+    "tests/admin/auth-provider.test.ts",
+    "tests/admin/adoption.test.ts"
   ]
 }

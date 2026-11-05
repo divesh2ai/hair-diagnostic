@@ -2,6 +2,8 @@
 // (no Prisma) so this can be used from the "use client" page and drawer.
 
 import type { ClinicPrimaryStatus } from "./types";
+import type { AdoptionStatus } from "./adoption";
+import type { AuthProvider } from "./authProvider";
 
 /** Compact relative time, e.g. "3m", "5h", "2d", or "—" for null. */
 export function relativeTime(iso: string | null | undefined): string {
@@ -75,6 +77,25 @@ export const STATUS_TONE: Record<ClinicPrimaryStatus, BadgeTone> = {
   ONBOARDING_IDLE: "info",
   SUSPENDED: "warning",
   ARCHIVED: "neutral",
+};
+
+/** Badge tone for an adoption status. */
+export const ADOPTION_STATUS_TONE: Record<AdoptionStatus, BadgeTone> = {
+  USING: "success",
+  NEEDS_ENGAGEMENT: "warning",
+  DORMANT: "danger",
+  NOT_STARTED: "info",
+  LOGIN_PENDING: "neutral",
+  UNKNOWN: "neutral",
+};
+
+/** Badge tone for an authentication provider. */
+export const AUTH_PROVIDER_TONE: Record<AuthProvider, BadgeTone> = {
+  GOOGLE: "info",
+  PHONE_OTP: "brand",
+  OTHER: "neutral",
+  NOT_LINKED: "warning",
+  UNKNOWN: "neutral",
 };
 
 /** The filter keys the clinic table exposes. */

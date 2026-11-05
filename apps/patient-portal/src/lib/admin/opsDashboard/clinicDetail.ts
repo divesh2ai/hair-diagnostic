@@ -25,6 +25,7 @@ import {
   type MilestoneSignoff,
   type RolloutChecklist,
 } from "./rollout";
+import { classifyAuthProvider, type AuthProvider } from "./authProvider";
 
 /** One approved assessment's report, with every availability facet separate. */
 export interface ReportMatrixRow {
@@ -65,11 +66,15 @@ export interface ClinicDetail {
    */
   doctors: {
     authReadable: boolean;
+    /** False when auth.identities could not be read — provider is Unknown. */
+    identitiesReadable: boolean;
     list: {
       doctorId: string;
       name: string;
       access: "LINKED" | "ONBOARDING_PENDING" | "UNKNOWN";
       hasAccount: boolean;
+      /** Login method read from auth.identities (Google / Phone OTP / …). */
+      authProvider: AuthProvider;
       lastSignInAt: string | null;
       lastActivityAt: string | null;
     }[];
@@ -704,6 +709,27 @@ async function loadClinicDoctors(clinicId: string): Promise<ClinicDetail["doctor
     }
   }
 
+  // Auth PROVIDER per uid, read from auth.identities (never inferred from the
+  // uid column). Capability-gated: unreadable ⇒ provider Unknown.
+  const providersByUid = new Map<string, string[]>();
+  let identitiesReadable = true;
+  if (authIds.length > 0) {
+    try {
+      const rows = await prisma.$queryRaw<{ user_id: string; provider: string }[]>`
+        SELECT user_id::text AS user_id, provider
+        FROM auth.identities
+        WHERE user_id::text = ANY(${authIds}::text[])
+      `;
+      for (const r of rows) {
+        const arr = providersByUid.get(r.user_id) ?? [];
+        if (!arr.includes(r.provider)) arr.push(r.provider);
+        providersByUid.set(r.user_id, arr);
+      }
+    } catch {
+      identitiesReadable = false;
+    }
+  }
+
   // Most recent audited action per auth identity (actorId). Doctor actions carry
   // the doctor's auth uid; system/Super Admin actions do not, so this is a
   // clean per-doctor clinical-activity clock.
@@ -737,17 +763,30 @@ async function loadClinicDoctors(clinicId: string): Promise<ClinicDetail["doctor
       const at = activityByActor.get(id);
       if (at && (!lastActivity || at.getTime() > lastActivity.getTime())) lastActivity = at;
     }
+    const providers = Array.from(
+      new Set(
+        [d.supabaseUserId, d.supabasePhoneUserId]
+          .filter((v): v is string => Boolean(v))
+          .flatMap((uid) => providersByUid.get(uid) ?? []),
+      ),
+    );
+    const authProvider = classifyAuthProvider({
+      readable: identitiesReadable,
+      hasLinkedUid: hasAccount,
+      providers,
+    });
     return {
       doctorId: d.id,
       name: d.name,
       access,
       hasAccount,
+      authProvider,
       lastSignInAt: lastSignInAt ? lastSignInAt.toISOString() : null,
       lastActivityAt: lastActivity ? lastActivity.toISOString() : null,
     };
   });
 
-  return { authReadable, list };
+  return { authReadable, identitiesReadable, list };
 }
 
 async function loadClinicOrders(clinicId: string): Promise<ClinicDetail["orders"]> {

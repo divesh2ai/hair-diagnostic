@@ -53,6 +53,13 @@ export interface ClinicianRow extends DoctorProvisioningView {
    * exists but has never been used. `authUserId` distinguishes the two.
    */
   lastSignInAt: string | null;
+  /**
+   * Distinct auth.identities providers (e.g. "google", "phone", "email") for
+   * this doctor's linked uid(s). Empty when none is linked, or when identity
+   * telemetry could not be read (see roster.identitiesReadable). Read from
+   * auth.identities, NEVER inferred from which column holds the uid.
+   */
+  authProviders: string[];
   provisioningSource: string | null;
   provisionedAt: string | null;
   createdAt: string;
@@ -75,11 +82,22 @@ export interface ClinicianRoster {
    * on screen and mean opposite things.
    */
   authReadable: boolean;
+  /**
+   * False when auth.identities could not be read. Auth PROVIDER is then
+   * Unknown rather than "not linked" — again, opposite meanings that look the
+   * same.
+   */
+  identitiesReadable: boolean;
 }
 
 interface AuthUserRow {
   id: string;
   last_sign_in_at: Date | null;
+}
+
+interface AuthIdentityRow {
+  user_id: string;
+  provider: string;
 }
 
 export async function loadClinicianRoster(): Promise<ClinicianRoster> {
@@ -142,6 +160,30 @@ export async function loadClinicianRoster(): Promise<ClinicianRoster> {
     }
   }
 
+  // Auth PROVIDER per uid, read from auth.identities. The production data
+  // confirms the task's warning: phone uids are stored in `supabaseUserId`, so
+  // provider is NEVER inferred from the column — only from this table.
+  let providersByUid = new Map<string, string[]>();
+  let identitiesReadable = true;
+  if (linkedIds.length > 0) {
+    try {
+      const rows = await prisma.$queryRaw<AuthIdentityRow[]>`
+        SELECT user_id::text AS user_id, provider
+        FROM auth.identities
+        WHERE user_id::text = ANY(${linkedIds}::text[])
+      `;
+      const m = new Map<string, string[]>();
+      for (const r of rows) {
+        const arr = m.get(r.user_id) ?? [];
+        if (!arr.includes(r.provider)) arr.push(r.provider);
+        m.set(r.user_id, arr);
+      }
+      providersByUid = m;
+    } catch {
+      identitiesReadable = false;
+    }
+  }
+
   const clinicians: ClinicianRow[] = doctors.map((d) => {
     const view = describeDoctorProvisioning({
       email: d.email,
@@ -164,6 +206,13 @@ export async function loadClinicianRoster(): Promise<ClinicianRoster> {
       email: d.email,
       phone: d.phone,
       authUserId: d.supabaseUserId,
+      authProviders: Array.from(
+        new Set(
+          [d.supabaseUserId, d.supabasePhoneUserId]
+            .filter((v): v is string => Boolean(v))
+            .flatMap((uid) => providersByUid.get(uid) ?? []),
+        ),
+      ),
       clinicId: d.clinic.id,
       clinicName: d.clinic.name,
       clinicSlug: d.clinic.slug,
@@ -193,5 +242,6 @@ export async function loadClinicianRoster(): Promise<ClinicianRoster> {
       multiLocation: clinicians.filter((c) => c.locationCount > 1).length,
     },
     authReadable,
+    identitiesReadable,
   };
 }

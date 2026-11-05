@@ -7,6 +7,9 @@
 // payments table is "Not connected" rather than ₹0) live beside the queries in
 // metrics.ts — the types only carry the result.
 
+import type { AuthProvider } from "./authProvider";
+import type { AdoptionStatus, FollowUp } from "./adoption";
+
 /** How a capability-gated section resolved. */
 export type CapabilityState =
   // The backing table/columns exist and were read.
@@ -25,6 +28,11 @@ export interface DashboardCapabilities {
    * is not the same as "never signed in" and must never be rendered as such.
    */
   authReadable: boolean;
+  /**
+   * auth.identities readability for the login PROVIDER. False = provider is
+   * UNKNOWN, not "not linked".
+   */
+  identitiesReadable: boolean;
 }
 
 /** An inclusive-exclusive instant window [from, to). */
@@ -72,6 +80,18 @@ export interface DashboardKpis {
   doctorsIdentityLinked: number;
   /** Doctors whose Supabase account has ever recorded a sign-in. */
   doctorsSignedIn: number;
+  /** Doctors whose linked auth.identities include Google. */
+  doctorsGoogle: number;
+  /** Doctors whose linked auth.identities include phone (and not Google). */
+  doctorsPhone: number;
+  /** Doctors with no linked authentication identity at all. */
+  doctorsNotLinked: number;
+  /** Clinics with at least one submitted assessment in the last 7 days. */
+  clinicsActive7d: number;
+  /** Non-archived clinics with no assessment in the last 7 days. */
+  clinicsInactive7d: number;
+  /** Non-archived clinics with no assessment in the last 14 days. */
+  clinicsInactive14d: number;
   /** Active kit-order INTENTS (authorizations) — never a paid order. */
   kitIntents: number;
   /**
@@ -199,6 +219,13 @@ export interface ClinicOpsRow {
   /** The doctor who most recently signed in (for the "last login" column). */
   topDoctor: ClinicDoctorSummary | null;
   lastSignInAt: string | null;
+  /**
+   * The clinic-level authentication method, rolled up from its doctors' linked
+   * auth.identities providers (Google wins over phone). "Not linked" when no
+   * doctor has a linked identity; "Unknown" when identity telemetry is
+   * unreadable — never inferred from which uid column is populated.
+   */
+  authProvider: AuthProvider;
   assessments: Kpi;
   approvals: Kpi;
   /**
@@ -236,6 +263,18 @@ export interface ClinicOpsRow {
    * — used for the general "last activity" column.
    */
   lastActivityAt: string | null;
+  /** The latest SUBMITTED assessment instant (any status), or null. */
+  lastAssessmentAt: string | null;
+  /** The latest COMPLETED assessment instant, or null. */
+  lastCompletedAssessmentAt: string | null;
+  /** Submitted assessments in the last 7 days (fixed window, not the UI range). */
+  assessments7d: number;
+  /** Whole days since the last submitted assessment; null when none exist. */
+  daysSinceLastAssessment: number | null;
+  /** Adoption status from assessment recency + onboarding (see adoption.ts). */
+  adoptionStatus: AdoptionStatus;
+  /** The single suggested operational next action (null priority = none). */
+  followUp: FollowUp;
   /**
    * The most recent AUTHENTICATED DOCTOR clinical action (an approval, or an
    * audited doctor action — review, note, treatment update). System jobs,
