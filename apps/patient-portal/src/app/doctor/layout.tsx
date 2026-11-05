@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import { DoctorIdleLock } from "@/components/doctor/DoctorIdleLock";
 import { AppShell, AppShellProviders } from "@/components/app-shell";
 import { BranchContextBar } from "@/components/doctor/BranchContextBar";
 import { loadDoctorLocations } from "@/lib/doctor/locations";
@@ -31,27 +32,29 @@ export default async function DoctorLayout({ children }: { children: ReactNode }
 
   return (
     <AppShellProviders branding={data.branding} locale={data.locale}>
-      <AppShell
-        nav={doctorNav}
-        email={data.email}
-        displayName={data.displayName}
-        greetingName={greetingName}
-        roleLabel={roleLabel}
-        productLabel="Dr FACT"
-        sidebarVariant="doctor"
-      >
-        {/* Renders nothing below two live branches, so eleven of the twelve
-            launch clinics see no branch UI at all. */}
-        {branches.multiLocation && (
-          <div className="mx-auto w-full max-w-7xl px-4 pt-6 sm:px-6">
-            <BranchContextBar
-              clinicId={branches.clinicId}
-              locations={branches.locations}
-            />
-          </div>
-        )}
-        {children}
-      </AppShell>
+      <DoctorIdleLock>
+        <AppShell
+          nav={doctorNav}
+          email={data.email}
+          displayName={data.displayName}
+          greetingName={greetingName}
+          roleLabel={roleLabel}
+          productLabel="Dr FACT"
+          sidebarVariant="doctor"
+        >
+          {/* Renders nothing below two live branches, so eleven of the twelve
+              launch clinics see no branch UI at all. */}
+          {branches.multiLocation && (
+            <div className="mx-auto w-full max-w-7xl px-4 pt-6 sm:px-6">
+              <BranchContextBar
+                clinicId={branches.clinicId}
+                locations={branches.locations}
+              />
+            </div>
+          )}
+          {children}
+        </AppShell>
+      </DoctorIdleLock>
     </AppShellProviders>
   );
 }

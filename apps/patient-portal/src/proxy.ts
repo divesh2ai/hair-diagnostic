@@ -1,6 +1,8 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { createServerClient } from "@supabase/ssr";
 import { guardOutcome } from "@/lib/auth/routeGuard";
+import { privateAuthResponse } from "@/lib/auth/sessionResponse";
+import { safeReturnPath } from "@/lib/auth/safeReturnPath";
 
 // Next.js 16's `proxy` (formerly middleware) — gates /doctor and the
 // /api/doctor/* routes behind Supabase auth and the JWT `user_role` claim
@@ -35,7 +37,7 @@ export async function proxy(req: NextRequest) {
         getAll: () => req.cookies.getAll(),
         setAll: (toSet) => {
           toSet.forEach(({ name, value }) => req.cookies.set(name, value));
-          res = NextResponse.next({ request: req });
+          res = privateAuthResponse(NextResponse.next({ request: req }), res);
           toSet.forEach(({ name, value, options }) =>
             res.cookies.set(name, value, options),
           );
@@ -52,12 +54,37 @@ export async function proxy(req: NextRequest) {
     | { user_role?: string; clinic_id?: string; sub?: string }
     | undefined;
 
-  if (error || !claims) {
+  const path = req.nextUrl.pathname;
+  const login = path === "/login";
+  // Keep explicit auth errors visible, including inactive Doctor accounts.
+  if (login && (req.method !== "GET" || req.nextUrl.searchParams.has("reason"))) {
+    return privateAuthResponse(res);
+  }
+
+  // Check the live session as well as the JWT in the doctor flow.
+  let valid = !error && !!claims?.sub;
+  const doctorArea = /^\/(?:api\/)?doctor(?:\/|$)/.test(path);
+  if (valid && (claims?.user_role === "DOCTOR" || doctorArea || path === "/post-login")) {
+    const { data: userData, error: userError } = await supabase.auth.getUser();
+    valid = !userError && userData.user?.id === claims?.sub;
+  }
+
+  if (login) {
+    if (!valid || claims?.user_role !== "DOCTOR") return privateAuthResponse(res);
+    const url = new URL("/post-login", req.url);
+    const next = safeReturnPath(req.nextUrl.searchParams.get("next"));
+    if (next && /^\/doctor(?:\/|[?#]|$)/.test(next)) {
+      url.searchParams.set("next", next);
+    }
+    return privateAuthResponse(NextResponse.redirect(url), res);
+  }
+
+  if (!valid || !claims) {
     const url = req.nextUrl.clone();
     url.pathname = "/login";
     url.search = "";
-    url.searchParams.set("next", req.nextUrl.pathname + req.nextUrl.search);
-    return NextResponse.redirect(url);
+    if (path !== "/post-login") url.searchParams.set("next", path + req.nextUrl.search);
+    return privateAuthResponse(NextResponse.redirect(url), res);
   }
 
   // Authenticated: decide per-path. An authenticated session whose role claim is
@@ -66,13 +93,14 @@ export async function proxy(req: NextRequest) {
   // the coalesced value in a `string` local also lets us forward exactly what
   // was authorized below without re-narrowing `claims.user_role`.
   const role = claims.user_role ?? "";
-  const outcome = guardOutcome(req.nextUrl.pathname, role);
+  if (path === "/post-login") return privateAuthResponse(res);
+  const outcome = guardOutcome(path, role);
   if (outcome === "login_forbidden") {
     const url = req.nextUrl.clone();
     url.pathname = "/login";
     url.search = "";
     url.searchParams.set("reason", "forbidden");
-    return NextResponse.redirect(url);
+    return privateAuthResponse(NextResponse.redirect(url), res);
   }
 
   // Forward the role + clinic so downstream RSC / handlers can read them
@@ -83,11 +111,13 @@ export async function proxy(req: NextRequest) {
   if (claims.clinic_id) res.headers.set("x-clinic-id", claims.clinic_id);
   if (claims.sub) res.headers.set("x-user-id", claims.sub);
 
-  return res;
+  return privateAuthResponse(res);
 }
 
 export const config = {
   matcher: [
+    "/login",
+    "/post-login",
     "/doctor/:path*",
     "/api/doctor/:path*",
     "/admin/:path*",
