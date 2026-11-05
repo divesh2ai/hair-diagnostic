@@ -80,6 +80,7 @@ export const STATUS_TONE: Record<ClinicPrimaryStatus, BadgeTone> = {
 /** The filter keys the clinic table exposes. */
 export type ClinicFilterKey =
   | "all"
+  | "needsAttention"
   | "onboardingPending"
   | "neverLoggedIn"
   | "loggedInNoActivity"
@@ -93,6 +94,7 @@ export type ClinicFilterKey =
 
 export const FILTER_OPTIONS: { value: ClinicFilterKey; label: string }[] = [
   { value: "all", label: "All clinics" },
+  { value: "needsAttention", label: "Requires attention" },
   { value: "onboardingPending", label: "Onboarding pending" },
   { value: "neverLoggedIn", label: "Never logged in (established)" },
   { value: "loggedInNoActivity", label: "Logged in · no clinical activity" },

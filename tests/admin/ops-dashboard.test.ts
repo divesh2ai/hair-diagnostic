@@ -68,6 +68,50 @@ describe("classifyClinic — adoption is not activation", () => {
   });
 });
 
+describe("classifyClinic — needsAttention", () => {
+  it("a healthy actively-using clinic needs no attention", () => {
+    expect(classifyClinic(base()).flags.needsAttention).toBe(false);
+  });
+  it("a pending review raises attention", () => {
+    expect(classifyClinic(base({ awaitingReview: 3 })).flags.needsAttention).toBe(true);
+  });
+  it("a missing consultation raises attention", () => {
+    expect(classifyClinic(base({ assessmentsWithoutConsultation: 2 })).flags.needsAttention).toBe(true);
+  });
+  it("a reconciliation conflict raises attention", () => {
+    expect(classifyClinic(base({ reconciliationDiscrepancies: 1 })).flags.needsAttention).toBe(true);
+  });
+  it("a report/delivery fault raises attention", () => {
+    expect(classifyClinic(base({ reportsFailed: 1 })).flags.needsAttention).toBe(true);
+  });
+  it("a never-logged-in staffed clinic raises attention", () => {
+    expect(
+      classifyClinic(base({ signedInCount: 0, reviewedCasesAllTime: 0, lastDoctorActivityAt: null })).flags
+        .needsAttention,
+    ).toBe(true);
+  });
+  it("an archived clinic is never flagged", () => {
+    expect(classifyClinic(base({ status: "ARCHIVED", awaitingReview: 5 })).flags.needsAttention).toBe(false);
+  });
+  it("a quiet onboarding clinic (no faults) needs no attention", () => {
+    const flags = classifyClinic(
+      base({
+        assessmentsAllTime: 0,
+        approvalsAllTime: 0,
+        reviewedCasesAllTime: 0,
+        awaitingReview: 0,
+        dossiersReady: 0,
+        reportsSent: 0,
+        lastDoctorActivityAt: null,
+      }),
+    ).flags;
+    // noAssessments is informational, not an actionable fault on its own — but
+    // a clinic with doctors who never logged in IS flagged, so this baseline
+    // keeps a signed-in doctor to isolate "no faults".
+    expect(flags.needsAttention).toBe(false);
+  });
+});
+
 describe("classifyClinic — COMPLETED is not APPROVED", () => {
   it("assessments completed but zero approvals ⇒ not actively using, and pending if awaiting", () => {
     const { flags, primaryStatus } = classifyClinic(

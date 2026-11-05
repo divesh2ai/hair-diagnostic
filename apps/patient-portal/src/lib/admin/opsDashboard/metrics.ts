@@ -79,6 +79,7 @@ export async function loadOpsOverview(window: TimeWindow): Promise<OpsOverview> 
     doctorAuditActivity,
     awaitingAll,
     dossiersReadyAll,
+    reportAssetsQueuedAll,
     kitActiveAll,
     kitCancelledAll,
     auditLastActivity,
@@ -210,6 +211,12 @@ export async function loadOpsOverview(window: TimeWindow): Promise<OpsOverview> 
       where: { type: "PATIENT_REPORT_PDF", status: "READY" },
       _count: { _all: true },
     });
+    // Report assets still in the render pipeline (the "queued" side of "ready
+    // and queued report assets"). PENDING / QUEUED / RENDERING, not yet READY
+    // and not FAILED.
+    const reportAssetsQueuedAll = await tx.reportAsset.count({
+      where: { status: { in: ["PENDING", "QUEUED", "RENDERING"] } },
+    });
     // Kit INTENTS — a doctor authorization. Active = READY_FOR_FULFILMENT.
     const kitActiveAll = await tx.kitOrderIntent.groupBy({
       by: ["clinicId"],
@@ -243,6 +250,7 @@ export async function loadOpsOverview(window: TimeWindow): Promise<OpsOverview> 
       doctorAuditActivity,
       awaitingAll,
       dossiersReadyAll,
+      reportAssetsQueuedAll,
       kitActiveAll,
       kitCancelledAll,
       auditLastActivity,
@@ -468,11 +476,30 @@ export async function loadOpsOverview(window: TimeWindow): Promise<OpsOverview> 
       }
     : { state: "NOT_CONNECTED", today: null, allTime: null };
 
+  // Failed WhatsApp REPORT sends across all clinics — capability-gated, never a
+  // fabricated zero when delivery is NOT_CONNECTED.
+  let reportsFailedTotal = 0;
+  for (const v of deliveries.byClinic.values()) reportsFailedTotal += v.reportsFailed;
+  const reportsFailedKpi: GatedKpi = deliveryConnected
+    ? { state: "CONNECTED", today: reportsFailedTotal, allTime: reportsFailedTotal }
+    : { state: "NOT_CONNECTED", today: null, allTime: null };
+
   const kpis: DashboardKpis = {
     clinicsRegistered: rows.length,
+    clinicsActive: rows.filter((r) => r.status === "ACTIVE").length,
     clinicsOperational: rows.filter((r) => r.flags.activelyUsing).length,
+    clinicsWithAssessments: rows.filter((r) => r.assessments.allTime > 0).length,
+    clinicsNeedingAttention: rows.filter((r) => r.flags.needsAttention).length,
+    patients: sum((r) => r.patientCount),
     doctorsTotal: roster.clinicians.length,
+    // "Identities linked" = a usable linked auth identity (email/Google or
+    // phone), which is what roster.dashboardReady counts — distinct from having
+    // actually signed in.
+    doctorsIdentityLinked: roster.summary.dashboardReady,
     doctorsSignedIn: roster.clinicians.filter((c) => c.lastSignInAt !== null).length,
+    kitIntents: sum((r) => r.kitIntents),
+    reportAssetsQueued: reportAssetsQueuedAll,
+    reportsFailed: reportsFailedKpi,
     assessments: assessmentsKpi,
     approvals: approvalsKpi,
     reviewedCases: reviewedCasesKpi,

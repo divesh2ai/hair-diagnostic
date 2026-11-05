@@ -164,6 +164,18 @@ export function classifyClinic(input: ClassifyInput): Classification {
     !input.authReadable &&
     input.doctorCount > 0;
 
+  // A clinic needs operational attention when any actionable exception is
+  // present. Deliberately excludes "onboarding idle" and "logged in, no work"
+  // (those are expected early states, not faults) and never flags an archived
+  // clinic.
+  const needsAttention =
+    !isArchived &&
+    (neverLoggedIn ||
+      pendingReview ||
+      missingConsultation ||
+      reconciliationDiscrepancy ||
+      reportDeliveryAttention);
+
   const flags: ClinicFlags = {
     neverLoggedIn,
     noAssessments,
@@ -175,6 +187,7 @@ export function classifyClinic(input: ClassifyInput): Classification {
     loggedInNoActivity,
     noRecentActivity,
     trackingUnavailable,
+    needsAttention,
   };
 
   // Primary chip: lifecycle first, then the most operationally-urgent facet.

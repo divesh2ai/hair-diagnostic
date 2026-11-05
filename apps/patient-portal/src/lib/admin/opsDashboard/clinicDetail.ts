@@ -19,6 +19,12 @@ import {
   type RetrievalState,
 } from "./classify";
 import { probeOnePagerSnapshots, type SnapshotProbe } from "./snapshots";
+import {
+  deriveRolloutChecklist,
+  type MilestoneKey,
+  type MilestoneSignoff,
+  type RolloutChecklist,
+} from "./rollout";
 
 /** One approved assessment's report, with every availability facet separate. */
 export interface ReportMatrixRow {
@@ -46,7 +52,7 @@ export interface ClinicDetail {
     name: string;
     slug: string;
     status: string;
-    branches: { branchName: string; isPrimary: boolean; status: string; city: string | null }[];
+    branches: { branchName: string; isPrimary: boolean; status: string; city: string | null; slug: string | null }[];
   };
   patients: { total: number };
   /**
@@ -185,6 +191,13 @@ export interface ClinicDetail {
       createdAt: string;
     }[];
   };
+  /**
+   * The rollout checklist — live auto-evidence merged with manual sign-offs.
+   * Capability-gated on the ClinicMilestoneSignoff table: where that migration
+   * is not applied, the auto-evidence still renders and signoffState is
+   * NOT_CONNECTED (never a fabricated "not signed off").
+   */
+  rollout: RolloutChecklist;
 }
 
 export class ClinicNotFoundError extends Error {
@@ -206,10 +219,15 @@ function allCount(count: unknown): number {
 }
 
 function isNotProvisioned(err: unknown): boolean {
-  if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === "P2010") {
-    const meta = (err.meta ?? {}) as { code?: string; message?: string };
-    if (["42P01", "42703", "42704", "22P02"].includes(meta.code ?? "")) return true;
-    return /does not exist|invalid input value for enum/i.test(meta.message ?? err.message);
+  if (err instanceof Prisma.PrismaClientKnownRequestError) {
+    // P2021 (table) / P2022 (column) are what the ORM raises for a missing
+    // relation; P2010 wraps the raw-query SQLSTATE for the $queryRaw reads.
+    if (err.code === "P2021" || err.code === "P2022") return true;
+    if (err.code === "P2010") {
+      const meta = (err.meta ?? {}) as { code?: string; message?: string };
+      if (["42P01", "42703", "42704", "22P02"].includes(meta.code ?? "")) return true;
+      return /does not exist|invalid input value for enum/i.test(meta.message ?? err.message);
+    }
   }
   const msg = err instanceof Error ? err.message : String(err);
   return /does not exist/i.test(msg);
@@ -226,7 +244,10 @@ export async function loadClinicDetail(clinicId: string): Promise<ClinicDetail> 
       locations: {
         where: { deletedAt: null },
         orderBy: [{ isPrimary: "desc" }, { branchName: "asc" }],
-        select: { branchName: true, isPrimary: true, status: true, city: true },
+        // `slug` is the QR/link handle — read for the rollout checklist's
+        // "branches with a QR handle configured" evidence; not exposed on the
+        // branch shape below.
+        select: { branchName: true, isPrimary: true, status: true, city: true, slug: true },
       },
     },
   });
@@ -253,6 +274,7 @@ export async function loadClinicDetail(clinicId: string): Promise<ClinicDetail> 
     missingConsultationRows,
     reconciliationRows,
     approvedForMatrix,
+    consultationsTotal,
   ] = await prisma.$transaction([
     prisma.patient.count({ where: { clinicId, deletedAt: null } }),
     prisma.assessment.count({ where: { clinicId, deletedAt: null } }),
@@ -360,6 +382,9 @@ export async function loadClinicDetail(clinicId: string): Promise<ClinicDetail> 
         currentVersion: { select: { id: true, contentVersion: true, approvedAt: true } },
       },
     }),
+    // Any consultation created for this clinic (DRAFT included) — the
+    // "first consultation created" rollout signal is existence, not approval.
+    prisma.consultation.count({ where: { clinicId } }),
   ]);
 
   // ReportAsset rows for the approved versions — the CONFIRMED asset facts
@@ -460,6 +485,28 @@ export async function loadClinicDetail(clinicId: string): Promise<ClinicDetail> 
     if (key in queueCounts) queueCounts[key] = allCount(r._count);
   }
 
+  // Rollout checklist — capability-gated manual sign-offs merged with the live
+  // auto-evidence derived from the data already loaded above. Never fatal: if
+  // the sign-off table is absent the checklist still renders its auto-evidence.
+  const signoffs = await loadRolloutSignoffs(clinicId);
+  const rollout = deriveRolloutChecklist(
+    {
+      authReadable: doctors.authReadable,
+      anyDoctorSignedIn: doctors.list.some((d) => d.lastSignInAt !== null),
+      doctorCount: doctors.list.length,
+      branchesWithQrHandle: clinic.locations.filter((l) => Boolean(l.slug)).length,
+      branchCount: clinic.locations.length,
+      assessmentsTotal: assessmentTotal,
+      consultationsTotal,
+      dossiersReady,
+      kitDecisions: kitActive + kitCancelled,
+      deliveryState: delivery.state,
+      reportsDelivered: delivery.delivered,
+    },
+    signoffs.byMilestone,
+    signoffs.state,
+  );
+
   return {
     clinic: {
       id: clinic.id,
@@ -548,7 +595,61 @@ export async function loadClinicDetail(clinicId: string): Promise<ClinicDetail> 
         createdAt: a.createdAt.toISOString(),
       })),
     },
+    rollout,
   };
+}
+
+interface SignoffsResult {
+  state: CapabilityState;
+  byMilestone: Map<MilestoneKey, MilestoneSignoff>;
+}
+
+/**
+ * Current clinic-level milestone sign-offs, keyed by milestone. Guarded exactly
+ * like the payments/delivery capabilities: an absent ClinicMilestoneSignoff
+ * table (migration not applied here) degrades to NOT_CONNECTED with an empty
+ * map, never an error and never a fabricated "not signed". Only clinic-level
+ * sign-offs (locationId null) feed the clinic checklist.
+ */
+async function loadRolloutSignoffs(clinicId: string): Promise<SignoffsResult> {
+  try {
+    const rows = await prisma.clinicMilestoneSignoff.findMany({
+      where: { clinicId, locationId: null },
+      orderBy: { signedOffAt: "desc" },
+      select: {
+        milestone: true,
+        outcome: true,
+        evidence: true,
+        notes: true,
+        actorName: true,
+        actorRole: true,
+        signedOffAt: true,
+      },
+    });
+    const byMilestone = new Map<MilestoneKey, MilestoneSignoff>();
+    for (const r of rows) {
+      // One current row per milestone (enforced by the unique index); the
+      // newest wins if a stale duplicate ever exists.
+      if (byMilestone.has(r.milestone as MilestoneKey)) continue;
+      byMilestone.set(r.milestone as MilestoneKey, {
+        outcome: r.outcome,
+        evidence: r.evidence,
+        notes: r.notes,
+        actorName: r.actorName,
+        actorRole: r.actorRole,
+        signedOffAt: r.signedOffAt.toISOString(),
+      });
+    }
+    return { state: "CONNECTED", byMilestone };
+  } catch (err) {
+    if (!isNotProvisioned(err)) {
+      console.warn(
+        "[ops-dashboard] milestone sign-off read failed, reporting NOT_CONNECTED:",
+        err instanceof Error ? err.message : String(err),
+      );
+    }
+    return { state: "NOT_CONNECTED", byMilestone: new Map() };
+  }
 }
 
 interface ClinicAuthUserRow {

@@ -30,6 +30,9 @@
     // diagnostics it would otherwise add, WITHOUT pulling apps source into the
     // root program (which the exclude above is there to prevent). The sibling
     // admin suites predate this file and are left as-is.
-    "tests/admin/ops-dashboard.test.ts"
+    "tests/admin/ops-dashboard.test.ts",
+    // Same reasoning as the sibling above: a portal-scoped suite that imports
+    // via "@/…" (resolved by the portal tsconfig + vitest), not by the root.
+    "tests/admin/rollout.test.ts"
   ]
 }

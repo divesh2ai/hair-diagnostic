@@ -4,13 +4,23 @@ import { useEffect, useState } from "react";
 import { Drawer, DrawerContent } from "@/components/ui/drawer";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { LoadingState, ErrorState } from "@/components/ui/states";
+import { Button } from "@/components/ui/button";
 import type { ClinicDetail } from "@/lib/admin/opsDashboard/clinicDetail";
 import {
   relativeTime,
   absoluteTime,
   formatInrFromMinor,
   REPORT_READINESS_LABEL,
+  type BadgeTone,
 } from "@/lib/admin/opsDashboard/format";
+import {
+  MILESTONE_OUTCOMES,
+  MILESTONE_OUTCOME_LABEL,
+  MILESTONE_STATUS_LABEL,
+  type MilestoneOutcome,
+  type MilestoneStatus,
+  type RolloutChecklistItem,
+} from "@/lib/admin/opsDashboard/rollout";
 
 // The clinic operational drilldown. Opened from a row in the operations table;
 // fetches /api/admin/clinics/[id]/operations on open. Every capability-gated
@@ -63,16 +73,19 @@ export function ClinicOpsDrawer({
   // Derived loading — the effect only sets state after the fetch resolves, so
   // nothing is set synchronously inside it (react-hooks/set-state-in-effect).
   const [loadedKey, setLoadedKey] = useState<string | null>(null);
+  // Bumped after a sign-off write so the drawer re-fetches the clinic detail
+  // (and therefore the recomputed rollout checklist).
+  const [reloadNonce, setReloadNonce] = useState(0);
 
-  const fetchKey = open && clinicId ? clinicId : null;
+  const fetchKey = open && clinicId ? `${clinicId}|${reloadNonce}` : null;
   const loading = fetchKey !== null && loadedKey !== fetchKey;
 
   useEffect(() => {
-    if (!fetchKey) return;
+    if (!fetchKey || !clinicId) return;
     let cancelled = false;
     (async () => {
       try {
-        const r = await fetch(`/api/admin/clinics/${fetchKey}/operations`, { cache: "no-store" });
+        const r = await fetch(`/api/admin/clinics/${clinicId}/operations`, { cache: "no-store" });
         if (!r.ok) throw new Error(`HTTP ${r.status}`);
         const j: ClinicDetail = await r.json();
         if (!cancelled) {
@@ -91,7 +104,7 @@ export function ClinicOpsDrawer({
     return () => {
       cancelled = true;
     };
-  }, [fetchKey]);
+  }, [fetchKey, clinicId]);
 
   return (
     <Drawer open={open} onOpenChange={onOpenChange}>
@@ -119,12 +132,27 @@ export function ClinicOpsDrawer({
                   <span
                     key={b.branchName}
                     className="rounded-md border border-border bg-card/40 px-2 py-0.5 text-xs"
+                    title={
+                      b.slug
+                        ? `QR handle: ?branch=${b.slug}`
+                        : "No QR handle configured — unreachable by ?branch="
+                    }
                   >
                     {b.branchName}
                     {b.city ? ` · ${b.city}` : ""} {b.isPrimary ? "(primary)" : ""}
+                    {b.slug ? ` · QR ✓` : " · QR —"}
                   </span>
                 ))}
               </div>
+            )}
+
+            {/* 0. Rollout checklist — auto-evidence + manual sign-offs */}
+            {clinicId && (
+              <RolloutSection
+                clinicId={clinicId}
+                rollout={detail.rollout}
+                onChanged={() => setReloadNonce((n) => n + 1)}
+              />
             )}
 
             {/* 1. Patients & assessment status */}
@@ -458,6 +486,211 @@ function RecentTable({
           ))}
         </tbody>
       </table>
+    </div>
+  );
+}
+
+const MILESTONE_STATUS_TONE: Record<MilestoneStatus, BadgeTone> = {
+  VERIFIED: "success",
+  AUTO_SATISFIED: "info",
+  ATTENTION: "danger",
+  NOT_STARTED: "neutral",
+  NOT_APPLICABLE: "neutral",
+  UNKNOWN: "neutral",
+};
+
+// The rollout checklist: each milestone's live auto-evidence merged with a
+// manual sign-off. "A verified Google identity link is not proof of a
+// successful dashboard login" and "a QR route existing is not proof of a
+// successful QR scan" are enforced in the derivation (lib/admin/opsDashboard/
+// rollout.ts); this component renders the result and lets a Super Admin attest.
+function RolloutSection({
+  clinicId,
+  rollout,
+  onChanged,
+}: {
+  clinicId: string;
+  rollout: ClinicDetail["rollout"];
+  onChanged: () => void;
+}) {
+  const provisioned = rollout.signoffState === "CONNECTED";
+  return (
+    <Section title={`Rollout checklist — ${rollout.verifiedCount}/${rollout.total} verified`}>
+      {rollout.attentionCount > 0 && (
+        <p className="text-xs text-red-600 dark:text-red-400">
+          {rollout.attentionCount} milestone{rollout.attentionCount === 1 ? "" : "s"} need attention.
+        </p>
+      )}
+      {!provisioned && (
+        <p className="text-xs text-muted-foreground">
+          <StatusBadge tone="neutral">Sign-off storage not provisioned</StatusBadge>{" "}
+          Auto-derived evidence is shown below; manual sign-offs require the{" "}
+          <code>ClinicMilestoneSignoff</code> migration to be applied in this environment.
+        </p>
+      )}
+      <div className="space-y-2">
+        {rollout.items.map((item) => (
+          <MilestoneRow
+            key={item.key}
+            clinicId={clinicId}
+            item={item}
+            canSignoff={provisioned}
+            onChanged={onChanged}
+          />
+        ))}
+      </div>
+      <p className="text-xs text-muted-foreground">
+        Auto-evidence is read live from the database. A linked identity is not a login, and a QR
+        route is not a scan — doctor login, branch QR and pilot acceptance are confirmed by a human
+        with documented evidence. Every sign-off is audited.
+      </p>
+    </Section>
+  );
+}
+
+function MilestoneRow({
+  clinicId,
+  item,
+  canSignoff,
+  onChanged,
+}: {
+  clinicId: string;
+  item: RolloutChecklistItem;
+  canSignoff: boolean;
+  onChanged: () => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const [outcome, setOutcome] = useState<MilestoneOutcome>(item.signoff?.outcome ?? "VERIFIED");
+  const [evidence, setEvidence] = useState(item.signoff?.evidence ?? "");
+  const [notes, setNotes] = useState(item.signoff?.notes ?? "");
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
+
+  async function submit() {
+    setBusy(true);
+    setErr(null);
+    try {
+      const r = await fetch(`/api/admin/clinics/${clinicId}/rollout`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          milestone: item.key,
+          outcome,
+          evidence: evidence.trim() || null,
+          notes: notes.trim() || null,
+        }),
+      });
+      if (!r.ok) {
+        const j = (await r.json().catch(() => ({}))) as { message?: string; error?: string };
+        throw new Error(j.message ?? j.error ?? `HTTP ${r.status}`);
+      }
+      setOpen(false);
+      onChanged();
+    } catch (e) {
+      setErr((e as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function clear() {
+    setBusy(true);
+    setErr(null);
+    try {
+      const r = await fetch(`/api/admin/clinics/${clinicId}/rollout`, {
+        method: "DELETE",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ milestone: item.key }),
+      });
+      if (!r.ok) {
+        const j = (await r.json().catch(() => ({}))) as { message?: string; error?: string };
+        throw new Error(j.message ?? j.error ?? `HTTP ${r.status}`);
+      }
+      setOpen(false);
+      onChanged();
+    } catch (e) {
+      setErr((e as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <div className="rounded-lg border border-border bg-card/40 px-3 py-2">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <div className="min-w-0">
+          <div className="flex items-center gap-2">
+            <span className="text-sm font-medium">{item.label}</span>
+            <StatusBadge tone={MILESTONE_STATUS_TONE[item.status]}>
+              {MILESTONE_STATUS_LABEL[item.status]}
+            </StatusBadge>
+          </div>
+          <div className="text-xs text-muted-foreground">{item.autoEvidence}</div>
+          {item.signoff && (
+            <div className="mt-0.5 text-xs text-muted-foreground">
+              Signed {MILESTONE_OUTCOME_LABEL[item.signoff.outcome]}
+              {item.signoff.actorName ? ` by ${item.signoff.actorName}` : ""} ·{" "}
+              {relativeTime(item.signoff.signedOffAt)}
+              {item.signoff.evidence ? ` · evidence: ${item.signoff.evidence}` : ""}
+              {item.signoff.notes ? ` · ${item.signoff.notes}` : ""}
+            </div>
+          )}
+        </div>
+        {canSignoff && (
+          <div className="flex shrink-0 gap-1.5">
+            <Button variant="outline" size="sm" onClick={() => setOpen((v) => !v)}>
+              {item.signoff ? "Edit sign-off" : "Sign off"}
+            </Button>
+            {item.signoff && (
+              <Button variant="ghost" size="sm" onClick={clear} disabled={busy}>
+                Clear
+              </Button>
+            )}
+          </div>
+        )}
+      </div>
+
+      {open && canSignoff && (
+        <div className="mt-2 space-y-2 border-t border-border pt-2">
+          <div className="flex flex-wrap items-center gap-2">
+            <label className="flex items-center gap-1.5 text-xs text-muted-foreground">
+              <span className="uppercase tracking-wide">Outcome</span>
+              <select
+                value={outcome}
+                onChange={(e) => setOutcome(e.target.value as MilestoneOutcome)}
+                className="h-8 rounded-lg border border-border bg-background px-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring/40"
+              >
+                {MILESTONE_OUTCOMES.map((o) => (
+                  <option key={o} value={o}>
+                    {MILESTONE_OUTCOME_LABEL[o]}
+                  </option>
+                ))}
+              </select>
+            </label>
+          </div>
+          <input
+            value={evidence}
+            onChange={(e) => setEvidence(e.target.value)}
+            placeholder="Evidence (link, ticket id, or what was witnessed)"
+            className="h-8 w-full rounded-lg border border-border bg-background px-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring/40"
+          />
+          <input
+            value={notes}
+            onChange={(e) => setNotes(e.target.value)}
+            placeholder="Notes (optional)"
+            className="h-8 w-full rounded-lg border border-border bg-background px-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring/40"
+          />
+          {err && <p className="text-xs text-red-600 dark:text-red-400">{err}</p>}
+          <div className="flex gap-1.5">
+            <Button size="sm" onClick={submit} disabled={busy}>
+              {busy ? "Saving…" : "Save sign-off"}
+            </Button>
+            <Button variant="ghost" size="sm" onClick={() => setOpen(false)} disabled={busy}>
+              Cancel
+            </Button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

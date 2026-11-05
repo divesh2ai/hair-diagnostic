@@ -46,6 +46,8 @@ function matchesFilter(row: ClinicOpsRow, filter: ClinicFilterKey): boolean {
   switch (filter) {
     case "all":
       return true;
+    case "needsAttention":
+      return row.flags.needsAttention;
     case "onboardingPending":
       return row.primaryStatus === "ONBOARDING_IDLE";
     case "neverLoggedIn":
@@ -426,7 +428,10 @@ export default function AdminOperationsPage() {
               Showing {filtered.length} of {data.clinics.length} clinic{data.clinics.length === 1 ? "" : "s"} · window:{" "}
               {data.window.label}
             </span>
-            <span>Today&apos;s figures use the clinic-day in Asia/Kolkata.</span>
+            <span>
+              Last refreshed {relativeTime(data.generatedAt)} · figures use the clinic-day in
+              Asia/Kolkata.
+            </span>
           </div>
 
           <DataTable
@@ -469,24 +474,44 @@ function KpiStrip({ data }: { data: OpsOverview }) {
   const k = data.kpis;
   return (
     <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+      {/* Network */}
       <MetricCard
         label="Registered clinics"
         value={k.clinicsRegistered}
-        hint={`${k.clinicsOperational} actively using HairOS`}
+        hint={`${k.clinicsActive} active (status) · ${k.clinicsOperational} using HairOS`}
       />
+      <MetricCard
+        label="Clinics using HairOS"
+        value={k.clinicsOperational}
+        hint={`${k.clinicsWithAssessments} with assessment activity`}
+      />
+      <MetricCard
+        label="Requiring attention"
+        value={k.clinicsNeedingAttention}
+        hint="clinics with an actionable exception"
+      />
+      <MetricCard
+        label="Patients"
+        value={k.patients}
+        hint={`${k.completedAssessments} completed assessments`}
+      />
+
+      {/* People */}
       <MetricCard
         label="Doctors signed in"
         value={data.capabilities.authReadable ? k.doctorsSignedIn : "—"}
         hint={
           data.capabilities.authReadable
-            ? `of ${k.doctorsTotal} onboarded`
-            : `sign-in unknown · ${k.doctorsTotal} onboarded`
+            ? `${k.doctorsIdentityLinked} identities linked · ${k.doctorsTotal} onboarded`
+            : `sign-in unknown · ${k.doctorsIdentityLinked} linked · ${k.doctorsTotal} onboarded`
         }
       />
+
+      {/* Clinical throughput */}
       <MetricCard
         label={`Assessments · ${data.window.label}`}
         value={k.assessments.today}
-        hint={`${k.assessments.allTime} all-time`}
+        hint={`${k.assessments.allTime} all-time · ${k.completedAssessments} completed`}
       />
       <MetricCard
         label={`Cases reviewed · ${data.window.label}`}
@@ -496,12 +521,12 @@ function KpiStrip({ data }: { data: OpsOverview }) {
       <MetricCard
         label={`Approvals · ${data.window.label}`}
         value={k.approvals.today}
-        hint={`${k.approvals.allTime} approved · ${k.completedAssessments} completed (pipeline)`}
+        hint={`${k.approvals.allTime} approved all-time`}
       />
       <MetricCard
         label="Awaiting doctor review"
         value={k.pendingReviews}
-        hint="consultation versions pending a doctor"
+        hint="consultations pending a doctor"
       />
       <MetricCard
         label="Missing consultation"
@@ -513,10 +538,17 @@ function KpiStrip({ data }: { data: OpsOverview }) {
         value={k.reconciliationDiscrepancies}
         hint="approved-version / reviewDecision conflicts"
       />
+
+      {/* Reports, kits & delivery */}
       <MetricCard
-        label="Dossiers ready"
+        label="Report assets"
         value={k.dossiersReady}
-        hint={`of ${k.approvals.allTime} approved — asset confirmed, not inferred`}
+        hint={`ready · ${k.reportAssetsQueued} queued (rendering)`}
+      />
+      <MetricCard
+        label="Kit-order intents"
+        value={k.kitIntents}
+        hint="doctor authorizations — not paid orders"
       />
       <MetricCard
         label={`Reports sent · ${data.window.label}`}
@@ -529,9 +561,13 @@ function KpiStrip({ data }: { data: OpsOverview }) {
         hint={gatedHint(k.reportsDelivered, "delivered")}
       />
       <MetricCard
-        label="Operationally using"
-        value={k.clinicsOperational}
-        hint={`${k.clinicsRegistered - k.clinicsOperational} not yet active`}
+        label="WhatsApp failed"
+        value={gatedToday(k.reportsFailed)}
+        hint={
+          k.reportsFailed.state === "CONNECTED"
+            ? "failed report sends — needs attention"
+            : "Not connected — migration not applied"
+        }
       />
     </div>
   );

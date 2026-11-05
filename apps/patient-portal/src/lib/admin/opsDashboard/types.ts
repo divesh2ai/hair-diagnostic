@@ -53,10 +53,34 @@ export interface GatedKpi {
 
 export interface DashboardKpis {
   clinicsRegistered: number;
+  /** ClinicStatus = ACTIVE (an operator flag) — distinct from clinicsOperational. */
+  clinicsActive: number;
+  /** Clinics genuinely using HairOS (clinical work + recent activity). */
   clinicsOperational: number;
+  /** Clinics with at least one all-time assessment — any assessment activity. */
+  clinicsWithAssessments: number;
+  /** Clinics with at least one actionable operational exception. */
+  clinicsNeedingAttention: number;
+  /** Distinct, non-deleted patients across all clinics. */
+  patients: number;
   doctorsTotal: number;
+  /**
+   * Doctors with a linked, usable authentication identity (email/Google or
+   * phone) — "identities linked", distinct from doctorsSignedIn (who actually
+   * used it). A linked identity is not proof of a successful login.
+   */
+  doctorsIdentityLinked: number;
   /** Doctors whose Supabase account has ever recorded a sign-in. */
   doctorsSignedIn: number;
+  /** Active kit-order INTENTS (authorizations) — never a paid order. */
+  kitIntents: number;
+  /**
+   * Report assets still in the render pipeline (PENDING / QUEUED / RENDERING) —
+   * the "queued" side of "ready and queued report assets".
+   */
+  reportAssetsQueued: number;
+  /** Failed WhatsApp REPORT sends needing attention (capability-gated). */
+  reportsFailed: GatedKpi;
   assessments: Kpi;
   approvals: Kpi;
   /**
@@ -126,6 +150,13 @@ export interface ClinicFlags {
    * present. Reported as Unknown, never as a confident "never" or zero.
    */
   trackingUnavailable: boolean;
+  /**
+   * At least one actionable operational exception is present (never-logged-in,
+   * pending review, missing consultation, reconciliation conflict, or
+   * report/delivery attention). Drives the "clinics requiring attention" count
+   * and the attention filter. Archived clinics are never flagged.
+   */
+  needsAttention: boolean;
 }
 
 export type ClinicPrimaryStatus =

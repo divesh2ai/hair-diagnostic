@@ -102,6 +102,11 @@ export const AUDIT_ACTION_GROUPS = {
     "CLINIC_LOCATION_UPDATED",
     "CLINIC_LOCATION_DELETED",
     "PLATFORM_SETTINGS_UPDATED",
+    // Rollout checklist attestations. A Super Admin recording (or clearing) a
+    // manual milestone sign-off — doctor login witnessed, branch QR scanned,
+    // pilot accepted, etc. An operational attestation, never a clinical write.
+    "CLINIC_MILESTONE_SIGNED_OFF",
+    "CLINIC_MILESTONE_CLEARED",
   ],
   Invitations: [
     "DOCTOR_INVITATION_CREATED",
