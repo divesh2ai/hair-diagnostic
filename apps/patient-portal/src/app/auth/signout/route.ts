@@ -1,11 +1,16 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { createServerClient } from "@supabase/ssr";
+import { privateAuthResponse } from "@/lib/auth/sessionResponse";
 
-// POST /auth/signout — clears Supabase auth cookies then redirects to /login.
-// Exposed as POST (not GET) so a stray prefetch can't accidentally log
-// someone out.
 export async function POST(req: NextRequest) {
-  let res = NextResponse.redirect(new URL("/login", req.url));
+  if (req.headers.get("sec-fetch-site") === "cross-site") {
+    return privateAuthResponse(new NextResponse(null, { status: 403 }));
+  }
+
+  const json = req.headers.get("accept") === "application/json";
+  const res = json
+    ? new NextResponse(null, { status: 204 })
+    : NextResponse.redirect(new URL("/login?reason=signed_out", req.url), 303);
 
   const supabase = createServerClient(
     (process.env.NEXT_PUBLIC_SUPABASE_URL || "").replace(/\uFEFF/g, ""),
@@ -14,14 +19,16 @@ export async function POST(req: NextRequest) {
       cookies: {
         getAll: () => req.cookies.getAll(),
         setAll: (toSet) => {
-          toSet.forEach(({ name, value, options }) =>
-            res.cookies.set(name, value, options),
-          );
+          toSet.forEach(({ name, value, options }) => res.cookies.set(name, value, options));
         },
       },
     },
   );
 
-  await supabase.auth.signOut();
-  return res;
+  // Keep other browsers signed in when this device is locked or signed out.
+  const { error } = await supabase.auth.signOut({ scope: "local" });
+  if (error) {
+    return privateAuthResponse(new NextResponse("Could not sign out. Retry before leaving this device.", { status: 503 }), res);
+  }
+  return privateAuthResponse(res);
 }

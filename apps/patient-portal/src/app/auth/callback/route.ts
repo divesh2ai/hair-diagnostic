@@ -1,5 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { createServerClient } from "@supabase/ssr";
+import { privateAuthResponse } from "@/lib/auth/sessionResponse";
 import { safeReturnPath } from "@/lib/auth/safeReturnPath";
 
 // Magic-link landing. Supabase appends ?code=<otp> to the redirectTo URL;
@@ -11,10 +12,10 @@ export async function GET(req: NextRequest) {
   const next = safeReturnPath(url.searchParams.get("next")) ?? "/doctor";
 
   if (!code) {
-    return NextResponse.redirect(new URL("/login?reason=missing_code", req.url));
+    return privateAuthResponse(NextResponse.redirect(new URL("/login?reason=missing_code", req.url)));
   }
 
-  let res = NextResponse.redirect(new URL(next, req.url));
+  const res = NextResponse.redirect(new URL(next, req.url));
 
   const supabase = createServerClient(
     (process.env.NEXT_PUBLIC_SUPABASE_URL || "").replace(/\uFEFF/g, ""),
@@ -34,10 +35,8 @@ export async function GET(req: NextRequest) {
   const { error } = await supabase.auth.exchangeCodeForSession(code);
   if (error) {
     console.error("[AUTH CALLBACK]", error.message);
-    return NextResponse.redirect(
-      new URL(`/login?reason=exchange_failed`, req.url),
-    );
+    return privateAuthResponse(NextResponse.redirect(new URL("/login?reason=exchange_failed", req.url)), res);
   }
 
-  return res;
+  return privateAuthResponse(res);
 }

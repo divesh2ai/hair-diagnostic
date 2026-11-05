@@ -94,6 +94,7 @@ jobs:
             tests/root-route.test.ts \
             tests/admin-route-guard.test.ts \
             tests/auth/post-login-identity.test.ts \
+            tests/auth/remembered-doctor-session.test.ts \
             tests/localisation \
             tests/reports \
             tests/admin/ops-dashboard.test.ts \

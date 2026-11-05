@@ -278,7 +278,7 @@ function LoginInner() {
   // and its secret lives only in the environment.
 
   return (
-    <main className="min-h-[100dvh] grid place-items-center bg-stone-50 px-6">
+    <main className="min-h-[100dvh] grid place-items-center bg-stone-50 px-6 py-8">
       <div className="w-full max-w-md space-y-6">
         <div className="text-center space-y-2">
           <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-teal-700">
@@ -295,6 +295,16 @@ function LoginInner() {
                 : "Enter the code we just texted you."}
           </p>
         </div>
+
+        {reason === "idle" && (
+          <p role="status" className="text-sm text-stone-700">
+            HairOS signed you out after inactivity. Sign in to continue.
+          </p>
+        )}
+        <p className="text-sm text-stone-700">
+          Use a private browser profile on a trusted device to stay signed in.
+          On a shared device, select Sign out from your profile before leaving.
+        </p>
 
         <div className="space-y-3">
           <button
