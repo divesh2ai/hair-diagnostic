@@ -10,7 +10,7 @@ const auth = vi.hoisted(() => ({
   rotate: false,
 }));
 
-vi.mock("@supabase/ssr", () => ({
+vi.mock("../../apps/patient-portal/node_modules/@supabase/ssr", () => ({
   createServerClient: (_url: string, _key: string, { cookies }: {
     cookies: { setAll: (entries: { name: string; value: string; options: { maxAge: number } }[]) => void };
   }) => ({
