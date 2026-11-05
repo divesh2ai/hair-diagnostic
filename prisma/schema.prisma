@@ -393,6 +393,7 @@ model Clinic {
   kitOrderPayments       KitOrderPayment[]
   kitFulfilments         ClinicKitFulfilment[]
   supportTickets         SupportTicket[]
+  milestoneSignoffs      ClinicMilestoneSignoff[]
 
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
@@ -480,6 +481,10 @@ model ClinicLocation {
 
   // Assessments taken at this branch. Scope attribution only; see Assessment.
   assessments Assessment[]
+
+  // Branch-scoped rollout sign-offs (e.g. a documented QR scan test for THIS
+  // branch's handle). A clinic-level milestone leaves locationId null.
+  milestoneSignoffs ClinicMilestoneSignoff[]
 
   @@index([clinicId])
   @@index([clinicId, status])
@@ -2990,4 +2995,96 @@ model SupportMessage {
   createdAt DateTime @default(now())
 
   @@index([ticketId, createdAt])
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Rollout checklist — manual milestone sign-offs
+// ─────────────────────────────────────────────────────────────────────────────
+//
+// The operational dashboard derives most of a clinic's progress from live data,
+// but some rollout facts cannot be proven from the schema alone and must be
+// attested by a human with evidence:
+//
+//   • "A verified Google identity link is not proof of a successful dashboard
+//      login" — a real sign-in needs to be witnessed.
+//   • "A QR route existing is not proof of a successful QR scan" — a branch's QR
+//      has to be physically scanned and the result documented.
+//   • Final pilot acceptance is a judgement, not a row that appears on its own.
+//
+// This is the "minimal persistent model with actor, timestamp, evidence,
+// outcome and notes" the task asks for. It stores ONE current row per
+// (clinic, milestone, branch); re-signing updates it in place and the full
+// history lives in AuditLog (every write is audited, with before/after state).
+// It never touches a clinical record — it is an operational attestation table
+// and nothing reads it to change patient data.
+//
+// It is additive and nullable-by-default, and the dashboard treats the table as
+// a capability: where this migration has not been applied the checklist still
+// renders its auto-derived evidence and simply reports sign-offs as "not
+// provisioned", exactly like the payments and delivery capabilities. So it can
+// ship to code ahead of the production migration being authorised.
+
+enum ClinicMilestone {
+  DOCTOR_LOGIN // A doctor actually signed in to the dashboard (not just linked).
+  BRANCH_QR // A branch's QR/link was scanned end-to-end and documented.
+  FIRST_ASSESSMENT // The clinic captured its first patient assessment.
+  FIRST_CONSULTATION // A consultation was created for a completed assessment.
+  FIRST_REPORT // A patient report asset was produced and verified.
+  KIT_REVIEW // A doctor reviewed/authorised a kit for a patient.
+  WHATSAPP_DELIVERY // A report was delivered to a patient and confirmed.
+  PILOT_ACCEPTANCE // Final human sign-off that the clinic's pilot is accepted.
+}
+
+enum MilestoneOutcome {
+  VERIFIED // Witnessed working, with evidence.
+  FAILED // Attempted and did not work — needs remediation.
+  BLOCKED // Cannot proceed; waiting on something named in notes.
+  NOT_APPLICABLE // Does not apply to this clinic/branch.
+}
+
+model ClinicMilestoneSignoff {
+  id String @id @default(cuid())
+
+  clinicId String
+  clinic   Clinic @relation(fields: [clinicId], references: [id])
+
+  // Branch scope for milestones that are per-branch (BRANCH_QR). Null = the
+  // milestone is clinic-level. On delete of a branch the sign-off is detached
+  // rather than cascaded, so the attestation and its evidence survive.
+  locationId String?
+  location   ClinicLocation? @relation(fields: [locationId], references: [id])
+
+  milestone ClinicMilestone
+  outcome   MilestoneOutcome
+
+  // Free-text evidence the actor recorded — a link to a recording, a ticket id,
+  // a short description of what was witnessed. Never a secret or patient PII.
+  evidence String? @db.Text
+  notes    String? @db.Text
+
+  // Frozen actor snapshot (the Super Admin who signed off). actorId is the
+  // Supabase auth uid; the name/role are captured at write time so the
+  // attestation stays attributable after an account changes.
+  actorId   String?
+  actorName String?
+  actorRole SystemRole?
+
+  signedOffAt DateTime @default(now())
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // One CURRENT attestation per (clinic, milestone, branch). This is enforced
+  // by two PARTIAL unique indexes in the migration, not an @@unique here:
+  //
+  //   UNIQUE (clinicId, milestone)             WHERE locationId IS NULL
+  //   UNIQUE (clinicId, milestone, locationId) WHERE locationId IS NOT NULL
+  //
+  // A plain @@unique([clinicId, milestone, locationId]) would NOT work: Postgres
+  // treats NULL locationId values as DISTINCT, so two clinic-level rows for the
+  // same milestone could both insert. Prisma cannot express a partial unique
+  // index (same limitation documented on ClinicLocation's primary index), so
+  // the constraint lives in migrations/20261105_clinic_milestone_signoff and is
+  // invisible here. Do not "fix" this by adding @@unique. History is in AuditLog.
+  @@index([clinicId])
+  @@index([clinicId, milestone])
 }

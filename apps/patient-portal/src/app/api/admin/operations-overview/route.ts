@@ -7,6 +7,7 @@
 
 import { NextResponse } from "next/server";
 import { assertSuperAdmin, handleAuthError } from "@/lib/auth";
+import { opsDataEnvironment } from "@/lib/admin/opsDashboard/dataEnvironment";
 import { loadOpsOverview } from "@/lib/admin/opsDashboard/metrics";
 import { resolveWindow, resolveRange, parseRange } from "@/lib/admin/opsDashboard/window";
 
@@ -23,7 +24,9 @@ export async function GET(req: Request) {
       ? resolveRange(range)
       : resolveWindow(url.searchParams.get("from"), url.searchParams.get("to"));
     const overview = await loadOpsOverview(window);
-    return NextResponse.json(overview);
+    return NextResponse.json({ ...overview, dataEnvironment: opsDataEnvironment(process.env.DATABASE_URL) }, {
+      headers: { "Cache-Control": "private, no-store" },
+    });
   } catch (err) {
     const resp = handleAuthError(err);
     if (resp) return resp;

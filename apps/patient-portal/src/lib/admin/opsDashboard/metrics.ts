@@ -26,6 +26,12 @@ import { prisma } from "@/lib/prisma";
 import { loadClinicianRoster } from "@/lib/admin/clinicianRoster";
 import { loadPaymentsByClinic, loadDeliveriesByClinic } from "./capabilities";
 import { classifyClinic, toGatedKpi } from "./classify";
+import { classifyAdoption } from "./adoption";
+import {
+  classifyAuthProvider,
+  rollUpClinicAuthProvider,
+  type AuthProvider,
+} from "./authProvider";
 import type {
   ClinicOpsRow,
   DashboardCapabilities,
@@ -57,6 +63,9 @@ export async function loadOpsOverview(window: TimeWindow): Promise<OpsOverview> 
   const from = new Date(window.fromIso);
   const to = new Date(window.toIso);
   const now = new Date();
+  // Fixed 7-day cutoff for adoption recency + the register's 7-day column,
+  // independent of the UI's selected window.
+  const sevenDaysAgo = new Date(now.getTime() - 7 * 86_400_000);
 
   // Core aggregates — one interactive transaction so every read shares a
   // single pooled connection (deployed Prisma runs pgbouncer with
@@ -68,6 +77,8 @@ export async function loadOpsOverview(window: TimeWindow): Promise<OpsOverview> 
     assessmentsAll,
     assessmentsWindow,
     assessmentsLastActivity,
+    completedLastActivity,
+    assessments7dAll,
     completedAll,
     missingConsultationAll,
     reconciliationAll,
@@ -79,6 +90,7 @@ export async function loadOpsOverview(window: TimeWindow): Promise<OpsOverview> 
     doctorAuditActivity,
     awaitingAll,
     dossiersReadyAll,
+    reportAssetsQueuedAll,
     kitActiveAll,
     kitCancelledAll,
     auditLastActivity,
@@ -104,11 +116,14 @@ export async function loadOpsOverview(window: TimeWindow): Promise<OpsOverview> 
       where: { deletedAt: null },
       _count: { _all: true },
     });
-    const assessmentsAll = await tx.assessment.groupBy({
-      by: ["clinicId"],
-      where: { deletedAt: null },
-      _count: { _all: true },
-    });
+    // Count assessment records and distinct assessed patients in one scan.
+    // Patient identifiers stay inside Postgres; only per-clinic totals leave it.
+    const assessmentsAll = await tx.$queryRaw<Array<{ clinicId: string; assessments: bigint; patients: bigint }>>`
+      SELECT "clinicId", COUNT(*) AS assessments, COUNT(DISTINCT "patientId") AS patients
+      FROM "Assessment"
+      WHERE "deletedAt" IS NULL
+      GROUP BY "clinicId"
+    `;
     const assessmentsWindow = await tx.assessment.groupBy({
       by: ["clinicId"],
       where: { deletedAt: null, submittedAt: { gte: from, lt: to } },
@@ -118,6 +133,20 @@ export async function loadOpsOverview(window: TimeWindow): Promise<OpsOverview> 
       by: ["clinicId"],
       where: { deletedAt: null },
       _max: { submittedAt: true },
+    });
+    // Latest COMPLETED assessment per clinic — the "last completed" column,
+    // distinct from the last submission (which may still be processing).
+    const completedLastActivity = await tx.assessment.groupBy({
+      by: ["clinicId"],
+      where: { deletedAt: null, status: "COMPLETED" },
+      _max: { submittedAt: true },
+    });
+    // Fixed last-7-day assessment volume per clinic (the register's 7-day
+    // column + adoption recency), independent of the UI's selected range.
+    const assessments7dAll = await tx.assessment.groupBy({
+      by: ["clinicId"],
+      where: { deletedAt: null, submittedAt: { gte: sevenDaysAgo } },
+      _count: { _all: true },
     });
     // COMPLETED = the AI pipeline finished. Counted and shown as its own
     // figure, never conflated with an approval.
@@ -210,6 +239,12 @@ export async function loadOpsOverview(window: TimeWindow): Promise<OpsOverview> 
       where: { type: "PATIENT_REPORT_PDF", status: "READY" },
       _count: { _all: true },
     });
+    // Report assets still in the render pipeline (the "queued" side of "ready
+    // and queued report assets"). PENDING / QUEUED / RENDERING, not yet READY
+    // and not FAILED.
+    const reportAssetsQueuedAll = await tx.reportAsset.count({
+      where: { status: { in: ["PENDING", "QUEUED", "RENDERING"] } },
+    });
     // Kit INTENTS — a doctor authorization. Active = READY_FOR_FULFILMENT.
     const kitActiveAll = await tx.kitOrderIntent.groupBy({
       by: ["clinicId"],
@@ -232,6 +267,8 @@ export async function loadOpsOverview(window: TimeWindow): Promise<OpsOverview> 
       assessmentsAll,
       assessmentsWindow,
       assessmentsLastActivity,
+      completedLastActivity,
+      assessments7dAll,
       completedAll,
       missingConsultationAll,
       reconciliationAll,
@@ -243,6 +280,7 @@ export async function loadOpsOverview(window: TimeWindow): Promise<OpsOverview> 
       doctorAuditActivity,
       awaitingAll,
       dossiersReadyAll,
+      reportAssetsQueuedAll,
       kitActiveAll,
       kitCancelledAll,
       auditLastActivity,
@@ -260,7 +298,8 @@ export async function loadOpsOverview(window: TimeWindow): Promise<OpsOverview> 
   ]);
 
   const patientCount = countMap(patientsByClinic);
-  const assessAll = countMap(assessmentsAll);
+  const assessAll = new Map(assessmentsAll.map((r) => [r.clinicId, Number(r.assessments)]));
+  const assessedPatients = new Map(assessmentsAll.map((r) => [r.clinicId, Number(r.patients)]));
   const assessWin = countMap(assessmentsWindow);
   const completed = countMap(completedAll);
   const missingConsultation = countMap(missingConsultationAll);
@@ -278,6 +317,11 @@ export async function loadOpsOverview(window: TimeWindow): Promise<OpsOverview> 
   for (const r of assessmentsLastActivity) {
     if (r.clinicId) assessActivity.set(r.clinicId, r._max.submittedAt ?? null);
   }
+  const completedActivity = new Map<string, Date | null>();
+  for (const r of completedLastActivity) {
+    if (r.clinicId) completedActivity.set(r.clinicId, r._max.submittedAt ?? null);
+  }
+  const assess7d = countMap(assessments7dAll);
   const auditActivity = new Map<string, Date | null>();
   for (const r of auditLastActivity) {
     if (r.clinicId) auditActivity.set(r.clinicId, r._max.createdAt ?? null);
@@ -305,18 +349,27 @@ export async function loadOpsOverview(window: TimeWindow): Promise<OpsOverview> 
   interface DoctorAgg {
     count: number;
     signedIn: number;
+    /** Doctors with at least one linked auth identity. */
+    linked: number;
     topDoctorId: string | null;
     topDoctorName: string | null;
     lastSignInAt: Date | null;
     topHasAccount: boolean;
   }
   const doctorsByClinic = new Map<string, DoctorAgg>();
+  // Per-clinic list of each doctor's classified auth provider, for the clinic
+  // rollup; and network-wide provider tallies.
+  const clinicProviders = new Map<string, AuthProvider[]>();
+  let doctorsGoogle = 0;
+  let doctorsPhone = 0;
+  let doctorsNotLinked = 0;
   for (const c of roster.clinicians) {
     const agg =
       doctorsByClinic.get(c.clinicId) ??
       ({
         count: 0,
         signedIn: 0,
+        linked: 0,
         topDoctorId: null,
         topDoctorName: null,
         lastSignInAt: null,
@@ -325,6 +378,24 @@ export async function loadOpsOverview(window: TimeWindow): Promise<OpsOverview> 
     agg.count += 1;
     const signIn = c.lastSignInAt ? new Date(c.lastSignInAt) : null;
     if (signIn) agg.signedIn += 1;
+
+    // Auth PROVIDER from auth.identities (never inferred from the uid column).
+    // hasLinkedUid also honours the uid column, because a linked doctor may
+    // have no identity rows we can read.
+    const hasLinkedUid = Boolean(c.authUserId) || c.authProviders.length > 0;
+    if (hasLinkedUid) agg.linked += 1;
+    const provider = classifyAuthProvider({
+      readable: roster.identitiesReadable,
+      hasLinkedUid,
+      providers: c.authProviders,
+    });
+    const list = clinicProviders.get(c.clinicId) ?? [];
+    list.push(provider);
+    clinicProviders.set(c.clinicId, list);
+    if (provider === "GOOGLE") doctorsGoogle += 1;
+    else if (provider === "PHONE_OTP") doctorsPhone += 1;
+    else if (provider === "NOT_LINKED") doctorsNotLinked += 1;
+
     // "Top doctor" for the last-login column = most recent sign-in; fall back
     // to the first-listed doctor so the column is never empty for a staffed
     // clinic.
@@ -387,6 +458,25 @@ export async function loadOpsOverview(window: TimeWindow): Promise<OpsOverview> 
       now,
     });
 
+    // Adoption (assessment recency) + the single follow-up suggestion. The
+    // clinic auth method is rolled up from its doctors' providers.
+    const lastAssessmentAt = assessActivity.get(c.id) ?? null;
+    const lastCompletedAssessmentAt = completedActivity.get(c.id) ?? null;
+    const hasLinkedLogin = (docs?.linked ?? 0) > 0;
+    const authProvider = rollUpClinicAuthProvider(clinicProviders.get(c.id) ?? []);
+    const adoption = classifyAdoption({
+      status: c.status,
+      authReadable: roster.authReadable,
+      hasLinkedLogin,
+      anySignedIn: signedIn > 0,
+      hasDoctorActivity: reviewedAllN > 0,
+      assessmentsAllTime: assessmentsAllN,
+      lastAssessmentAt,
+      missingConsultation: flags.missingConsultation,
+      reportDeliveryAttention: flags.reportDeliveryAttention,
+      now,
+    });
+
     const confirmedOrders = toGatedKpi(
       payments.state,
       pay?.paidOrdersInWindow ?? 0,
@@ -417,6 +507,7 @@ export async function loadOpsOverview(window: TimeWindow): Promise<OpsOverview> 
       branchCount: c.locations.length,
       doctorCount,
       patientCount: patientCount.get(c.id) ?? 0,
+      assessedPatientCount: assessedPatients.get(c.id) ?? 0,
       topDoctor: docs?.topDoctorId
         ? {
             doctorId: docs.topDoctorId,
@@ -426,6 +517,7 @@ export async function loadOpsOverview(window: TimeWindow): Promise<OpsOverview> 
           }
         : null,
       lastSignInAt: docs?.lastSignInAt ? docs.lastSignInAt.toISOString() : null,
+      authProvider,
       assessments: { today: assessWin.get(c.id) ?? 0, allTime: assessmentsAllN },
       approvals: { today: apprWin.get(c.id) ?? 0, allTime: approvalsAllN },
       reviewedCases: { today: reviewedWinMap.get(c.id) ?? 0, allTime: reviewedAllN },
@@ -440,6 +532,14 @@ export async function loadOpsOverview(window: TimeWindow): Promise<OpsOverview> 
       reportsSent,
       reportsDelivered,
       lastActivityAt: lastActivityAt ? lastActivityAt.toISOString() : null,
+      lastAssessmentAt: lastAssessmentAt ? lastAssessmentAt.toISOString() : null,
+      lastCompletedAssessmentAt: lastCompletedAssessmentAt
+        ? lastCompletedAssessmentAt.toISOString()
+        : null,
+      assessments7d: assess7d.get(c.id) ?? 0,
+      daysSinceLastAssessment: adoption.daysSinceLastAssessment,
+      adoptionStatus: adoption.status,
+      followUp: adoption.followUp,
       lastDoctorActivityAt: lastDoctorActivityAt ? lastDoctorActivityAt.toISOString() : null,
       primaryStatus,
       flags,
@@ -468,11 +568,42 @@ export async function loadOpsOverview(window: TimeWindow): Promise<OpsOverview> 
       }
     : { state: "NOT_CONNECTED", today: null, allTime: null };
 
+  // Failed WhatsApp REPORT sends across all clinics — capability-gated, never a
+  // fabricated zero when delivery is NOT_CONNECTED.
+  let reportsFailedTotal = 0;
+  for (const v of deliveries.byClinic.values()) reportsFailedTotal += v.reportsFailed;
+  const reportsFailedKpi: GatedKpi = deliveryConnected
+    ? { state: "CONNECTED", today: reportsFailedTotal, allTime: reportsFailedTotal }
+    : { state: "NOT_CONNECTED", today: null, allTime: null };
+
   const kpis: DashboardKpis = {
     clinicsRegistered: rows.length,
+    clinicsActive: rows.filter((r) => r.status === "ACTIVE").length,
     clinicsOperational: rows.filter((r) => r.flags.activelyUsing).length,
+    clinicsWithAssessments: rows.filter((r) => r.assessments.allTime > 0).length,
+    clinicsNeedingAttention: rows.filter((r) => r.flags.needsAttention).length,
+    patients: sum((r) => r.patientCount),
     doctorsTotal: roster.clinicians.length,
+    // "Identities linked" = a usable linked auth identity (email/Google or
+    // phone), which is what roster.dashboardReady counts — distinct from having
+    // actually signed in.
+    doctorsIdentityLinked: roster.summary.dashboardReady,
     doctorsSignedIn: roster.clinicians.filter((c) => c.lastSignInAt !== null).length,
+    doctorsGoogle,
+    doctorsPhone,
+    doctorsNotLinked,
+    clinicsActive7d: rows.filter((r) => r.assessments7d > 0).length,
+    clinicsInactive7d: rows.filter(
+      (r) => r.status !== "ARCHIVED" && r.assessments7d === 0,
+    ).length,
+    clinicsInactive14d: rows.filter(
+      (r) =>
+        r.status !== "ARCHIVED" &&
+        (r.daysSinceLastAssessment === null || r.daysSinceLastAssessment >= 14),
+    ).length,
+    kitIntents: sum((r) => r.kitIntents),
+    reportAssetsQueued: reportAssetsQueuedAll,
+    reportsFailed: reportsFailedKpi,
     assessments: assessmentsKpi,
     approvals: approvalsKpi,
     reviewedCases: reviewedCasesKpi,
@@ -489,6 +620,7 @@ export async function loadOpsOverview(window: TimeWindow): Promise<OpsOverview> 
     payments: payments.state,
     delivery: deliveries.state,
     authReadable: roster.authReadable,
+    identitiesReadable: roster.identitiesReadable,
   };
 
   return {
