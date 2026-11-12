@@ -306,12 +306,16 @@ model OrganizationMember {
   organizationId String
   organization   Organization @relation(fields: [organizationId], references: [id])
 
-  supabaseUserId String     @unique // auth.users.id from Supabase
+  // Nullable so a platform admin can be pre-authorised by e-mail and claim this
+  // row on their verified first login (see lib/auth/linkPendingAdmin). Unique
+  // still holds for the linked uids; multiple NULLs are allowed in Postgres.
+  supabaseUserId String?    @unique // auth.users.id from Supabase, NULL until first login
   role           SystemRole
   name           String
   email          String     @unique
-  // Mobile = WhatsApp number (India-first). Required per addendum Â§4.
-  phone          String
+  // Mobile = WhatsApp number (India-first). Nullable: a pre-authorised admin is
+  // created from e-mail alone and may have no mobile on file.
+  phone          String?
 
   isActive Boolean @default(true)
 

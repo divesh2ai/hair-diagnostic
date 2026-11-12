@@ -213,6 +213,9 @@ export async function loadPeopleDirectory(): Promise<PeopleDirectory> {
   }
 
   for (const m of orgMembers) {
+    // A pre-authorised admin stays unlinked (supabaseUserId null) until their
+    // verified first login; there is no auth user to list a row against yet.
+    if (!m.supabaseUserId) continue;
     const row = ensure(m.supabaseUserId);
     row.name ??= m.name;
     row.email ??= m.email;

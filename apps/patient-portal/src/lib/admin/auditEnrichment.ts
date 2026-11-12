@@ -139,6 +139,9 @@ export async function resolveActors(
     });
   }
   for (const m of orgMembers) {
+    // A pre-authorised admin stays unlinked (supabaseUserId null) until their
+    // verified first login, and has no auth identity to resolve against yet.
+    if (!m.supabaseUserId) continue;
     out.set(m.supabaseUserId, {
       actorId: m.supabaseUserId,
       name: m.name,
