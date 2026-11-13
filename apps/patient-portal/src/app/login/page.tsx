@@ -197,25 +197,10 @@ function LoginInner() {
   // and proxy.ts gates /admin to SUPER_ADMIN. A Google identity that is not an
   // authorised Super Admin simply never receives the claim and is turned away —
   // Google email / provider alone grants nothing. Doctor mobile OTP is untouched.
-  const signInWithGoogle = async () => {
+  const signInWithGoogle = () => {
     if (oauthLoading) return;
     setOauthLoading(true);
-    setErrorMsg(null);
-    try {
-      const redirectTo = `${window.location.origin}/auth/callback?next=${encodeURIComponent(nextPath)}`;
-      const { error } = await supabase.auth.signInWithOAuth({
-        provider: "google",
-        options: { redirectTo },
-      });
-      if (error) throw error;
-      // Success redirects the browser to Google; nothing below runs. Only an
-      // error path falls through, so the spinner is cleared only on failure.
-    } catch (err) {
-      const message =
-        err instanceof Error ? err.message : "Could not start Google sign-in.";
-      setOauthLoading(false);
-      toast.error("Google sign-in unavailable", { description: message });
-    }
+    window.location.assign("/auth/google?next=" + encodeURIComponent(nextPath));
   };
 
   const sendCode = async (e: React.FormEvent) => {
@@ -355,6 +340,11 @@ function LoginInner() {
           </div>
         )}
 
+        {(reason === "locked" || reason === "expired") && (
+          <p role="status" className="text-sm text-muted-foreground">
+            {reason === "locked" ? "Your screen is locked after inactivity." : "Your remembered session has expired."} Sign in with Google to continue.
+          </p>
+        )}
         {reason === "forbidden" && (
           <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
             Your account doesn&apos;t have access. Contact your clinic admin if

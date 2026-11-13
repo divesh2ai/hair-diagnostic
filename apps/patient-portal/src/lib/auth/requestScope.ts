@@ -2,6 +2,9 @@ import { cache } from "react";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { prisma } from "@/lib/prisma";
 import { doctorAuthIdentityWhere } from "./doctorIdentity";
+import { checkLiveDoctorSession } from "./liveDoctorSession";
+import { cookies } from "next/headers";
+import { DOCTOR_SCREEN_COOKIE, GOOGLE_SESSION_COOKIE } from "./doctorSessionPolicy";
 
 // Request-scoped memoization for the two reads every /doctor* surface repeats.
 //
@@ -39,7 +42,15 @@ import { doctorAuthIdentityWhere } from "./doctorIdentity";
  */
 export const readSupabaseClaims = cache(async () => {
   const supabase = await createSupabaseServerClient();
-  return supabase.auth.getClaims();
+  const result = await supabase.auth.getClaims();
+  const claims = result.data?.claims;
+  if (claims?.user_role === "DOCTOR") {
+    const store = await cookies();
+    const state = await checkLiveDoctorSession(claims,
+      store.get(GOOGLE_SESSION_COOKIE)?.value, store.get(DOCTOR_SCREEN_COOKIE)?.value);
+    if (state !== "active") return { data: null, error: new Error("Doctor session is unavailable") };
+  }
+  return result;
 });
 
 /**

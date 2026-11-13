@@ -1,5 +1,4 @@
 import { NextResponse } from "next/server";
-import { getAuthClaims } from "@/lib/auth";
 import { acceptInvitation, InvitationError } from "@/lib/invitations";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 
@@ -17,10 +16,6 @@ export async function POST(
 ) {
   const { token } = await params;
 
-  const claims = await getAuthClaims();
-  if (!claims) {
-    return NextResponse.json({ error: "unauthorized" }, { status: 401 });
-  }
 
   // Pull email + phone + display name from the live Supabase user. India-
   // first signups commonly use phone (no email), so we require at least
@@ -31,6 +26,12 @@ export async function POST(
   if (userErr || !user || (!user.email && !user.phone)) {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   }
+  const verifiedGoogleEmail = user.identities?.find(({ provider, identity_data }) =>
+    provider === "google" &&
+    identity_data?.email_verified === true &&
+    typeof identity_data.email === "string" &&
+    identity_data.email.trim().toLowerCase() === user.email?.trim().toLowerCase(),
+  )?.identity_data?.email;
 
   let body: { name?: string } = {};
   try {
@@ -52,9 +53,11 @@ export async function POST(
       rawToken: token,
       supabaseUserId: user.id,
       email: user.email ?? null,
+      verifiedGoogleEmail: typeof verifiedGoogleEmail === "string" ? verifiedGoogleEmail : null,
       phone: user.phone ?? null,
       name: displayName,
     });
+    await supabase.auth.refreshSession();
     return NextResponse.json({ ok: true, ...result });
   } catch (err) {
     if (err instanceof InvitationError) {
@@ -62,6 +65,8 @@ export async function POST(
         err.code === "not_found" ? 404 :
         err.code === "expired" || err.code === "revoked" ? 410 :
         err.code === "already_accepted" ? 409 :
+        err.code === "identity_conflict" ? 409 :
+        err.code === "inactive_scope" ? 403 :
         err.code === "identity_mismatch" ? 403 :
         400;
       return NextResponse.json({ error: err.code, message: err.message }, { status });

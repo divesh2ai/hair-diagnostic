@@ -7,6 +7,10 @@ import {
   firstNameOf,
 } from "@/components/app-shell/loadShellData";
 import { navForRole } from "@/lib/navigation";
+import { cookies } from "next/headers";
+import { DoctorIdleLock } from "@/components/doctor/DoctorIdleLock";
+import { GOOGLE_SESSION_COOKIE } from "@/lib/auth/doctorSessionPolicy";
+import { createHash } from "node:crypto";
 export const dynamic = "force-dynamic";
 
 // Doctor workspace shell. The visible identity is driven by the ROUTE, not by
@@ -28,8 +32,9 @@ export default async function DoctorLayout({ children }: { children: ReactNode }
   const doctorNav = navForRole("DOCTOR");
   const clinicName = data.branding.clinicName;
   const roleLabel = clinicName ? `Doctor · ${clinicName}` : "Doctor";
+  const sessionKey = data.role === "DOCTOR" ? (await cookies()).get(GOOGLE_SESSION_COOKIE)?.value : undefined;
 
-  return (
+  const workspace = (
     <AppShellProviders branding={data.branding} locale={data.locale}>
       <AppShell
         nav={doctorNav}
@@ -54,4 +59,7 @@ export default async function DoctorLayout({ children }: { children: ReactNode }
       </AppShell>
     </AppShellProviders>
   );
+  return sessionKey
+    ? <DoctorIdleLock sessionKey={createHash("sha256").update(sessionKey).digest("hex")}>{workspace}</DoctorIdleLock>
+    : workspace;
 }

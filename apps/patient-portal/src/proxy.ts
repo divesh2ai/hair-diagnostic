@@ -1,6 +1,8 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { createServerClient } from "@supabase/ssr";
 import { guardOutcome } from "@/lib/auth/routeGuard";
+import { DOCTOR_SCREEN_COOKIE, GOOGLE_SESSION_COOKIE } from "@/lib/auth/doctorSessionPolicy";
+import { checkLiveDoctorSession } from "@/lib/auth/liveDoctorSession";
 
 // Next.js 16's `proxy` (formerly middleware) — gates /doctor and the
 // /api/doctor/* routes behind Supabase auth and the JWT `user_role` claim
@@ -36,9 +38,9 @@ export async function proxy(req: NextRequest) {
         setAll: (toSet) => {
           toSet.forEach(({ name, value }) => req.cookies.set(name, value));
           res = NextResponse.next({ request: req });
-          toSet.forEach(({ name, value, options }) =>
-            res.cookies.set(name, value, options),
-          );
+          toSet.forEach(({ name, value, options }) => res.cookies.set(name, value,
+            req.cookies.has(GOOGLE_SESSION_COOKIE) ? { ...options, httpOnly: true, secure: true } : options,
+          ));
         },
       },
     },
@@ -49,7 +51,7 @@ export async function proxy(req: NextRequest) {
   // auth hook. getSession alone would be unsafe for authorization.
   const { data, error } = await supabase.auth.getClaims();
   const claims = data?.claims as
-    | { user_role?: string; clinic_id?: string; sub?: string }
+    | { user_role?: string; clinic_id?: string; sub?: string; session_id?: string }
     | undefined;
 
   if (error || !claims) {
@@ -66,6 +68,19 @@ export async function proxy(req: NextRequest) {
   // the coalesced value in a `string` local also lets us forward exactly what
   // was authorized below without re-narrowing `claims.user_role`.
   const role = claims.user_role ?? "";
+  if (role === "DOCTOR") {
+    const state = await checkLiveDoctorSession(claims,
+      req.cookies.get(GOOGLE_SESSION_COOKIE)?.value, req.cookies.get(DOCTOR_SCREEN_COOKIE)?.value);
+    if (state !== "active") {
+      if (req.nextUrl.pathname.startsWith("/api/")) {
+        return NextResponse.json({ error: state }, { status: 403, headers: { "Cache-Control": "private, no-store" } });
+      }
+      const url = new URL(state === "expired" || state === "locked"
+        ? "/login?reason=" + state + "&next=/doctor" : "/login?reason=forbidden", req.url);
+      return NextResponse.redirect(url);
+    }
+    res.headers.set("Cache-Control", "private, no-store");
+  }
   const outcome = guardOutcome(req.nextUrl.pathname, role);
   if (outcome === "login_forbidden") {
     const url = req.nextUrl.clone();
