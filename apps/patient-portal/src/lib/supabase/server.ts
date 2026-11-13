@@ -1,5 +1,6 @@
 import { cookies } from "next/headers";
 import { createServerClient } from "@supabase/ssr";
+import { GOOGLE_SESSION_COOKIE } from "@/lib/auth/doctorSessionPolicy";
 
 // Supabase server client for use in server components, server actions, and
 // route handlers. The proxy keeps the session cookie fresh; this client
@@ -19,9 +20,9 @@ export async function createSupabaseServerClient() {
           // Route handlers / actions can — try, and swallow the no-op error
           // for the read-only path.
           try {
-            toSet.forEach(({ name, value, options }) =>
-              cookieStore.set(name, value, options),
-            );
+            toSet.forEach(({ name, value, options }) => cookieStore.set(name, value,
+              cookieStore.has(GOOGLE_SESSION_COOKIE) ? { ...options, httpOnly: true, secure: true } : options,
+            ));
           } catch {
             /* read-only context (server component) */
           }

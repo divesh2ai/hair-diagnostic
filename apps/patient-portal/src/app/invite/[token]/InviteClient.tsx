@@ -1,11 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { createBrowserClient } from "@supabase/ssr";
 import {
   inviteCallbackNext,
-  decodeJwtClaims,
-  hasActivatedRoleClaims,
   type InviteStatus,
 } from "@/lib/auth/inviteOnboarding";
 
@@ -73,66 +70,24 @@ export function InviteClient(props: Props) {
   const [error, setError] = useState<string | null>(null);
   const [clinicalAccessPending, setClinicalAccessPending] = useState(false);
 
-  const supabase = createBrowserClient(
-    (process.env.NEXT_PUBLIC_SUPABASE_URL || "").replace(/﻿/g, ""),
-    (process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "").replace(/﻿/g, ""),
-  );
-
-  // Google OAuth that RETURNS to this invite page (not /post-login): the
-  // recipient has no role yet, so the role gate would bounce them. The server
-  // callback honours ?next and safeReturnPath permits same-origin /invite/...
-  //
-  // `prompt: 'select_account'` forces Google's account chooser every time, so
-  // an invitee already signed into the WRONG Google account in this browser is
-  // offered the picker instead of being silently carried back in as that
-  // account (the core of the wrong-account-switch fix).
-  const signInWithGoogle = async () => {
+  const signInWithGoogle = () => {
     if (busy) return;
     setBusy(true);
-    setError(null);
-    try {
-      const redirectTo = `${window.location.origin}/auth/callback?next=${encodeURIComponent(
-        inviteCallbackNext(token),
-      )}`;
-      const { error: err } = await supabase.auth.signInWithOAuth({
-        provider: "google",
-        options: { redirectTo, queryParams: { prompt: "select_account" } },
-      });
-      if (err) throw err;
-      // Success navigates to Google; nothing below runs.
-    } catch {
-      setBusy(false);
-      setError("Could not start Google sign-in. Please try again.");
-    }
+    window.location.assign("/auth/google?next=" + encodeURIComponent(inviteCallbackNext(token)));
   };
 
-  // Switch account: clear the current Supabase session first, then re-open
-  // Google WITH the account chooser. signOut() returns {error} rather than
-  // throwing for an API failure, so that is handled explicitly — a failed
-  // sign-out must NOT fall through to a new OAuth that would re-bind the same
-  // wrong account.
   const switchAccount = async () => {
     if (busy) return;
     setBusy(true);
     setError(null);
-    let signOutError: unknown = null;
     try {
-      const { error: soErr } = await supabase.auth.signOut();
-      signOutError = soErr;
-    } catch (e) {
-      signOutError = e;
-    }
-    if (signOutError) {
+      const response = await fetch("/auth/signout", { method: "POST", headers: { Accept: "application/json" } });
+      if (!response.ok) throw new Error("Sign-out failed");
+      window.location.assign("/auth/google?next=" + encodeURIComponent(inviteCallbackNext(token)));
+    } catch {
       setBusy(false);
-      setError(
-        "We couldn't sign out of the current account. Please try again, or sign out from your account menu and reopen this link.",
-      );
-      return;
+      setError("Could not switch accounts. Please try again.");
     }
-    // Session cleared — re-start Google OAuth so the invitee picks the correct
-    // account (signInWithGoogle manages its own busy/error state).
-    setBusy(false);
-    await signInWithGoogle();
   };
 
   const accept = async () => {
@@ -152,48 +107,10 @@ export function InviteClient(props: Props) {
         return;
       }
       if (body.clinicalAccessPending === true) {
-        await supabase.auth.refreshSession();
         setClinicalAccessPending(true);
         setBusy(false);
         return;
       }
-      // Linked. Refresh the token so the access-token hook re-runs and emits
-      // the DOCTOR + clinic claim now that the UID is linked. Do NOT navigate
-      // until that claim is actually present: /post-login treats a missing
-      // user_role as unauthenticated and bounces to /login, which would read as
-      // "activation failed" right after a successful link.
-      let refreshErr: unknown = null;
-      let accessToken: string | null = null;
-      try {
-        const { data, error: rErr } = await supabase.auth.refreshSession();
-        refreshErr = rErr;
-        accessToken = data?.session?.access_token ?? null;
-      } catch (e) {
-        refreshErr = e;
-      }
-
-      if (refreshErr || !accessToken) {
-        // The link succeeded server-side; only the local session is stale.
-        setError(
-          "Your account is activated, but we couldn't refresh this browser session. Please sign in again to finish.",
-        );
-        setBusy(false);
-        return;
-      }
-
-      if (!hasActivatedRoleClaims(decodeJwtClaims(accessToken))) {
-        // Linked, token refreshed, but the role claim for this invitation's
-        // surface has not appeared yet (e.g. the membership row is not active,
-        // or the hook has not picked up the link). Say so plainly rather than
-        // bounce to a forbidden page. Role-aware: a clinic role needs clinic_id,
-        // an org role needs organization_id.
-        setError(
-          "Your account is linked, but access hasn't activated yet. Try signing in again in a moment; if it persists, contact your administrator.",
-        );
-        setBusy(false);
-        return;
-      }
-
       window.location.assign("/post-login");
     } catch {
       setError("We couldn't complete activation. Please try again.");

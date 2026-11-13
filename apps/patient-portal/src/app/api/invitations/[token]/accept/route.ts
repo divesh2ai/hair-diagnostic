@@ -1,5 +1,4 @@
 import { NextResponse } from "next/server";
-import { getAuthClaims } from "@/lib/auth";
 import { acceptInvitation, InvitationError } from "@/lib/invitations";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 
@@ -17,10 +16,6 @@ export async function POST(
 ) {
   const { token } = await params;
 
-  const claims = await getAuthClaims();
-  if (!claims) {
-    return NextResponse.json({ error: "unauthorized" }, { status: 401 });
-  }
 
   // Pull email + phone + display name from the live Supabase user. India-
   // first signups commonly use phone (no email), so we require at least
@@ -62,6 +57,7 @@ export async function POST(
       phone: user.phone ?? null,
       name: displayName,
     });
+    await supabase.auth.refreshSession();
     return NextResponse.json({ ok: true, ...result });
   } catch (err) {
     if (err instanceof InvitationError) {
