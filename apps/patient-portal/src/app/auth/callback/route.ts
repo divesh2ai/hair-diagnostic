@@ -1,5 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { createServerClient } from "@supabase/ssr";
+import { safeReturnPath } from "@/lib/auth/safeReturnPath";
 
 // Magic-link landing. Supabase appends ?code=<otp> to the redirectTo URL;
 // we exchange it for a session, which sets the auth cookies. Then we send
@@ -7,7 +8,7 @@ import { createServerClient } from "@supabase/ssr";
 export async function GET(req: NextRequest) {
   const url = new URL(req.url);
   const code = url.searchParams.get("code");
-  const next = url.searchParams.get("next") ?? "/doctor";
+  const next = safeReturnPath(url.searchParams.get("next")) ?? "/doctor";
 
   if (!code) {
     return NextResponse.redirect(new URL("/login?reason=missing_code", req.url));
