@@ -628,6 +628,7 @@ export async function acceptInvitation(
   invitationId: string;
   membershipType: "doctor" | "clinic_member" | "organization_member";
   membershipId: string;
+  clinicalAccessPending: boolean;
 }> {
   const hash = hashInvitationToken(input.rawToken);
   const userEmail = normEmail(input.email);
@@ -691,13 +692,14 @@ export async function acceptInvitation(
 
       let membershipType: "doctor" | "clinic_member" | "organization_member";
       let membershipId: string;
+      let clinicalAccessPending = false;
 
       if (inv.clinicId && inv.role === SystemRole.DOCTOR) {
         const clinic = await tx.clinic.findUnique({
           where: { id: inv.clinicId },
           select: { isActive: true, deletedAt: true, status: true },
         });
-        if (!clinic || !clinic.isActive || clinic.deletedAt || clinic.status !== "ACTIVE") {
+        if (!clinic || clinic.deletedAt || clinic.status !== "ACTIVE" || (!clinic.isActive && !requiresGoogle)) {
           throw new InvitationError("inactive_scope", "this clinic is not active");
         }
         // ── Server-side Doctor/clinic identity binding (P0 hardening) ─────────
@@ -748,15 +750,41 @@ export async function acceptInvitation(
           );
         }
         const target = existing ?? alreadyLinked;
-        if (target && (!target.isActive || target.deletedAt)) {
+        if (target && (target.deletedAt || (!target.isActive && clinic.isActive))) {
           throw new InvitationError("inactive_scope", "this clinician record is not active");
         }
 
         if (existing) {
-          // The phone slot may legitimately hold a different legacy identity.
-          // Validate the canonical slot independently; never replace it.
-          const boundToOther = existing.supabaseUserId && existing.supabaseUserId !== input.supabaseUserId;
-          if (boundToOther) {
+          clinicalAccessPending = !clinic.isActive;
+          if (clinicalAccessPending && (
+            existing.provisioningStatus !== "READY_TO_INVITE" ||
+            existing.supabaseUserId || existing.supabasePhoneUserId
+          )) {
+            throw new InvitationError("inactive_scope", "this clinician is not ready for identity-only onboarding");
+          }
+          const primary = existing.supabaseUserId;
+          let preservedPhoneUserId: string | null = null;
+          if (primary && primary !== input.supabaseUserId && requiresGoogle && !existing.supabasePhoneUserId) {
+            const [identity] = await tx.$queryRaw<{ phoneOnly: boolean }[]>`
+              SELECT (
+                count(*) = 1 AND bool_and(i.provider = 'phone') AND
+                EXISTS (
+                  SELECT 1 FROM auth.users u
+                  WHERE u.id::text = ${primary} AND u.phone_confirmed_at IS NOT NULL
+                )
+              ) AS "phoneOnly"
+              FROM auth.identities i
+              WHERE i.user_id::text = ${primary}
+            `;
+            if (identity?.phoneOnly) {
+              const otherOwner = await tx.doctor.findFirst({
+                where: { supabasePhoneUserId: primary, id: { not: existing.id } },
+                select: { id: true },
+              });
+              if (!otherOwner) preservedPhoneUserId = primary;
+            }
+          }
+          if (primary && primary !== input.supabaseUserId && !preservedPhoneUserId) {
             throw new InvitationError(
               "identity_conflict",
               "this clinician record is already linked to a different sign-in identity",
@@ -767,7 +795,9 @@ export async function acceptInvitation(
           const doctor = await tx.doctor.update({
             where: { id: existing.id },
             data: {
-              supabaseUserId: existing.supabaseUserId ?? input.supabaseUserId,
+              supabaseUserId: input.supabaseUserId,
+              ...(preservedPhoneUserId ? { supabasePhoneUserId: preservedPhoneUserId } : {}),
+              ...(clinicalAccessPending ? { isActive: false } : {}),
               name: existing.name || input.name,
               phone: existing.phone ?? memberPhone,
             },
@@ -856,7 +886,7 @@ export async function acceptInvitation(
         },
       });
 
-      return { invitationId: inv.id, membershipType, membershipId };
+      return { invitationId: inv.id, membershipType, membershipId, clinicalAccessPending };
     },
     { isolationLevel: Prisma.TransactionIsolationLevel.Serializable },
   );

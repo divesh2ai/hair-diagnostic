@@ -71,6 +71,7 @@ export function InviteClient(props: Props) {
 
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [clinicalAccessPending, setClinicalAccessPending] = useState(false);
 
   const supabase = createBrowserClient(
     (process.env.NEXT_PUBLIC_SUPABASE_URL || "").replace(/﻿/g, ""),
@@ -150,6 +151,12 @@ export function InviteClient(props: Props) {
         setBusy(false);
         return;
       }
+      if (body.clinicalAccessPending === true) {
+        await supabase.auth.refreshSession();
+        setClinicalAccessPending(true);
+        setBusy(false);
+        return;
+      }
       // Linked. Refresh the token so the access-token hook re-runs and emits
       // the DOCTOR + clinic claim now that the UID is linked. Do NOT navigate
       // until that claim is actually present: /post-login treats a missing
@@ -217,7 +224,11 @@ export function InviteClient(props: Props) {
           </div>
         )}
 
-        {lookupFailed ? (
+        {clinicalAccessPending ? (
+          <Notice tone="neutral">
+            Your Google account is linked. Clinical access will be available after your administrator activates your clinic and doctor profile.
+          </Notice>
+        ) : lookupFailed ? (
           <Notice tone="neutral">
             We couldn&apos;t load this invitation right now. Please refresh the
             page or try again shortly.

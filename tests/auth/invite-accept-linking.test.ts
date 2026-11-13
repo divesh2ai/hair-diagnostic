@@ -31,8 +31,9 @@ const h = vi.hoisted(() => {
     invitation: Record<string, unknown> | null;
     created: Doctor[];
     seq: number;
+    phoneOnly: boolean;
     clinic: { id: string; isActive: boolean; deletedAt: Date | null; status: string } | null;
-  } = { doctors: [], invitation: null, created: [], seq: 0, clinic: null };
+  } = { doctors: [], invitation: null, created: [], seq: 0, phoneOnly: false, clinic: null };
 
   const matchesDoctor = (where: Record<string, unknown>) => {
     if (Array.isArray((where as { OR?: unknown[] }).OR)) {
@@ -49,6 +50,7 @@ const h = vi.hoisted(() => {
   };
 
   const tx = {
+    $queryRaw: vi.fn(async () => [{ phoneOnly: store.phoneOnly }]),
     clinic: { findUnique: vi.fn(async () => store.clinic ? { ...store.clinic } : null) },
     clinicInvitation: {
       findUnique: vi.fn(async ({ where }: { where: { tokenHash: string } }) =>
@@ -144,6 +146,7 @@ function doctor(partial: Partial<Record<string, unknown>> & { id: string }) {
 
 beforeEach(() => {
   h.store.doctors = [];
+  h.store.phoneOnly = false;
   h.store.invitation = null;
   h.store.created = [];
   h.store.seq = 0;
@@ -227,6 +230,39 @@ describe("acceptInvitation — existing Doctor linking", () => {
     seedInvitation();
     await expect(acceptInvitation({ rawToken: RAW, supabaseUserId: "uid-new", email: GMAIL, verifiedGoogleEmail: GMAIL, name: "New Doc" })).rejects.toMatchObject({ code: "identity_mismatch" });
     expect(h.store.created).toHaveLength(0);
+  });
+
+  it("retains a verified phone-only primary identity on the same Doctor", async () => {
+    seedInvitation();
+    h.store.phoneOnly = true;
+    h.store.doctors = [doctor({ id: "intended", supabaseUserId: "legacy-phone" })];
+    await expect(acceptInvitation({
+      rawToken: RAW,
+      supabaseUserId: "google-user",
+      email: GMAIL,
+      verifiedGoogleEmail: GMAIL,
+      name: "test",
+    })).resolves.toMatchObject({ membershipId: "intended", clinicalAccessPending: false });
+    expect(h.store.doctors[0]).toMatchObject({
+      id: "intended", clinicId: CLINIC,
+      supabaseUserId: "google-user", supabasePhoneUserId: "legacy-phone",
+    });
+  });
+
+  it("links a pre-provisioned Google identity without granting clinical access in a disabled clinic", async () => {
+    seedInvitation();
+    h.store.clinic!.isActive = false;
+    h.store.doctors = [doctor({ id: "intended", isActive: false, provisioningStatus: "READY_TO_INVITE" })];
+    await expect(acceptInvitation({
+      rawToken: RAW,
+      supabaseUserId: "uid-1",
+      email: GMAIL,
+      verifiedGoogleEmail: GMAIL,
+      name: "test",
+    })).resolves.toMatchObject({ membershipId: "intended", clinicalAccessPending: true });
+    expect(h.store.doctors[0]).toMatchObject({ supabaseUserId: "uid-1", isActive: false });
+    expect(h.store.clinic!.isActive).toBe(false);
+    expect(h.store.invitation?.status).toBe("ACCEPTED");
   });
 
   it("rejects a matching account email without a verified Google identity", async () => {
